@@ -1,0 +1,8 @@
+{
+  "name": "semantic-linefeeds",
+  "description": "Semantic linefeeds for Go comments and Markdown prose: a PostToolUse enforcement hook plus a judgment-call skill",
+  "version": "0.1.0",
+  "author": {
+    "name": "Arlo Liu"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "semantic-linefeeds",
+  "owner": {
+    "name": "Arlo Liu"
+  },
+  "plugins": [
+    {
+      "name": "semantic-linefeeds",
+      "source": "./",
+      "description": "Semantic linefeeds for Go comments and Markdown prose: enforcement hook + skill"
+    }
+  ]
+}
