@@ -33,6 +33,11 @@ expect "good_sembr.md silent"  0 "$($CHECK --file fixtures/good_sembr.md | grep 
 expect "good_sembr.md exit"    0 "$($CHECK --file fixtures/good_sembr.md >/dev/null; echo $?)"
 expect "bad_wrapped.go exit"   1 "$($CHECK --file fixtures/bad_wrapped.go >/dev/null; echo $?)"
 
+# A long line whose only "boundary" is a compound-predicate 'and' is printed
+# as an advisory but must not fail the run (120 is a guide, not a gate).
+expect "advisory_long.md printed" 1 "$(count long fixtures/advisory_long.md)"
+expect "advisory_long.md exit 0"  0 "$($CHECK --file fixtures/advisory_long.md >/dev/null; echo $?)"
+
 # --hook mode: violating Edit payload -> exit 2 with stderr feedback.
 hook_exit() { printf '%s' "$1" | $CHECK --hook 2>/dev/null; echo $?; }
 BAD_EDIT='{"tool_name":"Edit","tool_input":{"file_path":"/x/doc.go","new_string":"// Package cache provides caches. A cache\n// holds a bounded number of entries here\n// and evicts old ones."}}'

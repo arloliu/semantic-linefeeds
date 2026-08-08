@@ -175,7 +175,7 @@ def check(text, path):
         if len(raw) > LONG_LINE and BOUNDARY_HINT_RE.search(prose):
             findings.append((
                 lineno, "long",
-                f"{len(raw)} chars with a possible clause boundary — scan from ~{LONG_LINE} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split there if found",
+                f"advisory: {len(raw)} chars with a possible clause boundary — scan from ~{LONG_LINE} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long",
                 prose,
             ))
 
@@ -225,7 +225,9 @@ def run_hook():
 
 
 def run_files(paths):
-    total = 0
+    # "long" findings are advisories (120 is a guide, not a gate): they are
+    # printed for the judgment pass but never fail the run on their own.
+    violations = 0
     for path in paths:
         try:
             with open(path, encoding="utf-8", errors="replace") as f:
@@ -235,9 +237,9 @@ def run_files(paths):
             continue
         findings = check(text, path)
         if findings:
-            total += len(findings)
+            violations += sum(1 for f in findings if f[1] != "long")
             print(format_findings(findings, path, snippet=False))
-    return 1 if total else 0
+    return 1 if violations else 0
 
 
 def main():
