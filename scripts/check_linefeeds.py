@@ -13,6 +13,7 @@ Modes:
   --file PATH...  check whole files, report to stdout, exit 1 if findings
 """
 
+import collections
 import json
 import re
 import sys
@@ -36,21 +37,48 @@ OK_LINE_ENDERS = tuple(".!?;:,—-–)”\"'`")
 # "i.e." do not match.
 FUSED_RE = re.compile(r"\b[a-z]{2,}[.!?][\"')\]]*\s+[A-Z]")
 
-GO_DIRECTIVE_RE = re.compile(r"^//[a-zA-Z0-9_+-]+:")
-
 # A bare "and" is usually a compound object (not a boundary); require the
 # comma-led form, or strong punctuation, before advising a split.
 BOUNDARY_HINT_RE = re.compile(
     r"[;:—]|\s–\s|, (?:and|but|so|which|that|where)\b"
 )
 
+Language = collections.namedtuple(
+    "Language",
+    "name extensions line doc_lines blocks block_prefix directives docstrings",
+)
+
+
+def _lang(name, extensions, line=None, doc_lines=(), blocks=(), block_prefix="",
+          directives=(), docstrings=False):
+    return Language(name, tuple(extensions), line, tuple(doc_lines),
+                    tuple(blocks), block_prefix,
+                    tuple(re.compile(p) for p in directives), docstrings)
+
+
+LANGUAGES = [
+    _lang("go", [".go"], line="//", blocks=[("/*", "*/")],
+          directives=[r"^//[a-zA-Z0-9_+-]+:"]),
+]
+
 
 def is_markdown(path):
     return path.endswith((".md", ".markdown", ".mdx"))
 
 
-def is_go(path):
-    return path.endswith(".go")
+def lang_for_path(path):
+    for lang in LANGUAGES:
+        if path.endswith(lang.extensions):
+            return lang
+    return None
+
+
+def comment_body(body):
+    """Stateless never-flag rules; return cleaned prose or None."""
+    body = body.strip()
+    if not body or "://" in body:
+        return None
+    return body
 
 
 def prose_lines_markdown(text):
@@ -92,56 +120,162 @@ def prose_lines_markdown(text):
         yield i, raw, prose
 
 
-def prose_lines_go(text):
-    """Yield (lineno, raw_line, prose) for checkable Go comment lines.
+def prose_lines_code(text, lang):
+    """Yield (lineno, raw, prose) for prose comment lines.
 
     Yields (lineno, None, None) for lines that break paragraph continuity.
+
+    Consecutive line comments continue one paragraph only when they start at
+    the same indentation column (Vale's coalescing rule); a column change
+    emits a break before the new line's prose.  Fence (```), <pre>, and
+    doctest state is scoped to one comment run and resets at EVERY scope
+    exit, including one-line scopes; every block-comment exit also emits a
+    paragraph break so prose on a closing line can never coalesce with a
+    following comment.
     """
     in_block = False
+    block_close = ""
+    block_base = 0
+    prev_col = None
+    fence = False
+    pre = False
+    doctest = False
+
+    def reset_scope():
+        nonlocal fence, pre, doctest
+        fence = pre = doctest = False
+
+    def body_prose(body):
+        # Stateful never-flag layer: doctest regions, markdown fences, and
+        # HTML <pre> blocks inside doc comments, then indented example
+        # code, then the stateless comment_body rules.
+        nonlocal fence, pre, doctest
+        s = body.strip()
+        if s.startswith(">>>"):
+            doctest = True  # region runs until the next blank line
+            return None
+        if doctest:
+            if not s:
+                doctest = False
+            return None
+        if s.startswith(("```", "~~~")):
+            fence = not fence
+            return None
+        low = s.lower()
+        if low.startswith("<pre"):
+            pre = True
+            return None
+        if "</pre" in low:
+            pre = False
+            return None
+        if fence or pre or not s:
+            return None
+        if body.startswith(("\t", "    ")):
+            return None  # indented example code
+        return comment_body(s)
+
     for i, raw in enumerate(text.splitlines(), 1):
         stripped = raw.strip()
+
         if in_block:
-            end = "*/" in stripped
-            body = stripped.split("*/")[0].strip(" *")
-            if end:
-                in_block = False
-            if body and "://" not in body:
-                yield i, raw, body
+            body = raw
+            closing = block_close in body
+            if closing:
+                body = body.split(block_close)[0]
+            s = body.strip()
+            if lang.block_prefix and s.startswith(lang.block_prefix):
+                body = s[len(lang.block_prefix):]
+            else:
+                # Undecorated block: keep indentation relative to the block
+                # opener so indented example code stays recognizable.
+                lead = len(body) - len(body.lstrip())
+                body = body[min(lead, block_base):]
+            prose = body_prose(body)
+            if prose:
+                yield i, raw, prose
             else:
                 yield i, None, None
+            if closing:
+                in_block = False
+                reset_scope()
+                yield i, None, None  # scope exit is a paragraph break
             continue
-        if stripped.startswith("/*"):
-            in_block = "*/" not in stripped
+
+        opened = False
+        for open_d, close_d in lang.blocks:
+            if stripped.startswith(open_d):
+                rest = stripped[len(open_d):]
+                one_line = close_d in rest
+                if one_line:
+                    rest = rest.split(close_d)[0]
+                else:
+                    in_block = True
+                    block_close = close_d
+                    block_base = len(raw) - len(raw.lstrip())
+                reset_scope()
+                prev_col = None
+                yield i, None, None  # block entry is a paragraph break
+                prose = body_prose(rest.lstrip("*!").strip())
+                if prose:
+                    yield i, raw, prose
+                if one_line:
+                    reset_scope()  # a one-line scope exits immediately
+                    yield i, None, None
+                opened = True
+                break
+        if opened:
+            continue
+
+        marker = None
+        markers = lang.doc_lines + ((lang.line,) if lang.line else ())
+        for m in sorted(markers, key=len, reverse=True):
+            if stripped.startswith(m):
+                marker = m
+                break
+        if marker is None:
+            prev_col = None
+            reset_scope()
             yield i, None, None
             continue
-        if not stripped.startswith("//"):
+        if any(d.match(stripped) for d in lang.directives):
+            prev_col = None
+            reset_scope()
             yield i, None, None
             continue
-        if GO_DIRECTIVE_RE.match(stripped):
+
+        col = len(raw) - len(raw.lstrip())
+        if prev_col is not None and col != prev_col:
+            reset_scope()
+            yield i, None, None  # column change: new paragraph
+        prev_col = col
+
+        prose = body_prose(stripped[len(marker):])
+        if prose:
+            yield i, raw, prose
+        else:
             yield i, None, None
-            continue
-        body = stripped[2:]
-        if body.startswith("\t") or body.startswith("    "):
-            # Indented godoc example code.
-            yield i, None, None
-            continue
-        body = body.strip()
-        if not body or "://" in body:
-            yield i, None, None
-            continue
-        yield i, raw, body
+
+
+GENERATED_RE = re.compile(r"Code generated|@generated|DO NOT EDIT")
+
+
+def prose_stream(text, path):
+    """Return the prose-line generator for path, or None if not a target."""
+    if is_markdown(path):
+        return prose_lines_markdown(text)
+    lang = lang_for_path(path)
+    if lang is None:
+        return None
+    head = "\n".join(text.splitlines()[:5])
+    if GENERATED_RE.search(head):
+        return iter(())
+    return prose_lines_code(text, lang)
 
 
 def check(text, path):
     """Return a list of (lineno, kind, message, excerpt) findings."""
-    if is_markdown(path):
-        lines = prose_lines_markdown(text)
-    elif is_go(path):
-        first = text.splitlines()[0] if text.strip() else ""
-        if "Code generated" in first:
-            return []
-        lines = prose_lines_go(text)
-    else:
+    lines = prose_stream(text, path)
+    if lines is None:
         return []
 
     findings = []
@@ -210,7 +344,7 @@ def run_hook():
         return 0
     tool_input = payload.get("tool_input") or {}
     path = tool_input.get("file_path") or ""
-    if not (is_markdown(path) or is_go(path)):
+    if not (is_markdown(path) or lang_for_path(path) is not None):
         return 0
     if "/vendor/" in path or "/node_modules/" in path:
         return 0

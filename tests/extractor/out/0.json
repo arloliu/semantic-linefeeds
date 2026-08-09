@@ -1,0 +1,14 @@
+[
+  {
+    "line": 1,
+    "prose": "Package demo shows extraction."
+  },
+  {
+    "line": 2,
+    "prose": "It has two sentences on two lines."
+  },
+  {
+    "line": 7,
+    "prose": "Frob frobnicates."
+  }
+]
