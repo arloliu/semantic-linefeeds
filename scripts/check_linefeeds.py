@@ -125,8 +125,11 @@ LANGUAGES = [
                       r"^#\s*(frozen_string_literal|rubocop|encoding|typed):"]),
     _lang("perl", [".pl", ".pm"], line="#", directives=[r"^#!"]),
     _lang("powershell", [".ps1", ".psm1", ".psd1"], line="#",
-          blocks=[("<#", "#>")], directives=[r"^#[rR]equires"]),
-    _lang("rlang", [".r", ".R"], line="#", doc_lines=["#'"]),
+          blocks=[("<#", "#>")],
+          directives=[r"^#!", r"^#[rR]equires",
+                      r"^#(?i:endregion|region)\b"]),
+    _lang("rlang", [".r", ".R"], line="#", doc_lines=["#'"],
+          directives=[r"^#!"]),
     _lang("haskell", [".hs"], line="--", blocks=[("{-", "-}")]),
     _lang("elixir", [".ex", ".exs"], line="#", directives=[r"^#!"]),
     _lang("zig", [".zig"], line="//", doc_lines=["///", "//!"]),
@@ -223,6 +226,10 @@ def comment_body(body):
         return None
     if body.startswith(("#", "|", ">", "<", "@", "\\")):
         # Markdown headers/tables/quotes, HTML, javadoc/jsdoc/doxygen tags.
+        return None
+    if re.match(r"^\.[A-Za-z]+(\s|$)", body):
+        # PowerShell comment-based-help keywords (.SYNOPSIS, .PARAMETER
+        # Path), structurally the same as an @-prefixed doc tag.
         return None
     return body
 

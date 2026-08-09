@@ -41,6 +41,7 @@ Split into a package only if the file exceeds ~1000 lines.
   Codex reads the same hook schema with `apply_patch` payloads;
   opencode builds a Claude-shaped payload and pipes it to `--hook claude`.
   Never invent payload fields no agent produces.
-- `LONG_LINE = 120` and the `CONNECTORS`, `OK_LINE_ENDERS`, `FUSED_RE`,
+- `DEFAULT_LONG_LINE` (via `active_long_limit()`)
+  and the `CONNECTORS`, `OK_LINE_ENDERS`, `FUSED_RE`,
   and `BOUNDARY_HINT_RE` heuristics keep their current semantics
   unless a change is the explicit point of the task.
