@@ -1,0 +1,290 @@
+import json
+import os
+import subprocess
+import sys
+
+from conftest import REPO
+
+INSTALL = REPO / "scripts" / "install.py"
+
+
+def run_install(args, env_overrides, cwd=None):
+    env = os.environ.copy()
+    env.update(env_overrides)
+    return subprocess.run(
+        [sys.executable, str(INSTALL)] + args,
+        capture_output=True, text=True, env=env, cwd=cwd,
+    )
+
+
+def isolated_env(tmp_path):
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    return {
+        "HOME": str(home),
+        "CODEX_HOME": str(tmp_path / "codex"),
+        "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+    }
+
+
+def codex_hooks_path(tmp_path):
+    return tmp_path / "codex" / "hooks.json"
+
+
+def read_hooks(tmp_path):
+    return json.loads(codex_hooks_path(tmp_path).read_text(encoding="utf-8"))
+
+
+def test_codex_fresh_install_creates_hooks_json(tmp_path):
+    r = run_install(["--codex"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    data = read_hooks(tmp_path)
+    entries = data["hooks"]["PostToolUse"]
+    assert len(entries) == 1
+    assert entries[0]["matcher"] == "apply_patch"
+    command = entries[0]["hooks"][0]["command"]
+    assert "check_linefeeds.py" in command
+    assert "--hook codex" in command
+    assert "trust" in r.stdout.lower()
+
+
+def test_codex_rerun_is_a_noop(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    before = codex_hooks_path(tmp_path).read_text(encoding="utf-8")
+    r = run_install(["--codex"], env)
+    assert r.returncode == 0
+    assert "already" in r.stdout.lower()
+    assert codex_hooks_path(tmp_path).read_text(encoding="utf-8") == before
+
+
+def test_codex_merge_preserves_existing_entries(tmp_path):
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    existing = {"hooks": {"PostToolUse": [
+        {"matcher": "shell", "hooks": [{"type": "command", "command": "echo hi"}]}
+    ]}, "unrelated": {"keep": True}}
+    path.write_text(json.dumps(existing), encoding="utf-8")
+    r = run_install(["--codex"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    data = read_hooks(tmp_path)
+    assert data["unrelated"] == {"keep": True}
+    commands = [h["hooks"][0]["command"] for h in data["hooks"]["PostToolUse"]]
+    assert commands[0] == "echo hi"
+    assert any("check_linefeeds.py" in c for c in commands)
+    assert path.with_name("hooks.json.bak").exists()
+
+
+def test_codex_stale_path_is_updated_in_place(tmp_path):
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    stale = {"hooks": {"PostToolUse": [
+        {"matcher": "apply_patch", "hooks": [
+            {"type": "command",
+             "command": "python3 \"/old/clone/scripts/check_linefeeds.py\" --hook codex"}
+        ]}
+    ]}}
+    path.write_text(json.dumps(stale), encoding="utf-8")
+    r = run_install(["--codex"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    assert "updat" in r.stdout.lower()
+    entries = read_hooks(tmp_path)["hooks"]["PostToolUse"]
+    assert len(entries) == 1
+    assert "/old/clone/" not in entries[0]["hooks"][0]["command"]
+    assert str(REPO) in entries[0]["hooks"][0]["command"]
+
+
+def test_codex_unparseable_json_is_refused(tmp_path):
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text("not json", encoding="utf-8")
+    r = run_install(["--codex"], isolated_env(tmp_path))
+    assert r.returncode == 1
+    assert path.read_text(encoding="utf-8") == "not json"
+    assert not path.with_name("hooks.json.bak").exists()
+
+
+def test_codex_dry_run_writes_nothing(tmp_path):
+    r = run_install(["--codex", "--dry-run"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    assert not codex_hooks_path(tmp_path).exists()
+    assert "dry-run" in r.stdout.lower()
+
+
+def test_usage_error_exits_64(tmp_path):
+    assert run_install(["--bogus"], isolated_env(tmp_path)).returncode == 64
+
+
+def test_help_exits_zero(tmp_path):
+    assert run_install(["--help"], isolated_env(tmp_path)).returncode == 0
+
+
+def opencode_dir(tmp_path):
+    return tmp_path / "xdg" / "opencode" / "plugins"
+
+
+def test_opencode_fresh_install_copies_both_files(tmp_path):
+    r = run_install(["--opencode"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    d = opencode_dir(tmp_path)
+    assert (d / "semantic-linefeeds.ts").exists()
+    assert (d / "check_linefeeds.py").exists()
+    src = (REPO / "adapters" / "opencode" / "semantic-linefeeds.ts").read_bytes()
+    assert (d / "semantic-linefeeds.ts").read_bytes() == src
+
+
+def test_opencode_rerun_is_a_noop(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--opencode"], env)
+    r = run_install(["--opencode"], env)
+    assert r.returncode == 0
+    assert "already" in r.stdout.lower()
+
+
+def test_opencode_changed_file_requires_force(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--opencode"], env)
+    target = opencode_dir(tmp_path) / "semantic-linefeeds.ts"
+    target.write_text("// user hand-patch\n", encoding="utf-8")
+    r = run_install(["--opencode"], env)
+    assert r.returncode == 1
+    assert "--force" in r.stderr
+    assert target.read_text(encoding="utf-8") == "// user hand-patch\n"
+
+
+def test_opencode_force_overwrites_and_backs_up(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--opencode"], env)
+    target = opencode_dir(tmp_path) / "semantic-linefeeds.ts"
+    target.write_text("// user hand-patch\n", encoding="utf-8")
+    r = run_install(["--opencode", "--force"], env)
+    assert r.returncode == 0
+    src = (REPO / "adapters" / "opencode" / "semantic-linefeeds.ts").read_bytes()
+    assert target.read_bytes() == src
+    backup = target.with_name(target.name + ".bak")
+    assert backup.read_text(encoding="utf-8") == "// user hand-patch\n"
+
+
+def test_opencode_dry_run_writes_nothing(tmp_path):
+    r = run_install(["--opencode", "--dry-run"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    assert not opencode_dir(tmp_path).exists()
+
+
+SENTINEL_OPEN = "<!-- semantic-linefeeds -->"
+SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"
+
+
+def test_agentsmd_creates_file_with_block(tmp_path):
+    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    assert r.returncode == 0
+    text = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert SENTINEL_OPEN in text and SENTINEL_CLOSE in text
+    assert "Semantic linefeeds" in text
+    assert str(REPO) in text  # the <repo> placeholder is substituted
+
+
+def test_agentsmd_rerun_is_idempotent(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--agentsmd"], env, cwd=tmp_path)
+    before = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    r = run_install(["--agentsmd"], env, cwd=tmp_path)
+    assert r.returncode == 0
+    assert (tmp_path / "AGENTS.md").read_text(encoding="utf-8") == before
+
+
+def test_agentsmd_replaces_block_and_keeps_user_text(tmp_path):
+    target = tmp_path / "AGENTS.md"
+    target.write_text(
+        "# My rules\n\nkeep me\n\n"
+        f"{SENTINEL_OPEN}\nstale old block\n{SENTINEL_CLOSE}\n\ntail kept too\n",
+        encoding="utf-8")
+    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    assert r.returncode == 0
+    text = target.read_text(encoding="utf-8")
+    assert "keep me" in text and "tail kept too" in text
+    assert "stale old block" not in text
+    assert "Semantic linefeeds" in text
+
+
+def test_agentsmd_appends_to_existing_file_without_block(tmp_path):
+    target = tmp_path / "AGENTS.md"
+    target.write_text("# My rules\n", encoding="utf-8")
+    run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    text = target.read_text(encoding="utf-8")
+    assert text.startswith("# My rules\n")
+    assert SENTINEL_OPEN in text
+
+
+def test_agentsmd_unbalanced_sentinels_refused(tmp_path):
+    target = tmp_path / "AGENTS.md"
+    target.write_text(f"{SENTINEL_OPEN}\nno close marker\n", encoding="utf-8")
+    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    assert r.returncode == 1
+    assert target.read_text(encoding="utf-8") == f"{SENTINEL_OPEN}\nno close marker\n"
+
+
+def test_agentsmd_close_before_open_refused(tmp_path):
+    target = tmp_path / "AGENTS.md"
+    original = f"stray text\n{SENTINEL_CLOSE}\nmore text\n{SENTINEL_OPEN}\ntail\n"
+    target.write_text(original, encoding="utf-8")
+    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    assert r.returncode == 1
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_agentsmd_two_blocks_refused(tmp_path):
+    target = tmp_path / "AGENTS.md"
+    original = (
+        f"{SENTINEL_OPEN}\nfirst block\n{SENTINEL_CLOSE}\n\n"
+        f"{SENTINEL_OPEN}\nsecond block\n{SENTINEL_CLOSE}\n"
+    )
+    target.write_text(original, encoding="utf-8")
+    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    assert r.returncode == 1
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_status_handles_undecodable_hooks_json(tmp_path):
+    env = isolated_env(tmp_path)
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"\xff\xfe{")
+    r = run_install([], env, cwd=tmp_path)
+    assert r.returncode == 0
+    assert "unreadable" in r.stdout.lower()
+    assert r.stderr == ""
+
+
+def test_status_handles_undecodable_agentsmd(tmp_path):
+    target = tmp_path / "AGENTS.md"
+    target.write_bytes(b"\xff\xfe{")
+    r = run_install([], isolated_env(tmp_path), cwd=tmp_path)
+    assert r.returncode == 0
+    assert r.stderr == ""
+
+
+def test_agentsmd_explicit_path(tmp_path):
+    other = tmp_path / "docs-agents.md"
+    r = run_install(["--agentsmd", str(other)], isolated_env(tmp_path), cwd=tmp_path)
+    assert r.returncode == 0
+    assert SENTINEL_OPEN in other.read_text(encoding="utf-8")
+
+
+def test_status_reports_all_targets_and_claude_guidance(tmp_path):
+    r = run_install([], isolated_env(tmp_path), cwd=tmp_path)
+    assert r.returncode == 0
+    out = r.stdout
+    assert "codex: not installed" in out
+    assert "opencode: not installed" in out
+    assert "agentsmd" in out and "absent" in out
+    assert "claude plugin" in out
+
+
+def test_status_sees_installed_targets(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex", "--opencode", "--agentsmd"], env, cwd=tmp_path)
+    out = run_install([], env, cwd=tmp_path).stdout
+    assert "codex: installed" in out
+    assert "opencode: installed" in out
+    assert "present" in out

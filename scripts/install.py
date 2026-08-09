@@ -1,0 +1,256 @@
+#!/usr/bin/env python3
+"""Install the semantic-linefeeds adapters into local AI coding agents.
+
+Modes:
+  --codex           merge the PostToolUse hook into $CODEX_HOME/hooks.json (default ~/.codex/hooks.json), append-never-overwrite
+  --opencode        copy the plugin and the checker side by side into $XDG_CONFIG_HOME/opencode/plugins (default ~/.config/...)
+  --agentsmd [PATH] manage a sentinel-marked snippet block in AGENTS.md (default ./AGENTS.md)
+  (no mode)         report install status and Claude Code guidance
+
+Claude Code is installed through its own plugin marketplace and is never touched by this script.
+Options: --dry-run prints planned actions without writing.
+--force allows overwriting an opencode file whose content has diverged.
+Exit codes: 0 success or no-op, 1 refusal or error, 64 usage error.
+"""
+import argparse
+import json
+import os
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+CHECKER = REPO / "scripts" / "check_linefeeds.py"
+OPENCODE_PLUGIN = REPO / "adapters" / "opencode" / "semantic-linefeeds.ts"
+SNIPPET = REPO / "adapters" / "agentsmd" / "SNIPPET.md"
+
+SENTINEL_OPEN = "<!-- semantic-linefeeds -->"
+SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"
+
+TRUST_NOTE = ("note: Codex hashes unmanaged hooks; on your next interactive "
+              "codex run it will ask you to trust this hook — accept it once.")
+
+
+def codex_home():
+    return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+
+
+def opencode_plugins_dir():
+    base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return base / "opencode" / "plugins"
+
+
+def desired_codex_command():
+    return f'python3 "{CHECKER}" --hook codex'
+
+
+def atomic_write(path, text, dry):
+    """Write text to path via a same-directory temp file and os.replace.
+
+    An existing file is first copied to <name>.bak so one bad run is always recoverable.
+    """
+    if dry:
+        print(f"[dry-run] would write {path}")
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        shutil.copy2(path, path.with_name(path.name + ".bak"))
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
+
+
+def install_codex(dry):
+    path = codex_home() / "hooks.json"
+    command = desired_codex_command()
+    entry = {"matcher": "apply_patch",
+             "hooks": [{"type": "command", "command": command}]}
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            hooks = data["hooks"] if "hooks" in data else data.setdefault("hooks", {})
+            post = hooks.setdefault("PostToolUse", [])
+            if not isinstance(data, dict) or not isinstance(post, list):
+                raise ValueError("unexpected structure")
+        except (json.JSONDecodeError, TypeError, AttributeError, ValueError) as e:
+            print(f"refusing to touch {path}: cannot parse it ({e}).",
+                  file=sys.stderr)
+            print("merge the PostToolUse entry from adapters/codex/hooks.json "
+                  "by hand (see adapters/codex/INSTALL.md).", file=sys.stderr)
+            return 1
+        ours = [h for block in post if isinstance(block, dict)
+                for h in block.get("hooks", [])
+                if isinstance(h, dict) and "check_linefeeds.py" in h.get("command", "")]
+        if ours:
+            if all(h["command"] == command for h in ours):
+                print(f"codex: already installed ({path})")
+                return 0
+            for h in ours:
+                h["command"] = command
+            atomic_write(path, json.dumps(data, indent=2) + "\n", dry)
+            print(f"codex: updated the checker path in {path}")
+            print(TRUST_NOTE)
+            return 0
+        post.append(entry)
+        atomic_write(path, json.dumps(data, indent=2) + "\n", dry)
+        print(f"codex: appended the PostToolUse hook to {path}")
+    else:
+        data = {"hooks": {"PostToolUse": [entry]}}
+        atomic_write(path, json.dumps(data, indent=2) + "\n", dry)
+        print(f"codex: created {path}")
+    print(TRUST_NOTE)
+    return 0
+
+
+def install_opencode(dry, force):
+    dest_dir = opencode_plugins_dir()
+    rc = 0
+    copied = skipped = 0
+    for src in (OPENCODE_PLUGIN, CHECKER):
+        dest = dest_dir / src.name
+        payload = src.read_bytes()
+        if dest.exists():
+            if dest.read_bytes() == payload:
+                skipped += 1
+                continue
+            if not force:
+                print(f"refusing to overwrite {dest}: its content differs "
+                      "from this repo's copy (hand-patched or older version). "
+                      "re-run with --force to replace it.", file=sys.stderr)
+                rc = 1
+                continue
+        atomic_write(dest, payload.decode("utf-8"), dry)
+        copied += 1
+    if rc == 0 and copied == 0:
+        print(f"opencode: already installed ({dest_dir})")
+    elif copied:
+        print(f"opencode: installed {copied} file(s) into {dest_dir}")
+    print("note: the skill needs no copy when the Claude plugin is installed; "
+          "see adapters/opencode/INSTALL.md otherwise.")
+    return rc
+
+
+def agents_block():
+    body = SNIPPET.read_text(encoding="utf-8").replace("<repo>", str(REPO))
+    return f"{SENTINEL_OPEN}\n{body.rstrip()}\n{SENTINEL_CLOSE}\n"
+
+
+def install_agentsmd(target, dry):
+    block = agents_block()
+    if target.exists():
+        text = target.read_text(encoding="utf-8")
+        has_open = SENTINEL_OPEN in text
+        has_close = SENTINEL_CLOSE in text
+        if has_open != has_close:
+            print(f"refusing to touch {target}: found one sentinel marker "
+                  "without its pair; repair the block by hand.", file=sys.stderr)
+            return 1
+        if has_open and (text.count(SENTINEL_OPEN) != 1
+                          or text.count(SENTINEL_CLOSE) != 1
+                          or text.index(SENTINEL_OPEN) > text.index(SENTINEL_CLOSE)):
+            print(f"refusing to touch {target}: sentinel markers are out of "
+                  "order or repeated; repair the block by hand.", file=sys.stderr)
+            return 1
+        if has_open:
+            pre = text.split(SENTINEL_OPEN)[0]
+            post_raw = text.split(SENTINEL_CLOSE, 1)[1]
+            post = post_raw.lstrip('\n')
+            if post:
+                post = "\n" + post
+            new = pre + block + post
+        else:
+            new = text.rstrip("\n") + "\n\n" + block
+        if new == text:
+            print(f"agentsmd: already up to date ({target})")
+            return 0
+    else:
+        new = block
+    atomic_write(target, new, dry)
+    print(f"agentsmd: wrote the snippet block to {target}")
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="install", description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--codex", action="store_true",
+                    help="install the Codex CLI hook")
+    ap.add_argument("--opencode", action="store_true",
+                    help="install the opencode plugin and checker")
+    ap.add_argument("--agentsmd", nargs="?", const="AGENTS.md", default=None,
+                    metavar="PATH",
+                    help="write the snippet block into PATH (default ./AGENTS.md)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="print planned actions without writing anything")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite opencode files whose content has diverged")
+    try:
+        args = ap.parse_args()
+    except SystemExit as e:
+        sys.exit(0 if e.code == 0 else 64)
+    codes = []
+    if args.codex:
+        codes.append(install_codex(args.dry_run))
+    if args.opencode:
+        codes.append(install_opencode(args.dry_run, args.force))
+    if args.agentsmd is not None:
+        codes.append(install_agentsmd(Path(args.agentsmd), args.dry_run))
+    if not codes:
+        codes.append(status())
+    sys.exit(max(codes))
+
+
+def status():
+    hooks_path = codex_home() / "hooks.json"
+    state = "not installed"
+    if hooks_path.exists():
+        try:
+            data = json.loads(hooks_path.read_text(encoding="utf-8"))
+            cmds = [h.get("command", "")
+                    for block in data.get("hooks", {}).get("PostToolUse", [])
+                    if isinstance(block, dict)
+                    for h in block.get("hooks", [])
+                    if isinstance(h, dict)]
+        except (ValueError, AttributeError, OSError):
+            cmds = []
+            state = "unreadable"
+        if any(c == desired_codex_command() for c in cmds):
+            state = "installed"
+        elif any("check_linefeeds.py" in c for c in cmds):
+            state = "installed (stale checker path; re-run --codex)"
+    print(f"codex: {state} ({hooks_path})")
+
+    d = opencode_plugins_dir()
+    present = [s.name for s in (OPENCODE_PLUGIN, CHECKER)
+               if (d / s.name).exists() and (d / s.name).read_bytes() == s.read_bytes()]
+    if len(present) == 2:
+        print(f"opencode: installed ({d})")
+    elif present:
+        print(f"opencode: partial — only {present[0]} matches ({d})")
+    else:
+        print(f"opencode: not installed ({d})")
+
+    agents = Path("AGENTS.md")
+    mark = "absent"
+    if agents.exists():
+        try:
+            if SENTINEL_OPEN in agents.read_text(encoding="utf-8"):
+                mark = "present"
+        except (ValueError, OSError):
+            mark = "absent (unreadable)"
+    print(f"agentsmd: block {mark} in ./{agents}")
+
+    print("claude: managed by Claude Code itself — install with:")
+    print("  claude plugin marketplace add /path/to/semantic-linefeeds  # or a private git remote")
+    print("  claude plugin install semantic-linefeeds@semantic-linefeeds")
+    return 0
+
+
+if __name__ == "__main__":
+    main()
