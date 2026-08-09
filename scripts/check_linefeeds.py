@@ -404,7 +404,7 @@ def prose_lines_code(text, lang):
             prev_col = None
             reset_scope()
             if lang.docstrings and stripped:
-                # A "#" inside a string default (def f(x="#"):) makes the tracker miss that one docstring
+                # A "#" after whitespace in a string default (def f(x="a #b"):) makes the tracker miss that docstring
                 # A "#"-led line inside a multi-line string literal is misread as a comment
                 code = re.sub(r"\s#.*$", "", stripped).rstrip()
                 if sig_pending:
