@@ -1,8 +1,10 @@
-from conftest import PAYLOADS, FIXTURES, run_cli, load_fixture, REPO
+from conftest import PAYLOADS, FIXTURES, run_cli, load_fixture, REPO, SCRIPT
 import check_linefeeds
 import json
+import os
 import shutil
 import subprocess
+import sys
 
 import pytest
 
@@ -194,3 +196,66 @@ def test_file_mode_still_checks_temp_paths(tmp_path, monkeypatch):
     bad = tmp_path / "doc.md"
     bad.write_text("One sentence. Two sentences fused.\n", encoding="utf-8")
     assert check_linefeeds.run_files([str(bad)]) == 1
+
+
+LONGISH = ("This clause runs on and on past sixty characters, "
+           "and the tail keeps going to make the point.\n")
+
+
+def test_long_limit_flag_lowers_threshold(tmp_path):
+    doc = tmp_path / "doc.md"
+    doc.write_text(LONGISH, encoding="utf-8")
+    r = run_cli(["--file", str(doc), "--long-limit", "60"])
+    assert r.returncode == 0
+    assert "[long]" in r.stdout
+
+
+def test_long_limit_zero_disables_advisory(tmp_path):
+    doc = tmp_path / "doc.md"
+    doc.write_text("x" * 200 + ", and more text here.\n", encoding="utf-8")
+    r = run_cli(["--file", str(doc), "--long-limit", "0"])
+    assert r.returncode == 0
+    assert "[long]" not in r.stdout
+
+
+def test_long_limit_env_var(tmp_path):
+    doc = tmp_path / "doc.md"
+    doc.write_text(LONGISH, encoding="utf-8")
+    env = os.environ.copy()
+    env["SEMBR_LONG_LINE"] = "60"
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), "--file", str(doc)],
+        capture_output=True, text=True, env=env,
+    )
+    assert "[long]" in r.stdout
+
+
+def test_long_limit_flag_beats_env(tmp_path):
+    doc = tmp_path / "doc.md"
+    doc.write_text(LONGISH, encoding="utf-8")
+    env = os.environ.copy()
+    env["SEMBR_LONG_LINE"] = "60"
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), "--file", str(doc), "--long-limit", "1000"],
+        capture_output=True, text=True, env=env,
+    )
+    assert "[long]" not in r.stdout
+
+
+def test_long_limit_bad_env_falls_back(tmp_path):
+    doc = tmp_path / "doc.md"
+    doc.write_text(LONGISH, encoding="utf-8")
+    env = os.environ.copy()
+    env["SEMBR_LONG_LINE"] = "banana"
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), "--file", str(doc)],
+        capture_output=True, text=True, env=env,
+    )
+    assert r.returncode == 0
+    assert "[long]" not in r.stdout  # 95 chars is under the 120 default
+
+
+def test_long_limit_negative_is_usage_error(tmp_path):
+    doc = tmp_path / "doc.md"
+    doc.write_text("fine\n", encoding="utf-8")
+    assert run_cli(["--file", str(doc), "--long-limit", "-5"]).returncode == 64

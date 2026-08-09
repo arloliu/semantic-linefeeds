@@ -21,11 +21,33 @@ Exits 64 on a usage error, such as bad or missing arguments.
 import argparse
 import collections
 import json
+import os
 import re
 import sys
 import tempfile
 
-LONG_LINE = 120
+DEFAULT_LONG_LINE = 120
+CLI_LONG_LIMIT = None  # set by --long-limit in main()
+
+
+def active_long_limit():
+    """Resolve the long-line advisory threshold; 0 disables it.
+
+    Precedence: --long-limit flag, then $SEMBR_LONG_LINE, then 120.
+    A malformed or negative env value falls back to the default.
+    """
+    if CLI_LONG_LIMIT is not None:
+        return CLI_LONG_LIMIT
+    raw = os.environ.get("SEMBR_LONG_LINE", "")
+    if raw:
+        try:
+            value = int(raw)
+            if value >= 0:
+                return value
+        except ValueError:
+            pass
+    return DEFAULT_LONG_LINE
+
 
 SKIP_DIRS = {"vendor", "node_modules", "testdata", "fixtures",
              ".git", "dist", "build", "tmp"}
@@ -480,6 +502,7 @@ def check(text, path):
                      for n, raw, p in lines)
 
     findings = []
+    limit = active_long_limit()
     prev = None  # (lineno, prose) of previous prose line in the same paragraph
     for lineno, raw, prose in lines:
         if prose is None:
@@ -507,10 +530,10 @@ def check(text, path):
                     prev_prose,
                 ))
 
-        if len(raw) > LONG_LINE and BOUNDARY_HINT_RE.search(prose):
+        if limit and len(raw) > limit and BOUNDARY_HINT_RE.search(prose):
             findings.append((
                 lineno, "long",
-                f"advisory: {len(raw)} chars with a possible clause boundary — scan from ~{LONG_LINE} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long",
+                f"advisory: {len(raw)} chars with a possible clause boundary — scan from ~{limit} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long",
                 prose,
             ))
 
@@ -528,12 +551,12 @@ def format_findings(findings, path, snippet):
             excerpt = excerpt[:57] + "..."
         lines.append(f'  [{kind}] {label}: {msg}\n         > {excerpt}')
     lines.append(
-        "Fix these in the block you just wrote: one sentence per line; "
-        "split sentences over ~120 chars at a real clause boundary (both sides must stand alone); "
-        "never break URLs, directives, or example code. "
-        "A finding can be a false positive (e.g. an 'and' joining a compound object is not a boundary) — "
-        "judge each one; leave the line alone if the break would sever a clause. "
-        "If unsure of the rules, load the semantic-linefeeds skill."
+        f"Fix these in the block you just wrote: one sentence per line; "
+        f"split sentences over ~{active_long_limit() or DEFAULT_LONG_LINE} chars at a real clause boundary (both sides must stand alone); "
+        f"never break URLs, directives, or example code. "
+        f"A finding can be a false positive (e.g. an 'and' joining a compound object is not a boundary) — "
+        f"judge each one; leave the line alone if the break would sever a clause. "
+        f"If unsure of the rules, load the semantic-linefeeds skill."
     )
     return "\n".join(lines)
 
@@ -671,10 +694,19 @@ def main():
                            "fused/wrap violation (long findings are advisory only)")
     ap.add_argument("--json", action="store_true",
                     help="with --file, emit findings as JSON instead of text")
+    ap.add_argument("--long-limit", type=int, default=None, metavar="N",
+                    help="long-line advisory threshold in chars; 0 disables "
+                         "(default: $SEMBR_LONG_LINE or 120)")
     try:
         args = ap.parse_args()
     except SystemExit as e:
         sys.exit(0 if e.code == 0 else 64)
+    if args.long_limit is not None:
+        if args.long_limit < 0:
+            print("check_linefeeds: --long-limit must be >= 0", file=sys.stderr)
+            sys.exit(64)
+        global CLI_LONG_LIMIT
+        CLI_LONG_LIMIT = args.long_limit
     if args.json and not args.file:
         print("check_linefeeds: --json requires --file", file=sys.stderr)
         sys.exit(64)
