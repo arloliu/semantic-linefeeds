@@ -1,4 +1,5 @@
 from conftest import PAYLOADS, FIXTURES, run_cli, load_fixture
+import check_linefeeds
 
 
 def hook(payload_name):
@@ -39,3 +40,13 @@ def test_file_mode_long_is_advisory(tmp_path):
     r = run_cli(["--file", str(f)])
     assert r.returncode == 0
     assert "[long]" in r.stdout
+
+
+def test_skip_path_relative_and_absolute():
+    assert check_linefeeds.skip_path("vendor/doc.go")
+    assert check_linefeeds.skip_path("/abs/vendor/doc.go")
+    assert check_linefeeds.skip_path("./fixtures/bad.go")
+    assert check_linefeeds.skip_path("a/b/node_modules/c.ts")
+    assert check_linefeeds.skip_path("C:\\repo\\testdata\\x.go")
+    assert not check_linefeeds.skip_path("src/vendored/doc.go")
+    assert not check_linefeeds.skip_path("distance/notes.md")

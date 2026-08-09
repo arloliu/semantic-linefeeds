@@ -1,0 +1,10 @@
+[
+  {
+    "line": 2,
+    "prose": "Returns the cached value for the key."
+  },
+  {
+    "line": 3,
+    "prose": "The cache evicts the oldest entry when it is full."
+  }
+]

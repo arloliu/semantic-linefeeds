@@ -1,0 +1,26 @@
+[
+  {
+    "line": 2,
+    "prose": "Extracted despite the fence marker in the one-liner above."
+  },
+  {
+    "line": 5,
+    "prose": "Extracted despite the pre marker in the one-liner above."
+  },
+  {
+    "line": 8,
+    "prose": "Frobs the widget without any punctuation at the end"
+  },
+  {
+    "line": 9,
+    "prose": "lowercase words here must open a new paragraph, not continue the block"
+  },
+  {
+    "line": 12,
+    "prose": "Example usage:"
+  },
+  {
+    "line": 16,
+    "prose": "Closing sentence stays checked."
+  }
+]

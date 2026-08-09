@@ -1,0 +1,26 @@
+[
+  {
+    "line": 2,
+    "prose": "Summary line is checked normally."
+  },
+  {
+    "line": 14,
+    "prose": "Closing sentence after the examples is checked again."
+  },
+  {
+    "line": 21,
+    "prose": "This comment sits directly after a one-line docstring with a fence marker."
+  },
+  {
+    "line": 22,
+    "prose": "It must be extracted as prose, and it is clean."
+  },
+  {
+    "line": 28,
+    "prose": "This comment sits directly after a one-line docstring with a pre marker."
+  },
+  {
+    "line": 29,
+    "prose": "It must be extracted as prose, and it is clean."
+  }
+]

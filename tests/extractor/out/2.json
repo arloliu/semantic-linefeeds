@@ -1,0 +1,14 @@
+[
+  {
+    "line": 1,
+    "prose": "Crate-level docs use inner doc comments."
+  },
+  {
+    "line": 2,
+    "prose": "One sentence per line keeps diffs reviewable."
+  },
+  {
+    "line": 11,
+    "prose": "Fenced code above is never checked, and this closing sentence is fine."
+  }
+]
