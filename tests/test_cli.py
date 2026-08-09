@@ -159,3 +159,38 @@ def test_opencode_plugin_unit_tests():
     r = subprocess.run(["bun", "test", "adapters/opencode/"],
                        cwd=REPO, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+def test_skip_path_temp_roots(monkeypatch):
+    monkeypatch.setattr(check_linefeeds.tempfile, "tempdir", "/var/folders/zz/T")
+    assert check_linefeeds.skip_path("/var/folders/zz/T/prompt.md")
+    assert check_linefeeds.skip_path("/var/folders/zz/T/deep/nested/note.md")
+    assert not check_linefeeds.skip_path("/var/folders-other/doc.md")
+
+
+def test_skip_path_tmp_component():
+    assert check_linefeeds.skip_path("/tmp/claude/v1_review_prompt.md")
+    assert check_linefeeds.skip_path("tmp/PROGRESS.md")
+    assert check_linefeeds.skip_path("./tmp/notes.md")
+    assert not check_linefeeds.skip_path("docs/tmpl/notes.md")
+
+
+def test_hook_ignores_temp_markdown():
+    import tempfile as _tf
+    payload = json.dumps({
+        "tool_name": "Write",
+        "tool_input": {
+            "file_path": _tf.gettempdir() + "/agent_prompt.md",
+            "content": "Bad break here. Another sentence follows.\n",
+        },
+    })
+    r = run_cli(["--hook"], payload)
+    assert r.returncode == 0
+    assert r.stderr == ""
+
+
+def test_file_mode_still_checks_temp_paths(tmp_path, monkeypatch):
+    monkeypatch.setattr(check_linefeeds.tempfile, "tempdir", str(tmp_path))
+    bad = tmp_path / "doc.md"
+    bad.write_text("One sentence. Two sentences fused.\n", encoding="utf-8")
+    assert check_linefeeds.run_files([str(bad)]) == 1

@@ -23,11 +23,12 @@ import collections
 import json
 import re
 import sys
+import tempfile
 
 LONG_LINE = 120
 
 SKIP_DIRS = {"vendor", "node_modules", "testdata", "fixtures",
-             ".git", "dist", "build"}
+             ".git", "dist", "build", "tmp"}
 
 LICENSE_RE = re.compile(
     r"SPDX-License-Identifier|Copyright \(c\)|Copyright \d{4}|©|All rights reserved",
@@ -105,11 +106,16 @@ def skip_path(path):
     so vendor/doc.go (repo-relative), /abs/vendor/doc.go (absolute),
     ./vendor/doc.go (relative), and C:\\repo\\vendor\\doc.go (Windows)
     all match.
+    Anything under the platform temp directory is skipped:
+    agent scratch files are never deliverables.
     """
     p = path.replace("\\", "/")
     while p.startswith("./"):
         p = p[2:]
-    return any(part in SKIP_DIRS for part in p.split("/"))
+    if any(part in SKIP_DIRS for part in p.split("/")):
+        return True
+    tmp_root = (tempfile.gettempdir() or "").replace("\\", "/").rstrip("/")
+    return bool(tmp_root) and p.startswith(tmp_root + "/")
 
 
 def license_header_extent(text, lang):
