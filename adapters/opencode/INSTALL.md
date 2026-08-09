@@ -10,5 +10,5 @@ opencode plugins are in-process TypeScript; this one shells out to the same core
    opencode reads `.claude/skills/` and `~/.claude/skills/` natively,
    so if the Claude plugin is installed the skill is already visible.
    Otherwise copy `skills/semantic-linefeeds/` into `~/.config/opencode/skills/`.
-3. Findings appear appended to the edit/write tool output
+3. Findings appear appended to the edit/write/apply_patch tool output
    (advisory, same wording as the Claude hook).

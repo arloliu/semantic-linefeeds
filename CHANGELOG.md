@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-08-09
+
+### Added
+
+- The opencode adapter also checks `apply_patch` edits:
+  models with native patch support get that tool instead of edit/write,
+  and the adapter now routes its patch text through the core's codex parser.
+
+### Fixed
+
+- The opencode plugin crashed the opencode server at startup:
+  the loader calls every module export as a plugin factory,
+  and the extra `buildPayload`/default exports returned non-hook values.
+  The module now has exactly one export.
+
 ## [0.2.0] - 2026-08-09
 
 Widens the plugin along three axes:
