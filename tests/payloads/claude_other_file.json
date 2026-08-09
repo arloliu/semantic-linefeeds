@@ -1,0 +1,1 @@
+{"session_id": "s1", "transcript_path": "/tmp/t.jsonl", "cwd": "/x", "hook_event_name": "PostToolUse", "tool_name": "Write", "tool_input": {"file_path": "/x/main.xyz", "content": "wrapped prose. More prose\nthat would be flagged in md."}, "tool_response": {"filePath": "/x/main.xyz"}}

@@ -1,0 +1,1 @@
+{"session_id": "s1", "transcript_path": "/tmp/t.jsonl", "cwd": "/x", "hook_event_name": "PostToolUse", "tool_name": "Edit", "tool_input": {"file_path": "/x/doc.go", "old_string": "old", "new_string": "// Package cache provides caches. A cache\n// holds a bounded number of entries here\n// and evicts old ones.", "replace_all": false}, "tool_response": {"filePath": "/x/doc.go"}}
