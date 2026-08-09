@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -288,3 +289,144 @@ def test_status_sees_installed_targets(tmp_path):
     assert "codex: installed" in out
     assert "opencode: installed" in out
     assert "present" in out
+
+
+INSTALL_SH = REPO / "install.sh"
+
+
+def make_source_repo(tmp_path):
+    """A minimal git repo carrying just what install.py needs."""
+    src = tmp_path / "source-repo"
+    src.mkdir()
+    shutil.copytree(REPO / "scripts", src / "scripts")
+    shutil.copytree(REPO / "adapters", src / "adapters")
+    git = ["git", "-C", str(src), "-c", "user.email=t@t", "-c", "user.name=t"]
+    subprocess.run(git + ["init", "-q"], check=True)
+    subprocess.run(git + ["add", "-A"], check=True)
+    subprocess.run(git + ["commit", "-qm", "init"], check=True)
+    return src
+
+
+def run_install_sh(args, env_overrides, cwd=None):
+    env = os.environ.copy()
+    env.update(env_overrides)
+    return subprocess.run(
+        ["sh", str(INSTALL_SH)] + args,
+        capture_output=True, text=True, env=env, cwd=cwd,
+    )
+
+
+def test_install_sh_clones_and_installs_codex(tmp_path):
+    src = make_source_repo(tmp_path)
+    home = tmp_path / "sembr-home"
+    r = run_install_sh(["--repo", str(src), "--home", str(home), "--codex"],
+                       isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    assert (home / "scripts" / "install.py").exists()
+    assert codex_hooks_path(tmp_path).exists()
+
+
+def test_install_sh_rerun_pulls_and_is_idempotent(tmp_path):
+    src = make_source_repo(tmp_path)
+    home = tmp_path / "sembr-home"
+    env = isolated_env(tmp_path)
+    run_install_sh(["--repo", str(src), "--home", str(home), "--codex"], env)
+    r = run_install_sh(["--repo", str(src), "--home", str(home), "--codex"], env)
+    assert r.returncode == 0, r.stderr
+    assert "already" in r.stdout.lower()
+
+
+def test_install_sh_env_repo_and_dry_run(tmp_path):
+    src = make_source_repo(tmp_path)
+    home = tmp_path / "sembr-home"
+    env = isolated_env(tmp_path)
+    env["SEMBR_REPO"] = str(src)
+    env["SEMBR_HOME"] = str(home)
+    r = run_install_sh(["--codex", "--dry-run"], env)
+    assert r.returncode == 0, r.stderr
+    assert not codex_hooks_path(tmp_path).exists()
+    assert "dry-run" in r.stdout.lower()
+
+
+def test_install_sh_uses_own_checkout_without_repo(tmp_path):
+    never = tmp_path / "never-created"
+    env = isolated_env(tmp_path)
+    env["SEMBR_HOME"] = str(never)
+    r = run_install_sh([], env)
+    assert r.returncode == 0, r.stderr
+    assert "codex:" in r.stdout
+    assert not never.exists()
+
+
+def test_install_sh_quotes_apostrophe_in_pass_through_arg(tmp_path):
+    src = make_source_repo(tmp_path)
+    home = tmp_path / "sembr-home"
+    target_dir = tmp_path / "O'Brien"
+    target_dir.mkdir()
+    target = target_dir / "AGENTS.md"
+    r = run_install_sh(["--repo", str(src), "--home", str(home),
+                        "--agentsmd", str(target)],
+                       isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    assert target.exists()
+
+
+def test_install_sh_home_flag_without_home_env(tmp_path):
+    src = make_source_repo(tmp_path)
+    home = tmp_path / "sembr-home"
+    env = {
+        "PATH": os.environ.get("PATH", ""),
+        "CODEX_HOME": str(tmp_path / "codex"),
+        "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+    }
+    r = subprocess.run(
+        ["sh", str(INSTALL_SH), "--repo", str(src), "--home", str(home), "--codex"],
+        capture_output=True, text=True, env=env,
+    )
+    assert r.returncode == 0, r.stderr
+
+
+def test_install_sh_pinned_ref_rerun(tmp_path):
+    src = make_source_repo(tmp_path)
+    subprocess.run(["git", "-C", str(src), "tag", "v1"], check=True)
+    home = tmp_path / "sembr-home"
+    env = isolated_env(tmp_path)
+    args = ["--repo", str(src), "--home", str(home), "--ref", "v1", "--codex"]
+    r1 = run_install_sh(args, env)
+    assert r1.returncode == 0, r1.stderr
+    r2 = run_install_sh(args, env)
+    assert r2.returncode == 0, r2.stderr
+
+
+def test_install_sh_self_checkout_honors_ref(tmp_path):
+    # A self-checkout run (install.sh executed from inside its own checkout, no --repo)
+    # must still honor an explicit --ref,
+    # instead of silently installing whatever HEAD happens to be checked out.
+    src = tmp_path / "source-repo"
+    src.mkdir()
+    shutil.copytree(REPO / "scripts", src / "scripts")
+    shutil.copytree(REPO / "adapters", src / "adapters")
+    shutil.copy(INSTALL_SH, src / "install.sh")
+    git = ["git", "-C", str(src), "-c", "user.email=t@t", "-c", "user.name=t"]
+    subprocess.run(git + ["init", "-q"], check=True)
+    subprocess.run(git + ["add", "-A"], check=True)
+    subprocess.run(git + ["commit", "-qm", "init"], check=True)
+    subprocess.run(git + ["tag", "v1"], check=True)
+
+    marker = src / "scripts" / "check_linefeeds.py"
+    with marker.open("a", encoding="utf-8") as f:
+        f.write("\n# MARKER_AFTER_V1\n")
+    subprocess.run(git + ["add", "-A"], check=True)
+    subprocess.run(git + ["commit", "-qm", "second commit"], check=True)
+
+    elsewhere = tmp_path / "elsewhere"
+    env = isolated_env(tmp_path)
+    r = subprocess.run(
+        ["sh", str(src / "install.sh"),
+         "--ref", "v1", "--home", str(elsewhere), "--codex"],
+        capture_output=True, text=True, env=env,
+    )
+    assert r.returncode == 0, r.stderr
+    installed = (elsewhere / "scripts" / "check_linefeeds.py").read_text(
+        encoding="utf-8")
+    assert "MARKER_AFTER_V1" not in installed
