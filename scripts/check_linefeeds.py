@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""Detect violations of the semantic linefeeds convention in Go comments and Markdown prose.
+"""Detect violations of the semantic linefeeds convention in code comments, doc comments, and docstrings,
+covering Go, C-family, Rust, Python, and shell, plus Markdown prose.
 
-Three heuristics, tuned for precision over recall (the agent judges; this only flags suspicion):
+Three heuristics, tuned for precision over recall — the agent judges, this only flags suspicion:
+"fused" is two independent sentences on one line,
+"wrap" is a line that ends mid-clause with the sentence continuing on the next line,
+and "long" is a line over the threshold that appears to contain a clause boundary to split at.
 
-  fused  two independent sentences on one line
-  wrap   a line that ends mid-clause with the sentence continuing on the next line
-  long   a line over the threshold that appears to contain a clause boundary to split at
+Two modes.
+"--hook [claude|codex]" reads a PostToolUse JSON payload on stdin (agent defaults to claude),
+checks only the text just written,
+and reports findings to stderr, exiting 2 if any are found.
+"--file PATH... [--json]" checks whole files and reports to stdout as text or, with --json, as JSON,
+exiting 1 if any fused/wrap violations are found;
+long findings are advisory only and never affect the exit code.
 
-Modes:
-  --hook          read a Claude Code PostToolUse JSON payload on stdin,
-                  check only the text that was just written, report via stderr + exit 2
-  --file PATH...  check whole files, report to stdout, exit 1 if findings
+Exits 64 on a usage error, such as bad or missing arguments.
 """
 
 import argparse
@@ -411,6 +416,7 @@ def prose_lines_code(text, lang):
                     sig_depth = code.count("(") - code.count(")")
                     if sig_depth > 0:
                         sig_pending = True
+                        expect_doc = False
                     else:
                         expect_doc = code.endswith(":")
                 else:
@@ -650,9 +656,15 @@ def main():
     ap = argparse.ArgumentParser(prog="check_linefeeds", description=__doc__)
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--hook", nargs="?", const="claude",
-                      choices=["claude", "codex"], default=None)
-    mode.add_argument("--file", nargs="+", default=None, metavar="PATH")
-    ap.add_argument("--json", action="store_true")
+                      choices=["claude", "codex"], default=None,
+                      help="read a PostToolUse JSON payload on stdin and check only the "
+                           "text just written; report findings to stderr, exit 2 if any "
+                           "(default agent: claude)")
+    mode.add_argument("--file", nargs="+", default=None, metavar="PATH",
+                      help="check whole files and report to stdout; exit 1 on any "
+                           "fused/wrap violation (long findings are advisory only)")
+    ap.add_argument("--json", action="store_true",
+                    help="with --file, emit findings as JSON instead of text")
     try:
         args = ap.parse_args()
     except SystemExit as e:

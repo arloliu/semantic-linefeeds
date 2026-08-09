@@ -1,6 +1,6 @@
 ---
 name: semantic-linefeeds
-description: Use when writing or editing Go comments, godoc, doc.go files, or Markdown prose (README, CHANGELOG, docs, specs, rule files), and when a linefeeds hook reports fused, wrap, or long findings on text just written.
+description: Use when writing or editing code comments, doc comments (godoc, javadoc, JSDoc, rustdoc, docstrings), or Markdown prose (README, CHANGELOG, docs, specs, rule files), and when a linefeeds hook reports fused, wrap, or long findings on text just written.
 ---
 
 # Semantic Linefeeds
@@ -56,6 +56,11 @@ a conjunction or relative pronoun starts the lower line.
 URLs, compiler and lint directives (`//go:generate`, `//nolint:...`), generated-file headers,
 code inside indented godoc examples, and table rows — whatever their length.
 Breaking a directive silently stops it from applying.
+Also never break: javadoc/JSDoc/doxygen tag lines (`@param`, `\param`);
+license headers;
+fenced code and `<pre>` blocks inside doc comments;
+doctest lines;
+and Markdown link reference definitions.
 
 ## Scope discipline
 

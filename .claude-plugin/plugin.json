@@ -1,7 +1,7 @@
 {
   "name": "semantic-linefeeds",
-  "description": "Semantic linefeeds for Go comments and Markdown prose: a PostToolUse enforcement hook plus a judgment-call skill",
-  "version": "0.1.1",
+  "description": "Semantic linefeeds enforcement for code comments, doc comments, and docstrings across Go, C-family, Rust, Python, shell, and Markdown, with adapters for Claude Code, Codex CLI, and opencode",
+  "version": "0.2.0",
   "author": {
     "name": "Arlo Liu"
   }
