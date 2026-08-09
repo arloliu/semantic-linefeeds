@@ -5,6 +5,7 @@
 > and every diff suffers for it.
 
 **The Problem:**
+
 When comments and docs are wrapped to a fixed column width,
 changing one word forces the whole paragraph to reflow,
 and the diff for that one-word edit touches every line below it.
@@ -15,6 +16,7 @@ newline characters carry little weight to a language model,
 and it can't reliably count characters while it writes.
 
 **What This Kit Does:**
+
 semantic-linefeeds enforces [semantic line breaks](https://sembr.org) at the moment text is written —
 in code comments, doc comments, docstrings, and Markdown.
 
