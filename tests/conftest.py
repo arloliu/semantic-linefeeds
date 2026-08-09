@@ -12,7 +12,9 @@ sys.path.insert(0, str(REPO / "scripts"))
 
 # The full set of extensions the fixture corpus may use; anything else in
 # tests/fixtures/ is a mistake and fails test_fixture_corpus_is_intentional.
-ALLOWED_SUFFIXES = {".go", ".md", ".java", ".ts", ".rs", ".py", ".sh", ".c"}
+ALLOWED_SUFFIXES = {".go", ".md", ".java", ".ts", ".rs", ".py", ".sh", ".c",
+                    ".kt", ".vb", ".sql", ".lua", ".rb", ".pl", ".ps1", ".r",
+                    ".hs", ".ex", ".zig"}
 
 # A marker like "{fused}" on a line asserts one finding of that kind on that
 # line; markers are stripped before the text is checked.  A line may carry

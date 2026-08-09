@@ -26,3 +26,19 @@ def test_good_fixtures_have_no_markers():
         if path.name.startswith("good_"):
             _, expected = load_fixture(path)
             assert expected == [], f"{path} is a good_ fixture but carries markers"
+
+
+@pytest.mark.parametrize("ext,name", [
+    (".kt", "cfamily"), (".kts", "cfamily"), (".swift", "cfamily"),
+    (".scala", "cfamily"), (".dart", "cfamily"), (".m", "cfamily"),
+    (".mm", "cfamily"), (".php", "cfamily"), (".groovy", "cfamily"),
+    (".gradle", "cfamily"),
+    (".vb", "vbnet"), (".sql", "sql"), (".lua", "lua"),
+    (".rb", "ruby"), (".rake", "ruby"), (".pl", "perl"), (".pm", "perl"),
+    (".ps1", "powershell"), (".psm1", "powershell"), (".psd1", "powershell"),
+    (".r", "rlang"), (".R", "rlang"), (".hs", "haskell"),
+    (".ex", "elixir"), (".exs", "elixir"), (".zig", "zig"),
+])
+def test_new_extension_dispatch(ext, name):
+    lang = check_linefeeds.lang_for_path(f"example{ext}")
+    assert lang is not None and lang.name == name
