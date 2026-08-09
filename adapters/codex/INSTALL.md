@@ -2,6 +2,13 @@
 
 Codex loads Claude-style lifecycle hooks from `hooks.json` (stable, on by default).
 
+The quick path is the installer,
+which merges the hook into an existing `hooks.json` instead of overwriting it:
+
+    python3 scripts/install.py --codex
+
+The manual steps below remain for review or for unusual setups.
+
 1. Clone this repo somewhere stable, e.g. `~/tools/semantic-linefeeds`.
 2. Copy `adapters/codex/hooks.json` to `~/.codex/hooks.json` (user scope)
    or `<project>/.codex/hooks.json` (project scope),

@@ -2,6 +2,12 @@
 
 opencode plugins are in-process TypeScript; this one shells out to the same core CLI.
 
+The quick path is the installer:
+
+    python3 scripts/install.py --opencode
+
+The manual steps below remain for review or for unusual setups.
+
 1. Copy `adapters/opencode/semantic-linefeeds.ts` and `scripts/check_linefeeds.py`
    into `~/.config/opencode/plugins/` (global) or `<project>/.opencode/plugins/` —
    the two files must sit side by side

@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-09
+
+### Added
+
+- `scripts/install.py`:
+  a stdlib-only installer for the Codex (`--codex`), opencode (`--opencode`),
+  and AGENTS.md (`--agentsmd`) adapters,
+  with append-never-overwrite JSON merging, `.bak` backups, atomic writes,
+  `--dry-run`, `--force`, and a no-argument status report.
+  Claude Code stays marketplace-installed and is never touched.
+
 ## [0.2.1] - 2026-08-09
 
 ### Added

@@ -35,9 +35,9 @@ every path bottoms out in the same detector script.
 | Agent | Install |
 |---|---|
 | Claude Code | Marketplace install below. |
-| Codex CLI | `adapters/codex/INSTALL.md` — copies `hooks.json` into `~/.codex/` or `<project>/.codex/`. |
-| opencode | `adapters/opencode/INSTALL.md` — copies the TypeScript plugin plus the detector script. |
-| Anything else | `adapters/agentsmd/SNIPPET.md` in the agent's system-prompt file (e.g. `AGENTS.md`), plus `python3 scripts/check_linefeeds.py --file <paths>` wired into CI as a backstop. |
+| Codex CLI | `python3 scripts/install.py --codex` (manual steps: `adapters/codex/INSTALL.md`). |
+| opencode | `python3 scripts/install.py --opencode` (manual steps: `adapters/opencode/INSTALL.md`). |
+| Anything else | `python3 scripts/install.py --agentsmd` (snippet source: `adapters/agentsmd/SNIPPET.md`). |
 
 ### Claude Code (marketplace)
 
