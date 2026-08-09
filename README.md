@@ -1,23 +1,41 @@
 # semantic-linefeeds
 
-Column-wrapped prose turns a one-word edit into a rewrapped paragraph,
-and coding agents ignore a "one sentence per line" rule the moment generation starts.
-This kit enforces [semantic line breaks](https://sembr.org) at edit time
-in code comments, doc comments, docstrings, and Markdown,
-so prose edits stay one-line diffs and `git blame` keeps pointing at sentences.
-Adapters exist for Claude Code, Codex CLI, opencode,
-and — through a portable AGENTS.md snippet — any agent that reads instruction files,
-all built on the same dependency-free Python detector.
+> **AI coding agents know where a sentence ends — they just don't wrap lines there.**
+> Trained on column-wrapped text, they default to breaking by character count instead of by meaning,
+> and every diff suffers for it.
 
-## Why semantic line breaks
+**The Problem:**
+When comments and docs are wrapped to a fixed column width,
+changing one word forces the whole paragraph to reflow,
+and the diff for that one-word edit touches every line below it.
 
-[SemBr](https://sembr.org) breaks lines by meaning:
+Telling a coding agent **"one sentence per line"** in your instructions doesn't fix this either —
+the agent's training data is column-wrapped text,
+newline characters carry little weight to a language model,
+and it can't reliably count characters while it writes.
+
+**What This Kit Does:**
+semantic-linefeeds enforces [semantic line breaks](https://sembr.org) at the moment text is written —
+in code comments, doc comments, docstrings, and Markdown.
+
+Because each line holds one sentence (or one clause of a long sentence),
+an edit touches only the line whose meaning changed,
+and `git blame` keeps pointing at the sentence that changed.
+
+Adapters wire the same dependency-free Python detector into Claude Code, Codex CLI, opencode,
+and — through a portable AGENTS.md snippet — any agent that reads instruction files.
+
+## Why Semantic Line Breaks
+
+[SemBr](https://sembr.org) breaks lines by meaning instead of by column:
 one sentence per line,
-and a long sentence splits only at a clause boundary.
-Rendered output is identical — Markdown joins the lines back into a paragraph.
-The difference shows up in every diff:
-add two words near the top of a column-wrapped paragraph (here, wrapped at 72)
-and the rewrap ripples through every line below.
+and a long sentence splits only at a real clause boundary.
+The rendered output doesn't change —
+Markdown still joins the lines back into one paragraph.
+
+The difference shows up in diffs.
+Add two words near the top of a column-wrapped paragraph (wrapped at 72 characters here),
+and the rewrap ripples through every line below it:
 
 ```diff
 -The exporter batches metrics in memory, flushes them once per minute,
@@ -28,7 +46,7 @@ and the rewrap ripples through every line below.
 +queue drains.
 ```
 
-The same edit under semantic line breaks touches the one line whose meaning changed:
+The same edit under semantic line breaks touches only the one line whose meaning changed:
 
 ```diff
 -The exporter batches metrics in memory,
@@ -37,30 +55,36 @@ The same edit under semantic line breaks touches the one line whose meaning chan
  and retries failed uploads with exponential backoff until the queue drains.
 ```
 
-Reviewers see the word that changed, and blame on any sentence finds the commit that wrote it.
+Reviewers see exactly the word that changed,
+and blame on any sentence finds the commit that wrote it.
 
-## Why a prompt rule is not enough
+## Why Telling an Agent Isn't Enough
 
-Prose rules stated in AGENTS.md, CLAUDE.md, or any other agent instruction file fail at generation time:
-the training prior is column-wrapped text, newlines are low-salience tokens,
-and models cannot count characters.
-This kit therefore enforces the convention with three cooperating layers:
+Writing the rule into AGENTS.md, CLAUDE.md, or any other instruction file doesn't hold up at generation time.
+
+The model's training data is overwhelmingly column-wrapped,
+newlines are low-salience to a language model,
+and it can't count characters as it generates text.
+
+This kit backs the rule with three layers instead of trusting the model to remember it:
 
 1. **Hook** —
    a post-edit hook runs a deterministic detector over the text just written to any supported file.
-   Violations come back as feedback at the moment they happen,
-   which is the only channel that survives long sessions.
-2. **Skill** — `semantic-linefeeds` carries the judgment calls the detector cannot make:
+   Violations come back as feedback the moment they happen,
+   which is the one channel that survives a long session.
+2. **Skill** —
+   `semantic-linefeeds` carries the judgment calls the detector can't make on its own:
    what counts as a clause boundary, the compound-object `and` test, the never-break list.
-   The hook's feedback tells the agent to load it when needed.
-3. **Detector** — `scripts/check_linefeeds.py`, dependency-free Python 3.
+   The hook's feedback tells the agent when to load it.
+3. **Detector** —
+   `scripts/check_linefeeds.py`, dependency-free Python 3.
    Three precision-tuned heuristics:
    `fused` (two sentences on one line), `wrap` (a line severed mid-clause),
    and `long` (over a configurable limit, default 120 chars, with a likely clause boundary).
    It checks only the text just written, never the rest of the file,
-   so legacy column-wrapped files are not flagged into noisy rewraps.
+   so legacy column-wrapped files are never flagged into a noisy rewrap.
 
-## Quick start
+## Quick Start
 
 One command clones (or updates) a checkout under `${XDG_DATA_HOME:-~/.local/share}/semantic-linefeeds`
 and hands the remaining arguments to `scripts/install.py`:
@@ -69,8 +93,8 @@ and hands the remaining arguments to `scripts/install.py`:
 curl -fsSL https://raw.githubusercontent.com/arloliu/semantic-linefeeds/main/install.sh | sh -s -- --codex
 ```
 
-Pass the flag for your agent to the one-liner, or to `python3 scripts/install.py` inside a checkout;
-no flag prints a status report of what is installed where.
+Pass the flag for your agent to the one-liner above, or to `python3 scripts/install.py` inside a checkout.
+Passing no flag prints a status report of what's installed where.
 Every path bottoms out in the same detector script.
 
 | Agent | Installer flag | Guide |
@@ -80,7 +104,7 @@ Every path bottoms out in the same detector script.
 | opencode | `--opencode` | [adapters/opencode/INSTALL.md](adapters/opencode/INSTALL.md) |
 | Anything else | `--agentsmd [PATH]` | [adapters/agentsmd/SNIPPET.md](adapters/agentsmd/SNIPPET.md) |
 
-### Claude Code (marketplace)
+### Claude Code (Marketplace)
 
 The repo embeds its own marketplace (`.claude-plugin/marketplace.json` with `source: "./"`),
 so it installs from a local path or any private git remote — no public registry involved:
@@ -90,9 +114,9 @@ claude plugin marketplace add /path/to/semantic-linefeeds
 claude plugin install semantic-linefeeds@semantic-linefeeds
 ```
 
-### Private network
+### Private Network
 
-Everything installs from a mirror without edits:
+Everything installs from a mirror without edits.
 `install.sh` reads its clone source from `--repo` or the `SEMLF_REPO` env var,
 and the checker itself never touches the network.
 Mirror this repo to your internal git host,
@@ -105,10 +129,11 @@ curl -fsSL https://git.internal/you/semantic-linefeeds/-/raw/main/install.sh |
   SEMLF_REPO=git@git.internal:you/semantic-linefeeds.git sh -s -- --codex
 ```
 
-Export `SEMLF_REPO` once in your shell profile
+Export `SEMLF_REPO` once in your shell profile,
 and every later re-run installs and updates from the mirror without repeating it.
 `--ref`/`SEMLF_REF` pins a tag or branch;
 `--home`/`SEMLF_HOME` moves the checkout.
+
 For Claude Code,
 `claude plugin marketplace add git@git.internal:you/semantic-linefeeds.git` covers the same case.
 
@@ -116,15 +141,15 @@ For Claude Code,
 
 The long-line advisory threshold defaults to 120 characters.
 Set it per run with `--long-limit N` (0 disables the advisory),
-or per environment with `SEMLF_LONG_LINE=N`;
-the flag wins over the environment variable.
-Fused and wrap findings are never affected — only the advisory moves.
+or per environment with `SEMLF_LONG_LINE=N` — the flag wins over the environment variable.
+Fused and wrap findings are never affected;
+only the advisory threshold moves.
 
 Hook mode skips paths under the platform temp directory and any `tmp/` component,
 so agent scratch files are never flagged.
 `--file` mode always checks exactly the paths you name.
 
-## Supported languages
+## Supported Languages
 
 | Languages | Extensions |
 |---|---|
@@ -140,17 +165,17 @@ so agent scratch files are never flagged.
 | SQL, R, Haskell, Elixir | `.sql` `.r` `.R` `.hs` `.ex` `.exs` |
 | Markdown | `.md` `.markdown` `.mdx` |
 
-## Recommended instructions companion
+## Recommended Instructions Companion
 
 The one habit that survives inline generation belongs in your agent's global instruction file —
-AGENTS.md for most agents, CLAUDE.md for Claude Code;
-everything else lives in the skill and the hook:
+AGENTS.md for most agents, CLAUDE.md for Claude Code.
+Everything else lives in the skill and the hook:
 
 ```markdown
-## Documentation prose
+## Comment and doc formatting
 
 One sentence per line in all comments and Markdown (semantic linefeeds).
-After writing any prose block, fix whatever the linefeeds hook reports.
+After writing any text block, fix whatever the linefeeds hook reports.
 ```
 
 ## Testing
@@ -164,6 +189,7 @@ bun test adapters/opencode/                         # opencode plugin's own unit
 Detector fixtures live under `tests/fixtures/<language>/`;
 inline `{fused}`, `{wrap}`, or `{long}` markers mark the lines that should be flagged.
 `good_*` fixtures must carry zero markers, and a dedicated test enforces it.
-The extractor has golden tests under `tests/extractor/`;
-after changing extraction logic,
+
+The extractor has golden tests under `tests/extractor/`.
+After changing extraction logic,
 regenerate with `python3 -m pytest tests/test_extractor.py --update-golden` and diff-review the result.
