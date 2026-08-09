@@ -8,7 +8,7 @@
     {
       "name": "semantic-linefeeds",
       "source": "./",
-      "description": "Semantic linefeeds enforcement for code comments, doc comments, and docstrings across Go, C-family, Rust, Python, shell, and Markdown, with adapters for Claude Code, Codex CLI, and opencode"
+      "description": "Semantic linefeeds enforcement for code comments, doc comments, and docstrings across Go, C-family, Rust, Python, shell, SQL, Ruby, and more, plus Markdown, with adapters for Claude Code, Codex CLI, and opencode"
     }
   ]
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Detect violations of the semantic linefeeds convention in code comments, doc comments, and docstrings,
-covering Go, C-family, Rust, Python, and shell, plus Markdown prose.
+covering Go, C-family, Rust, Python, shell, SQL, Ruby, and more, plus Markdown prose.
 
 Three heuristics, tuned for precision over recall — the agent judges, this only flags suspicion:
 "fused" is two independent sentences on one line,

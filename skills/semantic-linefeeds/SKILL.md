@@ -36,8 +36,8 @@ Then judge each finding — the checker flags suspicion, it does not decide:
 - **fused** — split the line after the terminal punctuation.
   This one is almost always correct to fix.
 - **wrap** — rejoin the severed clause onto one line, then re-split at sentence ends.
-- **long** — scan the line from ~120 rightward for the first clause boundary; break there.
-  Nothing rightward: scan backward from ~120 and break at the last boundary found.
+- **long** — scan rightward from the limit (default 120) for the first clause boundary; break there.
+  Nothing rightward: scan backward from that point and break at the last boundary found.
   Nothing in either direction: leave the line long — an over-long line beats a severed clause.
 
 A clause boundary is `;`, `:`, `—`, a coordinating conjunction (`and`, `but`, `so`),
