@@ -2,11 +2,11 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "apply_patch",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/check_linefeeds.py\" --hook claude"
+            "command": "python3 \"__REPO__/scripts/check_linefeeds.py\" --hook codex"
           }
         ]
       }

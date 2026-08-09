@@ -13,6 +13,7 @@ Modes:
   --file PATH...  check whole files, report to stdout, exit 1 if findings
 """
 
+import argparse
 import collections
 import json
 import re
@@ -437,6 +438,9 @@ def prose_lines_code(text, lang):
 
 GENERATED_RE = re.compile(r"Code generated|@generated|DO NOT EDIT")
 
+PATCH_FILE_RE = re.compile(r"^\*\*\* (?:Add|Update) File: (.+)$")
+PATCH_MOVE_RE = re.compile(r"^\*\*\* Move to: (.+)$")
+
 
 def prose_stream(text, path):
     """Return the prose-line generator for path, or None if not a target."""
@@ -522,7 +526,7 @@ def format_findings(findings, path, snippet):
     return "\n".join(lines)
 
 
-def run_hook():
+def run_hook_claude():
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -543,31 +547,126 @@ def run_hook():
     return 2
 
 
-def run_files(paths):
-    # "long" findings are advisories (120 is a guide, not a gate): they are
-    # printed for the judgment pass but never fail the run on their own.
+def added_text_by_file(patch):
+    """Map file path -> added text from an apply_patch body.
+
+    Disjoint addition runs (separated by context, deletions, or hunk
+    markers) are joined with blank lines so they can never merge into one
+    paragraph and fabricate a wrap finding.  A `*** Move to:` rename
+    re-keys the entry to the destination path, whose extension decides
+    language dispatch.
+    """
+    files = {}   # path -> list of runs, each run a list of added lines
+    current = None
+    in_run = False
+    for line in patch.splitlines():
+        m = PATCH_FILE_RE.match(line)
+        if m:
+            current = m.group(1).strip()
+            files.setdefault(current, [])
+            in_run = False
+            continue
+        mv = PATCH_MOVE_RE.match(line)
+        if mv and current is not None:
+            dest = mv.group(1).strip()
+            files[dest] = files.pop(current)
+            current = dest
+            in_run = False
+            continue
+        if line.startswith("*** "):
+            current = None  # Delete File / End Patch
+            in_run = False
+            continue
+        if current is None:
+            continue
+        if line.startswith("+"):
+            if not in_run:
+                files[current].append([])
+                in_run = True
+            files[current][-1].append(line[1:])
+        else:
+            in_run = False  # context, deletion, or @@ ends the run
+    return {p: "\n\n".join("\n".join(r) for r in runs)
+            for p, runs in files.items() if runs}
+
+
+def run_hook_codex():
+    try:
+        payload = json.load(sys.stdin)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return 0
+    if payload.get("tool_name") != "apply_patch":
+        return 0
+    tool_input = payload.get("tool_input")
+    if isinstance(tool_input, str):
+        patch = tool_input
+    else:
+        tool_input = tool_input or {}
+        # "command" is the current stable contract; "input"/"patch" are
+        # best-effort fallbacks for older payload shapes.
+        patch = (tool_input.get("command") or tool_input.get("input")
+                 or tool_input.get("patch") or "")
+    blocked = False
+    for path, text in sorted(added_text_by_file(patch).items()):
+        if skip_path(path):
+            continue
+        findings = check(text, path)
+        if findings:
+            blocked = True
+            print(format_findings(findings, path, snippet=True), file=sys.stderr)
+            print("(line numbers are approximate positions within the added "
+                  "lines of your patch; locate findings by the quoted excerpts)",
+                  file=sys.stderr)
+    return 2 if blocked else 0
+
+
+def run_files(paths, as_json=False):
     violations = 0
+    read_errors = 0
+    reports = []
     for path in paths:
         try:
             with open(path, encoding="utf-8", errors="replace") as f:
                 text = f.read()
         except OSError as e:
             print(f"semantic-linefeeds: cannot read {path}: {e}", file=sys.stderr)
+            read_errors += 1
             continue
         findings = check(text, path)
         if findings:
             violations += sum(1 for f in findings if f[1] != "long")
-            print(format_findings(findings, path, snippet=False))
-    return 1 if violations else 0
+            if as_json:
+                reports.append({"path": path, "findings": [
+                    {"line": n, "kind": k, "message": m, "excerpt": e}
+                    for n, k, m, e in findings]})
+            else:
+                print(format_findings(findings, path, snippet=False))
+    if as_json:
+        print(json.dumps(reports, indent=2))
+    return 1 if (violations or read_errors) else 0
 
 
 def main():
-    args = sys.argv[1:]
-    if args and args[0] == "--hook":
-        sys.exit(run_hook())
-    if args and args[0] == "--file":
-        sys.exit(run_files(args[1:]))
-    print(__doc__, file=sys.stderr)
+    ap = argparse.ArgumentParser(prog="check_linefeeds", description=__doc__)
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--hook", nargs="?", const="claude",
+                      choices=["claude", "codex"], default=None)
+    mode.add_argument("--file", nargs="+", default=None, metavar="PATH")
+    ap.add_argument("--json", action="store_true")
+    try:
+        args = ap.parse_args()
+    except SystemExit as e:
+        sys.exit(0 if e.code == 0 else 64)
+    if args.json and not args.file:
+        print("check_linefeeds: --json requires --file", file=sys.stderr)
+        sys.exit(64)
+    if args.hook == "claude":
+        sys.exit(run_hook_claude())
+    if args.hook == "codex":
+        sys.exit(run_hook_codex())
+    if args.file:
+        sys.exit(run_files(args.file, as_json=args.json))
+    ap.print_usage(sys.stderr)
     sys.exit(64)
 
 
