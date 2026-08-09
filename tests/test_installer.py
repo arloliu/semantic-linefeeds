@@ -340,8 +340,8 @@ def test_install_sh_env_repo_and_dry_run(tmp_path):
     src = make_source_repo(tmp_path)
     home = tmp_path / "sembr-home"
     env = isolated_env(tmp_path)
-    env["SEMBR_REPO"] = str(src)
-    env["SEMBR_HOME"] = str(home)
+    env["SEMLF_REPO"] = str(src)
+    env["SEMLF_HOME"] = str(home)
     r = run_install_sh(["--codex", "--dry-run"], env)
     assert r.returncode == 0, r.stderr
     assert not codex_hooks_path(tmp_path).exists()
@@ -351,7 +351,7 @@ def test_install_sh_env_repo_and_dry_run(tmp_path):
 def test_install_sh_uses_own_checkout_without_repo(tmp_path):
     never = tmp_path / "never-created"
     env = isolated_env(tmp_path)
-    env["SEMBR_HOME"] = str(never)
+    env["SEMLF_HOME"] = str(never)
     r = run_install_sh([], env)
     assert r.returncode == 0, r.stderr
     assert "codex:" in r.stdout

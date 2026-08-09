@@ -33,12 +33,12 @@ CLI_LONG_LIMIT = None  # set by --long-limit in main()
 def active_long_limit():
     """Resolve the long-line advisory threshold; 0 disables it.
 
-    Precedence: --long-limit flag, then $SEMBR_LONG_LINE, then 120.
+    Precedence: --long-limit flag, then $SEMLF_LONG_LINE, then 120.
     A malformed or negative env value falls back to the default.
     """
     if CLI_LONG_LIMIT is not None:
         return CLI_LONG_LIMIT
-    raw = os.environ.get("SEMBR_LONG_LINE", "")
+    raw = os.environ.get("SEMLF_LONG_LINE", "")
     if raw:
         try:
             value = int(raw)
@@ -719,7 +719,7 @@ def main():
                     help="with --file, emit findings as JSON instead of text")
     ap.add_argument("--long-limit", type=int, default=None, metavar="N",
                     help="long-line advisory threshold in chars; 0 disables "
-                         "(default: $SEMBR_LONG_LINE or 120)")
+                         "(default: $SEMLF_LONG_LINE or 120)")
     try:
         args = ap.parse_args()
     except SystemExit as e:

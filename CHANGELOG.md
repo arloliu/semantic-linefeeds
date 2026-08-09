@@ -14,17 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus new C-family extensions
   (Kotlin, Swift, Scala, Dart, Objective-C, PHP, Groovy/Gradle).
 - Configurable long-line advisory threshold:
-  `--long-limit N` flag and `SEMBR_LONG_LINE` env var, 0 disables;
+  `--long-limit N` flag and `SEMLF_LONG_LINE` env var, 0 disables;
   default stays 120.
 - `install.sh`: a curl-able POSIX bootstrapper.
   It clones or updates a checkout under `${XDG_DATA_HOME:-~/.local/share}/semantic-linefeeds`,
   then hands the remaining arguments to `scripts/install.py`.
-  `--repo`/`--home`/`--ref` (or `SEMBR_REPO`/`SEMBR_HOME`/`SEMBR_REF`)
+  `--repo`/`--home`/`--ref` (or `SEMLF_REPO`/`SEMLF_HOME`/`SEMLF_REF`)
   override the clone source, checkout location, and pinned ref for mirrors and reproducible installs.
 - README rewritten around the install story:
   the curl one-liner leads,
   every adapter row links to its install guide,
-  and a private-network path (mirror via `--repo`/`SEMBR_REPO`,
+  and a private-network path (mirror via `--repo`/`SEMLF_REPO`,
   Claude Code via a private marketplace remote) is documented.
 
 ### Fixed

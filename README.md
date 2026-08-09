@@ -91,17 +91,17 @@ claude plugin install semantic-linefeeds@semantic-linefeeds
 
 ### Private network
 
-`install.sh` reads its clone source from `--repo` or `SEMBR_REPO`,
+`install.sh` reads its clone source from `--repo` or `SEMLF_REPO`,
 so a mirror needs no edits —
 curl the script from the mirror and point it back at the mirror:
 
 ```bash
 curl -fsSL https://git.internal/you/semantic-linefeeds/raw/main/install.sh |
-  SEMBR_REPO=git@git.internal:you/semantic-linefeeds.git sh -s -- --codex
+  SEMLF_REPO=git@git.internal:you/semantic-linefeeds.git sh -s -- --codex
 ```
 
-`--ref`/`SEMBR_REF` pins a tag or branch;
-`--home`/`SEMBR_HOME` moves the checkout.
+`--ref`/`SEMLF_REF` pins a tag or branch;
+`--home`/`SEMLF_HOME` moves the checkout.
 For Claude Code,
 `claude plugin marketplace add git@git.internal:you/semantic-linefeeds.git` covers the same case.
 
@@ -109,7 +109,7 @@ For Claude Code,
 
 The long-line advisory threshold defaults to 120 characters.
 Set it per run with `--long-limit N` (0 disables the advisory),
-or per environment with `SEMBR_LONG_LINE=N`;
+or per environment with `SEMLF_LONG_LINE=N`;
 the flag wins over the environment variable.
 Fused and wrap findings are never affected — only the advisory moves.
 

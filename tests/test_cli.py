@@ -222,7 +222,7 @@ def test_long_limit_env_var(tmp_path):
     doc = tmp_path / "doc.md"
     doc.write_text(LONGISH, encoding="utf-8")
     env = os.environ.copy()
-    env["SEMBR_LONG_LINE"] = "60"
+    env["SEMLF_LONG_LINE"] = "60"
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--file", str(doc)],
         capture_output=True, text=True, env=env,
@@ -234,7 +234,7 @@ def test_long_limit_flag_beats_env(tmp_path):
     doc = tmp_path / "doc.md"
     doc.write_text(LONGISH, encoding="utf-8")
     env = os.environ.copy()
-    env["SEMBR_LONG_LINE"] = "60"
+    env["SEMLF_LONG_LINE"] = "60"
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--file", str(doc), "--long-limit", "1000"],
         capture_output=True, text=True, env=env,
@@ -246,7 +246,7 @@ def test_long_limit_bad_env_falls_back(tmp_path):
     doc = tmp_path / "doc.md"
     doc.write_text(LONGISH, encoding="utf-8")
     env = os.environ.copy()
-    env["SEMBR_LONG_LINE"] = "banana"
+    env["SEMLF_LONG_LINE"] = "banana"
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--file", str(doc)],
         capture_output=True, text=True, env=env,

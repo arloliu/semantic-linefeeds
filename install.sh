@@ -1,31 +1,31 @@
 #!/bin/sh
 # Curl-able bootstrapper for semantic-linefeeds.
-# It fetches (or updates) a checkout into $SEMBR_HOME,
+# It fetches (or updates) a checkout into $SEMLF_HOME,
 # then hands off every remaining argument to scripts/install.py.
 #
 # One-liner:
 #   curl -fsSL https://raw.githubusercontent.com/arloliu/semantic-linefeeds/main/install.sh | sh -s -- --codex
 #
 # Private mirror or a pinned ref:
-#   SEMBR_REPO=git@example.com:you/semantic-linefeeds.git SEMBR_REF=v0.4.0 sh install.sh --codex
+#   SEMLF_REPO=git@example.com:you/semantic-linefeeds.git SEMLF_REF=v0.4.0 sh install.sh --codex
 #
-# --repo/--home/--ref (or the SEMBR_REPO/SEMBR_HOME/SEMBR_REF env vars)
+# --repo/--home/--ref (or the SEMLF_REPO/SEMLF_HOME/SEMLF_REF env vars)
 # are consumed here;
 # everything else — --codex, --opencode, --agentsmd, --dry-run, --force,
 # or no arguments at all — passes straight through to install.py.
 set -eu
 
-repo="${SEMBR_REPO:-https://github.com/arloliu/semantic-linefeeds.git}"
-# Left empty when neither --home nor SEMBR_HOME is given;
+repo="${SEMLF_REPO:-https://github.com/arloliu/semantic-linefeeds.git}"
+# Left empty when neither --home nor SEMLF_HOME is given;
 # filled in lazily below, after argument parsing,
 # so an unset $HOME does not blow up a run that passes --home explicitly.
-home_dir="${SEMBR_HOME:-}"
-ref="${SEMBR_REF:-}"
+home_dir="${SEMLF_HOME:-}"
+ref="${SEMLF_REF:-}"
 
 # --repo (by flag or env) disables the self-checkout shortcut below,
 # so track whether either form was used.
 repo_given=false
-[ -n "${SEMBR_REPO:-}" ] && repo_given=true
+[ -n "${SEMLF_REPO:-}" ] && repo_given=true
 
 # Quote a single argument for safe reinsertion into a `set --` string:
 # wrap it in single quotes,
@@ -67,7 +67,7 @@ while [ "$#" -gt 0 ]; do
 done
 eval "set -- $pass"
 
-# Reject an option-lookalike ref (from either --ref or SEMBR_REF) up front,
+# Reject an option-lookalike ref (from either --ref or SEMLF_REF) up front,
 # so it can never be parsed as a git option
 # when it reaches `fetch origin "$ref"` or `clone --branch "$ref"` below.
 case "$ref" in
@@ -108,7 +108,7 @@ if [ "$self_checkout" = false ] && [ -z "$home_dir" ]; then
         home_dir="$HOME/.local/share/semantic-linefeeds"
     else
         echo "install.sh: cannot determine an install location;" \
-             "pass --home or set SEMBR_HOME, XDG_DATA_HOME, or HOME" >&2
+             "pass --home or set SEMLF_HOME, XDG_DATA_HOME, or HOME" >&2
         exit 1
     fi
 fi
