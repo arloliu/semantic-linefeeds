@@ -5,7 +5,8 @@ and coding agents ignore a "one sentence per line" rule the moment generation st
 This kit enforces [semantic line breaks](https://sembr.org) at edit time
 in code comments, doc comments, docstrings, and Markdown,
 so prose edits stay one-line diffs and `git blame` keeps pointing at sentences.
-It ships a Claude Code plugin, a Codex CLI hook, an opencode plugin, and a portable AGENTS.md snippet,
+Adapters exist for Claude Code, Codex CLI, opencode,
+and — through a portable AGENTS.md snippet — any agent that reads instruction files,
 all built on the same dependency-free Python detector.
 
 ## Why semantic line breaks
@@ -40,7 +41,7 @@ Reviewers see the word that changed, and blame on any sentence finds the commit 
 
 ## Why a prompt rule is not enough
 
-Prose rules stated in CLAUDE.md or AGENTS.md fail at generation time:
+Prose rules stated in AGENTS.md, CLAUDE.md, or any other agent instruction file fail at generation time:
 the training prior is column-wrapped text, newlines are low-salience tokens,
 and models cannot count characters.
 This kit therefore enforces the convention with three cooperating layers:
@@ -91,15 +92,21 @@ claude plugin install semantic-linefeeds@semantic-linefeeds
 
 ### Private network
 
-`install.sh` reads its clone source from `--repo` or `SEMLF_REPO`,
-so a mirror needs no edits —
-curl the script from the mirror and point it back at the mirror:
+Everything installs from a mirror without edits:
+`install.sh` reads its clone source from `--repo` or the `SEMLF_REPO` env var,
+and the checker itself never touches the network.
+Mirror this repo to your internal git host,
+curl the script from the mirror's raw endpoint,
+and point `SEMLF_REPO` back at the mirror:
 
 ```bash
-curl -fsSL https://git.internal/you/semantic-linefeeds/raw/main/install.sh |
+# GitLab raw path shown; Gitea/Forgejo use /raw/branch/main/ instead of /-/raw/main/
+curl -fsSL https://git.internal/you/semantic-linefeeds/-/raw/main/install.sh |
   SEMLF_REPO=git@git.internal:you/semantic-linefeeds.git sh -s -- --codex
 ```
 
+Export `SEMLF_REPO` once in your shell profile
+and every later re-run installs and updates from the mirror without repeating it.
 `--ref`/`SEMLF_REF` pins a tag or branch;
 `--home`/`SEMLF_HOME` moves the checkout.
 For Claude Code,
@@ -133,9 +140,10 @@ so agent scratch files are never flagged.
 | SQL, R, Haskell, Elixir | `.sql` `.r` `.R` `.hs` `.ex` `.exs` |
 | Markdown | `.md` `.markdown` `.mdx` |
 
-## Recommended CLAUDE.md companion
+## Recommended instructions companion
 
-The one habit that survives inline generation belongs in your global CLAUDE.md;
+The one habit that survives inline generation belongs in your agent's global instruction file —
+AGENTS.md for most agents, CLAUDE.md for Claude Code;
 everything else lives in the skill and the hook:
 
 ```markdown

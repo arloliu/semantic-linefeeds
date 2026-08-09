@@ -6,7 +6,10 @@
 # One-liner:
 #   curl -fsSL https://raw.githubusercontent.com/arloliu/semantic-linefeeds/main/install.sh | sh -s -- --codex
 #
-# Private mirror or a pinned ref:
+# Private mirror (curl the raw script from the mirror, point SEMLF_REPO back at it)
+# or a pinned ref:
+#   curl -fsSL https://git.internal/you/semantic-linefeeds/-/raw/main/install.sh |
+#     SEMLF_REPO=git@git.internal:you/semantic-linefeeds.git sh -s -- --codex
 #   SEMLF_REPO=git@example.com:you/semantic-linefeeds.git SEMLF_REF=v0.4.0 sh install.sh --codex
 #
 # --repo/--home/--ref (or the SEMLF_REPO/SEMLF_HOME/SEMLF_REF env vars)
