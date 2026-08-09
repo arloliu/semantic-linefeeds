@@ -1,0 +1,71 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.0] - 2026-08-09
+
+Widens the plugin along three axes:
+agents (Claude Code, plus new Codex CLI and opencode adapters),
+languages (Go and Markdown, plus C-family, Rust, Python, and shell),
+and tests (a bash script replaced by a pytest harness).
+
+### Added
+
+- **C-family, Rust, Python, and shell support.**
+  The core now checks comments in C, C++, Java, JavaScript/TypeScript, and C#,
+  rustdoc line and inner doc comments,
+  Python `#` comments and docstrings (with multi-line signature tracking),
+  and shell comments —
+  driven by one per-language table feeding a shared extractor.
+- **Codex CLI adapter** (`adapters/codex/`):
+  a Claude-schema `hooks.json` template
+  and an `apply_patch` payload parser that keeps disjoint addition runs separate
+  and follows `*** Move to:` renames.
+- **opencode adapter** (`adapters/opencode/`):
+  a TypeScript plugin that builds a Claude-shaped payload,
+  shells out to the same core,
+  and appends findings to the tool output only when the checker blocks.
+- **AGENTS.md snippet** (`adapters/agentsmd/SNIPPET.md`) for agents with no hook surface.
+- **CLI surface**:
+  `--hook [claude|codex]` with bare `--hook` still meaning claude,
+  `--json` output for `--file` mode,
+  and defined exit semantics (64 on usage errors, `--help` exits 0).
+- **Never-flag hardening**:
+  license headers, doctest lines,
+  fenced code and `<pre>` blocks inside doc comments,
+  Markdown indented code and link reference definitions,
+  generated-file detection over the first five lines,
+  and a component-based path skip (`vendor`, `node_modules`, `testdata`, `fixtures`, ...) for hook modes.
+- **pytest harness**:
+  detector fixtures with inline `{fused}`/`{wrap}`/`{long}` markers,
+  Vale-style extraction goldens refreshed via `--update-golden`,
+  recorded hook payload replays,
+  and a bun unit-test suite for the opencode plugin.
+
+### Changed
+
+- Comment extraction is table-driven:
+  consecutive line comments coalesce into one paragraph only when they start at the same indentation column.
+- The Claude hook command names its agent explicitly (`--hook claude`).
+
+### Removed
+
+- The bash test harness (`tests/run_tests.sh`), replaced by pytest.
+
+## [0.1.1] - 2026-08-08
+
+### Changed
+
+- Long-line findings are advisories in `--file` mode and no longer affect the exit code.
+
+## [0.1.0] - 2026-08-08
+
+### Added
+
+- Initial release:
+  Claude Code plugin with a PostToolUse hook,
+  the semantic-linefeeds skill,
+  and a detector for Go comments and Markdown prose.
