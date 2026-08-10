@@ -573,15 +573,72 @@ def format_findings(findings, path, snippet):
         if len(excerpt) > 60:
             excerpt = excerpt[:57] + "..."
         lines.append(f'  [{kind}] {label}: {msg}\n         > {excerpt}')
-    lines.append(
-        f"Fix these in the block you just wrote: one sentence per line; "
-        f"split sentences over ~{active_long_limit() or DEFAULT_LONG_LINE} chars at a real clause boundary (both sides must stand alone); "
-        f"never break URLs, directives, or example code. "
-        f"A finding can be a false positive (e.g. an 'and' joining a compound object is not a boundary) — "
-        f"judge each one; leave the line alone if the break would sever a clause. "
-        f"If unsure of the rules, load the semantic-linefeeds skill."
-    )
+    limit = active_long_limit() or DEFAULT_LONG_LINE
+    if blocking_kinds(findings):
+        lines.append(
+            f"Fix these in the block you just wrote: one sentence per line; "
+            f"split sentences over ~{limit} chars at a real clause boundary (both sides must stand alone); "
+            f"never break URLs, directives, or example code. "
+            f"A finding can be a false positive (e.g. an 'and' joining a compound object is not a boundary) — "
+            f"judge each one; leave the line alone if the break would sever a clause. "
+            f"If unsure of the rules, load the semantic-linefeeds skill."
+        )
+    else:
+        # An advisory report must not say "Fix these".
+        # Where a long line carries no clause boundary,
+        # the skill's own instruction is to leave it long.
+        lines.append(
+            f"Consider these, and change nothing you are not sure about: "
+            f"a line over ~{limit} chars is worth splitting only at a real clause boundary "
+            f"where both sides stand alone. "
+            f"If there is no such boundary, leaving the line long is the right answer. "
+            f"Never break URLs, directives, or example code. "
+            f"If unsure of the rules, load the semantic-linefeeds skill."
+        )
     return "\n".join(lines)
+
+
+# The kinds that stop an edit.
+# Everything else is advice,
+# and advice that blocks costs more trust than the advice is worth.
+BLOCKING_KINDS = frozenset({"fused", "wrap"})
+
+
+def blocking_kinds(findings):
+    """True when some finding must block the edit rather than merely advise."""
+    return any(kind in BLOCKING_KINDS for _, kind, _, _ in findings)
+
+
+def deliver(reports, snippet=True, note=None):
+    """Write hook findings on the transport their status implies, and return the status.
+
+    Status comes from the kinds present, and transport comes from the status.
+    Blocking findings go to stderr, which both hosts show to the model.
+    Everything else exits 0 and travels as host-native additional context,
+    because exit-0 stderr reaches no model in either host:
+    Claude Code files it under its debug log,
+    and Codex reads non-blocking feedback only from JSON on stdout.
+
+    `reports` is a sequence of (path, findings) pairs rather than one pair,
+    since a single Codex patch can touch several files
+    and the non-blocking transport is one JSON object.
+    Both hosts accept the same object shape,
+    so the transport does not vary by agent.
+    """
+    reports = [(path, findings) for path, findings in reports if findings]
+    if not reports:
+        return 0
+    body = "\n".join(format_findings(f, p, snippet) for p, f in reports)
+    if note:
+        body += "\n" + note
+    if any(blocking_kinds(findings) for _, findings in reports):
+        print(body, file=sys.stderr)
+        return 2
+    print(json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PostToolUse",
+        "additionalContext": body,
+    }}))
+    return 0
 
 
 def run_hook_claude():
@@ -598,11 +655,7 @@ def run_hook_claude():
     text = tool_input.get("new_string") or tool_input.get("content") or ""
     if not text:
         return 0
-    findings = check(text, path)
-    if not findings:
-        return 0
-    print(format_findings(findings, path, snippet=True), file=sys.stderr)
-    return 2
+    return deliver([(path, check(text, path))])
 
 
 def added_text_by_file(patch):
@@ -664,18 +717,12 @@ def run_hook_codex():
         # best-effort fallbacks for older payload shapes.
         patch = (tool_input.get("command") or tool_input.get("input")
                  or tool_input.get("patch") or "")
-    blocked = False
-    for path, text in sorted(added_text_by_file(patch).items()):
-        if skip_path(path):
-            continue
-        findings = check(text, path)
-        if findings:
-            blocked = True
-            print(format_findings(findings, path, snippet=True), file=sys.stderr)
-            print("(line numbers are approximate positions within the added "
-                  "lines of your patch; locate findings by the quoted excerpts)",
-                  file=sys.stderr)
-    return 2 if blocked else 0
+    reports = [(path, check(text, path))
+               for path, text in sorted(added_text_by_file(patch).items())
+               if not skip_path(path)]
+    return deliver(reports, note=(
+        "(line numbers are approximate positions within the added "
+        "lines of your patch; locate findings by the quoted excerpts)"))
 
 
 def run_files(paths, as_json=False):
