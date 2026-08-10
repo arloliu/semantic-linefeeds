@@ -3,7 +3,7 @@
 Where semantic-linefeeds is going, and why each decision was taken.
 
 Every empirical claim here is reproducible from the corpus and commands in §3,
-or from the packaging proof in `docs/plans/2026-08-09-zipapp-poc/`.
+or from the packaging proof in `docs/proofs/zipapp-packaging/`.
 Claims that could not be substantiated were removed rather than softened,
 and §5 records the false-positive classes that survive in the shipped detector today.
 
@@ -398,7 +398,7 @@ carrying a core byte-identical to the repository copy, verified by `cmp`.
 | Startup cost | 22.6ms versus 16.4ms, median of 25 runs each, CPython 3.12.3, one machine |
 
 The build recipe, the module sources, and the staged-repository fixture are checked in at
-`docs/plans/2026-08-09-zipapp-poc/`,
+`docs/proofs/zipapp-packaging/`,
 with the embedded core's digest as the identity check,
 so the proof is reproducible rather than reported.
 The archive's own digest is deliberately not asserted,
