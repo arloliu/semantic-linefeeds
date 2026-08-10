@@ -2308,7 +2308,7 @@ Run:
 python3 scripts/check_linefeeds.py --file \
   README.md skills/semantic-linefeeds/SKILL.md \
   adapters/codex/INSTALL.md adapters/opencode/INSTALL.md adapters/agentsmd/SNIPPET.md \
-  docs/plans/2026-08-08-multi-agent-scope.md
+  docs/plans/done/2026-08-08-multi-agent-scope.md
 ```
 
 Expected: exit 0;

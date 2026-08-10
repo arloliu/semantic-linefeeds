@@ -796,7 +796,7 @@ Run:
 ```bash
 python3 scripts/check_linefeeds.py --file README.md CHANGELOG.md \
   adapters/codex/INSTALL.md adapters/opencode/INSTALL.md \
-  docs/plans/2026-08-09-installer.md
+  docs/plans/done/2026-08-09-installer.md
 ```
 
 Expected: exit 0 (long advisories are judged, not obeyed).
