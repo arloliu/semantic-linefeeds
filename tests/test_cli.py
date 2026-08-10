@@ -1,5 +1,6 @@
 from conftest import PAYLOADS, FIXTURES, run_cli, load_fixture, REPO, SCRIPT
 import check_linefeeds
+import io
 import json
 import os
 import shutil
@@ -259,3 +260,53 @@ def test_long_limit_negative_is_usage_error(tmp_path):
     doc = tmp_path / "doc.md"
     doc.write_text("fine\n", encoding="utf-8")
     assert run_cli(["--file", str(doc), "--long-limit", "-5"]).returncode == 64
+
+
+def raising_gettempdir():
+    raise FileNotFoundError("no usable temporary directory")
+
+
+def test_skip_path_survives_a_failing_temp_discovery(monkeypatch):
+    """A host with no usable temp directory must not break path filtering.
+
+    The exclusion is a convenience,
+    so losing it costs a few findings on scratch files;
+    raising costs the agent its edit.
+    """
+    monkeypatch.setattr(check_linefeeds.tempfile, "gettempdir", raising_gettempdir)
+    assert check_linefeeds.skip_path("vendor/doc.go")
+    assert not check_linefeeds.skip_path("src/doc.go")
+
+
+def test_hook_survives_a_failing_temp_discovery(monkeypatch, capsys):
+    """The whole hook, not just skip_path.
+
+    Both entry points catch only JSON errors,
+    so an exception raised deeper made the hook exit 1 before checking anything.
+    """
+    monkeypatch.setattr(check_linefeeds.tempfile, "gettempdir", raising_gettempdir)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
+        "tool_name": "Write",
+        "tool_input": {
+            "file_path": "/x/doc.md",
+            "content": "One sentence here. Another sentence follows.\n",
+        },
+    })))
+    assert check_linefeeds.run_hook_claude() == 2
+    assert "[fused]" in capsys.readouterr().err
+
+
+def test_version_prints_the_constant():
+    r = run_cli(["--version"])
+    assert r.returncode == 0
+    assert r.stdout.strip().endswith(check_linefeeds.__version__)
+
+
+def test_plugin_manifest_agrees_with_the_version_constant():
+    """One version, stated twice, must not drift.
+
+    The manifest cannot import the core,
+    since the core is copied standalone into hosts that never see this repository.
+    """
+    manifest = json.loads((REPO / ".claude-plugin" / "plugin.json").read_text())
+    assert manifest["version"] == check_linefeeds.__version__

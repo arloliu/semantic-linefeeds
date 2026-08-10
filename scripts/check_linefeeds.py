@@ -26,6 +26,8 @@ import re
 import sys
 import tempfile
 
+__version__ = "0.4.0"
+
 DEFAULT_LONG_LINE = 120
 CLI_LONG_LIMIT = None  # set by --long-limit in main()
 
@@ -155,7 +157,14 @@ def skip_path(path):
         p = p[2:]
     if any(part in SKIP_DIRS for part in p.split("/")):
         return True
-    tmp_root = (tempfile.gettempdir() or "").replace("\\", "/").rstrip("/")
+    try:
+        tmp_root = (tempfile.gettempdir() or "").replace("\\", "/").rstrip("/")
+    except Exception:
+        # A host with no usable temp directory loses the exclusion,
+        # which costs a few findings on scratch files.
+        # Raising here would cost the agent its edit,
+        # and an advisory guardrail never gets to do that.
+        return False
     return bool(tmp_root) and p.startswith(tmp_root + "/")
 
 
@@ -762,6 +771,9 @@ def main():
     mode.add_argument("--file", nargs="+", default=None, metavar="PATH",
                       help="check whole files and report to stdout; exit 1 on any "
                            "fused/wrap violation (long findings are advisory only)")
+    ap.add_argument("--version", action="version",
+                    version=f"check_linefeeds {__version__}",
+                    help="print the version and exit")
     ap.add_argument("--json", action="store_true",
                     help="with --file, emit findings as JSON instead of text")
     ap.add_argument("--long-limit", type=int, default=None, metavar="N",
