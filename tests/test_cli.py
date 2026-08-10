@@ -302,6 +302,20 @@ def test_version_prints_the_constant():
     assert r.stdout.strip().endswith(check_linefeeds.__version__)
 
 
+def test_version_output_reads_the_constant_rather_than_a_literal(monkeypatch, capsys):
+    """Asserting the current value proves only that the two agree today.
+
+    A version hard-coded into the argparse action satisfies that just as well.
+    So this drives the constant to a sentinel and demands it come back out.
+    """
+    monkeypatch.setattr(check_linefeeds, "__version__", "9.9.9-sentinel")
+    monkeypatch.setattr(sys, "argv", ["check_linefeeds", "--version"])
+    with pytest.raises(SystemExit) as excinfo:
+        check_linefeeds.main()
+    assert excinfo.value.code == 0
+    assert "9.9.9-sentinel" in capsys.readouterr().out
+
+
 def test_plugin_manifest_agrees_with_the_version_constant():
     """One version, stated twice, must not drift.
 
