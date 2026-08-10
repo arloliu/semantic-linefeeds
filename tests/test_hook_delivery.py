@@ -1,9 +1,13 @@
 """The hook delivery contract: status comes from the kinds, transport from the status.
 
-Every assertion here parses the output rather than searching it for a substring.
-A test that greps stderr cannot tell "delivered to the model"
+Every exit-0 assertion parses stdout as the host's protocol rather than searching it.
+A test that greps for the advice cannot tell "delivered to the model"
 from "written where the model never reads it",
 and that distinction is the entire point of this contract.
+
+The blocking assertions search stderr instead, which is correct there:
+stderr is a text channel with no shape to parse,
+and both hosts already show it to the model.
 """
 
 from conftest import run_cli
