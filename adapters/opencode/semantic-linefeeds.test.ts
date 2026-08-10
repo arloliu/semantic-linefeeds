@@ -241,6 +241,10 @@ test("the session history is bounded, and forgets the oldest first", async () =>
     return output.output
   }
   for (let i = 0; i < CAP; i++) await warn(`s${i}`)
+  // Exactly at the cap nothing has been evicted yet.
+  // Without this, a cap one lower would pass: filling would evict s0 early,
+  // and the post-overflow assertions below could not tell the two apart.
+  expect(await warn("s0")).toBe("original output")
   await warn("overflow")
   // The oldest was evicted and speaks again; the newest is still suppressed.
   expect(await warn("s0")).toContain("could not read")
