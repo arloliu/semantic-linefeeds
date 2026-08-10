@@ -108,8 +108,12 @@ export const SemanticLinefeeds: Plugin = async ({ $ }) => {
         if (warnedSessions.has(session)) return
         // A broken install warns once per session forever,
         // so the set is bounded rather than left to grow with session count.
-        // Dropping the history costs at most one repeated notice.
-        if (warnedSessions.size >= MAX_WARNED_SESSIONS) warnedSessions.clear()
+        // A Set iterates in insertion order,
+        // so dropping the first entry forgets the least recently warned session
+        // and leaves every recent one suppressed.
+        if (warnedSessions.size >= MAX_WARNED_SESSIONS) {
+          warnedSessions.delete(warnedSessions.values().next().value as string)
+        }
         warnedSessions.add(session)
         output.output +=
           "\n\nsemantic-linefeeds: the checker replied in a shape this plugin" +

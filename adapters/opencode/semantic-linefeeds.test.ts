@@ -185,10 +185,12 @@ async function warnOutputs(sessionIDs: string[]) {
   const hooks = await SemanticLinefeeds({ $ } as never)
   const args = { filePath: "/x/doc.md", newString: "// text" }
   const outputs: string[] = []
-  for (const sessionID of sessionIDs) {
+  // Every call gets its own callID.
+  // Suppression keyed on anything finer than the session then shows up as a repeated notice.
+  for (const [i, sessionID] of sessionIDs.entries()) {
     const output = { title: "", output: "original output", metadata: {} }
     await hooks["tool.execute.after"]!(
-      { tool: "edit", sessionID, callID: "c", args } as never,
+      { tool: "edit", sessionID, callID: `c${i}`, args } as never,
       output as never,
     )
     outputs.push(output.output)
@@ -211,6 +213,38 @@ test("a second session is warned by the same plugin instance", async () => {
   expect(outputs[1]).toBe("original output")
   expect(outputs[2]).toContain("could not read")
   expect(outputs[3]).toBe("original output")
+})
+
+test("a session is still remembered after another one intervenes", async () => {
+  // Grouping the ids as s1,s1,s2,s2 proves nothing here.
+  // It looks identical whether every session is remembered or only the most recent one is.
+  const outputs = await warnOutputs(["s1", "s2", "s1"])
+  expect(outputs[0]).toContain("could not read")
+  expect(outputs[1]).toContain("could not read")
+  expect(outputs[2]).toBe("original output")
+})
+
+// Mirrors MAX_WARNED_SESSIONS, which is module-private
+// because opencode calls every export as a plugin factory.
+const CAP = 256
+
+test("the session history is bounded, and forgets the oldest first", async () => {
+  const { $ } = fakeShell(0, "", "not json at all")
+  const hooks = await SemanticLinefeeds({ $ } as never)
+  const args = { filePath: "/x/doc.md", newString: "// text" }
+  const warn = async (sessionID: string) => {
+    const output = { title: "", output: "original output", metadata: {} }
+    await hooks["tool.execute.after"]!(
+      { tool: "edit", sessionID, callID: "c", args } as never,
+      output as never,
+    )
+    return output.output
+  }
+  for (let i = 0; i < CAP; i++) await warn(`s${i}`)
+  await warn("overflow")
+  // The oldest was evicted and speaks again; the newest is still suppressed.
+  expect(await warn("s0")).toContain("could not read")
+  expect(await warn(`s${CAP - 1}`)).toBe("original output")
 })
 
 test("the warning names the user as the one who fixes it", async () => {
