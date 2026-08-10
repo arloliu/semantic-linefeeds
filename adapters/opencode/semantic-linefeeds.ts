@@ -39,6 +39,28 @@ function buildCheck(
   }
 }
 
+// Non-blocking findings exit 0,
+// arriving as the hosts' additional-context object on stdout,
+// since exit-0 stderr reaches no model.
+// Anything else on stdout is not advice,
+// so it is dropped rather than shown:
+// this plugin is advisory,
+// and a checker that changed its output shape must not spill transport at the model.
+function advisoryFrom(stdout: string): string | null {
+  const raw = stdout.trim()
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as {
+      hookSpecificOutput?: { additionalContext?: unknown }
+    }
+    const context = parsed?.hookSpecificOutput?.additionalContext
+    if (typeof context !== "string") return null
+    return context.trim() || null
+  } catch {
+    return null
+  }
+}
+
 export const SemanticLinefeeds: Plugin = async ({ $ }) => {
   const script =
     process.env.SEMANTIC_LINEFEEDS_CHECK ??
@@ -58,7 +80,11 @@ export const SemanticLinefeeds: Plugin = async ({ $ }) => {
       }
       if (proc.exitCode === 2) {
         output.output += `\n\n${proc.stderr.toString().trim()}`
+        return // one report, on one stream; stdout carries nothing here
       }
+      if (proc.exitCode !== 0) return
+      const advice = advisoryFrom(proc.stdout?.toString() ?? "")
+      if (advice) output.output += `\n\n${advice}`
     },
   }
 }
