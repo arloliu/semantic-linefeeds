@@ -30,13 +30,22 @@ Split into a package only if the file exceeds ~1000 lines.
   A miss is acceptable;
   a false positive is a bug.
 - **Hook modes check only the text just written**, never the whole file;
-  `--file` mode checks whole files,
-  and its `long` findings never affect the exit code.
+  `--file` mode checks whole files.
+  `long` findings never affect the exit code in either mode.
 - **Exit codes are a contract.**
   `--file`: 0 clean, 1 violations or unreadable input.
-  `--hook`: 0 clean or not applicable, 2 findings with stderr feedback.
+  `--hook`: 2 for a `fused` or `wrap` finding, with the report on stderr;
+  0 for clean, not applicable, or advisories only.
   64 usage error;
-  `--help` exits 0.
+  `--help` and `--version` exit 0.
+- **Status decides transport.**
+  An advisory-only hook result exits 0
+  and delivers its report as one JSON object on stdout,
+  under `hookSpecificOutput.additionalContext`.
+  Exit-0 stderr reaches no model in either host,
+  so changing the status without the transport deletes the advice rather than unblocking it.
+  Every hook entry point goes through `deliver()`;
+  none of them prints directly.
 - **Adapters reuse the Claude payload contract.**
   Codex reads the same hook schema with `apply_patch` payloads;
   opencode builds a Claude-shaped payload and pipes it to `--hook claude`.

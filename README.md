@@ -74,6 +74,8 @@ This kit backs the rule with three layers instead of trusting the model to remem
    a post-edit hook runs a deterministic detector over the text just written to any supported file.
    Violations come back as feedback the moment they happen,
    which is the one channel that survives a long session.
+   Only `fused` and `wrap` stop the edit;
+   a long line comes back as advice, because leaving it long is often the right answer.
 2. **Skill** —
    `semantic-linefeeds` carries the judgment calls the detector can't make on its own:
    what counts as a clause boundary, the compound-object `and` test, the never-break list.
@@ -177,7 +179,8 @@ Everything else lives in the skill and the hook:
 ## Comment and doc formatting
 
 One sentence per line in all comments and Markdown (semantic linefeeds).
-After writing any text block, fix whatever the linefeeds hook reports.
+After writing any text block, act on whatever the linefeeds hook reports.
+A blocked edit must be fixed; an advisory is a judgment call, and leaving the line alone can be right.
 ```
 
 ## Testing

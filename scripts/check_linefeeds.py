@@ -8,9 +8,12 @@ Three heuristics, tuned for precision over recall — the agent judges, this onl
 and "long" is a line over the threshold that appears to contain a clause boundary to split at.
 
 Two modes.
-"--hook [claude|codex]" reads a PostToolUse JSON payload on stdin (agent defaults to claude),
-checks only the text just written,
-and reports findings to stderr, exiting 2 if any are found.
+"--hook [claude|codex]" reads a PostToolUse JSON payload on stdin (agent defaults to claude)
+and checks only the text just written.
+A fused or wrap finding blocks the edit: exit 2, with the report on stderr.
+A result carrying only advisories exits 0 instead,
+delivering them as one JSON object on stdout under hookSpecificOutput.additionalContext,
+which is the shape both hosts make visible to the model.
 "--file PATH... [--json]" checks whole files and reports to stdout as text or, with --json, as JSON,
 exiting 1 if any fused/wrap violations are found;
 long findings are advisory only and never affect the exit code.
@@ -766,7 +769,8 @@ def main():
     mode.add_argument("--hook", nargs="?", const="claude",
                       choices=["claude", "codex"], default=None,
                       help="read a PostToolUse JSON payload on stdin and check only the "
-                           "text just written; report findings to stderr, exit 2 if any "
+                           "text just written; fused/wrap exit 2 with the report on "
+                           "stderr, advisory-only findings exit 0 as JSON on stdout "
                            "(default agent: claude)")
     mode.add_argument("--file", nargs="+", default=None, metavar="PATH",
                       help="check whole files and report to stdout; exit 1 on any "
