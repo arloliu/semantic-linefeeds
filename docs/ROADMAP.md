@@ -100,16 +100,16 @@ No heuristic changes, no new design, landing first because each is active trust 
 
 **Group 2 — precision.**
 
-- `wrap` withdrawn from default hook feedback, per §6.2.1, and retained in `--file` audits.
+- `wrap` withdrawn from default hook feedback, per ADR-0002, and retained in `--file` audits.
 - Abbreviation exclusions for `fused`, derived from the active regex.
-  These land **in the same commit** as the withdrawal per §6.2.2,
+  These land **in the same commit** as the withdrawal, per ADR-0002,
   with a release-level test asserting the two become visible together.
-- The §6.2.3 hook-output matrix, with the `SEMLF_EXPERIMENTAL_WRAP` opt-in surface.
+- The hook-output matrix from ADR-0002, with the `SEMLF_EXPERIMENTAL_WRAP` opt-in surface.
 - Connector, clustering, and width work all drop out of the plan with the withdrawal.
-- The narrow emphasis repair from §5.2.
+- The narrow emphasis repair from ADR-0002.
 - A paragraph break at every Markdown list item.
-- The §7 labeled corpus, manifest, accepted-miss list, and gates.
-- The §8 portable-core boundary recorded, and `100-project-map.md` amended.
+- The labeled corpus from ADR-0003, manifest, accepted-miss list, and gates.
+- The portable-core boundary from ADR-0004 recorded, and `100-project-map.md` amended.
 - Fix `--file --json PATH` ordering.
 
 Exit criterion: zero false positives across the compliant corpus for every kind still in default feedback,
@@ -124,27 +124,27 @@ the span model lands before context-aware hooks,
 and suppression lands with them rather than after,
 because widening what the hook can see without an escape hatch is what makes users disable a guardrail.
 
-- `check(text, path, spans)`, with anchor, evidence, and ownership ranges (§9).
+- `check(text, path, spans)`, with anchor, evidence, and ownership ranges (ADR-0005).
 - Provenance and degraded-mapping fallback; the snippet mode retained as that fallback.
 - A versioned diagnostic schema, with text as one renderer over it.
 - Real Codex line numbers; the footer emitted once per run.
 - No numeric `confidence` until observed rates support one.
-- Suppression, on the §11 contract, shipped together with context-aware hooks.
+- Suppression, on the suppression contract, shipped together with context-aware hooks.
 - The judgment layer for **every** agent, not only Claude:
   native `SKILL.md` installation for Codex with status and idempotent upgrade,
   `SNIPPET.md` carrying the judgment rules as the fallback for agents without a skill mechanism,
-  and hook feedback carrying suggested diffs (§10).
+  and hook feedback carrying suggested diffs, per ADR-0006.
 
 ### v0.6 — Repository tooling and lifecycle
 
 Where the kit stops being agent-only.
 The packaged CLI lands before the first git mode, so no mode precedes the command that owns it.
 
-- A packaged `semlf` artifact, on the §8.1 proof.
+- A packaged `semlf` artifact, on the packaging proof in ADR-0004.
 - `--staged` first, against the index blob, with an index-versus-worktree test matrix;
   then `--diff` and `--changed` on the same provider contract.
 - `.pre-commit-hooks.yaml`, after the staged mode has its tests.
-- Project config on the §8.2 shared discovery function.
+- Project config on the shared discovery function in ADR-0004.
 - `uninstall`, `doctor`, and agent auto-detection.
   Skill removal is covered by `uninstall`.
 - Managed upgrade on a provenance manifest recording installed digest and version,
@@ -159,8 +159,8 @@ The packaged CLI lands before the first git mode, so no mode precedes the comman
 
 ### v0.7 — Fixes and team integration
 
-- Suggestions and the restricted automatic class from §12.
-- GitHub Action, SARIF, and annotations as serializers over the v0.5 schema.
+- Suggestions and the restricted automatic class from ADR-0007.
+- GitHub Action, SARIF, and annotations as serializers over the diagnostic schema.
 - A real-agent regression corpus.
 
 ### v1.0 — Stable contracts
@@ -192,7 +192,7 @@ and it replays a synthetic payload end to end rather than checking that files ex
   The skill simultaneously requires rejoining a severed clause and never reflowing stable text
   (`skills/semantic-linefeeds/SKILL.md:38`, `skills/semantic-linefeeds/SKILL.md:67-70`),
   which conflict when the severed clause continues into untouched prose.
-  A concrete ordering is added when §9 ownership ranges make "the affected two lines" precise.
+  A concrete ordering is added when the ADR-0005 ownership ranges make "the affected two lines" precise.
 - **More languages.** Marginal value has flattened.
 - **Agent auto-detection for `semlf install`.**
   Useful, and cheap once the lifecycle commands exist, so it is scheduled with v0.6 rather than deferred.
