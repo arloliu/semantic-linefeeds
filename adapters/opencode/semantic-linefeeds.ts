@@ -42,29 +42,36 @@ function buildCheck(
 // Non-blocking findings exit 0,
 // arriving as the hosts' additional-context object on stdout,
 // since exit-0 stderr reaches no model.
-// Anything else on stdout is not advice,
-// so it is dropped rather than shown:
-// this plugin is advisory,
-// and a checker that changed its output shape must not spill transport at the model.
-function advisoryFrom(stdout: string): string | null {
+//
+// Three outcomes, and the caller treats each differently.
+// `readable` false means stdout held something this plugin could not interpret,
+// which is a configuration problem worth one word to the user.
+// A readable payload with null advice is the ordinary clean result.
+type Advisory = { readable: true; advice: string | null } | { readable: false }
+
+function advisoryFrom(stdout: string): Advisory {
   const raw = stdout.trim()
-  if (!raw) return null
+  if (!raw) return { readable: true, advice: null }
   try {
     const parsed = JSON.parse(raw) as {
       hookSpecificOutput?: { additionalContext?: unknown }
     }
     const context = parsed?.hookSpecificOutput?.additionalContext
-    if (typeof context !== "string") return null
-    return context.trim() || null
+    if (typeof context !== "string") return { readable: false }
+    return { readable: true, advice: context.trim() || null }
   } catch {
-    return null
+    return { readable: false }
   }
 }
+
 
 export const SemanticLinefeeds: Plugin = async ({ $ }) => {
   const script =
     process.env.SEMANTIC_LINEFEEDS_CHECK ??
     new URL("./check_linefeeds.py", import.meta.url).pathname
+  // Said once per session, not once per edit.
+  // A repeated warning would crowd the model's context with something only a human can fix.
+  let transportWarned = false
   return {
     "tool.execute.after": async (input, output) => {
       const args = (input as { args?: Record<string, unknown> }).args ?? {}
@@ -83,8 +90,18 @@ export const SemanticLinefeeds: Plugin = async ({ $ }) => {
         return // one report, on one stream; stdout carries nothing here
       }
       if (proc.exitCode !== 0) return
-      const advice = advisoryFrom(proc.stdout?.toString() ?? "")
-      if (advice) output.output += `\n\n${advice}`
+      const result = advisoryFrom(proc.stdout?.toString() ?? "")
+      if (!result.readable) {
+        // Never echo what could not be read: it is transport, not advice.
+        if (transportWarned) return
+        transportWarned = true
+        output.output +=
+          "\n\nsemantic-linefeeds: the checker replied in a shape this plugin" +
+          " could not read, so advisory findings are being dropped." +
+          " Check that check_linefeeds.py sits beside the plugin and comes from the same release."
+        return
+      }
+      if (result.advice) output.output += `\n\n${result.advice}`
     },
   }
 }

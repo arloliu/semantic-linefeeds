@@ -157,22 +157,56 @@ test("an apply_patch advisory reaches the tool output too", async () => {
 // A checker that dies, warns, or changes its output shape must leave the agent working.
 // This adapter is advisory,
 // and nothing it does is worth failing an edit over.
-test("unparseable exit-0 stdout leaves output alone", async () => {
+// But silence would disable advice without saying so,
+// and only a human can repair a mismatched install.
+test("unparseable exit-0 stdout says so without echoing it", async () => {
   const { output } = await runAfterHook(
     0, "", "edit",
     { filePath: "/x/doc.md", newString: "// text" },
     "not json at all",
   )
-  expect(output.output).toBe("original output")
+  expect(output.output).toContain("original output")
+  expect(output.output).toContain("could not read")
+  expect(output.output).not.toContain("not json at all")
 })
 
-test("exit-0 JSON without the expected shape leaves output alone", async () => {
+test("exit-0 JSON without the expected shape says so too", async () => {
   const { output } = await runAfterHook(
     0, "", "edit",
     { filePath: "/x/doc.md", newString: "// text" },
     JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse" } }),
   )
-  expect(output.output).toBe("original output")
+  expect(output.output).toContain("could not read")
+})
+
+test("the transport warning is said once per session, not once per edit", async () => {
+  const { $ } = fakeShell(0, "", "not json at all")
+  const hooks = await SemanticLinefeeds({ $ } as never)
+  const args = { filePath: "/x/doc.md", newString: "// text" }
+  const outputs = []
+  for (let i = 0; i < 3; i++) {
+    const output = { title: "", output: "original output", metadata: {} }
+    await hooks["tool.execute.after"]!(
+      { tool: "edit", sessionID: "s", callID: "c", args } as never,
+      output as never,
+    )
+    outputs.push(output.output)
+  }
+  expect(outputs[0]).toContain("could not read")
+  expect(outputs[1]).toBe("original output")
+  expect(outputs[2]).toBe("original output")
+})
+
+test("a fresh session warns again", async () => {
+  // The flag lives on the plugin instance, so it must not outlive one.
+  for (let i = 0; i < 2; i++) {
+    const { output } = await runAfterHook(
+      0, "", "edit",
+      { filePath: "/x/doc.md", newString: "// text" },
+      "not json at all",
+    )
+    expect(output.output).toContain("could not read")
+  }
 })
 
 test("an empty advisory string is not appended as blank space", async () => {
