@@ -23,31 +23,10 @@ and recorded hook payloads for the adapters.
 TypeScript for the opencode adapter (tested with `bun test`);
 no runtime dependencies anywhere.
 
-**Review history**:
-round 1 (`tmp/2026-08-08-multi-agent-scope_v1_review.md`, gpt-5.6-sol) found three P0s —
-the Codex payload field is `tool_input.command` (not `input`),
-the patch parser dropped renames and fused disjoint hunks into false `wrap` findings,
-and `skip_path` missed repo-relative paths —
-plus six P1s (Python signature-state leak, unscoped fence state, license-opener blindness,
-Markdown indented code, an invented Claude `edits` payload, CLI error semantics).
-Round 2 (`tmp/2026-08-08-multi-agent-scope_v2_review.md`) confirmed zero P0s
-and verified every fixture marker by hand-trace,
-leaving five refined P1s:
-one-line scopes leaking fence state and missing exit breaks,
-doctest output and undecorated block indentation extracted as prose,
-an incomplete reference-definition grammar,
-a license filter that dropped one paragraph instead of the leading comment scope,
-and adapter tests without subprocess-failure coverage or provenance labeling.
-Round 3 (`tmp/2026-08-08-multi-agent-scope_v3_review.md`) confirmed the mechanisms
-and narrowed to three P1s:
-fixtures that would not fail if the guarded one-line/undecorated-block behavior regressed,
-reference-definition state ending after one continuation
-(a destination line must keep the definition open for an optional title line),
-and a license scanner merging a line-comment scope with a following block scope.
-Round 4 (`tmp/2026-08-08-multi-agent-scope_v4_review.md`) resolved all but one:
-the Python one-liner comments had to move directly after their docstrings,
-before any code line whose own path also resets scope and would mask the mutation.
-All are incorporated below.
+**Review status:** four external review rounds were run against this plan before implementation.
+The findings they produced are incorporated below rather than summarized here;
+the P0s concerned the Codex payload field name, patch-parser handling of renames and disjoint hunks,
+and repo-relative path matching in `skip_path`.
 
 **Design rationale:** grounded in `docs/research/2026-08-08-widening-scope.md`.
 Key decisions locked in from that research:
