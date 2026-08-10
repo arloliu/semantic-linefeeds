@@ -179,35 +179,71 @@ test("exit-0 JSON without the expected shape says so too", async () => {
   expect(output.output).toContain("could not read")
 })
 
-test("the transport warning is said once per session, not once per edit", async () => {
+// Drive one plugin instance directly, so session identity is the only variable.
+async function warnOutputs(sessionIDs: string[]) {
   const { $ } = fakeShell(0, "", "not json at all")
   const hooks = await SemanticLinefeeds({ $ } as never)
   const args = { filePath: "/x/doc.md", newString: "// text" }
-  const outputs = []
-  for (let i = 0; i < 3; i++) {
+  const outputs: string[] = []
+  for (const sessionID of sessionIDs) {
     const output = { title: "", output: "original output", metadata: {} }
     await hooks["tool.execute.after"]!(
-      { tool: "edit", sessionID: "s", callID: "c", args } as never,
+      { tool: "edit", sessionID, callID: "c", args } as never,
       output as never,
     )
     outputs.push(output.output)
   }
+  return outputs
+}
+
+test("the transport warning is said once per session, not once per edit", async () => {
+  const outputs = await warnOutputs(["s1", "s1", "s1"])
   expect(outputs[0]).toContain("could not read")
   expect(outputs[1]).toBe("original output")
   expect(outputs[2]).toBe("original output")
 })
 
-test("a fresh session warns again", async () => {
-  // The flag lives on the plugin instance, so it must not outlive one.
-  for (let i = 0; i < 2; i++) {
+test("a second session is warned by the same plugin instance", async () => {
+  // opencode does not document how long a plugin instance lives.
+  // Suppressing by instance would silence every session after the first.
+  const outputs = await warnOutputs(["s1", "s1", "s2", "s2"])
+  expect(outputs[0]).toContain("could not read")
+  expect(outputs[1]).toBe("original output")
+  expect(outputs[2]).toContain("could not read")
+  expect(outputs[3]).toBe("original output")
+})
+
+test("the warning names the user as the one who fixes it", async () => {
+  // The notice lands in the model's context, not a human's log,
+  // so it has to say who acts rather than read as a task for the model.
+  const [only] = await warnOutputs(["s1"])
+  expect(only).toContain("Tell the user")
+  expect(only).toContain("SEMANTIC_LINEFEEDS_CHECK")
+  expect(only).toContain("Do not try to repair the installation yourself")
+})
+
+// Each of these is nonempty stdout that cannot yield a string additionalContext.
+// Each must warn rather than pass silently.
+const UNREADABLE_SHAPES: [string, string][] = [
+  ["a top-level array", "[]"],
+  ["a top-level string", '"hello"'],
+  ["a top-level number", "42"],
+  ["a top-level null", "null"],
+  ["a non-object hookSpecificOutput", '{"hookSpecificOutput": "text"}'],
+  ["a non-string additionalContext", '{"hookSpecificOutput": {"additionalContext": 7}}'],
+  ["truncated JSON", '{"hookSpecificOutput": {"additionalCon'],
+]
+
+for (const [name, payload] of UNREADABLE_SHAPES) {
+  test(`${name} warns instead of passing silently`, async () => {
     const { output } = await runAfterHook(
       0, "", "edit",
       { filePath: "/x/doc.md", newString: "// text" },
-      "not json at all",
+      payload,
     )
     expect(output.output).toContain("could not read")
-  }
-})
+  })
+}
 
 test("an empty advisory string is not appended as blank space", async () => {
   const { output } = await runAfterHook(

@@ -49,6 +49,9 @@ function buildCheck(
 // A readable payload with null advice is the ordinary clean result.
 type Advisory = { readable: true; advice: string | null } | { readable: false }
 
+// Ceiling on remembered sessions, so a long-lived plugin instance cannot grow one.
+const MAX_WARNED_SESSIONS = 256
+
 function advisoryFrom(stdout: string): Advisory {
   const raw = stdout.trim()
   if (!raw) return { readable: true, advice: null }
@@ -69,9 +72,17 @@ export const SemanticLinefeeds: Plugin = async ({ $ }) => {
   const script =
     process.env.SEMANTIC_LINEFEEDS_CHECK ??
     new URL("./check_linefeeds.py", import.meta.url).pathname
-  // Said once per session, not once per edit.
-  // A repeated warning would crowd the model's context with something only a human can fix.
-  let transportWarned = false
+  // Said once per session, not once per edit:
+  // only a human can repair a mismatched install,
+  // so repeating the notice would crowd the model's context for no gain.
+  //
+  // Keyed by session rather than by a flag on this closure,
+  // because opencode does not document how long a plugin instance lives.
+  // If it is one per session the two agree;
+  // under a longer-lived instance a flag would silence every later session,
+  // and under a shorter-lived one it would repeat within a session.
+  // Keying by session is right in all three cases.
+  const warnedSessions = new Set<string>()
   return {
     "tool.execute.after": async (input, output) => {
       const args = (input as { args?: Record<string, unknown> }).args ?? {}
@@ -93,12 +104,19 @@ export const SemanticLinefeeds: Plugin = async ({ $ }) => {
       const result = advisoryFrom(proc.stdout?.toString() ?? "")
       if (!result.readable) {
         // Never echo what could not be read: it is transport, not advice.
-        if (transportWarned) return
-        transportWarned = true
+        const session = (input as { sessionID?: string }).sessionID ?? ""
+        if (warnedSessions.has(session)) return
+        // A broken install warns once per session forever,
+        // so the set is bounded rather than left to grow with session count.
+        // Dropping the history costs at most one repeated notice.
+        if (warnedSessions.size >= MAX_WARNED_SESSIONS) warnedSessions.clear()
+        warnedSessions.add(session)
         output.output +=
           "\n\nsemantic-linefeeds: the checker replied in a shape this plugin" +
           " could not read, so advisory findings are being dropped." +
-          " Check that check_linefeeds.py sits beside the plugin and comes from the same release."
+          " Tell the user that check_linefeeds.py should come from the same release" +
+          " as this plugin, either beside it or at the path in SEMANTIC_LINEFEEDS_CHECK." +
+          " Do not try to repair the installation yourself."
         return
       }
       if (result.advice) output.output += `\n\n${result.advice}`
