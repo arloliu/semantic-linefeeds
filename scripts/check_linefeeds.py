@@ -162,11 +162,13 @@ def skip_path(path):
         return True
     try:
         tmp_root = (tempfile.gettempdir() or "").replace("\\", "/").rstrip("/")
-    except Exception:
+    except OSError:
         # A host with no usable temp directory loses the exclusion,
         # which costs a few findings on scratch files.
         # Raising here would cost the agent its edit,
         # and an advisory guardrail never gets to do that.
+        # Only filesystem failure is caught:
+        # a TypeError here would be this file's own bug, and hiding it helps nobody.
         return False
     return bool(tmp_root) and p.startswith(tmp_root + "/")
 
