@@ -126,7 +126,7 @@
         "2": "the lower end of the calibration interval for each kind as it stands after the code-span repair, 0.708 for wrap and 0.689 for fused, rounded down; the calibration rates behind them are 169 of 220 and 31 of 37, and the wrap floor is two points above round 1 because that repair raised the rate it derives from; stated before this round was drawn, so no unit of it existed when the number was chosen"
       },
       "holdout_misses": {
-        "note": "a floor stated before a holdout round and missed by it is acknowledged here, naming what the miss is attributed to and what it blocks; a round that misses a floor and says nothing here fails the suite, because a missed prediction that nobody writes down is read by the next reader as a pass",
+        "note": "a floor stated before a holdout round and missed by it is acknowledged here, naming what the miss is attributed to, what it blocks, and whether it can still be diagnosed; a round that misses a floor and says nothing here fails the suite, because a missed prediction that nobody writes down is read by the next reader as a pass; an acknowledgement for a round that has not been scored fails too, since that would excuse a floor before it was answered",
         "2": [
           {
             "problem": "fused: 50 of 77 is 0.649, below the floor of 0.68",

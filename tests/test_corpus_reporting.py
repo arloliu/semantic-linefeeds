@@ -256,6 +256,12 @@ def test_a_round_that_opened_was_scored_against_the_floors_it_declared():
         assert result["floors"] == declared[str(number)], number
 
 
+def acknowledged_misses():
+    """Every floor a round missed and somebody accounted for, by round number."""
+    recorded = on_disk()["reporting"]["recall_floors"]["holdout_misses"]
+    return {key: entries for key, entries in recorded.items() if key.isdigit()}
+
+
 def test_a_floor_a_round_missed_says_what_it_is_attributed_to_and_what_it_blocks():
     """A missed prediction nobody wrote down is read by the next reader as a pass.
 
@@ -264,10 +270,16 @@ def test_a_floor_a_round_missed_says_what_it_is_attributed_to_and_what_it_blocks
     so a miss survives only as a field in a result file that no gate consults.
     Acknowledging it here is what makes ignoring one an edit somebody has to make.
     """
-    acknowledged = on_disk()["reporting"]["recall_floors"]["holdout_misses"]
+    acknowledged = acknowledged_misses()
     for number, result in scored_rounds():
         entries = acknowledged.get(str(number), [])
         assert [entry["problem"] for entry in entries] == result["floor_problems"], number
         for entry in entries:
-            assert entry["attributed_to"].strip(), entry["problem"]
-            assert entry["blocks"].strip(), entry["problem"]
+            for field in ("attributed_to", "blocks", "diagnosable"):
+                assert entry.get(field, "").strip(), f"{entry['problem']}: {field}"
+
+
+def test_a_floor_nothing_missed_carries_no_acknowledgement():
+    """An acknowledgement for a round that has not answered is a floor excused in advance."""
+    scored = {str(number) for number, _ in scored_rounds()}
+    assert set(acknowledged_misses()) <= scored

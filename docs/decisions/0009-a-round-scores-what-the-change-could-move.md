@@ -79,6 +79,12 @@ and a backtick was a legitimate ender, so such a line was never reported before.
 Every other line is judged exactly as it was.
 The repair can add a `wrap` finding and cannot remove one.
 
+That is measured rather than only argued.
+Replaying the checker as it stood before the repair and as it stands after it,
+over the 718 labeled windows and over this repository's own Markdown before those findings were resolved,
+the earlier findings are a subset of the later ones in both:
+nothing was removed either time.
+
 The alternative reading has a cost that shows up immediately.
 If an unrelated floor can veto a repair,
 then the cheapest route to shipping one is to bundle it with fixes to whatever else in the round looks weak,

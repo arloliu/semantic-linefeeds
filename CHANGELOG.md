@@ -44,7 +44,9 @@ rather than by any test in this repository.
   219 of 276, 79.3%, against a floor of 0.70 stated before the sample was drawn.
   The repair is monotone, since its pattern fires only where the line already ended in a backtick,
   so it can add a `wrap` finding and cannot remove one.
-  Seven `wrap` findings it exposes in this repository's own prose are repaired along with it.
+  Replaying both checkers over the labeled windows and over this repository's own Markdown removes nothing either time.
+  It exposed seven `wrap` findings in this repository's own prose, and all seven are repaired:
+  one in a decision record while the repair was being written, and six here.
 
 ### Measured
 
