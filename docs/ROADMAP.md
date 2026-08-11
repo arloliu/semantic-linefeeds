@@ -67,18 +67,24 @@ both records are in [`CHANGELOG.md`](../CHANGELOG.md).
 The holdout found five things the repairs had not,
 and the plan for them is
 [`v0.4.2-what-the-holdout-found.md`](plans/active/v0.4.2-what-the-holdout-found.md).
+What that round cost and what it bought is
+[ADR-0008](decisions/0008-a-holdout-is-spent-by-being-opened.md).
 
 - Four false positive classes, every one of them found by labelers disagreeing rather than by a test:
   code commented out inside a doc comment,
   a Markdown table row that does not begin with a pipe,
   a second licence block further down a file,
   and a rule of dashes used as a divider.
+  All four are repaired.
 - One recall hole that two independent samples agree on.
   A line ending in inline markup is a `wrap` the detector reports once in 21 on one sample
   and six times in 30 on the other.
+  The repair is written and measured against calibration, and it is not scored.
 - **A second holdout**, because the first was spent scoring v0.4.1.
+  This is what remains.
   The recall repair cannot be trusted without one,
   and neither can the precision claim after it.
+  It ships, or it is withdrawn, on what that holdout measures.
 
 ### v0.5 — Changed spans, suppression, and the judgment layer
 

@@ -28,6 +28,7 @@ If a record and a rule disagree, the rule wins until a new record supersedes it.
 | [ADR-0005](0005-changed-span-analysis-and-ownership.md) | Analysis may see the whole file; reporting is restricted to diagnostics a change owns |
 | [ADR-0006](0006-judgment-layer-for-every-agent.md) | Every agent receives the judgment layer, not only the one with a skill mechanism |
 | [ADR-0007](0007-fixability-classes.md) | Automatic repair is restricted to `!` and `?`, and prefers handing the fix back to the agent |
+| [ADR-0008](0008-a-holdout-is-spent-by-being-opened.md) | A holdout is spent by being opened; what labelers disagreed about is a defect source, not label noise |
 
 ## Principles these records share
 

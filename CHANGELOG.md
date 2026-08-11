@@ -5,6 +5,45 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+The release that reads what the labelers argued about.
+Four of the five items below were found by people disagreeing over whether a line was prose,
+rather than by any test in this repository.
+[ADR-0008](docs/decisions/0008-a-holdout-is-spent-by-being-opened.md) records why that happened.
+
+### Fixed
+
+- **Commented-out code in a doc comment no longer wraps.**
+  A worked example written as line comments never reaches the indented-example rule,
+  so a lone closing brace formed a boundary with the call under it.
+  A comment line holding nothing but code punctuation is not prose.
+  Two wider rules were measured first;
+  testing for an assignment or a call costs six labeled true violations,
+  because prose names `AddStream()` and `Events()` the same way code does.
+- **A Markdown table row may omit its leading pipe.**
+  The delimiter row under the header now marks the block, since it is the one row that cannot read as prose.
+  A pipe is required in that row too, so a setext underline still underlines.
+- **A licence block below the code is cut like the one above it.**
+  Only the leading comment region was cut before,
+  and everything past it was judged as prose, licence sentences included.
+  The corpus harness now calls the checker's cut instead of reproducing it.
+- **A rule of repeated punctuation is a divider, not a sentence.**
+  Three characters minimum, so an em dash standing alone is still the punctuation somebody wrote.
+
+### Changed
+
+- **A line ending in a code span is read by what stands in front of it.**
+  The backtick is a legitimate line ender, so the clause the span was attached to was never examined.
+  Two samples agreed on the cost: `wrap` recall there was 1 of 21 on one and 6 of 30 on the other.
+  Six labeled violations moved from an accepted miss to detected,
+  calibration `wrap` recall went from 163 of 220 to 169 of 220,
+  and no labeled non-violation started drawing a complaint.
+
+  This one is measured only against the corpus it was tuned on,
+  which is a regression gate rather than evidence of generalization.
+  It is not scored, and a sealed holdout drawn against this predicate is what will decide it.
+
 ## [0.4.1] - 2026-08-11
 
 The release that measured itself.

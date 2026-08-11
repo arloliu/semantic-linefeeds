@@ -15,6 +15,12 @@ Each file holds one class of mistake the detector is known to make,
 and every case was reproduced against the checker before it was added here.
 Cases invented from a description, without running them, do not belong.
 
+Every class here was found by something else first.
+This directory holds what the project knows about,
+and the four classes the holdout round turned up were found by labelers arguing over a boundary,
+not by any file in it.
+[ADR-0008](../../docs/decisions/0008-a-holdout-is-spent-by-being-opened.md) records that.
+
 | File | The class it holds |
 |---|---|
 | `go/aligned_labels.go` | Label lines that end at a shared column |

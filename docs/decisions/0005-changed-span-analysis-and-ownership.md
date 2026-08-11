@@ -5,8 +5,8 @@
 
 ## Decision
 
-Unifying the three entry points on `check(full_text, path, changed_spans)`
-gives context-awareness, real Codex line numbers, and one contract for the git modes.
+The three entry points unify on `check(full_text, path, changed_spans)`,
+which gives context-awareness, real Codex line numbers, and one contract for the git modes.
 
 ### Three ranges, not two
 
