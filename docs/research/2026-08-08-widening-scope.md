@@ -157,7 +157,8 @@ and repo `errata-ai/vale` (branch `v3`): `go.mod`, `internal/lint/code/*.go`.
 - Structure recognition: indented (or specially marked) lines are code blocks;
   `*`/`-`/`+`/`•` and numbered markers open lists; `[Name]` and `[Text]: URL` are links.
 
-**rustfmt.** Source: `Configurations.md` in rust-lang/rustfmt (sections `wrap_comments`, `comment_width`).
+**rustfmt.**
+Source: `Configurations.md` in rust-lang/rustfmt (sections `wrap_comments`, `comment_width`).
 
 - `wrap_comments` (default `false`, unstable, tracking issue #3347) re-wraps comments to `comment_width` (default 80, also unstable).
 - Documented never-wrap exceptions: "no wrapping will happen if:

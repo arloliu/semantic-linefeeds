@@ -53,25 +53,24 @@ No decision depends on it.
 
 ## Open precision questions
 
-Two sealed holdouts have been drawn, opened, and spent.
-The three false positive classes they left behind are repaired,
-and repairing them turned up a fourth that the record had folded into one of the three.
-Two questions remain, and both need prose nobody has tuned against.
+Two sealed holdouts have been drawn, opened, and spent,
+and the false positive classes they left behind are repaired.
+The `fused` loss the second round reported is localized:
+both spent draws were rebuilt from their pinned public sources,
+the rebuild shows one regex condition walking past sentences that end or begin on inline markup,
+and the markup repair now reads across those shapes.
+What remains open needs prose nobody has tuned against.
 
 | Open item | Evidence | What it needs |
 |---|---|---|
-| `fused` recall on unseen Markdown | 25 of 47 in the second round, where the first returned 66 of 79 | the calibration side, or a third round |
-| A fence is now closed only by its own mark, which releases prose the old rule skipped | one file gained 75 findings and lost 53 | a third round, which scores it first |
+| Whether the fence repair and the markup repair generalize | both add findings the labeled corpus cannot reach | the third round, which is pinned and scores them first |
+| Whether the second round's `fused` gap was its draw or the proxy | the two rounds sit in opposite tails of their own resampled populations | labeled prose from a third source |
 
-The `fused` question is not a defect anyone has localized, and the round that found it cannot:
-its labels were deleted when the bundle was spent.
-Until something localizes it, no `fused` rate may be published.
-
-The fence repair is the only change since the last round that adds findings as well as removing them,
-so it is the first thing a third holdout has to score.
-What could be measured without one was:
-no frozen status among the 718 labeled units moved,
-and the compliant corpus is unmoved.
+The magnitude question is why no `fused` rate may be published yet:
+the classes are localized,
+but only labeled prose can settle whether a draw or the unlabeled proxy carried the gap,
+and a 386-boundary draw supports a Markdown `fused` interval wide enough to hide a modest repair.
+A stratum too wide to publish is withheld by the reporting rule rather than resized for.
 How a round is read when one floor clears and another does not is
 [ADR-0009](decisions/0009-a-round-scores-what-the-change-could-move.md).
 
@@ -169,15 +168,19 @@ and it replays a synthetic payload end to end rather than checking that files ex
   (`skills/semantic-linefeeds/SKILL.md:38`, `skills/semantic-linefeeds/SKILL.md:67-70`),
   which conflict when the severed clause continues into untouched prose.
   A concrete ordering is added when the ADR-0005 ownership ranges make "the affected two lines" precise.
-- **More languages.** Marginal value has flattened.
+- **More languages.**
+  Marginal value has flattened.
 - **Agent auto-detection for `semlf install`.**
   Useful, and cheap once the lifecycle commands exist, so it is scheduled with v0.6 rather than deferred.
 - **More agent installers and an LSP.**
   A generic `--stdin --path` surface makes new adapters cheap;
   build that before adding targets one at a time.
-- **A full NLP parser.** The detector's job is high-precision suspicion, not grammar.
-- **An aggressive auto-formatter.** Reformat churn is the problem this project exists to avoid.
-- **Inline trailing comments.** Higher parser complexity and false-positive risk for short text.
+- **A full NLP parser.**
+  The detector's job is high-precision suspicion, not grammar.
+- **An aggressive auto-formatter.**
+  Reformat churn is the problem this project exists to avoid.
+- **Inline trailing comments.**
+  Higher parser complexity and false-positive risk for short text.
 - **CJK support.**
   Adding `。！？` to the terminator sets is cheap,
   but `wrap` depends on inter-word spaces and a following capital,
