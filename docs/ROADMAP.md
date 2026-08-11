@@ -79,12 +79,32 @@ What that round cost and what it bought is
 - One recall hole that two independent samples agree on.
   A line ending in inline markup is a `wrap` the detector reports once in 21 on one sample
   and six times in 30 on the other.
-  The repair is written and measured against calibration, and it is not scored.
-- **A second holdout**, because the first was spent scoring v0.4.1.
-  This is what remains.
-  The recall repair cannot be trusted without one,
-  and neither can the precision claim after it.
-  It ships, or it is withdrawn, on what that holdout measures.
+  The repair is written, and a second holdout scored it at 219 of 276 against a floor of 0.70.
+  It ships.
+- A second holdout, drawn because the first was spent scoring v0.4.1, and now spent in turn.
+  Both records are in [`CHANGELOG.md`](../CHANGELOG.md).
+
+Everything planned for this release is done, and what remains is the release itself.
+
+**One question it opened, and left open.**
+`fused` recall came back at 50 of 77 against a floor of 0.68,
+and the whole loss is in Markdown: 25 of 47, against 66 of 79 in the first round.
+Nothing in v0.4.2 changes how a fused line is found, so it blocks no repair in it,
+but it does block any published `fused` rate until something localizes it.
+This round cannot: its labels were deleted when the bundle was spent.
+Localizing it needs the calibration side or a third round,
+and how a round is read when one floor clears and another does not is
+[ADR-0009](decisions/0009-a-round-scores-what-the-change-could-move.md).
+
+**Three defects the round exposed and nobody has repaired.**
+Each one changes the predicate, so each wants its own decision about whether a fresh round comes first.
+The third is the only one that cost precision, and it is the one worth doing first.
+
+| Defect | Evidence |
+|---|---|
+| A `//go:build` directive above a block-comment licence header defeats the licence cut | the same header without the directives yields no boundaries and with them yields six |
+| The generated-file test reads only a file's first five lines | four boundaries from generated Go whose `DO NOT EDIT` marker sits under the licence block |
+| Code reaches the prose stream from Markdown written with HTML entities | all three false positives in the second round |
 
 ### v0.5 — Changed spans, suppression, and the judgment layer
 

@@ -40,9 +40,32 @@ rather than by any test in this repository.
   calibration `wrap` recall went from 163 of 220 to 169 of 220,
   and no labeled non-violation started drawing a complaint.
 
-  This one is measured only against the corpus it was tuned on,
-  which is a regression gate rather than evidence of generalization.
-  It is not scored, and a sealed holdout drawn against this predicate is what will decide it.
+  A second sealed holdout scored it on prose nobody tuned it against:
+  219 of 276, 79.3%, against a floor of 0.70 stated before the sample was drawn.
+  The repair is monotone, since its pattern fires only where the line already ended in a backtick,
+  so it can add a `wrap` finding and cannot remove one.
+  Seven `wrap` findings it exposes in this repository's own prose are repaired along with it.
+
+### Measured
+
+- **A second holdout was drawn, labeled, opened once, and spent.**
+  386 boundaries and 772 records from three projects none of the earlier six shared an organization with,
+  drawn against a predicate frozen before the sample existed,
+  and the ordering is enforced by the draw and the seal rather than by the operator's care.
+  `wrap` came back at 219 of 276 against a floor of 0.70, and `fused` at 50 of 77 against a floor of 0.68.
+
+  The `fused` floor was missed, and the loss is entirely in Markdown:
+  25 of 47, against 66 of 79 in the first round, while Go rose to 25 of 30.
+  Nothing in this release changes how a fused line is found,
+  so the miss is recorded against that heuristic and blocks any published `fused` rate.
+  It cannot be localized from this round, whose labels were deleted when the bundle was spent.
+  How a round is read when one floor clears and another does not is
+  [ADR-0009](docs/decisions/0009-a-round-scores-what-the-change-could-move.md).
+
+- **A missed floor is acknowledged in the corpus manifest or the suite fails.**
+  A round states its floors before it is drawn and answers them once,
+  and until now a `false` in a result file was consulted by nothing.
+  Each miss now records what it is attributed to and what it blocks.
 
 ## [0.4.1] - 2026-08-11
 
