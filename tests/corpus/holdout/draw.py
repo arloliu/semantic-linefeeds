@@ -1,16 +1,16 @@
-"""Draw the holdout.
+"""Draw one holdout round.
 
-    python3 tests/corpus/holdout/draw.py <checkout-root>
+    python3 tests/corpus/holdout/draw.py <checkout-root> <round>
 
 Identical in shape to the calibration draw, and deliberately so.
 A holdout drawn by a different procedure measures the procedure as well as the predicate.
 
-The one difference is the seed, so that the two draws cannot coincide.
+The one difference is the seed, so that no two draws can coincide.
 
-This has not been run.
-Running it puts holdout prose in the working tree,
-so the session that runs it must not be a session that tunes the predicate,
-and the predicate must be frozen before anything here is labeled.
+Running this puts holdout prose in the working tree,
+so the session that runs it must not be a session that tunes the predicate.
+The predicate must already be frozen when it runs,
+and the draw refuses rather than trusting whoever runs it to remember.
 """
 
 import json
@@ -22,12 +22,13 @@ TESTS = HERE.parent.parent.parent
 sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(TESTS.parent / "scripts"))
 
-from corpus_harness import draw_corpus, level_of, quota_shortfalls, records_for  # noqa: E402
+from corpus_harness import (  # noqa: E402
+    Holdout, ScoringRefused, draw_corpus, level_of, quota_shortfalls, records_for)
 
-MANIFEST = TESTS / "corpus" / "manifest.json"
+CORPUS = TESTS / "corpus"
+MANIFEST = CORPUS / "manifest.json"
 
 BASE = 200
-SEED = "holdout-1"
 PER_LEVEL = 38
 
 QUOTAS = {
@@ -39,18 +40,38 @@ QUOTAS = {
 }
 
 
-def main(root):
+def main(root, number):
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    out_dir = HERE.parent / f"round-{number}"
+
+    # The bundle this round will produce does not exist yet,
+    # so what is checked here is the predicate alone.
+    # Nothing else can be checked before the prose is on disk,
+    # which is exactly why this check has to happen here rather than at sealing time.
+    holdout = Holdout(out_dir / "bundle.json", CORPUS / "freeze.jsonl",
+                      TESTS.parent / "scripts" / "check_linefeeds.py", MANIFEST)
+    try:
+        frozen = holdout.require_predicate_freeze()
+    except ScoringRefused as refusal:
+        sys.exit(f"refused: {refusal}\nnothing was drawn")
+    print(f"drawing against a predicate frozen for: {frozen['intent']}")
+
     population = []
     for source in manifest["sources"]:
-        if source["side"] == "holdout":
+        if source["side"] == "holdout" and source["round"] == number:
             population += records_for(source, root / source["id"])
+    if not population:
+        sys.exit(f"no source declares round {number}; pin one in the manifest first")
 
-    drawn = draw_corpus(population, BASE, QUOTAS, SEED)
-    out = HERE.parent / "sample.json"
+    seed = f"holdout-{number}"
+    drawn = draw_corpus(population, BASE, QUOTAS, seed)
+    # Created only once the round is known to be a real one,
+    # so a mistyped number refuses above rather than leaving an empty directory behind.
+    out_dir.mkdir(exist_ok=True)
+    out = out_dir / "sample.json"
     out.write_text(json.dumps({
         "base": BASE,
-        "seed": SEED,
+        "seed": seed,
         "per_level": PER_LEVEL,
         "quotas": {name: {"bands": bands, "per_level": count}
                    for name, (bands, count) in sorted(QUOTAS.items())},
@@ -75,4 +96,4 @@ def main(root):
 
 
 if __name__ == "__main__":
-    main(pathlib.Path(sys.argv[1]).resolve())
+    main(pathlib.Path(sys.argv[1]).resolve(), int(sys.argv[2]))

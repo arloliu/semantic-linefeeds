@@ -112,10 +112,19 @@
         }
       },
       "holdout": {
-        "wrap": 0.68,
-        "fused": 0.68
+        "1": {
+          "wrap": 0.68,
+          "fused": 0.68
+        },
+        "2": {
+          "wrap": 0.7,
+          "fused": 0.68
+        }
       },
-      "holdout_basis": "the lower end of the calibration interval for each kind, 0.689 for both, rounded down; the holdout is three unseen projects, so the prediction is the weaker end of what this corpus supports rather than its point estimate"
+      "holdout_basis": {
+        "1": "the lower end of the calibration interval for each kind, 0.689 for both, rounded down; the holdout is three unseen projects, so the prediction is the weaker end of what this corpus supports rather than its point estimate",
+        "2": "the lower end of the calibration interval for each kind as it stands after the code-span repair, 0.708 for wrap and 0.689 for fused, rounded down; the calibration rates behind them are 169 of 220 and 31 of 37, and the wrap floor is two points above round 1 because that repair raised the rate it derives from; stated before this round was drawn, so no unit of it existed when the number was chosen"
+      }
     }
   },
   "covariate_definitions": {

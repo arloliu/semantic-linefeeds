@@ -1,6 +1,6 @@
-"""Open the holdout once, score the frozen predicate against it, and spend it.
+"""Open one holdout round once, score the frozen predicate against it, and spend it.
 
-    python3 tests/corpus/holdout/evaluate.py
+    python3 tests/corpus/holdout/evaluate.py <round>
 
 The bundle opens only if the ledger already names this predicate, this calibration manifest,
 and this ciphertext, and only if it has not been scored before.
@@ -50,14 +50,16 @@ def scored(units):
     return units
 
 
-def main():
+def main(number):
     if not sys.stdin.isatty():
         sys.exit("run this from a terminal; nothing was opened")
 
+    round_dir = HOLDOUT / f"round-{number}"
     manifest = json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))
-    floors = manifest["reporting"]["recall_floors"]
-    bands = floors["strata_bands"]
-    holdout = Holdout(HOLDOUT / "bundle.json", CORPUS / "freeze.jsonl",
+    reporting = manifest["reporting"]["recall_floors"]
+    bands = reporting["strata_bands"]
+    floors = reporting["holdout"][str(number)]
+    holdout = Holdout(round_dir / "bundle.json", CORPUS / "freeze.jsonl",
                       TESTS.parent / "scripts" / "check_linefeeds.py", CORPUS / "manifest.json")
 
     passphrase = getpass.getpass("passphrase: ")
@@ -80,9 +82,9 @@ def main():
         "drawn_by": body["drawn_by"],
         "records": len(units),
         "boundaries": len(units) // len(KINDS),
-        "floors": floors["holdout"],
-        "floors_met": not floor_problems(units, floors["holdout"]),
-        "floor_problems": floor_problems(units, floors["holdout"]),
+        "floors": floors,
+        "floors_met": not floor_problems(units, floors),
+        "floor_problems": floor_problems(units, floors),
         "recall": {kind: {"detected": counts["detected"], "true": counts["true"],
                           "rate": counts["rate"], "interval": counts["interval"],
                           "withheld": list(counts["withheld"])}
@@ -99,7 +101,7 @@ def main():
         "ambiguous": sum(1 for record in units if record["label"] == "ambiguous"),
     }
 
-    (HOLDOUT / "result.json").write_text(
+    (round_dir / "result.json").write_text(
         json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     holdout.record_evaluation(result)
 
@@ -108,7 +110,7 @@ def main():
         rate = "withheld: " + "; ".join(counts["withheld"]) if counts["rate"] is None \
             else f"{counts['rate']:.1%}"
         print(f"  {kind:6} {counts['detected']:4}/{counts['true']:<4} {rate}"
-              f"   floor {floors['holdout'][kind]:.2f}")
+              f"   floor {floors[kind]:.2f}")
     print(f"  false positives  {len(false_positives)} of {non_violations}")
     print(f"  ambiguous        {result['ambiguous']}")
     print("floors met" if result["floors_met"] else "FLOORS NOT MET:")
@@ -118,4 +120,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(int(sys.argv[1]))

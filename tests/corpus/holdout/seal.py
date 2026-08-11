@@ -1,10 +1,14 @@
-"""Seal the labeled holdout, freeze the predicate against it, and delete the plaintext.
+"""Seal one labeled holdout round, bind the predicate to it, and delete the plaintext.
 
-    python3 tests/corpus/holdout/seal.py
+    python3 tests/corpus/holdout/seal.py <round>
 
 The passphrase is read from a prompt rather than from an argument or the environment,
 so it never reaches a process list, a shell history, or an agent's transcript.
 Losing it destroys the holdout, and that is the accepted cost of not storing it.
+
+Sealing is refused unless the ledger already froze this predicate.
+That record is written before the draw, so it is a prediction rather than a description;
+the freeze written here binds it to a ciphertext that could not exist until now.
 
 Everything that carries holdout prose in the clear is removed once the bundle verifies:
 the sample, the three labeling passes, and the adjudications.
@@ -29,22 +33,27 @@ from corpus_harness import KINDS, Holdout, resolution  # noqa: E402
 
 CORPUS = TESTS / "corpus"
 HOLDOUT = CORPUS / "holdout"
-PLAINTEXT = [HOLDOUT / "sample.json", HOLDOUT / "adjudications.json", HOLDOUT / "labels"]
 
 
-def payload():
+def plaintext(round_dir):
+    """Everything that carries this round's prose in the clear."""
+    return [round_dir / "sample.json", round_dir / "adjudications.json", round_dir / "labels"]
+
+
+def payload(round_dir):
     """One record per question per boundary, carrying no detector output.
 
     The expected status is deliberately absent.
     Whether the predicate reports a unit is what the evaluation measures,
     so recording it here would seal the answer in with the question.
     """
-    sample = json.loads((HOLDOUT / "sample.json").read_text(encoding="utf-8"))
+    sample = json.loads((round_dir / "sample.json").read_text(encoding="utf-8"))
     decided = {(entry["id"], entry["kind"]): entry
-               for entry in json.loads((HOLDOUT / "adjudications.json").read_text(encoding="utf-8"))}
+               for entry in json.loads(
+                   (round_dir / "adjudications.json").read_text(encoding="utf-8"))}
 
     passes = {}
-    for out in sorted((HOLDOUT / "labels").glob("*.out")):
+    for out in sorted((round_dir / "labels").glob("*.out")):
         labeler = out.name.rsplit("-", 1)[0]
         for answer in answers(out):
             for kind in KINDS:
@@ -84,12 +93,13 @@ def payload():
     }
 
 
-def main():
-    body = payload()
+def main(number):
+    round_dir = HOLDOUT / f"round-{number}"
+    body = payload(round_dir)
     text = json.dumps(body, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
 
     manifest = json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))
-    holdout = Holdout(HOLDOUT / "bundle.json", CORPUS / "freeze.jsonl",
+    holdout = Holdout(round_dir / "bundle.json", CORPUS / "freeze.jsonl",
                       TESTS.parent / "scripts" / "check_linefeeds.py", CORPUS / "manifest.json")
 
     if not sys.stdin.isatty():
@@ -97,6 +107,13 @@ def main():
                  "Without one the passphrase would arrive on a pipe, "
                  "which is a file, a history entry, or a transcript.\n"
                  "Nothing was written.")
+
+    # The floors are a prediction, so they are stated before the bundle they will judge exists.
+    # Sealing without them would let the number be chosen once the labels were in hand.
+    floors = manifest["reporting"]["recall_floors"]["holdout"].get(str(number))
+    if not floors:
+        sys.exit(f"the manifest states no floors for round {number}; "
+                 "state them before sealing, or they are chosen after the fact")
 
     passphrase = getpass.getpass("passphrase (never stored, never recoverable): ")
     if passphrase != getpass.getpass("again: "):
@@ -109,13 +126,14 @@ def main():
         **{name: manifest["reporting"][name]
            for name in ("interval", "min_true_violations",
                         "max_interval_half_width", "max_ambiguous_fraction")},
-        "recall_floors": manifest["reporting"]["recall_floors"]["holdout"],
+        "recall_floors": floors,
     })
 
     if holdout.open(passphrase) != text:
         sys.exit("the bundle did not reproduce what was sealed; the plaintext is untouched")
 
-    for path in PLAINTEXT:
+    removed = plaintext(round_dir)
+    for path in removed:
         shutil.rmtree(path) if path.is_dir() else path.unlink()
 
     counts = {}
@@ -126,8 +144,8 @@ def main():
     for key in sorted(counts):
         print(f"  {key[0]:6} {key[1]:10} {counts[key]}")
     print("frozen against the predicate and the calibration manifest as they stand now")
-    print("plaintext removed: " + ", ".join(p.name for p in PLAINTEXT))
+    print("plaintext removed: " + ", ".join(p.name for p in removed))
 
 
 if __name__ == "__main__":
-    main()
+    main(int(sys.argv[1]))

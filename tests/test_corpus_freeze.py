@@ -21,20 +21,55 @@ RULES = {"interval": "wilson-95", "min_true": 10, "max_half_width": 0.15}
 
 
 @pytest.fixture
-def holdout(tmp_path):
-    """A sealed bundle whose predicate and manifest exist, with an empty ledger."""
+def unsealed(tmp_path):
+    """A predicate and a manifest that exist, an empty ledger, and no bundle yet."""
     predicate = tmp_path / "check_linefeeds.py"
     predicate.write_text("def check(text, path):\n    return []\n", encoding="utf-8")
     manifest = tmp_path / "manifest.json"
     manifest.write_text('{"units": []}\n', encoding="utf-8")
-    subject = Holdout(
+    return Holdout(
         bundle=tmp_path / "holdout.bundle.json",
         ledger=tmp_path / "freeze.jsonl",
         predicate=predicate,
         manifest=manifest,
     )
-    subject.seal(PLAINTEXT, PASSPHRASE)
-    return subject
+
+
+@pytest.fixture
+def holdout(unsealed):
+    """A sealed bundle, reached the way the protocol reaches one.
+
+    The predicate is frozen first because sealing refuses otherwise,
+    which is the ordering every test below inherits rather than arranges.
+    """
+    unsealed.freeze_predicate("a bundle these tests are about to seal")
+    unsealed.seal(PLAINTEXT, PASSPHRASE)
+    return unsealed
+
+
+def test_sealing_against_an_unfrozen_predicate_is_refused(unsealed):
+    """The ordering the first round kept by hand.
+
+    A bundle that can be sealed before its predicate is frozen
+    lets the freeze be written once the prose is already in the working tree,
+    and a freeze written then predicts nothing.
+    """
+    with pytest.raises(ScoringRefused, match="freeze it before drawing"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE)
+    assert not unsealed.bundle.exists(), "a refused seal must leave no bundle behind"
+
+
+def test_a_predicate_tuned_after_its_freeze_cannot_be_sealed_against(unsealed):
+    """Freezing something else does not count.
+
+    The record names a digest, so editing the predicate afterwards
+    leaves a ledger that is full and still does not name what is about to be sealed.
+    """
+    unsealed.freeze_predicate("a predicate that is about to change")
+    unsealed.predicate.write_text(
+        "def check(text, path):\n    return [(1, 'wrap')]\n", encoding="utf-8")
+    with pytest.raises(ScoringRefused, match="no freeze record names this predicate"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE)
 
 
 def test_an_unfrozen_bundle_will_not_open(holdout):
@@ -113,7 +148,7 @@ def test_recording_a_result_leaves_the_freeze_record_byte_identical(holdout):
     holdout.record_evaluation({"wrap": {"detected": 7, "true": 10}})
     after = holdout.ledger.read_text(encoding="utf-8")
     assert after.startswith(before)
-    assert len(after.splitlines()) == 2
+    assert len(after.splitlines()) == len(before.splitlines()) + 1
 
 
 def test_the_sealed_bundle_carries_nothing_but_cipher_parameters(holdout):

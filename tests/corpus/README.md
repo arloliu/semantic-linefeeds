@@ -80,7 +80,11 @@ so a later draw cannot quietly enumerate one of them again.
 
 It also holds the recall floors:
 one per kind for the corpus entire, one per level for every stratum that can carry a rate,
-and the floors the holdout must clear, stated before the holdout was labeled.
+and the floors each holdout round must clear, stated before that round was drawn.
+
+The holdout floors are keyed by round.
+The calibration rates a floor is derived from move as the detector is repaired,
+so one floor covering every round would have to be restated once a round had already answered it.
 
 ## `calibration/`, `pilot/`, and `labeled/`
 
@@ -124,6 +128,12 @@ Append-only, committed, and written only by the harness.
 A freeze record names the predicate, the calibration manifest, and the sealed holdout an evaluation intends to open;
 the result is appended afterwards against that same record.
 
+A bundle's freeze can only be written once the bundle exists,
+which is after its prose has been drawn, labeled, and sealed.
+So a round opens with a second kind of record that names a predicate and nothing else:
+the draw refuses to run without it, and so does the seal.
+That one is the prediction, and the bundle's freeze binds a ciphertext to it afterwards.
+
 The file does not exist until the first freeze.
 Nothing hand-edits it: a rewritten line would let a run restate what it froze after reading the holdout.
 
@@ -134,7 +144,9 @@ The sealed holdout, the schema validator, and the rule that turns three blind la
 The holdout is committed as ciphertext because plaintext in the working tree is read by the agent doing the tuning.
 Opening it is refused unless the ledger already froze this predicate against this bundle,
 and refused again once that bundle has been evaluated.
-Both refusals are proven by mutation rather than by a passing test:
+Sealing one is refused for a predicate the ledger never froze,
+which is the ordering the first round kept by hand.
+The refusals are proven by mutation rather than by a passing test:
 opening the ledger for write instead of append,
 sealing with a fixed salt,
 and keeping a debug copy of the plaintext each kill a named test.

@@ -81,7 +81,12 @@ REPORTING = {
 
 
 class ScoringRefused(Exception):
-    """The holdout may not be opened, and the message says which rule refused."""
+    """A step of the holdout protocol was refused, and the message says which rule refused.
+
+    Opening a bundle is the step this guards most often.
+    Drawing a sample and sealing one are guarded too,
+    because a predicate frozen after the prose was drawn is not a prediction.
+    """
 
 
 def resolution(passes):
@@ -650,11 +655,52 @@ class Holdout:
         self.predicate = predicate
         self.manifest = manifest
 
+    def freeze_predicate(self, intent):
+        """Commit to a predicate before the prose it will be scored against has been drawn.
+
+        The freeze that binds a bundle can only be written once the bundle exists,
+        which is after the sample was drawn, labeled, and sealed.
+        By then the predicate has had every opportunity to be fitted to the prose,
+        and a record written at that point proves only that nobody edited it during the sealing.
+
+        This record is the one that carries the claim.
+        It names a predicate and nothing else that has been read yet,
+        and the draw refuses to run without it.
+        """
+        self._append({
+            "record": "predicate_freeze",
+            "predicate_digest": self._predicate_digest(),
+            "manifest_digest": self._manifest_digest(),
+            "intent": intent,
+        })
+
+    def require_predicate_freeze(self):
+        """The record committing to this predicate, or a refusal naming what is missing.
+
+        The manifest digest is recorded on the freeze and not compared here.
+        A sample is drawn before its floors are stated,
+        so the manifest is expected to move between this record and the bundle's own freeze;
+        the predicate is the thing that may not.
+        """
+        digest = self._predicate_digest()
+        for record in self._records():
+            if (record.get("record") == "predicate_freeze"
+                    and record["predicate_digest"] == digest):
+                return record
+        raise ScoringRefused(
+            "no freeze record names this predicate; "
+            "freeze it before drawing the prose it will be scored against")
+
     def seal(self, text, passphrase):
         """Write the ciphertext bundle.
 
         The plaintext never reaches the working tree.
+
+        Sealing is refused for an unfrozen predicate.
+        The first round got the ordering right by care,
+        and care is not a mechanism.
         """
+        self.require_predicate_freeze()
         salt = os.urandom(16)
         mask_key, tag_key = _keys(passphrase, salt, KDF_ITERATIONS)
         ciphertext = _mask(text.encode("utf-8"), mask_key)

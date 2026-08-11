@@ -217,10 +217,19 @@ def test_the_strata_a_rate_may_be_broken_down_by_are_fixed_in_code():
     assert set(document["reporting"]["recall_floors"]["calibration_strata"]) == set(REPORTED_STRATA)
 
 
-def test_the_holdout_floors_are_declared_while_the_holdout_is_unlabeled():
+def test_every_holdout_round_declares_its_floors_while_it_is_unlabeled():
+    """A floor is a prediction, so it is stated while the answer is still unknown.
+
+    Each round states its own.
+    The calibration rates a floor derives from move between rounds,
+    and one floor covering both would be restated after a round had already answered it.
+    """
     document = on_disk()
-    floors = document["reporting"]["recall_floors"]["holdout"]
-    assert set(floors) == {"wrap", "fused"}
+    per_round = document["reporting"]["recall_floors"]["holdout"]
+    rounds = {str(source["round"]) for source in document["sources"]
+              if source["side"] == "holdout"}
+    assert set(per_round) == rounds
+    assert all(set(floors) == {"wrap", "fused"} for floors in per_round.values())
     holdout = {source["id"] for source in document["sources"] if source["side"] == "holdout"}
     assert not [unit for unit in document["units"] if unit["source"] in holdout]
 
