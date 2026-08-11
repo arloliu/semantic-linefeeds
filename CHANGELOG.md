@@ -39,6 +39,10 @@ Every number below is measured against those labels rather than against the chec
   and inline HTML all reached the detector as prose once quoted.
 - `--file --json PATH` parses.
   An option word standing where a path belongs used to leave `--file` with nothing to consume.
+- **The hook fails open on a payload of the wrong shape.**
+  Attribute access was reached unguarded by JSON that parsed into a list, a number,
+  or an object whose fields held the wrong type,
+  so the hook exited 1 with a traceback on an edit it was only meant to inspect.
 
 ### Added
 

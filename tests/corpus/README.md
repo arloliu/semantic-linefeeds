@@ -26,6 +26,11 @@ Cases invented from a description, without running them, do not belong.
 | `markdown/adjacent_list_items.md` | One list item measured against the next |
 | `markdown/release_notes.md` | Release-note fragments in Markdown rather than comments |
 
+Four of these eight classes were repaired in v0.4.1 and the files stay,
+because a class nothing tests is a class that comes back.
+The four label classes are the ones that remain,
+and they are the reason `wrap` no longer reaches the model.
+
 ## `control/`
 
 One file the detector must complain about.
@@ -57,9 +62,28 @@ the rules that decide when a rate may be printed at all,
 the digest of the published rule the labels were judged against,
 and one record per labeled unit: its text, its nine covariates, its three blind passes, and its frozen expected status.
 
-It holds no source and no unit yet.
-The reporting rules and the pinned rule are settled;
-sampling has not started.
+It holds six sources and 718 unit records over 359 boundaries,
+all of them from the calibration side.
+The holdout side is declared and empty.
+
+It also holds the recall floors:
+one per kind for the corpus entire, one per level for every stratum that can carry a rate,
+and the floors the holdout must clear, stated before the holdout was labeled.
+
+## `calibration/`, `pilot/`, and `labeled/`
+
+`pilot/` is the first 48 boundaries, drawn on one stratum to measure the prevalence that sets the sample size.
+`calibration/` is the corpus itself.
+Each holds the drawing script and the sample it drew,
+so a reviewer redraws rather than trusting the run that produced it.
+
+`labeled/NOTICE.md` lists every source project, its licence, and its copyright line as that project states it.
+
+The tooling beside them is shared:
+`batch.py` splits a sample into per-labeler batches,
+`collect.py` gathers three passes into one file,
+`promote.py` resolves them into labels,
+and `adjudicate.py` carries what the resolution table sends to a person.
 
 ## `manifest.lock`
 
@@ -97,8 +121,11 @@ The two differ:
 a kind can keep appearing in `--file` audits after it stops reaching the model,
 and a diagnostic nobody is shown costs nobody anything.
 
-The goal is that no file here draws any complaint at all.
-That test is expected to fail today and is marked so.
-The marker is strict,
-so the day the defects are repaired it fails for passing
-and cannot be left behind.
+The goal is that no file here draws any complaint at all, and v0.4.1 reached it.
+The gate was an expected failure until then, marked strict,
+so the day the defects were repaired it failed for passing and the marker could not be left behind.
+That is how it came off.
+
+Eleven `wrap` findings against this corpus survive in `check()` and stay in the record above.
+They are the evidence the withdrawal rests on rather than a leftover:
+correct prose that a kind still complains about is the reason that kind no longer reaches the model.

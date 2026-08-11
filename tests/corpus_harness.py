@@ -423,6 +423,39 @@ def draw_corpus(population, base, quotas, seed):
     return sorted(chosen.values(), key=lambda record: record["id"])
 
 
+def band_levels(bands):
+    """Every level a set of band edges names, whether or not the population reaches it."""
+    edges = list(bands)
+    return tuple([f"..{edges[0]}"]
+                 + [f"{low + 1}..{high}" for low, high in zip(edges, edges[1:])]
+                 + [f"{edges[-1] + 1}.."])
+
+
+def quota_shortfalls(population, drawn, quotas):
+    """Every quota the population could not satisfy, named rather than counted.
+
+    Two things count.
+    A level thinner than its quota is the obvious one.
+    A dimension the population holds at a single level is the one worth building this for:
+    the quota reports success because nothing is left to be short of,
+    and a level that vanished from the sampling frame reads as a level nobody asked about.
+    """
+    problems = []
+    for dimension, (bands, per_level) in sorted(quotas.items()):
+        wanted = (band_levels(bands) if bands
+                  else sorted({level_of(record, dimension, None) for record in population}))
+        present = {level_of(record, dimension, bands) for record in population}
+        if len(present) < 2:
+            held = sorted(present)[0] if present else "nothing"
+            problems.append("%s: the population holds %s%s, so the quota separates nothing"
+                            % (dimension, "only " if present else "", held))
+            continue
+        counts = collections.Counter(level_of(record, dimension, bands) for record in drawn)
+        problems += ["%s at %s: %d of %d" % (dimension, level, counts[level], per_level)
+                     for level in wanted if counts[level] < per_level]
+    return problems
+
+
 def labeling_batches(sample, labeler, size):
     """One labeler's units, in an order of their own, in bounded batches.
 

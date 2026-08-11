@@ -1,17 +1,16 @@
-"""Draw the calibration corpus.
+"""Draw the holdout.
 
-    python3 tests/corpus/calibration/draw.py <checkout-root>
+    python3 tests/corpus/holdout/draw.py <checkout-root>
 
-A random base spreads the dimensions nothing quotas.
-Quotas then top up the levels that are structurally rare,
-because a level a random draw leaves nearly empty can never carry a rate.
+Identical in shape to the calibration draw, and deliberately so.
+A holdout drawn by a different procedure measures the procedure as well as the predicate.
 
-`raw_end_column` carries a quota, though the plan expects that dimension to spread on its own.
-Measurement refused that expectation: its widest band is 2.7% of the population,
-so a base large enough to fill it by chance would be roughly four times this whole corpus.
-The top-up costs the difference instead.
+The one difference is the seed, so that the two draws cannot coincide.
 
-Nothing here consults detector output.
+This has not been run.
+Running it puts holdout prose in the working tree,
+so the session that runs it must not be a session that tunes the predicate,
+and the predicate must be frozen before anything here is labeled.
 """
 
 import json
@@ -28,12 +27,7 @@ from corpus_harness import draw_corpus, level_of, quota_shortfalls, records_for 
 MANIFEST = TESTS / "corpus" / "manifest.json"
 
 BASE = 200
-SEED = "calibration-2"
-
-# The pilot's rule gives 75 per level, driven entirely by how rare a fused line is.
-# Half of that is taken knowingly.
-# It buys every per-level wrap rate and gives up every per-level fused rate,
-# because a fused rate needs the corpus entire and a wrap rate does not.
+SEED = "holdout-1"
 PER_LEVEL = 38
 
 QUOTAS = {
@@ -49,7 +43,7 @@ def main(root):
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     population = []
     for source in manifest["sources"]:
-        if source["side"] == "calibration":
+        if source["side"] == "holdout":
             population += records_for(source, root / source["id"])
 
     drawn = draw_corpus(population, BASE, QUOTAS, SEED)
