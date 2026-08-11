@@ -584,6 +584,12 @@ def _source_problems(source):
     if source.get("side") not in ("calibration", "holdout"):
         problems.append(f"source {name} is on side {source.get('side')!r}, "
                         "and calibration and holdout stay separate")
+    elif source["side"] == "holdout" and not isinstance(source.get("round"), int):
+        # A holdout source is spent once the round that drew it has been opened and read.
+        # Without a round on the source, a later draw enumerates the spent ones too
+        # and scores a predicate against prose its repairs were fitted to.
+        problems.append(f"source {name} is a holdout source and declares no round, "
+                        "so a later draw cannot tell it from a spent one")
     if source.get("composition") not in COMPOSITIONS:
         problems.append(f"source {name} has composition {source.get('composition')!r}")
     elif source["composition"].startswith("third-party"):

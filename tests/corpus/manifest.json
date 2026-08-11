@@ -148,8 +148,8 @@
     "the session that labels the holdout has seen its contents, so it must not be the session that later tunes a predicate; nothing enforces this",
     "losing the passphrase destroys the holdout",
     "source selection may not be conditioned on detector output",
-    "each side carries both a wide and a narrow wrapping column: calibration 78/72/68, holdout 71/78/78",
-    "the six sources belong to six distinct organizations, so a holdout failure cannot be explained by a second author alone",
+    "each side carries both a wide and a narrow wrapping column: calibration 78/72/68, holdout round 1 71/78/78, holdout round 2 72/75/78",
+    "the nine sources belong to nine distinct organizations, so a holdout failure cannot be explained by a second author alone",
     "each side pairs one Go library with one corpus of language design proposals, because the holdout tests generalization to unseen projects rather than unseen genres",
     "rust-lang/rfcs is offered under Apache-2.0 or MIT; Apache-2.0 is the one taken here",
     "pairwise agreement in the pilot ran 93% to 100% across families, so agreement discriminates little on this material and is not evidence of quality",
@@ -164,7 +164,11 @@
     "raw_end_column was given a quota although the design expects it to spread on its own: its widest band is 2.7% of the population, and filling it by chance would need a base four times the size of the whole corpus",
     "agy returned short arrays on three calibration batches, dropping one unit each; those three batches were rerun in full and the second answers are the recorded ones, because a rerun is a fresh process that never sees its own earlier reply",
     "the extractor skips a four-space-indented line but not the same line inside a blockquote, so Markdown code blocks written as quoted indented text reach the detector as prose; the corpus found this and two of its units are labeled not-a-violation with the detector complaining about them",
-    "the list-item break moved two labeled wrap violations from detected to an accepted miss, go-proposal:README.md:118#wrap and go-proposal:design/go2draft-error-values-overview.md:76#wrap; both are lists whose items complete one sentence, so the repair that removed four false positives at list boundaries costs these two detections, and the floors below were lowered to the new rates rather than the repair being withdrawn"
+    "the list-item break moved two labeled wrap violations from detected to an accepted miss, go-proposal:README.md:118#wrap and go-proposal:design/go2draft-error-values-overview.md:76#wrap; both are lists whose items complete one sentence, so the repair that removed four false positives at list boundaries costs these two detections, and the floors below were lowered to the new rates rather than the repair being withdrawn",
+    "the wrapping columns of the first six sources were measured by a script nobody kept; the instrument is now tests/corpus/qualify.py, and replaying it over the same six commits reproduces five of the six columns within two and disagrees with client_golang by eight, so a column is comparable within a round and not across the two",
+    "the three round 1 holdout sources were read by the sessions that repaired what that round found, so they are spent; a holdout source declares the round it belongs to and a spent round is never drawn from again",
+    "parti is pinned at a commit dated three weeks before this plugin existed, so no hook of this project can have shaped the comments the round 2 sample is drawn from",
+    "swiftlang/swift-evolution is Apache-2.0 with a runtime library exception; the exception grants additional permission for compiled binaries and does not reach this prose"
   ],
   "sources": [
     {
@@ -203,6 +207,7 @@
     {
       "id": "helix",
       "side": "holdout",
+      "round": 1,
       "composition": "self-authored",
       "url": "https://github.com/arloliu/helix",
       "commit": "7e938573bf56ae73d8045b338eaaa280c20d6d58",
@@ -214,6 +219,7 @@
     {
       "id": "client_golang",
       "side": "holdout",
+      "round": 1,
       "composition": "third-party-code",
       "url": "https://github.com/prometheus/client_golang",
       "commit": "18218bff2edc2fed6be959af9816d9e2baa4c7f1",
@@ -225,6 +231,7 @@
     {
       "id": "rust-rfcs",
       "side": "holdout",
+      "round": 1,
       "composition": "third-party-markdown",
       "url": "https://github.com/rust-lang/rfcs",
       "commit": "9690d9d93c14611676477f7943f24cc38e2fad39",
@@ -232,6 +239,42 @@
       "selection_command": "git ls-files '*.md'",
       "wrapping_column": 78,
       "qualification": "mode of raw Markdown paragraph line lengths is column 78, over 58942 lines, with 25% within two columns of the mode and 16% beyond six past it; measured from line lengths, licence, and prior exposure only"
+    },
+    {
+      "id": "parti",
+      "side": "holdout",
+      "round": 2,
+      "composition": "self-authored",
+      "url": "https://github.com/arloliu/parti",
+      "commit": "8daa70fcd1ddf43796686d08c2f98bf0849d69f3",
+      "license": "Apache-2.0",
+      "selection_command": "git ls-files '*.go' ':!:*_test.go' ':!:vendor/*'",
+      "wrapping_column": 72,
+      "qualification": "mode of raw Go `//` comment line lengths is column 72, over 20621 lines, with 23% within two columns of the mode and 9% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
+    },
+    {
+      "id": "grpc-go",
+      "side": "holdout",
+      "round": 2,
+      "composition": "third-party-code",
+      "url": "https://github.com/grpc/grpc-go",
+      "commit": "1f4c6f36b067b48625280cc7f54cd6c29f058fc5",
+      "license": "Apache-2.0",
+      "selection_command": "git ls-files '*.go' ':!:*_test.go' ':!:vendor/*'",
+      "wrapping_column": 75,
+      "qualification": "mode of raw Go `//` comment line lengths is column 75, over 19077 lines, with 27% within two columns of the mode and 2% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
+    },
+    {
+      "id": "swift-evolution",
+      "side": "holdout",
+      "round": 2,
+      "composition": "third-party-markdown",
+      "url": "https://github.com/swiftlang/swift-evolution",
+      "commit": "6654fbbeb85a23de6bb08f8024d0dd06222093b5",
+      "license": "Apache-2.0",
+      "selection_command": "git ls-files '*.md'",
+      "wrapping_column": 78,
+      "qualification": "mode of raw Markdown paragraph line lengths is column 78, over 29240 lines, with 24% within two columns of the mode and 10% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
     }
   ],
   "units": [

@@ -68,9 +68,15 @@ the rules that decide when a rate may be printed at all,
 the digest of the published rule the labels were judged against,
 and one record per labeled unit: its text, its nine covariates, its three blind passes, and its frozen expected status.
 
-It holds six sources and 718 unit records over 359 boundaries,
-all of them from the calibration side.
-The holdout side is declared and empty.
+It holds nine sources and 718 unit records over 359 boundaries.
+Every unit record is from the calibration side.
+The holdout sources carry no unit records at all:
+their labels live inside a sealed bundle and never in the working tree.
+
+A holdout source also declares the round it belongs to.
+Round 1 is spent — the sessions that repaired what it found have read all three of its sources —
+and the validator refuses a holdout source that names no round,
+so a later draw cannot quietly enumerate one of them again.
 
 It also holds the recall floors:
 one per kind for the corpus entire, one per level for every stratum that can carry a rate,
@@ -90,6 +96,20 @@ The tooling beside them is shared:
 `collect.py` gathers three passes into one file,
 `promote.py` resolves them into labels,
 and `adjudicate.py` carries what the resolution table sends to a person.
+
+## `qualify.py`
+
+The measurement a source is admitted on, and nothing else.
+
+It reports the column a project wraps at, from line lengths alone.
+Nothing in it reads the detector:
+choosing a repository by how many findings it draws would repeat, at repository granularity,
+the error [ADR-0003](../../docs/decisions/0003-precision-measured-against-labels.md) forbids at candidate granularity.
+
+The first six sources were qualified by a script nobody kept,
+which is why this one exists.
+Their recorded columns stand as recorded;
+the manifest's protocol notes say how far a replay of this instrument lands from each of them.
 
 ## `manifest.lock`
 

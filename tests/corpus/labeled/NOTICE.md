@@ -14,8 +14,15 @@ Each unit also records its repository URL, commit, path, and line range in [`../
 | [prometheus/client_golang](https://github.com/prometheus/client_golang) | Apache-2.0 | Copyright 2014 The Prometheus Authors |
 | [golang/proposal](https://github.com/golang/proposal) | BSD-3-Clause | Copyright 2014 The Go Authors |
 | [rust-lang/rfcs](https://github.com/rust-lang/rfcs) | Apache-2.0 | none stated in either licence file |
+| [arloliu/parti](https://github.com/arloliu/parti) | Apache-2.0 | Copyright 2024 Arlo Liu |
+| [grpc/grpc-go](https://github.com/grpc/grpc-go) | Apache-2.0 | Copyright 2014 gRPC authors |
+| [swiftlang/swift-evolution](https://github.com/swiftlang/swift-evolution) | Apache-2.0 | none beyond the licence template |
 
 `rust-lang/rfcs` is offered under Apache-2.0 or MIT, and this corpus takes Apache-2.0.
+
+`swiftlang/swift-evolution` carries a runtime library exception below the Apache text.
+It grants an additional permission for compiled binaries and does not reach prose,
+so the licence this corpus vendors under is Apache-2.0 unmodified.
 
 No unit has been sampled yet, so nothing is vendored here today.
 This file is written before the first excerpt rather than after,

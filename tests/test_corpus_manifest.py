@@ -284,6 +284,25 @@ def test_a_source_assigned_to_neither_side_is_rejected():
     assert any("both" in p for p in manifest_problems(stray))
 
 
+def test_a_holdout_source_that_names_no_round_is_rejected():
+    """A holdout source is spent by the round that opened it, and the round is what says so.
+
+    Without it a later draw enumerates the spent sources alongside the new ones
+    and scores a predicate against the prose its repairs were fitted to,
+    which is the one failure the whole protocol exists to prevent.
+    """
+    unnumbered = manifest()
+    unnumbered["sources"][0].update(side="holdout")
+    assert any("declares no round" in p for p in manifest_problems(unnumbered))
+
+
+def test_a_holdout_source_that_names_its_round_is_accepted():
+    """The round is a requirement, not an obstacle."""
+    numbered = manifest()
+    numbered["sources"][0].update(side="holdout", round=2)
+    assert manifest_problems(numbered) == []
+
+
 def test_a_dimension_recorded_on_units_but_never_defined_is_rejected():
     """A reviewer reproduces every rate from the manifest alone.
 
