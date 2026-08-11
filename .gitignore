@@ -1,10 +1,12 @@
 __pycache__/
 tmp/
 
-# The holdout in the clear.
+# The holdout in the clear, in every round.
 # Only the ciphertext bundle and the ledger belong in history;
-# a committed sample or a committed labeling pass would end the holdout permanently,
+# a committed sample or a committed labeling pass would end that round permanently,
 # because git keeps what a later commit deletes.
-tests/corpus/holdout/sample.json
-tests/corpus/holdout/adjudications.json
-tests/corpus/holdout/labels/
+# The patterns match any round directory, so a new round is covered before it is drawn
+# rather than by whoever remembers to add three lines here.
+tests/corpus/holdout/*/sample.json
+tests/corpus/holdout/*/adjudications.json
+tests/corpus/holdout/*/labels/

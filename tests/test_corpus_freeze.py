@@ -7,6 +7,7 @@ A mechanism that works only when the operator cooperates is a note in a document
 
 import json
 import pathlib
+import subprocess
 import sys
 
 import pytest
@@ -15,9 +16,16 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from corpus_harness import Holdout, ScoringRefused  # noqa: E402
 
+REPO = pathlib.Path(__file__).resolve().parent.parent
+
 PASSPHRASE = "the maintainer types this once"
 PLAINTEXT = '{"units": [{"id": "h-0001", "label": "true"}]}\n'
 RULES = {"interval": "wilson-95", "min_true": 10, "max_half_width": 0.15}
+
+# A round nobody has created.
+# The rules that keep a holdout out of history have to cover the next round as well as this one,
+# and asking about an existing directory would not tell them apart.
+UNDRAWN_ROUND = 97
 
 
 @pytest.fixture
@@ -160,6 +168,19 @@ def test_the_sealed_bundle_carries_nothing_but_cipher_parameters(holdout):
     text = holdout.bundle.read_text(encoding="utf-8")
     assert set(json.loads(text)) == {"kdf", "iterations", "salt", "ciphertext", "tag"}
     assert "h-0001" not in text
+
+
+@pytest.mark.parametrize("name", ["sample.json", "adjudications.json", "labels/claude-0.out"])
+def test_a_round_that_does_not_exist_yet_already_keeps_its_prose_out_of_history(name):
+    """git keeps what a later commit deletes, so one careless `git add` ends a round.
+
+    The seal deletes the plaintext, which protects the working tree and not the history.
+    These paths are ignored for every round rather than for the rounds someone remembered,
+    because the round that leaks is the one whose three lines nobody added.
+    """
+    path = f"tests/corpus/holdout/round-{UNDRAWN_ROUND}/{name}"
+    ignored = subprocess.run(["git", "-C", str(REPO), "check-ignore", "--quiet", path])
+    assert ignored.returncode == 0, f"{path} would be committable"
 
 
 def test_resealing_the_same_text_does_not_restore_a_spent_bundle(holdout):
