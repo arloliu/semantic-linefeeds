@@ -102,6 +102,12 @@ because widening what the hook can see without an escape hatch is what makes use
   native `SKILL.md` installation for Codex with status and idempotent upgrade,
   `SNIPPET.md` carrying the judgment rules as the fallback for agents without a skill mechanism,
   and hook feedback carrying suggested diffs, per ADR-0006.
+  Every judgment layer carries the same bounded disagreement path:
+  judge a finding before rewriting;
+  if the agent considers it a false positive,
+  or the same finding survives one repair attempt,
+  stop retrying and surface the disagreement to the user.
+  Correct prose is never rewritten merely to satisfy repeated hook feedback.
 
 ### v0.6 — Repository tooling and lifecycle
 
@@ -142,6 +148,8 @@ Suppression ships **with** the release that widens hook visibility, never after 
 Its contract is specified before that release:
 directive syntax, scope, nesting, malformed-state behavior, protected-context handling,
 and interaction with changed spans and ownership ranges.
+Suppression is explicit, locally scoped, and user-directed.
+Repeated hook feedback neither creates a suppression nor authorizes another rewrite attempt.
 
 `uninstall` ships with the first packaged lifecycle command.
 `doctor` ships before team integration,
