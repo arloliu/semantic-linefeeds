@@ -1,0 +1,77 @@
+[
+  {
+    "id": "styx:internal/transport/transport.go:727",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/24543/safe-points-everywhere.md:174",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:pluginserver.go:638",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/testutil/require_no_leak.go:87",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/go2draft-contracts.md:1680",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:pluginserver.go:455",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:224",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/43651-type-parameters.md:2167",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/transport/shm/chaos/harness.go:890",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/27935-unbounded-queue-package.md:215",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:394",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-message-ttl-publishWithTtl/main.go:39",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:kv.go:743",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:jetstream/stream_config.go:74",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/12914-monotonic.md:539",
+    "wrap": "false",
+    "fused": "false"
+  }
+]

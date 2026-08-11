@@ -1,0 +1,174 @@
+[
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:290",
+    "kind": "wrap",
+    "path": "design/14951-soft-heap-limit.md",
+    "lines": [
+      290,
+      291
+    ],
+    "upper": "If GC terminates with a significant amount of remaining work credit,",
+    "lower": "that means marking significantly outpaced allocation, and the next GC",
+    "context": [
+      "trigger controller in the regime where there are no assists.",
+      "Alternatively, we could use work credit as a signal in this regime.",
+      "If GC terminates with a significant amount of remaining work credit,",
+      "that means marking significantly outpaced allocation, and the next GC",
+      "cycle can trigger later."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "false",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the upper line is a complete fronted conditional clause and the comma marks its real edge; the rule's list of boundaries is illustrative rather than exhaustive, and a subordinate clause boundary still counts"
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:12",
+    "kind": "wrap",
+    "path": "design/36606-64-bit-field-alignment.md",
+    "lines": [
+      12,
+      13
+    ],
+    "upper": "64-bit fields will be 8-byte (64-bit) aligned. The layout of structs on 64-bit systems",
+    "lower": "will not change. For compatibility reasons (and finer control of struct layout),",
+    "context": [
+      "We propose to change the default layout of structs on 32-bit systems such that",
+      "64-bit fields will be 8-byte (64-bit) aligned. The layout of structs on 64-bit systems",
+      "will not change. For compatibility reasons (and finer control of struct layout),",
+      "we also propose the addition of a `//go:packed` directive that applies to struct",
+      "types. When the `//go:packed` directive is specified immediately before a struct"
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the break falls between the subject 'The layout of structs on 64-bit systems' and its verb 'will not change', so neither side stands alone as a sentence"
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:295",
+    "kind": "fused",
+    "path": "design/51082-godocfmt.md",
+    "lines": [
+      295,
+      296
+    ],
+    "upper": "for numbers. (Why dashes and not asterisks? Proper typesetting of",
+    "lower": "bullet lists sometimes does use dashes, but never uses asterisks, so",
+    "context": [
+      "forms of numbers will be recognized, but gofmt (see below) will",
+      "rewrite them to a single canonical form: dash for bullets, and “N.”",
+      "for numbers. (Why dashes and not asterisks? Proper typesetting of",
+      "bullet lists sometimes does use dashes, but never uses asterisks, so",
+      "using dashes keeps the comments looking as typographically clean as",
+      "possible.)"
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the line closes one sentence at 'for numbers.', asks a complete question, and opens a third with 'Proper typesetting of'"
+  },
+  {
+    "id": "go-proposal:design/70257-memory-regions.md:769",
+    "kind": "wrap",
+    "path": "design/70257-memory-regions.md",
+    "lines": [
+      769,
+      770
+    ],
+    "upper": "Mean CPU time between pointer writes: 120 cpu-ns",
+    "lower": "Write barrier overhead: 4.30%",
+    "context": [
+      "Write barrier overhead: 4.45%",
+      "CockroachDB kv50",
+      "Mean CPU time between pointer writes: 120 cpu-ns",
+      "Write barrier overhead: 4.30%",
+      "CockroachDB kv95",
+      "Mean CPU time between pointer writes: 117 cpu-ns"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "false",
+      "codex": "ambiguous"
+    },
+    "label": "false",
+    "reason": "both lines are complete labels rather than one sentence split at a column; this is the aligned-label class the compliant corpus already records as a false positive"
+  },
+  {
+    "id": "go-proposal:design/70257-memory-regions.md:769",
+    "kind": "fused",
+    "path": "design/70257-memory-regions.md",
+    "lines": [
+      769,
+      770
+    ],
+    "upper": "Mean CPU time between pointer writes: 120 cpu-ns",
+    "lower": "Write barrier overhead: 4.30%",
+    "context": [
+      "Write barrier overhead: 4.45%",
+      "CockroachDB kv50",
+      "Mean CPU time between pointer writes: 120 cpu-ns",
+      "Write barrier overhead: 4.30%",
+      "CockroachDB kv95",
+      "Mean CPU time between pointer writes: 117 cpu-ns"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "false",
+      "codex": "ambiguous"
+    },
+    "label": "false",
+    "reason": "one label and one value, with no second sentence anywhere on the line"
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-retention-policies-workqueueOverlap/main.go:39",
+    "kind": "wrap",
+    "path": "examples/docs/learn-jetstream-retention-policies-workqueueOverlap/main.go",
+    "lines": [
+      39,
+      40
+    ],
+    "upper": "NATS-DOC-START",
+    "lower": "One unfiltered consumer covers every order in the queue.",
+    "context": [
+      "NATS-DOC-START",
+      "One unfiltered consumer covers every order in the queue."
+    ],
+    "passes": {
+      "agy": "ambiguous",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "ambiguous",
+    "reason": "NATS-DOC-START is a documentation extraction marker that SKILL.md does not name, and the rule does not say whether such a marker is prose at all"
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-retention-policies-workqueueOverlap/main.go:39",
+    "kind": "fused",
+    "path": "examples/docs/learn-jetstream-retention-policies-workqueueOverlap/main.go",
+    "lines": [
+      39,
+      40
+    ],
+    "upper": "NATS-DOC-START",
+    "lower": "One unfiltered consumer covers every order in the queue.",
+    "context": [
+      "NATS-DOC-START",
+      "One unfiltered consumer covers every order in the queue."
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "ambiguous",
+    "reason": "the rule's one-sentence-per-line requirement has nothing to say about a bare marker token that is not a sentence"
+  }
+]

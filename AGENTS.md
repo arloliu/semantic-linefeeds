@@ -21,6 +21,10 @@ python3 scripts/check_linefeeds.py --file <files you touched>
 
 Zero `fused`/`wrap` findings before any commit;
 `long` findings are advisories you judge, not obey.
+
+Test data under `tests/` is the one exception, and it is not prose.
+Those files exist to carry text the checker must flag or must leave alone,
+so their findings are the measurement rather than a defect.
 Write prose with semantic line breaks from the first draft:
 one sentence per line,
 and a long sentence splits only at a real clause boundary.

@@ -1,0 +1,17 @@
+[
+  {"id": "styx:internal/observeq/dispatch.go:61", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/43651-type-parameters.md:1136", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/draft-gobuild.md:439", "wrap": "true", "fused": "false"},
+  {"id": "nats.go:jetstream/pull.go:1103", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/70257-memory-regions.md:397", "wrap": "false", "fused": "false"},
+  {"id": "styx:pluginserver.go:663", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/45713-workspace.md:412", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/44309-user-configurable-memory-target.md:340", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/51082-godocfmt.md:383", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/28221-go2-transitions.md:623", "wrap": "false", "fused": "false"},
+  {"id": "styx:internal/supervisor/supervisor.go:1652", "wrap": "false", "fused": "false"},
+  {"id": "nats.go:jetstream/jetstream.go:194", "wrap": "false", "fused": "false"},
+  {"id": "styx:codec/codec.go:158", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/24301-versioned-go.md:155", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/48409/soft-memory-limit.src.md:290", "wrap": "true", "fused": "false"}
+]

@@ -1,0 +1,77 @@
+[
+  {
+    "id": "go-proposal:design/12750-localization.md:506",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:README.md:118",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/6282-table-data.md:104",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/55022-pgo-implementation.md:21",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:pluginserver.go:1051",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/control/handshake.go:136",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/44167-gc-pacer-redesign.md:668",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:host.go:2181",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:jetstream/stream_config.go:228",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:stream.go:141",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "styx:internal/transport/shm/admission.go:31",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/go2draft-error-printing.md:155",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:458",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:265",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:47",
+    "wrap": "true",
+    "fused": "false"
+  }
+]

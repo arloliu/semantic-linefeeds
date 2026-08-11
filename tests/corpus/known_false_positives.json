@@ -1,0 +1,90 @@
+{
+  "go/aligned_labels.go": [
+    [
+      3,
+      "wrap"
+    ],
+    [
+      7,
+      "wrap"
+    ]
+  ],
+  "go/fragment_paragraphs.go": [
+    [
+      3,
+      "wrap"
+    ],
+    [
+      6,
+      "wrap"
+    ]
+  ],
+  "go/lexical_continuations.go": [
+    [
+      3,
+      "wrap"
+    ],
+    [
+      6,
+      "wrap"
+    ],
+    [
+      9,
+      "wrap"
+    ],
+    [
+      12,
+      "wrap"
+    ]
+  ],
+  "go/wide_labels.go": [
+    [
+      3,
+      "wrap"
+    ],
+    [
+      6,
+      "wrap"
+    ]
+  ],
+  "markdown/abbreviations.md": [
+    [
+      3,
+      "fused"
+    ],
+    [
+      4,
+      "fused"
+    ]
+  ],
+  "markdown/adjacent_list_items.md": [
+    [
+      3,
+      "wrap"
+    ],
+    [
+      6,
+      "wrap"
+    ]
+  ],
+  "markdown/release_notes.md": [
+    [
+      3,
+      "wrap"
+    ]
+  ],
+  "markdown/trailing_emphasis.md": [
+    [
+      3,
+      "wrap"
+    ],
+    [
+      6,
+      "wrap"
+    ],
+    [
+      9,
+      "wrap"
+    ]
+  ]
+}

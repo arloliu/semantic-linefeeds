@@ -1,0 +1,667 @@
+[
+  {
+    "id": "go-proposal:design/12914-monotonic.md:338",
+    "kind": "wrap",
+    "path": "design/12914-monotonic.md",
+    "lines": [
+      338,
+      339
+    ],
+    "upper": "t := time.Now()",
+    "lower": "elapsed := t.Sub(start)",
+    "context": [
+      "start := time.Now()",
+      "... operation that takes 20 milliseconds ...",
+      "t := time.Now()",
+      "elapsed := t.Sub(start)",
+      "",
+      "Other idioms, such as time.Since(start), time.Until(deadline),"
+    ],
+    "passes": {
+      "agy": "ambiguous",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the lines are Go code inside a blockquoted indented block, and the rule never breaks code; the extractor cuts plain indented code but not the same code inside a blockquote, so a complaint here is a false positive rather than a sampling error"
+  },
+  {
+    "id": "go-proposal:design/12914-monotonic.md:338",
+    "kind": "fused",
+    "path": "design/12914-monotonic.md",
+    "lines": [
+      338,
+      339
+    ],
+    "upper": "t := time.Now()",
+    "lower": "elapsed := t.Sub(start)",
+    "context": [
+      "start := time.Now()",
+      "... operation that takes 20 milliseconds ...",
+      "t := time.Now()",
+      "elapsed := t.Sub(start)",
+      "",
+      "Other idioms, such as time.Since(start), time.Until(deadline),"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the lines are Go code inside a blockquoted indented block, and the rule never breaks code; the extractor cuts plain indented code but not the same code inside a blockquote, so a complaint here is a false positive rather than a sampling error"
+  },
+  {
+    "id": "go-proposal:design/12914-monotonic.md:551",
+    "kind": "wrap",
+    "path": "design/12914-monotonic.md",
+    "lines": [
+      551,
+      552
+    ],
+    "upper": "This would improve precision but again it is false precision beyond the actual accuracy",
+    "lower": "of the calls.",
+    "context": [
+      "This is an option if we decide it is important to eliminate the discrepancy",
+      "on commonly used systems.",
+      "This would improve precision but again it is false precision beyond the actual accuracy",
+      "of the calls."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the break severs a prepositional phrase from the noun it modifies, and no boundary the rule names stands at that point"
+  },
+  {
+    "id": "go-proposal:design/13073-code-of-conduct.md:377",
+    "kind": "fused",
+    "path": "design/13073-code-of-conduct.md",
+    "lines": [
+      377,
+      378
+    ],
+    "upper": "C replies back \"Ack! Sorry, I actually don't know.\"",
+    "lower": "E enters the conversation and criticizes C for his behavior in his",
+    "context": [
+      "B points out the small detail C overlooked in the question to clarify the",
+      "complexity.",
+      "C replies back \"Ack! Sorry, I actually don't know.\"",
+      "E enters the conversation and criticizes C for his behavior in his",
+      "original reply, raising the issue further with a moderator.",
+      "D, a moderator, replies to the list to ask C to be less impatient in their responses,"
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "false",
+      "codex": "true"
+    },
+    "label": "false",
+    "reason": "the line is one statement, C replies back \"...\"; the sentence ends inside the quotation belong to the quoted speech, not to this line"
+  },
+  {
+    "id": "go-proposal:design/26903-simplify-mark-termination.md:64",
+    "kind": "wrap",
+    "path": "design/26903-simplify-mark-termination.md",
+    "lines": [
+      64,
+      65
+    ],
+    "upper": "Go 1.8 introduced [a new write barrier](17503-eliminate-rescan.md)",
+    "lower": "that eliminated the need to re-scan stacks.",
+    "context": [
+      "work, since any stacks that had been modified during the concurrent",
+      "mark phase had to be re-scanned during mark termination.",
+      "Go 1.8 introduced [a new write barrier](17503-eliminate-rescan.md)",
+      "that eliminated the need to re-scan stacks.",
+      "This significantly reduced the amount of work that had to be done in",
+      "mark termination."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the rule names a relative pronoun as a clause boundary and places it at the start of the lower line, so this break is the rule's own example"
+  },
+  {
+    "id": "go-proposal:design/27935-unbounded-queue-package.md:146",
+    "kind": "wrap",
+    "path": "design/27935-unbounded-queue-package.md",
+    "lines": [
+      146,
+      147
+    ],
+    "upper": "properties",
+    "lower": "Adding new values always require new memory allocations and pointers being",
+    "context": [
+      "properties",
+      "Adding new values always require new memory allocations and pointers being",
+      "set, hindering performance"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "false",
+      "codex": "ambiguous"
+    },
+    "label": "false",
+    "reason": "one list item ends and another begins, which is not one sentence split at a column"
+  },
+  {
+    "id": "go-proposal:design/29934-error-values.md:70",
+    "kind": "wrap",
+    "path": "design/29934-error-values.md",
+    "lines": [
+      70,
+      71
+    ],
+    "upper": "All of the API changes are in the `errors` package. We also change the behavior",
+    "lower": "of parts of the `fmt` package.",
+    "context": [
+      "All of the API changes are in the `errors` package. We also change the behavior",
+      "of parts of the `fmt` package."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the line's defect is that it holds two sentences; counting the same fault again as a wrap would count it twice"
+  },
+  {
+    "id": "go-proposal:design/43651-type-parameters.md:314",
+    "kind": "wrap",
+    "path": "design/43651-type-parameters.md",
+    "lines": [
+      314,
+      315
+    ],
+    "upper": "of that type",
+    "lower": "pass the type to some predeclared functions such as `new`",
+    "context": [
+      "use the type as a case in a type switch",
+      "define and use composite types that use those types, such as a slice",
+      "of that type",
+      "pass the type to some predeclared functions such as `new`"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "false",
+      "codex": "true"
+    },
+    "label": "false",
+    "reason": "one list item ends and another begins, which is not one sentence split at a column"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:1003",
+    "kind": "fused",
+    "path": "design/60078-loopvar.md",
+    "lines": [
+      1003,
+      1004
+    ],
+    "upper": "Acquiring a new toolset. This comes when you upgrade Visual Studio",
+    "lower": "or the .NET SDK. We want these to be _friction free_ actions so",
+    "context": [
+      "separates the concept for customers of:",
+      "",
+      "Acquiring a new toolset. This comes when you upgrade Visual Studio",
+      "or the .NET SDK. We want these to be _friction free_ actions so",
+      "customers get latest bug / security fixes. This never changes",
+      "`<LangVersion>` so breaks don't happen here."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the line closes one sentence and opens another"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:277",
+    "kind": "wrap",
+    "path": "design/60078-loopvar.md",
+    "lines": [
+      277,
+      278
+    ],
+    "upper": "for _, s := range []string{\"a\", \"b\", \"c\"} {",
+    "lower": "prints = append(prints, func() { println(s) })",
+    "context": [
+      "",
+      "var prints []func()",
+      "for _, s := range []string{\"a\", \"b\", \"c\"} {",
+      "prints = append(prints, func() { println(s) })",
+      "}",
+      "for _, p := range prints {"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the lines are Go code inside a blockquoted indented block, and the rule never breaks code; the extractor cuts plain indented code but not the same code inside a blockquote, so a complaint here is a false positive rather than a sampling error"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:277",
+    "kind": "fused",
+    "path": "design/60078-loopvar.md",
+    "lines": [
+      277,
+      278
+    ],
+    "upper": "for _, s := range []string{\"a\", \"b\", \"c\"} {",
+    "lower": "prints = append(prints, func() { println(s) })",
+    "context": [
+      "",
+      "var prints []func()",
+      "for _, s := range []string{\"a\", \"b\", \"c\"} {",
+      "prints = append(prints, func() { println(s) })",
+      "}",
+      "for _, p := range prints {"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the lines are Go code inside a blockquoted indented block, and the rule never breaks code; the extractor cuts plain indented code but not the same code inside a blockquote, so a complaint here is a false positive rather than a sampling error"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:279",
+    "kind": "wrap",
+    "path": "design/60078-loopvar.md",
+    "lines": [
+      279,
+      280
+    ],
+    "upper": "}",
+    "lower": "for _, p := range prints {",
+    "context": [
+      "for _, s := range []string{\"a\", \"b\", \"c\"} {",
+      "prints = append(prints, func() { println(s) })",
+      "}",
+      "for _, p := range prints {",
+      "p()",
+      "}"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the lines are Go code inside a blockquoted indented block, and the rule never breaks code; the extractor cuts plain indented code but not the same code inside a blockquote, so a complaint here is a false positive rather than a sampling error"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:279",
+    "kind": "fused",
+    "path": "design/60078-loopvar.md",
+    "lines": [
+      279,
+      280
+    ],
+    "upper": "}",
+    "lower": "for _, p := range prints {",
+    "context": [
+      "for _, s := range []string{\"a\", \"b\", \"c\"} {",
+      "prints = append(prints, func() { println(s) })",
+      "}",
+      "for _, p := range prints {",
+      "p()",
+      "}"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the lines are Go code inside a blockquoted indented block, and the rule never breaks code; the extractor cuts plain indented code but not the same code inside a blockquote, so a complaint here is a false positive rather than a sampling error"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:285",
+    "kind": "wrap",
+    "path": "design/60078-loopvar.md",
+    "lines": [
+      285,
+      286
+    ],
+    "upper": "// a",
+    "lower": "// b",
+    "context": [
+      "",
+      "// Output:",
+      "// a",
+      "// b",
+      "// c",
+      ""
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the lines are Go code inside a blockquoted indented block, and the rule never breaks code; the extractor cuts plain indented code but not the same code inside a blockquote, so a complaint here is a false positive rather than a sampling error"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:285",
+    "kind": "fused",
+    "path": "design/60078-loopvar.md",
+    "lines": [
+      285,
+      286
+    ],
+    "upper": "// a",
+    "lower": "// b",
+    "context": [
+      "",
+      "// Output:",
+      "// a",
+      "// b",
+      "// c",
+      ""
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "false",
+    "reason": "the lines are Go code inside a blockquoted indented block, and the rule never breaks code; the extractor cuts plain indented code but not the same code inside a blockquote, so a complaint here is a false positive rather than a sampling error"
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:742",
+    "kind": "wrap",
+    "path": "design/76331-lsp-interactive-refactoring.md",
+    "lines": [
+      742,
+      743
+    ],
+    "upper": "method: `window/collectInput`",
+    "lower": "params: `FormField[]`",
+    "context": [
+      "**Request:**",
+      "method: `window/collectInput`",
+      "params: `FormField[]`"
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "false",
+      "codex": "ambiguous"
+    },
+    "label": "false",
+    "reason": "each line is a complete field rather than one sentence split at a column"
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:50",
+    "kind": "fused",
+    "path": "design/generics-implementation-dictionaries-go1.18.md",
+    "lines": [
+      50,
+      51
+    ],
+    "upper": "For all explicit or implicit `OCONVIFACE` calls from a non-interface type to a non-empty interface.  The itab is used to create the destination interface.",
+    "lower": "For all method calls on a type parameter (which must be to a method in the type parameter’s bound).  This method call is implemented as a conversion of the receiver to the type bound interface, and hence is handled similarly to an implicit `OCONVIFACE` call.",
+    "context": [
+      "A sub-dictionary entry points to the normal top-level dictionary that is needed to execute the called function/method with the required type arguments, as substituted using the type arguments of the dictionary of the outer function.",
+      "**Any specific itabs needed for conversion to a specific non-empty interface** from a type param or derived type.  There are currently four main cases where we use dictionary-derived itabs.  In all cases, the itab must come from the dictionary, since it depends on the type arguments of the current function.",
+      "For all explicit or implicit `OCONVIFACE` calls from a non-interface type to a non-empty interface.  The itab is used to create the destination interface.",
+      "For all method calls on a type parameter (which must be to a method in the type parameter’s bound).  This method call is implemented as a conversion of the receiver to the type bound interface, and hence is handled similarly to an implicit `OCONVIFACE` call.",
+      "For all type assertions from a non-empty interface to a non-interface type.  The itab is needed to implement the type assertion.",
+      "For type switch cases that involve a non-interface type derived from the type params, where the value being switched on has a non-empty interface type.  As with type assertions, the itab is needed to implement the type switch."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the line closes one sentence and opens another"
+  },
+  {
+    "id": "go-proposal:design/go2draft-contracts.md:2073",
+    "kind": "wrap",
+    "path": "design/go2draft-contracts.md",
+    "lines": [
+      2073,
+      2074
+    ],
+    "upper": "_In order to use operators contracts have to explicitly and tediously_",
+    "lower": "_list types._",
+    "context": [
+      "_In order to use operators contracts have to explicitly and tediously_",
+      "_list types._",
+      "_Why not permit them to describe a type?_"
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the break separates the adverb 'tediously' from the verb it modifies; the emphasis markup only hides where the terminal punctuation would be"
+  },
+  {
+    "id": "go-proposal:design/go2draft-error-inspection.md:220",
+    "kind": "wrap",
+    "path": "design/go2draft-error-inspection.md",
+    "lines": [
+      220,
+      221
+    ],
+    "upper": "If `ConfigurationError` provides an `Unwrap` method,",
+    "lower": "then callers of `As` will be able to discover the `json.SyntaxError` underneath.",
+    "context": [
+      "The package defines its own error type, `ConfigurationError`,",
+      "to wrap underlying errors.",
+      "If `ConfigurationError` provides an `Unwrap` method,",
+      "then callers of `As` will be able to discover the `json.SyntaxError` underneath.",
+      "If the use of a JSON is an implementation detail that the package wishes to hide,",
+      "`ConfigurationError` should still implement `Formatter`,"
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "false",
+      "codex": "true"
+    },
+    "label": "false",
+    "reason": "the fronted conditional clause is complete and the comma marks a real clause edge, with 'then' opening the lower line"
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-message-ttl-publishWithTtl/main.go:39",
+    "kind": "wrap",
+    "path": "examples/docs/learn-jetstream-message-ttl-publishWithTtl/main.go",
+    "lines": [
+      39,
+      40
+    ],
+    "upper": "NATS-DOC-START",
+    "lower": "Publish with a 60-second TTL. WithMsgTTL sets the Nats-TTL header, so the",
+    "context": [
+      "NATS-DOC-START",
+      "Publish with a 60-second TTL. WithMsgTTL sets the Nats-TTL header, so the",
+      "server deletes this single message 60s after it is stored, ahead of the",
+      "stream's MaxAge."
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "ambiguous",
+    "reason": "NATS-DOC-START is a documentation extraction marker that SKILL.md does not name, and the rule does not say whether such a marker is prose at all"
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-worker-pool-redelivery-count/main.go:29",
+    "kind": "wrap",
+    "path": "examples/docs/learn-jetstream-worker-pool-redelivery-count/main.go",
+    "lines": [
+      29,
+      30
+    ],
+    "upper": "NATS-DOC-START",
+    "lower": "Bind to the durable \"shipping\" consumer.",
+    "context": [
+      "NATS-DOC-START",
+      "Bind to the durable \"shipping\" consumer."
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "ambiguous",
+    "reason": "NATS-DOC-START is a documentation extraction marker that SKILL.md does not name, and the rule does not say whether such a marker is prose at all"
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-your-first-stream-info/main.go:29",
+    "kind": "wrap",
+    "path": "examples/docs/learn-jetstream-your-first-stream-info/main.go",
+    "lines": [
+      29,
+      30
+    ],
+    "upper": "NATS-DOC-START",
+    "lower": "Look up the ORDERS stream and fetch its latest info from the server.",
+    "context": [
+      "NATS-DOC-START",
+      "Look up the ORDERS stream and fetch its latest info from the server."
+    ],
+    "passes": {
+      "agy": "false",
+      "claude": "ambiguous",
+      "codex": "false"
+    },
+    "label": "ambiguous",
+    "reason": "NATS-DOC-START is a documentation extraction marker that SKILL.md does not name, and the rule does not say whether such a marker is prose at all"
+  },
+  {
+    "id": "nats.go:jetstream/kv.go:97",
+    "kind": "fused",
+    "path": "jetstream/kv.go",
+    "lines": [
+      97,
+      98
+    ],
+    "upper": "GetRevision returns a specific revision value for the key. If the key",
+    "lower": "does not exist or the provided revision does not exists,",
+    "context": [
+      "GetRevision returns a specific revision value for the key. If the key",
+      "does not exist or the provided revision does not exists,",
+      "ErrKeyNotFound will be returned."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the line closes one sentence and opens another"
+  },
+  {
+    "id": "styx:clientconn.go:1051",
+    "kind": "wrap",
+    "path": "clientconn.go",
+    "lines": [
+      1051,
+      1052
+    ],
+    "upper": "A caller error, refused before anything is submitted: without a factory",
+    "lower": "there is no message for a response to become, and admitting the call would",
+    "context": [
+      "A caller error, refused before anything is submitted: without a factory",
+      "there is no message for a response to become, and admitting the call would",
+      "only turn the mistake into a call that fails once the peer answers."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the break severs a fronted prepositional phrase from its main clause, with no boundary marker at the break"
+  },
+  {
+    "id": "styx:clientconn.go:775",
+    "kind": "wrap",
+    "path": "clientconn.go",
+    "lines": [
+      775,
+      776
+    ],
+    "upper": "must be a decision and not a default: a consume step reports the peer's",
+    "lower": "bytes malformed only by naming them as the cause, and this one cannot —",
+    "context": [
+      "It is not attributed to the peer, because attribution under shm-abi.md §9",
+      "must be a decision and not a default: a consume step reports the peer's",
+      "bytes malformed only by naming them as the cause, and this one cannot —",
+      "the decode it ran was selected by a message type this side chose. What",
+      "makes the default the right one here is blast radius. Condemning the"
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the break falls between a possessive and the noun it governs"
+  },
+  {
+    "id": "styx:cmd/protoc-gen-go-styx/generate.go:400",
+    "kind": "wrap",
+    "path": "cmd/protoc-gen-go-styx/generate.go",
+    "lines": [
+      400,
+      401
+    ],
+    "upper": "Only unary methods ride the ServiceDesc dispatch table; streaming methods",
+    "lower": "register through RegisterStreamHandlerID below. The service is still",
+    "context": [
+      "Only unary methods ride the ServiceDesc dispatch table; streaming methods",
+      "register through RegisterStreamHandlerID below. The service is still",
+      "registered (advertising its ID/version for handshake) even when every method",
+      "streams and this method table is empty."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the break falls between the subject 'streaming methods' and its verb"
+  },
+  {
+    "id": "styx:examples/echo/plugin/crashy/main.go:127",
+    "kind": "fused",
+    "path": "examples/echo/plugin/crashy/main.go",
+    "lines": [
+      127,
+      128
+    ],
+    "upper": "Teardown reaps the process; the handler never returns on its own. Any other",
+    "lower": "request falls through and echoes, so a successor spawned after the wedged",
+    "context": [
+      "The sentinel request proves the handler was entered (the serve loop is now",
+      "inside it and no longer consuming inbound frames), then blocks forever.",
+      "Teardown reaps the process; the handler never returns on its own. Any other",
+      "request falls through and echoes, so a successor spawned after the wedged",
+      "instance is torn down can be observed answering."
+    ],
+    "passes": {
+      "agy": "true",
+      "claude": "true",
+      "codex": "false"
+    },
+    "label": "true",
+    "reason": "the line closes one sentence and opens another"
+  }
+]

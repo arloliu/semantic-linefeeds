@@ -1,0 +1,77 @@
+[
+  {
+    "id": "styx:clientconn.go:775",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/go2draft-error-printing.md:315",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:522",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:types.go:230",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/transport/shm/chaos/doc.go:27",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:reload.go:38",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/supervisor/doc.go:3",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/37112-unstable-runtime-metrics.md:15",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/35112-scaling-the-page-allocator.md:302",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:panic_policy.go:198",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/43651-type-parameters.md:1060",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:791",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/43651-type-parameters.md:2752",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/transport/transport.go:149",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/19348-midstack-inlining.md:20",
+    "wrap": "true",
+    "fused": "false"
+  }
+]

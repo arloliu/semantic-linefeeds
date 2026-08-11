@@ -1,0 +1,17 @@
+[
+  {"id": "go-proposal:design/15292/2013-10-gen.md:589", "wrap": "true", "fused": "false"},
+  {"id": "nats.go:examples/docs/learn-jetstream-your-first-stream-info/main.go:29", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/draft-vulndb.md:19", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/55022-pgo.md:114", "wrap": "false", "fused": "false"},
+  {"id": "styx:observe/sink.go:162", "wrap": "true", "fused": "true"},
+  {"id": "styx:internal/event/spin.go:71", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/15292/2011-03-gen.md:411", "wrap": "true", "fused": "false"},
+  {"id": "styx:internal/lifecycle/testdata/spawn_helper/main.go:18", "wrap": "false", "fused": "false"},
+  {"id": "styx:pluginserver.go:904", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/18130-type-alias.md:138", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/60078-loopvar.md:950", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/go2draft-contracts.md:75", "wrap": "true", "fused": "false"},
+  {"id": "styx:internal/transport/shm/transport.go:1016", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/44167-gc-pacer-redesign.md:786", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/16339-alias-decls.md:97", "wrap": "true", "fused": "true"}
+]

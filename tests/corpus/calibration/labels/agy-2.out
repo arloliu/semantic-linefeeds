@@ -1,0 +1,77 @@
+[
+  {
+    "id": "nats.go:jetstream/jetstream_options.go:590",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/go2draft-generics-overview.md:9",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:406",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/37112-unstable-runtime-metrics.md:12",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/40724-register-calling.md:332",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/43651-type-parameters.md:314",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/36460-lazy-module-loading.md:186",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/15292/2016-09-compile-time-functions.md:134",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/supervisor/supervisor.go:634",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/48409-soft-memory-limit.md:409",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/55022-pgo-implementation.md:121",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/24301-versioned-go.md:347",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:684",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:jetstream/kv.go:97",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "go-proposal:design/go2draft-error-inspection.md:220",
+    "wrap": "true",
+    "fused": "false"
+  }
+]

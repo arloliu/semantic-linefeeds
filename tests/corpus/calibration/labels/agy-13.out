@@ -1,0 +1,17 @@
+[
+  {"id": "styx:host.go:466", "wrap": "true", "fused": "true"},
+  {"id": "go-proposal:design/15292/2013-12-type-params.md:932", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/19308-number-literals.md:493", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/15292/2013-10-gen.md:20", "wrap": "false", "fused": "true"},
+  {"id": "go-proposal:design/44167/gc-pacer-redesign.src.md:25", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/19308-number-literals.md:471", "wrap": "true", "fused": "false"},
+  {"id": "styx:host.go:317", "wrap": "true", "fused": "false"},
+  {"id": "styx:clientconn.go:1192", "wrap": "true", "fused": "false"},
+  {"id": "nats.go:nats.go:6408", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/60078-loopvar.md:279", "wrap": "false", "fused": "false"},
+  {"id": "styx:internal/supervisor/events.go:88", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/37112-unstable-runtime-metrics.md:23", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:README.md:28", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/57001-gotoolchain.md:142", "wrap": "true", "fused": "false"},
+  {"id": "styx:internal/transport/shm/transport.go:1596", "wrap": "false", "fused": "false"}
+]

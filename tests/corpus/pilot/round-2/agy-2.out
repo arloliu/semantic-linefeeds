@@ -1,0 +1,17 @@
+[
+  {"id": "go-proposal:design/15292/2010-06-type-functions.md:715", "wrap": "false", "fused": "true"},
+  {"id": "styx:internal/event/spin.go:315", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/43810-go-pmem.md:68", "wrap": "true", "fused": "true"},
+  {"id": "nats.go:js.go:3887", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/15292/2013-12-type-params.md:1070", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/51082-godocfmt.md:295", "wrap": "true", "fused": "true"},
+  {"id": "styx:pluginserver.go:311", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/14951-soft-heap-limit.md:290", "wrap": "true", "fused": "false"},
+  {"id": "styx:host.go:1512", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/16410-heap-viewer.md:82", "wrap": "true", "fused": "true"},
+  {"id": "go-proposal:design/12302-release-proposal.md:28", "wrap": "false", "fused": "false"},
+  {"id": "styx:internal/transport/shm/writer.go:247", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/25530-sumdb.md:330", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/40724-register-calling.md:128", "wrap": "true", "fused": "false"},
+  {"id": "styx:internal/rpcruntime/table.go:98", "wrap": "true", "fused": "false"}
+]

@@ -1,0 +1,79 @@
+```json
+[
+  {
+    "id": "go-proposal:design/34481-opencoded-defers.md:116",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:620",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:277",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:101",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/24543/safe-points-everywhere.md:122",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:jetstream/object.go:727",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:bench/spike/event/waiter.go:198",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:observe/logger.go:8",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/15292/2016-09-compile-time-functions.md:361",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/rpcruntime/stream_table.go:491",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/27539-internal-abi.md:424",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/12302-release-proposal.md:105",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/go2draft-contracts.md:1044",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:396",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "go-proposal:design/48409/soft-memory-limit.src.md:486",
+    "wrap": "false",
+    "fused": "false"
+  }
+]
+```

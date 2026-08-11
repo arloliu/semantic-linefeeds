@@ -1,0 +1,77 @@
+[
+  {
+    "id": "go-proposal:design/40276-go-install.md:482",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/draft-embed.md:446",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/draft-gobuild.md:392",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:errors.go:404",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/59960-heap-hugepage-util.md:196",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:jetstream/jetstream.go:76",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/go2draft-contracts.md:662",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/freeze-syscall.md:20",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:285",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/44167-gc-pacer-redesign.md:527",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/70257-memory-regions.md:280",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/go2draft-contracts.md:396",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/go2draft-error-printing.md:268",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:js.go:305",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/draft-gobuild.md:411",
+    "wrap": "false",
+    "fused": "false"
+  }
+]

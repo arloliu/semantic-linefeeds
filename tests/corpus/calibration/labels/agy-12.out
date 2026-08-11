@@ -1,0 +1,77 @@
+[
+  {
+    "id": "go-proposal:design/17505-concurrent-rescan.md:57",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/14313-benchmark-format.md:59",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/supervisor/events.go:71",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/event/cgroup.go:146",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "go-proposal:design/17505-concurrent-rescan.md:273",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/go2draft-contracts.md:2139",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:cmd/protoc-gen-go-styx/generate.go:400",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:observability.go:156",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/control/handshake.go:458",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/30333-smarter-scavenging.md:53",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/26903-simplify-mark-termination.md:64",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/rpcruntime/burst.go:243",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:50",
+    "wrap": "false",
+    "fused": "true"
+  },
+  {
+    "id": "go-proposal:design/43651-type-parameters.md:3561",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:examples/slow-handler/host/main.go:149",
+    "wrap": "true",
+    "fused": "false"
+  }
+]

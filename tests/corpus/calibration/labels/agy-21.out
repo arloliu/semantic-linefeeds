@@ -1,0 +1,77 @@
+[
+  {
+    "id": "styx:pluginserver.go:1147",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "styx:pluginserver.go:1470",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "nats.go:jetstream/consumer_config.go:41",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:errors.go:424",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:1633",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/transport/shm/writer.go:1326",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:stream.go:1476",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:jetstream/kv.go:132",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:types.go:162",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/6282-table-data.md:1139",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/12166-subtests.md:517",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/57001-gotoolchain.md:28",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:914",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/draft-embed.md:280",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/51430-revamp-code-coverage.md:760",
+    "wrap": "false",
+    "fused": "false"
+  }
+]

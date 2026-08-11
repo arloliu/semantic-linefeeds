@@ -1,0 +1,79 @@
+```json
+[
+  {
+    "id": "go-proposal:design/27539-internal-abi.md:250",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:204",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/transport/uds.go:288",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "styx:internal/supervisor/events.go:414",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/draft-fuzzing.md:383",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/56986-godebug.md:162",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:71",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "go-proposal:design/34481-opencoded-defers.md:115",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:111",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:116",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:829",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/43651-type-parameters.md:3994",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:jetstream/pull.go:36",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:458",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/35112-scaling-the-page-allocator.md:453",
+    "wrap": "true",
+    "fused": "false"
+  }
+]
+```

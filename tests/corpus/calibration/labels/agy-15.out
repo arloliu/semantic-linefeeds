@@ -1,0 +1,17 @@
+[
+  {"id": "go-proposal:design/51082-godocfmt.md:248", "wrap": "true", "fused": "true"},
+  {"id": "go-proposal:design/go2draft-contracts.md:220", "wrap": "true", "fused": "false"},
+  {"id": "styx:host.go:1247", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/draft-embed.md:411", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/37112-unstable-runtime-metrics.md:259", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/go2draft-contracts.md:764", "wrap": "false", "fused": "false"},
+  {"id": "styx:internal/transport/transport.go:271", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/43651-type-parameters.md:4227", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/43651-type-parameters.md:90", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/draft-embed.md:181", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/15292/2013-12-type-params.md:1652", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/go2draft-error-inspection.md:63", "wrap": "false", "fused": "false"},
+  {"id": "nats.go:nats.go:4038", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/13073-code-of-conduct.md:167", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/47916-parameterized-go-types.md:225", "wrap": "false", "fused": "false"}
+]

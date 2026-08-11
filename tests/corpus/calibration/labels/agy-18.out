@@ -1,0 +1,17 @@
+[
+  {"id": "styx:types.go:135", "wrap": "true", "fused": "false"},
+  {"id": "styx:internal/control/fds.go:54", "wrap": "true", "fused": "false"},
+  {"id": "nats.go:jetstream/jetstream_options.go:754", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/27539-internal-abi.md:128", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/60773-execution-tracer-overhaul.md:944", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/69095-x-repo-continuous-go.md:29", "wrap": "true", "fused": "false"},
+  {"id": "nats.go:jsm.go:192", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/14386-zip-package-archives.md:343", "wrap": "true", "fused": "false"},
+  {"id": "styx:internal/event/hook_export.go:9", "wrap": "true", "fused": "false"},
+  {"id": "styx:observe/sink.go:113", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/24543-non-cooperative-preemption.md:433", "wrap": "false", "fused": "false"},
+  {"id": "styx:internal/transport/shm/writer.go:185", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/14386-zip-package-archives.md:355", "wrap": "false", "fused": "false"},
+  {"id": "go-proposal:design/43651-type-parameters.md:2482", "wrap": "true", "fused": "false"},
+  {"id": "go-proposal:design/42372-wasmexport.md:108", "wrap": "true", "fused": "false"}
+]

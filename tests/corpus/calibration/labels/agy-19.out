@@ -1,0 +1,77 @@
+[
+  {
+    "id": "go-proposal:design/12416-cgo-pointers.md:183",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:266",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/rpcruntime/table.go:198",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/30333-smarter-scavenging.md:251",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:629",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/13073-code-of-conduct.md:377",
+    "wrap": "false",
+    "fused": "true"
+  },
+  {
+    "id": "styx:types.go:92",
+    "wrap": "false",
+    "fused": "true"
+  },
+  {
+    "id": "go-proposal:design/2981-go-test-json.md:344",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/43651-type-parameters.md:1773",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/44167-gc-pacer-redesign.md:182",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:747",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:observability.go:769",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/draft-embed.md:167",
+    "wrap": "false",
+    "fused": "false"
+  },
+  {
+    "id": "styx:host.go:1517",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:nats.go:422",
+    "wrap": "true",
+    "fused": "false"
+  }
+]

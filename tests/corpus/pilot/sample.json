@@ -1,0 +1,2240 @@
+{
+  "stratum": "raw_end_column",
+  "bands": [
+    64,
+    71,
+    78,
+    85
+  ],
+  "per_level": 12,
+  "seed": "pilot-raw-end-column-1",
+  "population": 41692,
+  "units": [
+    {
+      "id": "go-proposal:design/28221-go2-transitions.md:566",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/28221-go2-transitions.md",
+      "lines": [
+        566,
+        567
+      ],
+      "upper": "We could introduce a removal import, such as `import",
+      "lower": "\"go2/no-int-to-string\"`, but it's not obvious why anyone would ever",
+      "context": [
+        "This mechanism does not address language removals.",
+        "We could introduce a removal import, such as `import",
+        "\"go2/no-int-to-string\"`, but it's not obvious why anyone would ever",
+        "use it.",
+        "In practice, there would be no way to ever remove language features,"
+      ],
+      "covariates": {
+        "prose_width": 68,
+        "raw_end_column": 52,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 6,
+        "eligible_anchor_count": 4
+      },
+      "raw_window": [
+        "This mechanism does not address language removals.",
+        "We could introduce a removal import, such as `import",
+        "\"go2/no-int-to-string\"`, but it's not obvious why anyone would ever",
+        "use it.",
+        "In practice, there would be no way to ever remove language features,"
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "styx:internal/rpcruntime/stream.go:109",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/rpcruntime/stream.go",
+      "lines": [
+        109,
+        110
+      ],
+      "upper": "It consumes no stream credit.",
+      "lower": "Unused for the other shapes, whose first message is a STREAM_MSG.",
+      "context": [
+        "even when empty — a zero-byte request is legal and still establishes the",
+        "shape.",
+        "It consumes no stream credit.",
+        "Unused for the other shapes, whose first message is a STREAM_MSG."
+      ],
+      "covariates": {
+        "prose_width": 85,
+        "raw_end_column": 33,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 8,
+        "eligible_anchor_count": 0
+      },
+      "raw_window": [
+        "\t// even when empty — a zero-byte request is legal and still establishes the",
+        "\t// shape.",
+        "\t// It consumes no stream credit.",
+        "\t// Unused for the other shapes, whose first message is a STREAM_MSG."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/15292/2011-03-gen.md:94",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/15292/2011-03-gen.md",
+      "lines": [
+        94,
+        95
+      ],
+      "upper": "In the above example, `Pair` when used as the result type of",
+      "lower": "`MakePair` is equivalent to `Pair[T1, T2]`.",
+      "context": [
+        "When the type parameters are omitted, they are assumed to simply be",
+        "the parameters declared for the block.",
+        "In the above example, `Pair` when used as the result type of",
+        "`MakePair` is equivalent to `Pair[T1, T2]`."
+      ],
+      "covariates": {
+        "prose_width": 67,
+        "raw_end_column": 60,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 6,
+        "eligible_anchor_count": 5
+      },
+      "raw_window": [
+        "When the type parameters are omitted, they are assumed to simply be",
+        "the parameters declared for the block.",
+        "In the above example, `Pair` when used as the result type of",
+        "`MakePair` is equivalent to `Pair[T1, T2]`."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/25530-sumdb.md:330",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/25530-sumdb.md",
+      "lines": [
+        330,
+        331
+      ],
+      "upper": "It is important that the service be secure.",
+      "lower": "Our thinking about the security design of the database has evolved over time,",
+      "context": [
+        "The Go team at Google will run the Go checksum database as a service to the Go ecosystem,",
+        "similar to running `godoc.org` and `golang.org`.",
+        "It is important that the service be secure.",
+        "Our thinking about the security design of the database has evolved over time,",
+        "and it is useful to outline the evolution that led to the",
+        "current design."
+      ],
+      "covariates": {
+        "prose_width": 89,
+        "raw_end_column": 43,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 6,
+        "eligible_anchor_count": 3
+      },
+      "raw_window": [
+        "The Go team at Google will run the Go checksum database as a service to the Go ecosystem,",
+        "similar to running `godoc.org` and `golang.org`.",
+        "It is important that the service be secure.",
+        "Our thinking about the security design of the database has evolved over time,",
+        "and it is useful to outline the evolution that led to the",
+        "current design."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "nats.go:examples/nats-echo/main.go:1",
+      "source": "nats.go",
+      "frame": "main",
+      "path": "examples/nats-echo/main.go",
+      "lines": [
+        1,
+        2
+      ],
+      "upper": "Copyright 2018-2022 The NATS Authors",
+      "lower": "Licensed under the Apache License, Version 2.0 (the \"License\");",
+      "context": [
+        "Copyright 2018-2022 The NATS Authors",
+        "Licensed under the Apache License, Version 2.0 (the \"License\");",
+        "you may not use this file except in compliance with the License.",
+        "You may obtain a copy of the License at"
+      ],
+      "covariates": {
+        "prose_width": 67,
+        "raw_end_column": 39,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 1
+      },
+      "sampling_defect": "drawn from a licence header, which SKILL.md names a never-break class; the extractor's licence cut was not applied when this sample was drawn, and it is applied now"
+    },
+    {
+      "id": "go-proposal:design/40724-register-calling.md:128",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/40724-register-calling.md",
+      "lines": [
+        128,
+        129
+      ],
+      "upper": "This lets us start with a simple, minimal calling convention and",
+      "lower": "continue to optimize it in the future.",
+      "context": [
+        "This same multiple ABI mechanism allows us to continue to evolve the",
+        "Go calling convention in future versions.",
+        "This lets us start with a simple, minimal calling convention and",
+        "continue to optimize it in the future."
+      ],
+      "covariates": {
+        "prose_width": 68,
+        "raw_end_column": 64,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 5
+      },
+      "raw_window": [
+        "This same multiple ABI mechanism allows us to continue to evolve the",
+        "Go calling convention in future versions.",
+        "This lets us start with a simple, minimal calling convention and",
+        "continue to optimize it in the future."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/4899-testing-helper.md:139",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/4899-testing-helper.md",
+      "lines": [
+        139,
+        140
+      ],
+      "upper": "Then you could write",
+      "lower": "",
+      "context": [
+        "func (t *T) Up(n) *t { .... }",
+        "",
+        "Then you could write",
+        "",
+        "t.Up(1).Error(\"this would be tagged with the caller's line number\")"
+      ],
+      "covariates": {
+        "prose_width": 79,
+        "raw_end_column": 22,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 1,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 7,
+        "eligible_anchor_count": 0
+      },
+      "raw_window": [
+        ">     func (t *T) Up(n) *t { .... }",
+        ">",
+        "> Then you could write",
+        ">",
+        ">     t.Up(1).Error(\"this would be tagged with the caller's line number\")"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "nats.go:examples/docs/learn-jetstream-retention-policies-workqueueOverlap/main.go:39",
+      "source": "nats.go",
+      "frame": "main",
+      "path": "examples/docs/learn-jetstream-retention-policies-workqueueOverlap/main.go",
+      "lines": [
+        39,
+        40
+      ],
+      "upper": "NATS-DOC-START",
+      "lower": "One unfiltered consumer covers every order in the queue.",
+      "context": [
+        "NATS-DOC-START",
+        "One unfiltered consumer covers every order in the queue."
+      ],
+      "covariates": {
+        "prose_width": 67,
+        "raw_end_column": 18,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 2,
+        "eligible_anchor_count": 0
+      },
+      "raw_window": [
+        "\t// NATS-DOC-START",
+        "\t// One unfiltered consumer covers every order in the queue."
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "go-proposal:design/12302-release-proposal.md:28",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/12302-release-proposal.md",
+      "lines": [
+        28,
+        29
+      ],
+      "upper": "who report bugs against our released versions.",
+      "lower": "In fact we specifically recommend against people using unreleased versions in",
+      "context": [
+        "For example, the Go project itself offers a higher level of support to users",
+        "who report bugs against our released versions.",
+        "In fact we specifically recommend against people using unreleased versions in",
+        "production."
+      ],
+      "covariates": {
+        "prose_width": 77,
+        "raw_end_column": 46,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 3
+      },
+      "raw_window": [
+        "For example, the Go project itself offers a higher level of support to users",
+        "who report bugs against our released versions.",
+        "In fact we specifically recommend against people using unreleased versions in",
+        "production."
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "go-proposal:design/15292/2013-10-gen.md:610",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/15292/2013-10-gen.md",
+      "lines": [
+        610,
+        611
+      ],
+      "upper": "interface conversion as needed.",
+      "lower": "The actual call to `Sum(s)` will be rewritten as `GenSum(s).(realT)`.",
+      "context": [
+        "`Sum` with the interface value for the generated interface.",
+        "As shown above, the methods automatically use type assertions and",
+        "interface conversion as needed.",
+        "The actual call to `Sum(s)` will be rewritten as `GenSum(s).(realT)`.",
+        "The type assertions and interface conversions are checked at compile",
+        "time and will always succeed."
+      ],
+      "covariates": {
+        "prose_width": 69,
+        "raw_end_column": 31,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 8,
+        "eligible_anchor_count": 0
+      },
+      "raw_window": [
+        "`Sum` with the interface value for the generated interface.",
+        "As shown above, the methods automatically use type assertions and",
+        "interface conversion as needed.",
+        "The actual call to `Sum(s)` will be rewritten as `GenSum(s).(realT)`.",
+        "The type assertions and interface conversions are checked at compile",
+        "time and will always succeed."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/70257-memory-regions.md:769",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/70257-memory-regions.md",
+      "lines": [
+        769,
+        770
+      ],
+      "upper": "Mean CPU time between pointer writes: 120 cpu-ns",
+      "lower": "Write barrier overhead: 4.30%",
+      "context": [
+        "Write barrier overhead: 4.45%",
+        "CockroachDB kv50",
+        "Mean CPU time between pointer writes: 120 cpu-ns",
+        "Write barrier overhead: 4.30%",
+        "CockroachDB kv95",
+        "Mean CPU time between pointer writes: 117 cpu-ns"
+      ],
+      "covariates": {
+        "prose_width": 52,
+        "raw_end_column": 52,
+        "indentation_depth": 2,
+        "language": "markdown",
+        "markdown_nesting": 1,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": true,
+        "paragraph_line_count": 18,
+        "eligible_anchor_count": 2
+      },
+      "raw_window": [
+        "  * Write barrier overhead: 4.45%",
+        "* CockroachDB kv50",
+        "  * Mean CPU time between pointer writes: 120 cpu-ns",
+        "  * Write barrier overhead: 4.30%",
+        "* CockroachDB kv95",
+        "  * Mean CPU time between pointer writes: 117 cpu-ns"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/14313-benchmark-format.md:150",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/14313-benchmark-format.md",
+      "lines": [
+        150,
+        151
+      ],
+      "upper": "throughput is reported per-second; neither is a total that",
+      "lower": "depends on the number of iterations.",
+      "context": [
+        "interpreted without considering to the number of iterations.",
+        "In the example, the CPU cost is reported per-operation and the",
+        "throughput is reported per-second; neither is a total that",
+        "depends on the number of iterations."
+      ],
+      "covariates": {
+        "prose_width": 63,
+        "raw_end_column": 58,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 8,
+        "eligible_anchor_count": 3
+      },
+      "raw_window": [
+        "interpreted without considering to the number of iterations.",
+        "In the example, the CPU cost is reported per-operation and the",
+        "throughput is reported per-second; neither is a total that",
+        "depends on the number of iterations."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/43810-go-pmem.md:68",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/43810-go-pmem.md",
+      "lines": [
+        68,
+        69
+      ],
+      "upper": "C and C++ developers support for persistent memory programming. Other",
+      "lower": "programming languages such as Java and Python are exploring ways to enable",
+      "context": [
+        "C and C++ developers support for persistent memory programming. Other",
+        "programming languages such as Java and Python are exploring ways to enable",
+        "efficient access to persistent memory. E.g.,"
+      ],
+      "covariates": {
+        "prose_width": 74,
+        "raw_end_column": 69,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 3,
+        "eligible_anchor_count": 5
+      },
+      "raw_window": [
+        "C and C++ developers support for persistent memory programming. Other",
+        "programming languages such as Java and Python are exploring ways to enable",
+        "efficient access to persistent memory. E.g.,"
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "go-proposal:design/14951-soft-heap-limit.md:290",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/14951-soft-heap-limit.md",
+      "lines": [
+        290,
+        291
+      ],
+      "upper": "If GC terminates with a significant amount of remaining work credit,",
+      "lower": "that means marking significantly outpaced allocation, and the next GC",
+      "context": [
+        "trigger controller in the regime where there are no assists.",
+        "Alternatively, we could use work credit as a signal in this regime.",
+        "If GC terminates with a significant amount of remaining work credit,",
+        "that means marking significantly outpaced allocation, and the next GC",
+        "cycle can trigger later."
+      ],
+      "covariates": {
+        "prose_width": 69,
+        "raw_end_column": 68,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 7,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "trigger controller in the regime where there are no assists.",
+        "Alternatively, we could use work credit as a signal in this regime.",
+        "If GC terminates with a significant amount of remaining work credit,",
+        "that means marking significantly outpaced allocation, and the next GC",
+        "cycle can trigger later."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:go2-language-changes.md:31",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "go2-language-changes.md",
+      "lines": [
+        31,
+        32
+      ],
+      "upper": "proposal in context by answering the questions below as best you can.",
+      "lower": "You do not have to answer every question but please do your best.",
+      "context": [
+        "If you believe that your proposal meets these criteria and wish to",
+        "proceed, then in order to help with review we ask that you place your",
+        "proposal in context by answering the questions below as best you can.",
+        "You do not have to answer every question but please do your best."
+      ],
+      "covariates": {
+        "prose_width": 69,
+        "raw_end_column": 69,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "If you believe that your proposal meets these criteria and wish to",
+        "proceed, then in order to help with review we ask that you place your",
+        "proposal in context by answering the questions below as best you can.",
+        "You do not have to answer every question but please do your best."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/51082-godocfmt.md:295",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/51082-godocfmt.md",
+      "lines": [
+        295,
+        296
+      ],
+      "upper": "for numbers. (Why dashes and not asterisks? Proper typesetting of",
+      "lower": "bullet lists sometimes does use dashes, but never uses asterisks, so",
+      "context": [
+        "forms of numbers will be recognized, but gofmt (see below) will",
+        "rewrite them to a single canonical form: dash for bullets, and “N.”",
+        "for numbers. (Why dashes and not asterisks? Proper typesetting of",
+        "bullet lists sometimes does use dashes, but never uses asterisks, so",
+        "using dashes keeps the comments looking as typographically clean as",
+        "possible.)"
+      ],
+      "covariates": {
+        "prose_width": 69,
+        "raw_end_column": 65,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 8,
+        "eligible_anchor_count": 5
+      },
+      "raw_window": [
+        "forms of numbers will be recognized, but gofmt (see below) will",
+        "rewrite them to a single canonical form: dash for bullets, and “N.”",
+        "for numbers. (Why dashes and not asterisks? Proper typesetting of",
+        "bullet lists sometimes does use dashes, but never uses asterisks, so",
+        "using dashes keeps the comments looking as typographically clean as",
+        "possible.)"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/go2draft-contracts.md:59",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/go2draft-contracts.md",
+      "lines": [
+        59,
+        60
+      ],
+      "upper": "Don't confuse the term generic as used in this design with the same",
+      "lower": "term in other languages like C++, C#, Java, or Rust; they have",
+      "context": [
+        "use it below as a shorthand to mean a function or type that takes type",
+        "parameters.",
+        "Don't confuse the term generic as used in this design with the same",
+        "term in other languages like C++, C#, Java, or Rust; they have",
+        "similarities but are not the same."
+      ],
+      "covariates": {
+        "prose_width": 70,
+        "raw_end_column": 67,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 6,
+        "eligible_anchor_count": 7
+      },
+      "raw_window": [
+        "use it below as a shorthand to mean a function or type that takes type",
+        "parameters.",
+        "Don't confuse the term generic as used in this design with the same",
+        "term in other languages like C++, C#, Java, or Rust; they have",
+        "similarities but are not the same."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/19348-midstack-inlining.md:390",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/19348-midstack-inlining.md",
+      "lines": [
+        390,
+        391
+      ],
+      "upper": "in `runtime.skipPleaseUseCallersFrames` and skip the corresponding",
+      "lower": "number of logical calls.",
+      "context": [
+        "The `runtime.CallersFrames` function will check if the second PC is",
+        "in `runtime.skipPleaseUseCallersFrames` and skip the corresponding",
+        "number of logical calls.",
+        "We store the skip PC in `pcs[1]` instead of `pcs[0]` so that `pcs[i:]`",
+        "will truncate the captured stack trace rather than grow it for all i"
+      ],
+      "covariates": {
+        "prose_width": 70,
+        "raw_end_column": 66,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 6,
+        "eligible_anchor_count": 3
+      },
+      "raw_window": [
+        "The `runtime.CallersFrames` function will check if the second PC is",
+        "in `runtime.skipPleaseUseCallersFrames` and skip the corresponding",
+        "number of logical calls.",
+        "We store the skip PC in `pcs[1]` instead of `pcs[0]` so that `pcs[i:]`",
+        "will truncate the captured stack trace rather than grow it for all i"
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "go-proposal:design/15292/2013-12-type-params.md:1070",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/15292/2013-12-type-params.md",
+      "lines": [
+        1070,
+        1071
+      ],
+      "upper": "Returning to the parameterized function, the type of `v.$FieldF()` is",
+      "lower": "`I2`, which is correct since all references to the unknown type `U2` are",
+      "context": [
+        "Returning to the parameterized function, the type of `v.$FieldF()` is",
+        "`I2`, which is correct since all references to the unknown type `U2` are",
+        "compiled to use the interface type `I2`."
+      ],
+      "covariates": {
+        "prose_width": 72,
+        "raw_end_column": 69,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 3,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "Returning to the parameterized function, the type of `v.$FieldF()` is",
+        "`I2`, which is correct since all references to the unknown type `U2` are",
+        "compiled to use the interface type `I2`."
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "go-proposal:design/go2draft-contracts.md:590",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/go2draft-contracts.md",
+      "lines": [
+        590,
+        591
+      ],
+      "upper": "illustrates an important point: it should be a requirement for any",
+      "lower": "attempt to add generics to Go that it be possible to instantiate",
+      "context": [
+        "This ability for type parameters to refer to other type parameters",
+        "illustrates an important point: it should be a requirement for any",
+        "attempt to add generics to Go that it be possible to instantiate",
+        "generic code with multiple type arguments that refer to each other in",
+        "ways that the compiler can check."
+      ],
+      "covariates": {
+        "prose_width": 69,
+        "raw_end_column": 66,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 5,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "This ability for type parameters to refer to other type parameters",
+        "illustrates an important point: it should be a requirement for any",
+        "attempt to add generics to Go that it be possible to instantiate",
+        "generic code with multiple type arguments that refer to each other in",
+        "ways that the compiler can check."
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "go-proposal:design/44167-gc-pacer-redesign.md:428",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/44167-gc-pacer-redesign.md",
+      "lines": [
+        428,
+        429
+      ],
+      "upper": "From its perspective, scanning and marking objects was just faster than",
+      "lower": "expected.",
+      "context": [
+        "However if a GC cycle completes early, then in theory the current pacer will",
+        "simply adjust.",
+        "From its perspective, scanning and marking objects was just faster than",
+        "expected."
+      ],
+      "covariates": {
+        "prose_width": 79,
+        "raw_end_column": 71,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 12,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "However if a GC cycle completes early, then in theory the current pacer will",
+        "simply adjust.",
+        "From its perspective, scanning and marking objects was just faster than",
+        "expected."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/60078-loopvar.md:973",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/60078-loopvar.md",
+      "lines": [
+        973,
+        974
+      ],
+      "upper": "got so prevalent that the C# team decided the unconditional break was",
+      "lower": "justified. It would be much easier to explain the change to the,",
+      "context": [
+        "language grew to leverage lambdas more through features like LINQ,",
+        "`async`, Task Parallel Libraries, etc ... the problem got worse. It",
+        "got so prevalent that the C# team decided the unconditional break was",
+        "justified. It would be much easier to explain the change to the,",
+        "hopefully, small number of customers impacted vs. continuing to",
+        "explain the tricksy behavior to new customers."
+      ],
+      "covariates": {
+        "prose_width": 72,
+        "raw_end_column": 71,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 1,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 16,
+        "eligible_anchor_count": 7
+      },
+      "raw_window": [
+        "> language grew to leverage lambdas more through features like LINQ,",
+        "> `async`, Task Parallel Libraries, etc ... the problem got worse. It",
+        "> got so prevalent that the C# team decided the unconditional break was",
+        "> justified. It would be much easier to explain the change to the,",
+        "> hopefully, small number of customers impacted vs. continuing to",
+        "> explain the tricksy behavior to new customers."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/43651-type-parameters.md:1133",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/43651-type-parameters.md",
+      "lines": [
+        1133,
+        1134
+      ],
+      "upper": "In many cases we can use type inference to avoid having to explicitly",
+      "lower": "write out some or all of the type arguments.",
+      "context": [
+        "In many cases we can use type inference to avoid having to explicitly",
+        "write out some or all of the type arguments.",
+        "We can use _function argument type inference_ for a function call to",
+        "deduce type arguments from the types of the non-type arguments."
+      ],
+      "covariates": {
+        "prose_width": 71,
+        "raw_end_column": 69,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 6,
+        "eligible_anchor_count": 7
+      },
+      "raw_window": [
+        "In many cases we can use type inference to avoid having to explicitly",
+        "write out some or all of the type arguments.",
+        "We can use _function argument type inference_ for a function call to",
+        "deduce type arguments from the types of the non-type arguments."
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "styx:bench/spike/event/waiter.go:141",
+      "source": "styx",
+      "frame": "main",
+      "path": "bench/spike/event/waiter.go",
+      "lines": [
+        141,
+        142
+      ],
+      "upper": "side) plus blockingReadEventfd calls from Wait's park path (consumer",
+      "lower": "side). It is the shared-memory transport's defining metric",
+      "context": [
+        "SyscallCount returns the number of eventfd read(2)/write(2) syscalls this",
+        "Waiter has performed so far: writeEventfd calls from Signal (producer",
+        "side) plus blockingReadEventfd calls from Wait's park path (consumer",
+        "side). It is the shared-memory transport's defining metric",
+        "(wakeup_syscalls_per_op) — the benchmark suite samples it before/after a",
+        "latency run and divides the delta by the sample count. Spin-loop"
+      ],
+      "covariates": {
+        "prose_width": 76,
+        "raw_end_column": 71,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 8,
+        "eligible_anchor_count": 4
+      },
+      "raw_window": [
+        "// SyscallCount returns the number of eventfd read(2)/write(2) syscalls this",
+        "// Waiter has performed so far: writeEventfd calls from Signal (producer",
+        "// side) plus blockingReadEventfd calls from Wait's park path (consumer",
+        "// side). It is the shared-memory transport's defining metric",
+        "// (wakeup_syscalls_per_op) — the benchmark suite samples it before/after a",
+        "// latency run and divides the delta by the sample count. Spin-loop"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:internal/rpcruntime/table.go:98",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/rpcruntime/table.go",
+      "lines": [
+        98,
+        99
+      ],
+      "upper": "Answering is the only act that reaches such a call: it lives in the peer's",
+      "lower": "table, so no local terminal touches it, and a request published with no",
+      "context": [
+        "inbound unary request its receive path could not take at all — a frame it",
+        "declined, or faulted on, before anything was dispatched (shm-abi.md §9).",
+        "Answering is the only act that reaches such a call: it lives in the peer's",
+        "table, so no local terminal touches it, and a request published with no",
+        "deadline has nothing to reap it on a connection the decline deliberately",
+        "keeps healthy. The styx package reconstructs it as ErrRequestDeclined. No"
+      ],
+      "covariates": {
+        "prose_width": 86,
+        "raw_end_column": 78,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 9,
+        "eligible_anchor_count": 9
+      },
+      "raw_window": [
+        "\t// inbound unary request its receive path could not take at all — a frame it",
+        "\t// declined, or faulted on, before anything was dispatched (shm-abi.md §9).",
+        "\t// Answering is the only act that reaches such a call: it lives in the peer's",
+        "\t// table, so no local terminal touches it, and a request published with no",
+        "\t// deadline has nothing to reap it on a connection the decline deliberately",
+        "\t// keeps healthy. The styx package reconstructs it as ErrRequestDeclined. No"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:internal/event/spin.go:315",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/event/spin.go",
+      "lines": [
+        315,
+        316
+      ],
+      "upper": "shm-abi.md §11's ordering for the spin path: shutdown always wins once",
+      "lower": "observed, so a teardown in progress is never overtaken by newer work.",
+      "context": [
+        "shutdown is checked BEFORE the tail on every iteration, matching",
+        "shm-abi.md §11's ordering for the spin path: shutdown always wins once",
+        "observed, so a teardown in progress is never overtaken by newer work."
+      ],
+      "covariates": {
+        "prose_width": 73,
+        "raw_end_column": 73,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 3,
+        "eligible_anchor_count": 7
+      },
+      "raw_window": [
+        "// shutdown is checked BEFORE the tail on every iteration, matching",
+        "// shm-abi.md §11's ordering for the spin path: shutdown always wins once",
+        "// observed, so a teardown in progress is never overtaken by newer work."
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "go-proposal:design/13432-mobile-audio.md:120",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/13432-mobile-audio.md",
+      "lines": [
+        120,
+        121
+      ],
+      "upper": "data and how audio attributes (such as bit and sample rate) are reported to",
+      "lower": "the consumers of an audio media source.",
+      "context": [
+        "The audio package will represent audio data as linear PCM formatted in-memory",
+        "audio chuncks. A fundamental interface, Clip, will define how to consume audio",
+        "data and how audio attributes (such as bit and sample rate) are reported to",
+        "the consumers of an audio media source."
+      ],
+      "covariates": {
+        "prose_width": 78,
+        "raw_end_column": 75,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 8
+      },
+      "raw_window": [
+        "The audio package will represent audio data as linear PCM formatted in-memory",
+        "audio chuncks. A fundamental interface, Clip, will define how to consume audio",
+        "data and how audio attributes (such as bit and sample rate) are reported to",
+        "the consumers of an audio media source."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:41",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/44167/gc-pacer-redesign.src.md",
+      "lines": [
+        41,
+        42
+      ],
+      "upper": "The garbage collector manages several goroutines called \"workers\" to carry out",
+      "lower": "its task.",
+      "context": [
+        "Since version 1.5 Go has had a tracing mark-sweep garbage collector (GC) that is",
+        "able to execute concurrently with user goroutines.",
+        "The garbage collector manages several goroutines called \"workers\" to carry out",
+        "its task.",
+        "A key problem in concurrent garbage collection is deciding when to begin, such",
+        "that the work is complete \"on time.\""
+      ],
+      "covariates": {
+        "prose_width": 80,
+        "raw_end_column": 78,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 7,
+        "eligible_anchor_count": 5
+      },
+      "raw_window": [
+        "Since version 1.5 Go has had a tracing mark-sweep garbage collector (GC) that is",
+        "able to execute concurrently with user goroutines.",
+        "The garbage collector manages several goroutines called \"workers\" to carry out",
+        "its task.",
+        "A key problem in concurrent garbage collection is deciding when to begin, such",
+        "that the work is complete \"on time.\""
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/48409-soft-memory-limit.md:252",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/48409-soft-memory-limit.md",
+      "lines": [
+        252,
+        253
+      ],
+      "upper": "The nice thing about this definition of ![`\\hat{L}`](48409/inl1.png) is that",
+      "lower": "it's fairly robust to changes to the Go GC, since total mapped memory, free and",
+      "context": [
+        "The nice thing about this definition of ![`\\hat{L}`](48409/inl1.png) is that",
+        "it's fairly robust to changes to the Go GC, since total mapped memory, free and",
+        "unscavenged memory, and bytes allocated in objects, are fairly fundamental",
+        "properties (especially to any tracing GC design)."
+      ],
+      "covariates": {
+        "prose_width": 79,
+        "raw_end_column": 76,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 4
+      },
+      "raw_window": [
+        "The nice thing about this definition of ![`\\hat{L}`](48409/inl1.png) is that",
+        "it's fairly robust to changes to the Go GC, since total mapped memory, free and",
+        "unscavenged memory, and bytes allocated in objects, are fairly fundamental",
+        "properties (especially to any tracing GC design)."
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "styx:internal/transport/shm/writer.go:247",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/transport/shm/writer.go",
+      "lines": [
+        247,
+        248
+      ],
+      "upper": "by the single run goroutine (build/place/emitLifecycle), so it needs no",
+      "lower": "synchronization; it is reset at the top of every build.",
+      "context": [
+        "pendingSlab threads the slab a payload build allocated from stampPayload",
+        "out to place, which records it in handleTable at publish time. Touched only",
+        "by the single run goroutine (build/place/emitLifecycle), so it needs no",
+        "synchronization; it is reset at the top of every build."
+      ],
+      "covariates": {
+        "prose_width": 86,
+        "raw_end_column": 75,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 2
+      },
+      "raw_window": [
+        "\t// pendingSlab threads the slab a payload build allocated from stampPayload",
+        "\t// out to place, which records it in handleTable at publish time. Touched only",
+        "\t// by the single run goroutine (build/place/emitLifecycle), so it needs no",
+        "\t// synchronization; it is reset at the top of every build."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:pluginserver.go:1474",
+      "source": "styx",
+      "frame": "main",
+      "path": "pluginserver.go",
+      "lines": [
+        1474,
+        1475
+      ],
+      "upper": "supervisor's wedge classifier catches a plugin whose consume progress has",
+      "lower": "frozen with work still readable. Removing either leaves a plugin that is",
+      "context": [
+        "loop records the same peer close on its end of the socket and escalates it —",
+        "this side is rescued by the host's escalation, not by its own — and the",
+        "supervisor's wedge classifier catches a plugin whose consume progress has",
+        "frozen with work still readable. Removing either leaves a plugin that is",
+        "permanently wedged and advertising itself as healthy, which is why this side",
+        "can afford to be quiet and the host cannot."
+      ],
+      "covariates": {
+        "prose_width": 87,
+        "raw_end_column": 77,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 12,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "\t// loop records the same peer close on its end of the socket and escalates it —",
+        "\t// this side is rescued by the host's escalation, not by its own — and the",
+        "\t// supervisor's wedge classifier catches a plugin whose consume progress has",
+        "\t// frozen with work still readable. Removing either leaves a plugin that is",
+        "\t// permanently wedged and advertising itself as healthy, which is why this side",
+        "\t// can afford to be quiet and the host cannot."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:geometry.go:170",
+      "source": "styx",
+      "frame": "main",
+      "path": "geometry.go",
+      "lines": [
+        170,
+        171
+      ],
+      "upper": "stricter than isZero, which toLayout uses to decide whether to substitute",
+      "lower": "the default profile and deliberately ignores LifecycleReserve alone (see",
+      "context": [
+        "isFullyZero reports whether g has NONE of its public fields set --",
+        "stricter than isZero, which toLayout uses to decide whether to substitute",
+        "the default profile and deliberately ignores LifecycleReserve alone (see",
+        "isZero's own doc). PluginSpec.MaxPayload's mutual exclusion with a",
+        "hand-authored Geometry needs the stricter meaning: a caller who sets"
+      ],
+      "covariates": {
+        "prose_width": 76,
+        "raw_end_column": 76,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 9,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "// isFullyZero reports whether g has NONE of its public fields set --",
+        "// stricter than isZero, which toLayout uses to decide whether to substitute",
+        "// the default profile and deliberately ignores LifecycleReserve alone (see",
+        "// isZero's own doc). PluginSpec.MaxPayload's mutual exclusion with a",
+        "// hand-authored Geometry needs the stricter meaning: a caller who sets"
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "go-proposal:design/44309-user-configurable-memory-target.md:333",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/44309-user-configurable-memory-target.md",
+      "lines": [
+        333,
+        334
+      ],
+      "upper": "While the live heap times `1+GOGC/100` is less than the heap goal set by the",
+      "lower": "memory target, we are in the memory target regime.",
+      "context": [
+        "regime and the `GOGC` regime (the regimes being defined as the mechanism that",
+        "determines the heap goal) is very smooth.",
+        "While the live heap times `1+GOGC/100` is less than the heap goal set by the",
+        "memory target, we are in the memory target regime.",
+        "Otherwise, we are in the `GOGC` regime.",
+        "Notice that as `GOGC` rises to higher and higher values, the range of the memory"
+      ],
+      "covariates": {
+        "prose_width": 80,
+        "raw_end_column": 76,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 9,
+        "eligible_anchor_count": 8
+      },
+      "raw_window": [
+        "regime and the `GOGC` regime (the regimes being defined as the mechanism that",
+        "determines the heap goal) is very smooth.",
+        "While the live heap times `1+GOGC/100` is less than the heap goal set by the",
+        "memory target, we are in the memory target regime.",
+        "Otherwise, we are in the `GOGC` regime.",
+        "Notice that as `GOGC` rises to higher and higher values, the range of the memory"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/26160-dns-based-vanity-imports.md:58",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/26160-dns-based-vanity-imports.md",
+      "lines": [
+        58,
+        59
+      ],
+      "upper": "Before we can make an HTTP request (as the current vanity import mechanism",
+      "lower": "does), or even establish a TLS connection, we must already have performed a DNS",
+      "context": [
+        "Before we can make an HTTP request (as the current vanity import mechanism",
+        "does), or even establish a TLS connection, we must already have performed a DNS",
+        "lookup.",
+        "Because this happens anyways, it would be ideal to cut out other steps (HTTP,"
+      ],
+      "covariates": {
+        "prose_width": 79,
+        "raw_end_column": 74,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 10,
+        "eligible_anchor_count": 8
+      },
+      "raw_window": [
+        "Before we can make an HTTP request (as the current vanity import mechanism",
+        "does), or even establish a TLS connection, we must already have performed a DNS",
+        "lookup.",
+        "Because this happens anyways, it would be ideal to cut out other steps (HTTP,"
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "nats.go:js.go:3887",
+      "source": "nats.go",
+      "frame": "main",
+      "path": "js.go",
+      "lines": [
+        3887,
+        3888
+      ],
+      "upper": "DeliverByStartSequencePolicy will deliver messages starting from a given",
+      "lower": "sequence.",
+      "context": [
+        "DeliverByStartSequencePolicy will deliver messages starting from a given",
+        "sequence."
+      ],
+      "covariates": {
+        "prose_width": 83,
+        "raw_end_column": 76,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 2,
+        "eligible_anchor_count": 4
+      },
+      "raw_window": [
+        "\t// DeliverByStartSequencePolicy will deliver messages starting from a given",
+        "\t// sequence."
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "styx:bench/internal/benchbaseline/baseline.go:3",
+      "source": "styx",
+      "frame": "main",
+      "path": "bench/internal/benchbaseline/baseline.go",
+      "lines": [
+        3,
+        4
+      ],
+      "upper": "Baseline is the interface every benchmark comparison point must implement:",
+      "lower": "an echo round-trip that accepts a payload and returns it, plus explicit start/stop hooks",
+      "context": [
+        "Baseline is the interface every benchmark comparison point must implement:",
+        "an echo round-trip that accepts a payload and returns it, plus explicit start/stop hooks",
+        "so the benchmark suite can uniformly set up and tear down each baseline."
+      ],
+      "covariates": {
+        "prose_width": 91,
+        "raw_end_column": 77,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 3,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "// Baseline is the interface every benchmark comparison point must implement:",
+        "// an echo round-trip that accepts a payload and returns it, plus explicit start/stop hooks",
+        "// so the benchmark suite can uniformly set up and tear down each baseline."
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "styx:host.go:1512",
+      "source": "styx",
+      "frame": "main",
+      "path": "host.go",
+      "lines": [
+        1512,
+        1513
+      ],
+      "upper": "subscription's forwarder — but only once Stop has been requested and no runtime",
+      "lower": "is still awaiting its join. It runs the release exactly once, so a Host leaves",
+      "context": [
+        "maybeReleaseWorkers ends every background worker the Host itself owns — the",
+        "metrics and log dispatchers with their per-plugin reporters, and the Events()",
+        "subscription's forwarder — but only once Stop has been requested and no runtime",
+        "is still awaiting its join. It runs the release exactly once, so a Host leaves",
+        "none of them running after its teardown, however many Hosts a process builds.",
+        "The observability half is a no-op when neither a sink nor a logger was"
+      ],
+      "covariates": {
+        "prose_width": 82,
+        "raw_end_column": 82,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 13,
+        "eligible_anchor_count": 8
+      },
+      "raw_window": [
+        "// maybeReleaseWorkers ends every background worker the Host itself owns — the",
+        "// metrics and log dispatchers with their per-plugin reporters, and the Events()",
+        "// subscription's forwarder — but only once Stop has been requested and no runtime",
+        "// is still awaiting its join. It runs the release exactly once, so a Host leaves",
+        "// none of them running after its teardown, however many Hosts a process builds.",
+        "// The observability half is a no-op when neither a sink nor a logger was"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:internal/transport/shm/transport.go:453",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/transport/shm/transport.go",
+      "lines": [
+        453,
+        454
+      ],
+      "upper": "carves the per-direction rings, arenas, waiter, and writer (shm-abi.md §1/§18).",
+      "lower": "On validation failure it unmaps the region and returns the typed error,",
+      "context": [
+        "Attach opens the region, validates the capacity invariant against its actual",
+        "geometry before allocating any writer or arena state, and only if valid",
+        "carves the per-direction rings, arenas, waiter, and writer (shm-abi.md §1/§18).",
+        "On validation failure it unmaps the region and returns the typed error,",
+        "having constructed nothing."
+      ],
+      "covariates": {
+        "prose_width": 82,
+        "raw_end_column": 82,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 5,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "// Attach opens the region, validates the capacity invariant against its actual",
+        "// geometry before allocating any writer or arena state, and only if valid",
+        "// carves the per-direction rings, arenas, waiter, and writer (shm-abi.md §1/§18).",
+        "// On validation failure it unmaps the region and returns the typed error,",
+        "// having constructed nothing."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:internal/supervisor/supervisor.go:112",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/supervisor/supervisor.go",
+      "lines": [
+        112,
+        113
+      ],
+      "upper": "If they used independent constants, a guard that admitted closer spacing than",
+      "lower": "the conversion assumed would let a stall fire before the configured window.",
+      "context": [
+        "drift apart: the sender's guard rejects a build closer than this, and the",
+        "wedge-window conversion divides the window by exactly this minimum.",
+        "If they used independent constants, a guard that admitted closer spacing than",
+        "the conversion assumed would let a stall fire before the configured window."
+      ],
+      "covariates": {
+        "prose_width": 80,
+        "raw_end_column": 80,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 5,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "// drift apart: the sender's guard rejects a build closer than this, and the",
+        "// wedge-window conversion divides the window by exactly this minimum.",
+        "// If they used independent constants, a guard that admitted closer spacing than",
+        "// the conversion assumed would let a stall fire before the configured window."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/70257-memory-regions.md:31",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/70257-memory-regions.md",
+      "lines": [
+        31,
+        32
+      ],
+      "upper": "This decouples that memory's lifecycle from the garbage collector entirely, and",
+      "lower": "is even more effective than arenas when it is possible.",
+      "context": [
+        "The Go compiler employs an escape analysis pass to stack-allocate memory when",
+        "possible.",
+        "This decouples that memory's lifecycle from the garbage collector entirely, and",
+        "is even more effective than arenas when it is possible.",
+        "Unfortunately, when one chooses to allocate into an arena, that _forces_ that",
+        "allocation to come from an arena."
+      ],
+      "covariates": {
+        "prose_width": 79,
+        "raw_end_column": 79,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 8,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "The Go compiler employs an escape analysis pass to stack-allocate memory when",
+        "possible.",
+        "This decouples that memory's lifecycle from the garbage collector entirely, and",
+        "is even more effective than arenas when it is possible.",
+        "Unfortunately, when one chooses to allocate into an arena, that _forces_ that",
+        "allocation to come from an arena."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:internal/transport/shm/writer.go:926",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/transport/shm/writer.go",
+      "lines": [
+        926,
+        927
+      ],
+      "upper": "path. A value plus a bool (not a pointer to the select case variable, which is",
+      "lower": "reused) keeps the staged intent safe to carry across the loop.",
+      "context": [
+        "wake stages the intent and loops, and Step 1 publishes it as the first COUNTED",
+        "intent of the next turn, capping consecutive lifecycle publishes at B on every",
+        "path. A value plus a bool (not a pointer to the select case variable, which is",
+        "reused) keeps the staged intent safe to carry across the loop."
+      ],
+      "covariates": {
+        "prose_width": 90,
+        "raw_end_column": 82,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 8,
+        "eligible_anchor_count": 10
+      },
+      "raw_window": [
+        "\t// wake stages the intent and loops, and Step 1 publishes it as the first COUNTED",
+        "\t// intent of the next turn, capping consecutive lifecycle publishes at B on every",
+        "\t// path. A value plus a bool (not a pointer to the select case variable, which is",
+        "\t// reused) keeps the staged intent safe to carry across the loop."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:pluginserver.go:1564",
+      "source": "styx",
+      "frame": "main",
+      "path": "pluginserver.go",
+      "lines": [
+        1564,
+        1565
+      ],
+      "upper": "previous frame's values. Nothing reads them after a failed receive today; this",
+      "lower": "makes that hold by construction rather than by argument, and it drops the",
+      "context": [
+        "Clear the receive scratch before taking the next frame, so no path can read a",
+        "previous frame's values. Nothing reads them after a failed receive today; this",
+        "makes that hold by construction rather than by argument, and it drops the",
+        "previous frame's cloned payload a little sooner."
+      ],
+      "covariates": {
+        "prose_width": 89,
+        "raw_end_column": 82,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 8
+      },
+      "raw_window": [
+        "\t// Clear the receive scratch before taking the next frame, so no path can read a",
+        "\t// previous frame's values. Nothing reads them after a failed receive today; this",
+        "\t// makes that hold by construction rather than by argument, and it drops the",
+        "\t// previous frame's cloned payload a little sooner."
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "styx:internal/supervisor/reload.go:220",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/supervisor/reload.go",
+      "lines": [
+        220,
+        221
+      ],
+      "upper": "through: stdio is the heartbeat loop's own baselines, so the report continues",
+      "lower": "from the loop's last sample rather than restating counts already reported.",
+      "context": [
+        "sup and stdio are what Teardown reports this instance's final stdio counts",
+        "through: stdio is the heartbeat loop's own baselines, so the report continues",
+        "from the loop's last sample rather than restating counts already reported."
+      ],
+      "covariates": {
+        "prose_width": 80,
+        "raw_end_column": 80,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 3,
+        "eligible_anchor_count": 8
+      },
+      "raw_window": [
+        "// sup and stdio are what Teardown reports this instance's final stdio counts",
+        "// through: stdio is the heartbeat loop's own baselines, so the report continues",
+        "// from the loop's last sample rather than restating counts already reported."
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "styx:pluginserver.go:311",
+      "source": "styx",
+      "frame": "main",
+      "path": "pluginserver.go",
+      "lines": [
+        311,
+        312
+      ],
+      "upper": "The dispatcher runs the same stopReporter as its producer join, so it cuts off",
+      "lower": "and publishes its final drop count only once the reporter — its one producer —",
+      "context": [
+        "The dispatcher runs the same stopReporter as its producer join, so it cuts off",
+        "and publishes its final drop count only once the reporter — its one producer —",
+        "has stopped. Reaching that path through the shared cancel alone would leave the",
+        "reporter free to submit into an already-reported dispatcher, losing exactly the"
+      ],
+      "covariates": {
+        "prose_width": 90,
+        "raw_end_column": 82,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 6,
+        "eligible_anchor_count": 7
+      },
+      "raw_window": [
+        "\t// The dispatcher runs the same stopReporter as its producer join, so it cuts off",
+        "\t// and publishes its final drop count only once the reporter — its one producer —",
+        "\t// has stopped. Reaching that path through the shared cancel alone would leave the",
+        "\t// reporter free to submit into an already-reported dispatcher, losing exactly the"
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "go-proposal:design/30411-env.md:27",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/30411-env.md",
+      "lines": [
+        27,
+        28
+      ],
+      "upper": "or just restart the shell window?—which can make this environment-based configuration",
+      "lower": "quite difficult.",
+      "context": [
+        "differs by operating system and even by distribution or",
+        "terminal program—for example, do you have to log out entirely,",
+        "or just restart the shell window?—which can make this environment-based configuration",
+        "quite difficult.",
+        "(When setting `$GOPATH` was required to get started with Go,",
+        "doing so was a major stumbling block for new users.)"
+      ],
+      "covariates": {
+        "prose_width": 85,
+        "raw_end_column": 85,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 12,
+        "eligible_anchor_count": 7
+      },
+      "raw_window": [
+        "differs by operating system and even by distribution or",
+        "terminal program—for example, do you have to log out entirely,",
+        "or just restart the shell window?—which can make this environment-based configuration",
+        "quite difficult.",
+        "(When setting `$GOPATH` was required to get started with Go,",
+        "doing so was a major stumbling block for new users.)"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:internal/transport/shm/writer.go:311",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/transport/shm/writer.go",
+      "lines": [
+        311,
+        312
+      ],
+      "upper": "default), so the critical section is bounded: a non-blocking channel attempt",
+      "lower": "plus whatever conditional state update its outcome requires; concurrent",
+      "context": [
+        "itself is made under the lock, IS the admission order. A stale admission can",
+        "therefore never split a rejection run. The select never blocks (it has a",
+        "default), so the critical section is bounded: a non-blocking channel attempt",
+        "plus whatever conditional state update its outcome requires; concurrent",
+        "reject-mode admitters serialize on the lock. run — which drains the queue and",
+        "takes no part in edgeMu — cannot deadlock against it. Block mode and the"
+      ],
+      "covariates": {
+        "prose_width": 88,
+        "raw_end_column": 80,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 14,
+        "eligible_anchor_count": 7
+      },
+      "raw_window": [
+        "\t// itself is made under the lock, IS the admission order. A stale admission can",
+        "\t// therefore never split a rejection run. The select never blocks (it has a",
+        "\t// default), so the critical section is bounded: a non-blocking channel attempt",
+        "\t// plus whatever conditional state update its outcome requires; concurrent",
+        "\t// reject-mode admitters serialize on the lock. run — which drains the queue and",
+        "\t// takes no part in edgeMu — cannot deadlock against it. Block mode and the"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/48815-custom-fuzz-input-types.md:229",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/48815-custom-fuzz-input-types.md",
+      "lines": [
+        229,
+        230
+      ],
+      "upper": "Because mutation operations on custom types are expected to be somewhat complex",
+      "lower": "(otherwise a basic type would probably suffice), the `Mutate(ctx",
+      "context": [
+        "Because mutation operations on custom types are expected to be somewhat complex",
+        "(otherwise a basic type would probably suffice), the `Mutate(ctx",
+        "context.Context, seed int64) error` option is believed to be the best choice."
+      ],
+      "covariates": {
+        "prose_width": 79,
+        "raw_end_column": 79,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 3,
+        "eligible_anchor_count": 9
+      },
+      "raw_window": [
+        "Because mutation operations on custom types are expected to be somewhat complex",
+        "(otherwise a basic type would probably suffice), the `Mutate(ctx",
+        "context.Context, seed int64) error` option is believed to be the best choice."
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "go-proposal:design/48409/soft-memory-limit.src.md:266",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/48409/soft-memory-limit.src.md",
+      "lines": [
+        266,
+        267
+      ],
+      "upper": "If the garbage collector were to execute and exceed that limit at any point, it",
+      "lower": "will instead let the application proceed, even if that means missing its goal",
+      "context": [
+        "One way to deal with this situation is to place a limit on the amount of total",
+        "CPU utilization of the garbage collector.",
+        "If the garbage collector were to execute and exceed that limit at any point, it",
+        "will instead let the application proceed, even if that means missing its goal",
+        "and breaching the memory limit."
+      ],
+      "covariates": {
+        "prose_width": 79,
+        "raw_end_column": 79,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 5,
+        "eligible_anchor_count": 8
+      },
+      "raw_window": [
+        "One way to deal with this situation is to place a limit on the amount of total",
+        "CPU utilization of the garbage collector.",
+        "If the garbage collector were to execute and exceed that limit at any point, it",
+        "will instead let the application proceed, even if that means missing its goal",
+        "and breaching the memory limit."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/36606-64-bit-field-alignment.md:12",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/36606-64-bit-field-alignment.md",
+      "lines": [
+        12,
+        13
+      ],
+      "upper": "64-bit fields will be 8-byte (64-bit) aligned. The layout of structs on 64-bit systems",
+      "lower": "will not change. For compatibility reasons (and finer control of struct layout),",
+      "context": [
+        "We propose to change the default layout of structs on 32-bit systems such that",
+        "64-bit fields will be 8-byte (64-bit) aligned. The layout of structs on 64-bit systems",
+        "will not change. For compatibility reasons (and finer control of struct layout),",
+        "we also propose the addition of a `//go:packed` directive that applies to struct",
+        "types. When the `//go:packed` directive is specified immediately before a struct"
+      ],
+      "covariates": {
+        "prose_width": 86,
+        "raw_end_column": 86,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 12,
+        "eligible_anchor_count": 9
+      },
+      "raw_window": [
+        "We propose to change the default layout of structs on 32-bit systems such that",
+        "64-bit fields will be 8-byte (64-bit) aligned. The layout of structs on 64-bit systems",
+        "will not change. For compatibility reasons (and finer control of struct layout),",
+        "we also propose the addition of a `//go:packed` directive that applies to struct",
+        "types. When the `//go:packed` directive is specified immediately before a struct"
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "styx:bench/internal/benchbaseline/result.go:27",
+      "source": "styx",
+      "frame": "main",
+      "path": "bench/internal/benchbaseline/result.go",
+      "lines": [
+        27,
+        28
+      ],
+      "upper": "own per-call goroutine spawn/WaitGroup/response-byte-slice bookkeeping, not just the",
+      "lower": "transport implementation's allocations. It is useful for relative comparison across",
+      "context": [
+        "It is (runtime.MemStats.Mallocs delta across the entire timed region) / samples, so it",
+        "includes every allocation any goroutine made during that window — the benchmark driver's",
+        "own per-call goroutine spawn/WaitGroup/response-byte-slice bookkeeping, not just the",
+        "transport implementation's allocations. It is useful for relative comparison across",
+        "implementations measured by the same driver, but not as an absolute claim (e.g., \"the",
+        "shared-memory transport allocates N bytes per call\")."
+      ],
+      "covariates": {
+        "prose_width": 99,
+        "raw_end_column": 88,
+        "indentation_depth": 8,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 7,
+        "eligible_anchor_count": 2
+      },
+      "raw_window": [
+        "\t// It is (runtime.MemStats.Mallocs delta across the entire timed region) / samples, so it",
+        "\t// includes every allocation any goroutine made during that window — the benchmark driver's",
+        "\t// own per-call goroutine spawn/WaitGroup/response-byte-slice bookkeeping, not just the",
+        "\t// transport implementation's allocations. It is useful for relative comparison across",
+        "\t// implementations measured by the same driver, but not as an absolute claim (e.g., \"the",
+        "\t// shared-memory transport allocates N bytes per call\")."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/draft-iofs.md:245",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/draft-iofs.md",
+      "lines": [
+        245,
+        246
+      ],
+      "upper": "The general implementation of `ReadFile` can call `fs.Open` to obtain a `file` of type `File`,",
+      "lower": "followed by calls to `file.Read` and a final call to `file.Close`.",
+      "context": [
+        "The general implementation of `ReadFile` can call `fs.Open` to obtain a `file` of type `File`,",
+        "followed by calls to `file.Read` and a final call to `file.Close`.",
+        "But if an `FS` implementation can provide file contents",
+        "more efficiently in a single call, it can implement the"
+      ],
+      "covariates": {
+        "prose_width": 94,
+        "raw_end_column": 94,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 5,
+        "eligible_anchor_count": 10
+      },
+      "raw_window": [
+        "The general implementation of `ReadFile` can call `fs.Open` to obtain a `file` of type `File`,",
+        "followed by calls to `file.Read` and a final call to `file.Close`.",
+        "But if an `FS` implementation can provide file contents",
+        "more efficiently in a single call, it can implement the"
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "go-proposal:design/36606-64-bit-field-alignment.md:250",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/36606-64-bit-field-alignment.md",
+      "lines": [
+        250,
+        251
+      ],
+      "upper": "type that it applies to.  We would therefore disallow converting from `A` to `C` and vice versa.",
+      "lower": "We propose the following:",
+      "context": [
+        "is assigned to `c`.  Although this issue of convertability applies only to pointers of aligned",
+        "structs, it seems simplest and most consistent to include alignment as part of the base",
+        "type that it applies to.  We would therefore disallow converting from `A` to `C` and vice versa.",
+        "We propose the following:"
+      ],
+      "covariates": {
+        "prose_width": 96,
+        "raw_end_column": 96,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 7,
+        "eligible_anchor_count": 12
+      },
+      "raw_window": [
+        "is assigned to `c`.  Although this issue of convertability applies only to pointers of aligned",
+        "structs, it seems simplest and most consistent to include alignment as part of the base",
+        "type that it applies to.  We would therefore disallow converting from `A` to `C` and vice versa.",
+        "We propose the following:"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/15292/2010-06-type-functions.md:715",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/15292/2010-06-type-functions.md",
+      "lines": [
+        715,
+        716
+      ],
+      "upper": "No need for two-phase name lookup.  Only the scope of the definition is relevant, not the scope of use.",
+      "lower": "Clear syntax for separating compile-time errors from run-time errors.  Avoids complex compile-time error messages at the cost of only detecting some problems at runtime.",
+      "context": [
+        "Faster compile time.",
+        "No need for two-phase name lookup.  Only the scope of the definition is relevant, not the scope of use.",
+        "Clear syntax for separating compile-time errors from run-time errors.  Avoids complex compile-time error messages at the cost of only detecting some problems at runtime.",
+        "Concepts also permit clear compile time errors."
+      ],
+      "covariates": {
+        "prose_width": 171,
+        "raw_end_column": 105,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 1,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": true,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 13
+      },
+      "raw_window": [
+        "* Faster compile time.",
+        "* No need for two-phase name lookup.  Only the scope of the definition is relevant, not the scope of use.",
+        "* Clear syntax for separating compile-time errors from run-time errors.  Avoids complex compile-time error messages at the cost of only detecting some problems at runtime.",
+        "* Concepts also permit clear compile time errors."
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "go-proposal:design/draft-embed.md:379",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/draft-embed.md",
+      "lines": [
+        379,
+        380
+      ],
+      "upper": "and they are already well-defined in Go, in the APIs for `path.Match`, `filepath.Match`,",
+      "lower": "and `filepath.Glob`.",
+      "context": [
+        "This design adopts glob patterns as the single way to name files for inclusion.",
+        "Glob patterns are common to developers from command shells,",
+        "and they are already well-defined in Go, in the APIs for `path.Match`, `filepath.Match`,",
+        "and `filepath.Glob`.",
+        "Nearly all file names are valid glob patterns matching only themselves;",
+        "using globs avoids the need for separate `//go:embedfile` and `//go:embedglob`"
+      ],
+      "covariates": {
+        "prose_width": 88,
+        "raw_end_column": 88,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 11,
+        "eligible_anchor_count": 9
+      },
+      "raw_window": [
+        "This design adopts glob patterns as the single way to name files for inclusion.",
+        "Glob patterns are common to developers from command shells,",
+        "and they are already well-defined in Go, in the APIs for `path.Match`, `filepath.Match`,",
+        "and `filepath.Glob`.",
+        "Nearly all file names are valid glob patterns matching only themselves;",
+        "using globs avoids the need for separate `//go:embedfile` and `//go:embedglob`"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/go2draft-generics-overview.md:716",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/go2draft-generics-overview.md",
+      "lines": [
+        716,
+        717
+      ],
+      "upper": "The block is instantiated using `Template!` followed by actual types, as in `Template!(int, float64)`.",
+      "lower": "It appears that instantiation is always at compile-time, like in C++.",
+      "context": [
+        "The block is instantiated using `Template!` followed by actual types, as in `Template!(int, float64)`.",
+        "It appears that instantiation is always at compile-time, like in C++.",
+        "If a template contains a single declaration of the same name, the usage is shortened:"
+      ],
+      "covariates": {
+        "prose_width": 102,
+        "raw_end_column": 102,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 3,
+        "eligible_anchor_count": 9
+      },
+      "raw_window": [
+        "The block is instantiated using `Template!` followed by actual types, as in `Template!(int, float64)`.",
+        "It appears that instantiation is always at compile-time, like in C++.",
+        "If a template contains a single declaration of the same name, the usage is shortened:"
+      ],
+      "upper_index": 0
+    },
+    {
+      "id": "go-proposal:design/16410-heap-viewer.md:82",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/16410-heap-viewer.md",
+      "lines": [
+        82,
+        83
+      ],
+      "upper": "OOMs (at least on Linux) as we do to examine heap dumps. Another benefit is that some cluster",
+      "lower": "environments already collect and store core files when programs fail in production. Reusing this",
+      "context": [
+        "The advantage of understanding ELF is that we can use the same tools to look at cores produced when a program",
+        "OOMs (at least on Linux) as we do to examine heap dumps. Another benefit is that some cluster",
+        "environments already collect and store core files when programs fail in production. Reusing this",
+        "machinery would help Go programmers in those environments. And there already exist tools that grab core dumps",
+        "so we might be able to reduce the amount of code in the runtime for producing dumps."
+      ],
+      "covariates": {
+        "prose_width": 109,
+        "raw_end_column": 93,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 5,
+        "eligible_anchor_count": 12
+      },
+      "raw_window": [
+        "The advantage of understanding ELF is that we can use the same tools to look at cores produced when a program",
+        "OOMs (at least on Linux) as we do to examine heap dumps. Another benefit is that some cluster",
+        "environments already collect and store core files when programs fail in production. Reusing this",
+        "machinery would help Go programmers in those environments. And there already exist tools that grab core dumps",
+        "so we might be able to reduce the amount of code in the runtime for producing dumps."
+      ],
+      "upper_index": 1
+    },
+    {
+      "id": "nats.go:nats.go:5480",
+      "source": "nats.go",
+      "frame": "main",
+      "path": "nats.go",
+      "lines": [
+        5480,
+        5481
+      ],
+      "upper": "the connection is closed (ErrConnectionClosed), the timeout is reached (ErrTimeout),",
+      "lower": "or if there were no responders (ErrNoResponders) when used in the context of a request/reply.",
+      "context": [
+        "NextMsg will return the next message available to a synchronous subscriber",
+        "or block until one is available. An error is returned if the subscription is invalid (ErrBadSubscription),",
+        "the connection is closed (ErrConnectionClosed), the timeout is reached (ErrTimeout),",
+        "or if there were no responders (ErrNoResponders) when used in the context of a request/reply."
+      ],
+      "covariates": {
+        "prose_width": 109,
+        "raw_end_column": 87,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 6
+      },
+      "raw_window": [
+        "// NextMsg will return the next message available to a synchronous subscriber",
+        "// or block until one is available. An error is returned if the subscription is invalid (ErrBadSubscription),",
+        "// the connection is closed (ErrConnectionClosed), the timeout is reached (ErrTimeout),",
+        "// or if there were no responders (ErrNoResponders) when used in the context of a request/reply."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "styx:internal/transport/transport.go:551",
+      "source": "styx",
+      "frame": "main",
+      "path": "internal/transport/transport.go",
+      "lines": [
+        551,
+        552
+      ],
+      "upper": "once when the send resolves (published or discarded). The callback is non-blocking and",
+      "lower": "may run on a transport-internal goroutine.",
+      "context": [
+        "gap for sends that cannot be made definitive synchronously (shared-memory transport).",
+        "SendReporting returns whether the frame was enqueued; if true, onReport fires exactly",
+        "once when the send resolves (published or discarded). The callback is non-blocking and",
+        "may run on a transport-internal goroutine.",
+        "Ownership is decided solely by enqueued: false means no report fires and the caller",
+        "handles release inline; true means onReport owns the release unconditionally, whether"
+      ],
+      "covariates": {
+        "prose_width": 89,
+        "raw_end_column": 89,
+        "indentation_depth": 0,
+        "language": "go",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 9,
+        "eligible_anchor_count": 8
+      },
+      "raw_window": [
+        "// gap for sends that cannot be made definitive synchronously (shared-memory transport).",
+        "// SendReporting returns whether the frame was enqueued; if true, onReport fires exactly",
+        "// once when the send resolves (published or discarded). The callback is non-blocking and",
+        "// may run on a transport-internal goroutine.",
+        "// Ownership is decided solely by enqueued: false means no report fires and the caller",
+        "// handles release inline; true means onReport owns the release unconditionally, whether"
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/14386-zip-package-archives.md:177",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/14386-zip-package-archives.md",
+      "lines": [
+        177,
+        178
+      ],
+      "upper": "The table of contents at the end of the zip archive is a contiguous list of file headers",
+      "lower": "including offsets to the actual file data, making it efficient to access a particular",
+      "context": [
+        "The two standard encodings are “store” (raw, uncompressed)",
+        "and “deflate” (compressed using the same algorithm as zlib and gzip).",
+        "The table of contents at the end of the zip archive is a contiguous list of file headers",
+        "including offsets to the actual file data, making it efficient to access a particular",
+        "file in the archive.",
+        "As mentioned above, the zip format supports but does not require compression."
+      ],
+      "covariates": {
+        "prose_width": 92,
+        "raw_end_column": 88,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 0,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": false,
+        "paragraph_line_count": 17,
+        "eligible_anchor_count": 12
+      },
+      "raw_window": [
+        "The two standard encodings are “store” (raw, uncompressed)",
+        "and “deflate” (compressed using the same algorithm as zlib and gzip).",
+        "The table of contents at the end of the zip archive is a contiguous list of file headers",
+        "including offsets to the actual file data, making it efficient to access a particular",
+        "file in the archive.",
+        "As mentioned above, the zip format supports but does not require compression."
+      ],
+      "upper_index": 2
+    },
+    {
+      "id": "go-proposal:design/47781-parameterized-go-ast.md:17",
+      "source": "go-proposal",
+      "frame": "main",
+      "path": "design/47781-parameterized-go-ast.md",
+      "lines": [
+        17,
+        18
+      ],
+      "upper": "Parameterized functions may be instantiated with one or more type arguments when they are called or used as function values, as in `g := f[int]` or `x := f[int]()`. Function type arguments are an [expression list].",
+      "lower": "Interface types can have new embedded elements that restrict the set of types that may implement them, for example `interface { ~int64|~float64 }`. Such elements are type expressions of the form `T1 | T2 ... Tn` where each term `Ti` stands for a type or a `~T` where T is a type.",
+      "context": [
+        "Type and function declarations get optional _type parameters_, as in `type  List[T any] ...` or `func f[T1, T2 any]() { ... }`. Type parameters are a [parameter list].",
+        "Parameterized types may be _instantiated_ with one or more _type arguments_, to make them non-parameterized type expressions, as in `l := &List[int]{}` or `type intList List[int]`.  Type arguments are an [expression list].",
+        "Parameterized functions may be instantiated with one or more type arguments when they are called or used as function values, as in `g := f[int]` or `x := f[int]()`. Function type arguments are an [expression list].",
+        "Interface types can have new embedded elements that restrict the set of types that may implement them, for example `interface { ~int64|~float64 }`. Such elements are type expressions of the form `T1 | T2 ... Tn` where each term `Ti` stands for a type or a `~T` where T is a type."
+      ],
+      "covariates": {
+        "prose_width": 281,
+        "raw_end_column": 216,
+        "indentation_depth": 0,
+        "language": "markdown",
+        "markdown_nesting": 1,
+        "trailing_inline_markup": false,
+        "list_item_adjacency": true,
+        "paragraph_line_count": 4,
+        "eligible_anchor_count": 33
+      },
+      "raw_window": [
+        "- Type and function declarations get optional _type parameters_, as in `type  List[T any] ...` or `func f[T1, T2 any]() { ... }`. Type parameters are a [parameter list].",
+        "- Parameterized types may be _instantiated_ with one or more _type arguments_, to make them non-parameterized type expressions, as in `l := &List[int]{}` or `type intList List[int]`.  Type arguments are an [expression list].",
+        "- Parameterized functions may be instantiated with one or more type arguments when they are called or used as function values, as in `g := f[int]` or `x := f[int]()`. Function type arguments are an [expression list].",
+        "- Interface types can have new embedded elements that restrict the set of types that may implement them, for example `interface { ~int64|~float64 }`. Such elements are type expressions of the form `T1 | T2 ... Tn` where each term `Ti` stands for a type or a `~T` where T is a type."
+      ],
+      "upper_index": 2
+    }
+  ]
+}

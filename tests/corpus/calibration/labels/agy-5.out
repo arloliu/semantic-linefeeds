@@ -1,0 +1,77 @@
+[
+  {
+    "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:673",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/12914-monotonic.md:551",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:nats.go:561",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:internal/transport/shm/writer.go:1767",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "styx:host.go:2172",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/29934-error-values.md:70",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "styx:errors.go:453",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:1008",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:675",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:1003",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "styx:internal/transport/shm/transport.go:96",
+    "wrap": "true",
+    "fused": "true"
+  },
+  {
+    "id": "go-proposal:design/go2draft-error-values-overview.md:76",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "go-proposal:design/24301-versioned-go.md:368",
+    "wrap": "true",
+    "fused": "false"
+  },
+  {
+    "id": "nats.go:jetstream/consumer.go:84",
+    "wrap": "false",
+    "fused": "true"
+  },
+  {
+    "id": "go-proposal:design/13073-code-of-conduct.md:374",
+    "wrap": "false",
+    "fused": "false"
+  }
+]
