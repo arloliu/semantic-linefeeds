@@ -255,6 +255,20 @@ def test_a_third_party_source_under_a_copyleft_license_is_rejected():
     assert any("GPL-3.0-only" in p for p in manifest_problems(copyleft))
 
 
+def test_a_permissive_license_with_an_exception_that_only_relaxes_is_accepted():
+    """The LLVM exception waives Apache conditions for object-code embedding and adds none.
+
+    Vendored prose is governed by the plain Apache-2.0 terms,
+    so text under the combined identifier is storable wherever Apache-2.0 text is.
+    """
+    excepted = manifest()
+    excepted["sources"][0].update(
+        composition="third-party-markdown", license="Apache-2.0 WITH LLVM-exception",
+        wrapping_column=80,
+        qualification="mode of raw Markdown paragraph line lengths over 32357 lines")
+    assert manifest_problems(excepted) == []
+
+
 def test_a_third_party_source_without_its_measured_column_is_rejected():
     """A third-party source qualifies on evidence that never touches detector output.
 

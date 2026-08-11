@@ -119,11 +119,16 @@
         "2": {
           "wrap": 0.7,
           "fused": 0.68
+        },
+        "3": {
+          "wrap": 0.7,
+          "fused": 0.68
         }
       },
       "holdout_basis": {
         "1": "the lower end of the calibration interval for each kind, 0.689 for both, rounded down; the holdout is three unseen projects, so the prediction is the weaker end of what this corpus supports rather than its point estimate",
-        "2": "the lower end of the calibration interval for each kind as it stands after the code-span repair, 0.708 for wrap and 0.689 for fused, rounded down; the calibration rates behind them are 169 of 220 and 31 of 37, and the wrap floor is two points above round 1 because that repair raised the rate it derives from; stated before this round was drawn, so no unit of it existed when the number was chosen"
+        "2": "the lower end of the calibration interval for each kind as it stands after the code-span repair, 0.708 for wrap and 0.689 for fused, rounded down; the calibration rates behind them are 169 of 220 and 31 of 37, and the wrap floor is two points above round 1 because that repair raised the rate it derives from; stated before this round was drawn, so no unit of it existed when the number was chosen",
+        "3": "the lower end of the calibration interval for each kind, unchanged from round 2 because neither unscored repair moved a calibration rate: 0.708 for wrap against 169 of 220 and 0.689 for fused against 31 of 37, rounded down; the round exists to score the fence repair and the markup repair, both of which add findings the calibration corpus cannot reach, so the floors carry no credit for either; stated before any unit of this round existed"
       },
       "holdout_misses": {
         "note": "a floor stated before a holdout round and missed by it is acknowledged here, naming what the miss is attributed to, what it blocks, and whether it can still be diagnosed; a round that misses a floor and says nothing here fails the suite, because a missed prediction that nobody writes down is read by the next reader as a pass; an acknowledgement for a round that has not been scored fails too, since that would excuse a floor before it was answered",
@@ -195,7 +200,11 @@
     "a code fence was closed by a run of the other mark, or by a shorter run of its own, so one tilde line inside a backtick block inverted every fence after it in that file; the correction is the only one of the four repairs that adds findings as well as removing them, because prose the inversion was skipping is checked again, and it has not been scored on prose nobody tuned against",
     "one labeling family answered 14 of the 15 units in a batch and dropped the same unit on four independent runs, including one with an enforced reply shape; that boundary carries a labeling defect and left the sample, because a unit judged by two of three blind passes reads as unanimity wherever those two agree",
     "pairwise agreement between families on round 2 ran 82% to 92%, against 93% to 100% in the pilot, so this material discriminates between labelers where the pilot material did not",
-    "round 2 sent 117 of 772 records to adjudication against 27 of 718 on the calibration side; 67 of the 117 were the licence class and 26 were source code that reached the prose stream, so the referral rate measures two extraction defects more than it measures labeler disagreement"
+    "round 2 sent 117 of 772 records to adjudication against 27 of 718 on the calibration side; 67 of the 117 were the licence class and 26 were source code that reached the prose stream, so the referral rate measures two extraction defects more than it measures labeler disagreement",
+    "the markup repair was tuned in the session that orchestrates round 3, against the calibration side and the two spent draws rebuilt from their pinned public sources; the round 3 draw, labeling passes, and seal therefore run in sessions that did not tune it, the orchestrating session never reads the drawn prose, and the adjudicator is the maintainer",
+    "tests/corpus/qualify.py does not exclude YAML front matter, so a Markdown repository carrying front matter on nearly every file collapses to a near-zero mode with most lines far past it; kubernetes/enhancements, kubernetes/website, and nodejs/nodejs.org were set aside for round 3 on that collapse rather than on any measured wrapping habit, and a front-matter cut belongs to the instrument before such a source is ever qualified",
+    "GitHub's licence detector reports NOASSERTION for carbon-lang; its LICENSE file opens by declaring the Apache License v2.0 with LLVM Exception, which is why the manifest records it as permitting this use",
+    "at the 47 true Markdown fused units round 2 drew, the Wilson interval half-width is 0.137, wide enough to hide a modest repair; round 3 keeps the draw procedure identical to the calibration draw anyway, because a round drawn by a different procedure measures the procedure as well as the predicate, and a Markdown fused stratum too wide to publish is withheld by the existing reporting rule rather than resized for"
   ],
   "sources": [
     {
@@ -302,6 +311,42 @@
       "selection_command": "git ls-files '*.md'",
       "wrapping_column": 78,
       "qualification": "mode of raw Markdown paragraph line lengths is column 78, over 29240 lines, with 24% within two columns of the mode and 10% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
+    },
+    {
+      "id": "mebo",
+      "side": "holdout",
+      "round": 3,
+      "composition": "self-authored",
+      "url": "https://github.com/arloliu/mebo",
+      "commit": "cd158deccd28f0f8d87257d8e3f5095dd6921a2f",
+      "license": "Apache-2.0",
+      "selection_command": "git ls-files '*.go' ':!:*_test.go' ':!:vendor/*'",
+      "wrapping_column": 76,
+      "qualification": "mode of raw Go `//` comment line lengths is column 76, over 7661 lines, with 16% within two columns of the mode and 11% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
+    },
+    {
+      "id": "etcd",
+      "side": "holdout",
+      "round": 3,
+      "composition": "third-party-code",
+      "url": "https://github.com/etcd-io/etcd",
+      "commit": "ee043b39e1757fede7cb7f261c1b547d8b188194",
+      "license": "Apache-2.0",
+      "selection_command": "git ls-files '*.go' ':!:*_test.go' ':!:vendor/*'",
+      "wrapping_column": 70,
+      "qualification": "mode of raw Go `//` comment line lengths is column 70, over 10561 lines, with 25% within two columns of the mode and 11% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
+    },
+    {
+      "id": "carbon-lang",
+      "side": "holdout",
+      "round": 3,
+      "composition": "third-party-markdown",
+      "url": "https://github.com/carbon-language/carbon-lang",
+      "commit": "b64d863a8f66f584075c2a658cebb1e545ddc1a9",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "selection_command": "git ls-files '*.md'",
+      "wrapping_column": 80,
+      "qualification": "mode of raw Markdown paragraph line lengths is column 80, over 32357 lines, with 31% within two columns of the mode and 3% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
     }
   ],
   "units": [

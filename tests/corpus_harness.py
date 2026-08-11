@@ -58,7 +58,10 @@ SOURCE_FIELDS = ("id", "side", "composition", "url", "commit", "license",
 COMPOSITIONS = ("self-authored", "third-party-code", "third-party-markdown")
 
 # Unit text is vendored into this repository, so the licence decides what may be stored at all.
-PERMISSIVE = ("Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "MIT")
+# The LLVM exception waives Apache conditions for object-code embedding and adds none,
+# so prose vendored under the combined identifier is governed by the plain Apache-2.0 terms.
+PERMISSIVE = ("Apache-2.0", "Apache-2.0 WITH LLVM-exception",
+              "BSD-2-Clause", "BSD-3-Clause", "MIT")
 
 # What a third-party source is admitted on.
 # Selecting sources by finding density would repeat, at repository granularity,
