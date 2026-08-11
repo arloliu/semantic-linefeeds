@@ -148,6 +148,50 @@ def test_emphasis_hiding_nothing_still_wraps():
     assert kinds("The backend is **required**\nit has no default.\n") == [(1, "wrap")]
 
 
+# --- fused across inline markup -------------------------------------------
+
+def test_a_sentence_ending_on_a_code_span_still_fuses():
+    """A closing backtick is unambiguous: the punctuation after it is the sentence's own.
+
+    Prose that names APIs ends sentences on code spans constantly,
+    and requiring the final word to be lowercase letters walked past every one.
+    """
+    assert kinds("A previous pitch used the names `nonconsuming` and `consuming`. "
+                 "The current one drops both.\n") == [(1, "fused")]
+
+
+def test_a_second_sentence_opening_with_a_code_span_still_fuses():
+    """The right side asked for an uppercase letter, and `Data` opens with a backtick."""
+    assert kinds("crosses framework boundaries. `Data` owns its underlying memory.\n"
+                 ) == [(1, "fused")]
+
+
+def test_emphasis_between_the_stop_and_the_space_no_longer_hides_a_fuse():
+    """The closing class sat after the punctuation but knew nothing of emphasis marks."""
+    assert kinds("**Make by-reference closures the default.** We felt this was right.\n"
+                 ) == [(1, "fused")]
+
+
+def test_a_bolded_label_beside_a_sentence_stays_quiet():
+    """The fragment shape: emphasis before the stop is a label, not a sentence end."""
+    assert kinds("**Base name**. If the iterator yields a value, the name is used.\n") == []
+
+
+def test_a_bracketed_enumeration_is_not_a_sentence_end():
+    """A closing bracket before the stop stays outside the rule: see (1). Then is prose."""
+    assert kinds("walk the list as in (1). Then the walk continues to the next node.\n") == []
+
+
+def test_a_span_enumeration_is_not_two_sentences():
+    """Spans punctuated in sequence carry no second sentence after any of them."""
+    assert kinds("the flags are `-a`. `-b`. `-c`.\n") == []
+
+
+def test_a_trailing_span_fragment_is_not_a_second_sentence():
+    """A span that ends the line after a stop is a fragment a labeler may not even call one."""
+    assert kinds("The call looks like this. `make build`\n") == []
+
+
 # --- list items -----------------------------------------------------------
 
 def test_one_list_item_is_not_measured_against_the_next():

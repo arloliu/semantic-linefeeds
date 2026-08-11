@@ -90,9 +90,19 @@ MID_SENTENCE_ABBREVIATIONS = ("cf", "esp", "viz", "vs")
 # Sentence end followed by a new sentence on the same line.
 # Two or more lowercase letters are required before the terminal punctuation,
 # which is what keeps "e.g." and "i.e." from matching.
+# A code span may stand where the final word does,
+# because a closing backtick is unambiguous:
+# it closes the span, and the punctuation after it belongs to the sentence.
+# Emphasis marks may stand between the punctuation and the space,
+# where they close a sentence written wholly inside emphasis.
+# The next sentence opens on an uppercase letter,
+# or on a code span that something in the same sentence follows;
+# a span the line merely ends on is a fragment rather than a sentence.
 FUSED_RE = re.compile(
-    r"\b(?!(?:" + "|".join(MID_SENTENCE_ABBREVIATIONS) + r")\.)"
-    r"[a-z]{2,}[.!?][\"')\]]*\s+[A-Z]")
+    r"(?:\b(?!(?:" + "|".join(MID_SENTENCE_ABBREVIATIONS) + r")\.)"
+    r"[a-z]{2,}|`[^`]+`)"
+    r"[.!?][\"')\]*_~]*"
+    r"\s+(?:[A-Z]|`[^`]+`\s*\w)")
 
 # Emphasis delimiters standing between the terminal punctuation and the end of the line,
 # where they hide that punctuation from the wrap check.
