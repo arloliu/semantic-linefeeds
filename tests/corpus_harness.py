@@ -167,9 +167,15 @@ def paragraphs(text, path):
     stream = check_linefeeds.prose_stream(text, path)
     if stream is None:
         return []
+    # Licence text is a never-break class.
+    # A unit drawn from one is a violation the detector is structurally unable to report,
+    # so it would sit in the denominator forever without any predicate ever reaching it.
+    # The cut comes from the checker rather than from a copy of it here,
+    # because a copy is a second rule that drifts.
+    stream = check_linefeeds.without_license_text(stream, text, path)
     runs, current = [], []
     for lineno, raw, prose in stream:
-        if prose is None or lineno <= _license_cut(text, path):
+        if prose is None:
             if len(current) > 1:
                 runs.append(current)
             current = []
@@ -178,21 +184,6 @@ def paragraphs(text, path):
     if len(current) > 1:
         runs.append(current)
     return runs
-
-
-def _license_cut(text, path):
-    """The last line of a leading licence region, which the checker also refuses to judge.
-
-    A licence header is a never-break class.
-    A unit drawn from one is a violation the detector is structurally unable to report,
-    so it would sit in the denominator forever without any predicate ever reaching it.
-    """
-    import check_linefeeds
-
-    if check_linefeeds.is_markdown(path):
-        return 0
-    lang = check_linefeeds.lang_for_path(path)
-    return check_linefeeds.license_header_extent(text, lang) if lang else 0
 
 
 def boundaries(text, path):

@@ -101,11 +101,31 @@ FUSED_RE = re.compile(
 # so peeling it would expose whatever punctuation the code span happens to contain.
 CLOSING_EMPHASIS_RE = re.compile(r"(\*{1,3}|_{1,3}|~{1,2})$")
 
+# A comment line holding nothing but code punctuation.
+# Commented-out code written as line comments rather than as an indented block
+# reaches the extractor as prose, and a lone closing brace then forms a boundary
+# with whatever line follows it.
+# The set is deliberately narrow: no English sentence is built from these alone,
+# so nothing that reads as prose can match.
+CODE_PUNCTUATION_RE = re.compile(r"^[{}()\[\];,\s]+$")
+
+# A rule of repeated punctuation used to divide one section of a comment from the next.
+# The divider is not prose, and the label under it is not a continuation of it.
+# Three characters minimum, so an em dash standing on its own line is not swallowed.
+DIVIDER_RE = re.compile(r"^([^\w\s])\1{2,}$")
+
 # One blockquote marker: up to three leading spaces, ">", and at most one space after it.
 QUOTE_MARKER_RE = re.compile(r"^ {0,3}> ?")
 
 # A list marker, and the space that must follow it before the item's content.
 LIST_ITEM_RE = re.compile(r"^(?:[-*+]|\d+[.)])\s+")
+
+# The delimiter row under a table header.
+# A row may omit its leading and trailing pipes, so the first character marks nothing,
+# and a row of prose cells reaches the checker looking exactly like a paragraph.
+# The delimiter row is the one part of the syntax that cannot be read as prose.
+# A pipe is still required in it, so a setext underline stays a setext underline.
+TABLE_DELIMITER_RE = re.compile(r"^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$")
 
 # A bare "and" is usually a compound object (not a boundary); require the
 # comma-led form, or strong punctuation, before advising a split.
@@ -270,6 +290,12 @@ def comment_body(body):
         # PowerShell comment-based-help keywords (.SYNOPSIS, .PARAMETER
         # Path), structurally the same as an @-prefixed doc tag.
         return None
+    if CODE_PUNCTUATION_RE.match(body):
+        # A closing brace standing alone in a comment is commented-out code.
+        return None
+    if DIVIDER_RE.match(body):
+        # A rule of dashes divides sections; it continues no sentence.
+        return None
     return body
 
 
@@ -315,7 +341,9 @@ def prose_lines_markdown(text):
     in_fence = False
     in_frontmatter = False
     after_refdef = False
-    for i, raw in enumerate(text.splitlines(), 1):
+    in_table = False
+    lines = text.splitlines()
+    for i, raw in enumerate(lines, 1):
         content = strip_quote_markers(raw)
         stripped = content.strip()
         if i == 1 and stripped == "---":
@@ -327,6 +355,20 @@ def prose_lines_markdown(text):
                 in_frontmatter = False
             yield i, None, None
             continue
+        if in_table:
+            # The block runs to the first blank line or the next block-level
+            # structure, which is where a table ends for a reader too.
+            if stripped and not stripped.startswith(("#", "```", "~~~")):
+                yield i, None, None
+                continue
+            in_table = False
+        if "|" in stripped:
+            following = lines[i] if i < len(lines) else ""
+            following = strip_quote_markers(following).strip()
+            if "|" in following and TABLE_DELIMITER_RE.match(following):
+                in_table = True  # this line is the header the delimiter names
+                yield i, None, None
+                continue
         if stripped.startswith(("```", "~~~")):
             in_fence = not in_fence
             yield i, None, None
@@ -590,17 +632,53 @@ def prose_stream(text, path):
     return prose_lines_code(text, lang)
 
 
+def _paragraph_without_license(paragraph):
+    """One buffered comment paragraph, silenced when any line of it carries a marker.
+
+    The paragraph is the unit rather than the line.
+    A copyright line is where the marker sits,
+    and the sentences a licence is made of are on the lines after it.
+    """
+    if any(LICENSE_RE.search(prose) for _, _, prose in paragraph):
+        return [(lineno, None, None) for lineno, _, _ in paragraph]
+    return paragraph
+
+
+def without_license_text(lines, text, path):
+    """The prose stream with licence text removed, wherever in the file it sits.
+
+    Two cuts, because neither one covers what the other does.
+    The leading region is cut by extent, which reaches a header
+    whose own first line carries nothing a marker matches.
+    Every other comment paragraph is cut when some line of it carries a marker,
+    which reaches the second copyright block a generated file puts below its code.
+
+    Both readers of the extractor cut here, and that is the point of the function.
+    A sampling frame that enumerated a boundary the checker refuses to judge
+    would hold a violation no predicate could ever reach.
+    """
+    if is_markdown(path):
+        yield from lines
+        return
+    lang = lang_for_path(path)
+    cut = license_header_extent(text, lang) if lang else 0
+    paragraph = []
+    for lineno, raw, prose in lines:
+        if prose is not None and lineno > cut:
+            paragraph.append((lineno, raw, prose))
+            continue
+        yield from _paragraph_without_license(paragraph)
+        paragraph = []
+        yield lineno, None, None
+    yield from _paragraph_without_license(paragraph)
+
+
 def check(text, path):
     """Return a list of (lineno, kind, message, excerpt) findings."""
     lines = prose_stream(text, path)
     if lines is None:
         return []
-    if not is_markdown(path):
-        lang = lang_for_path(path)
-        cut = license_header_extent(text, lang) if lang else 0
-        if cut:
-            lines = ((n, raw if n > cut else None, p if n > cut else None)
-                     for n, raw, p in lines)
+    lines = without_license_text(lines, text, path)
 
     findings = []
     limit = active_long_limit()

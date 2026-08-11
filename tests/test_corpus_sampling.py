@@ -102,6 +102,24 @@ def test_a_licence_header_yields_no_units():
     assert positions(boundaries(LICENSED, "x.go")) == [(7, 8)]
 
 
+TWICE_LICENSED = LICENSED + (
+    "\n"
+    "// Copyright 2018-2022 The NATS Authors\n"
+    "// Licensed under the Apache License, Version 2.0 (the \"License\");\n"
+    "// you may not use this file except in compliance with the License.\n"
+    "\n"
+    "func g() {}\n")
+
+
+def test_a_second_licence_block_yields_no_units_either():
+    """The cut the sampler applies is the checker's own, so neither can drift from the other.
+
+    A generated file carries a copyright block below its code as well as above it,
+    and only the leading one is found by extent.
+    """
+    assert positions(boundaries(TWICE_LICENSED, "x.go")) == [(7, 8)]
+
+
 def test_a_file_the_extractor_does_not_target_yields_no_units():
     """Recall is reported over the prose the extractor yields, and no more."""
     assert boundaries("hello there\nand more\n", "notes.txt") == []

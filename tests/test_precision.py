@@ -118,6 +118,177 @@ def test_a_paragraph_is_still_measured_against_itself():
     assert kinds("a line that ends mid-clause because it was\nwrapped at a column.\n") == [(1, "wrap")]
 
 
+# --- licence blocks -------------------------------------------------------
+
+SECOND_LICENSE = (
+    "// Copyright 2026 Arlo Liu. All rights reserved.\n"
+    "\n"
+    "package demo\n"
+    "\n"
+    "func First() {}\n"
+    "\n"
+    "// Copyright 2026 Arlo Liu\n"
+    "// You may obtain a copy of the License at the address in the NOTICE file\n"
+    "// distributed with this work.\n"
+)
+
+
+def test_a_licence_block_below_the_code_is_not_prose():
+    """Only the leading region is found by extent, and a generated file carries two."""
+    assert kinds(SECOND_LICENSE, "demo.go") == []
+
+
+def test_prose_between_two_licence_blocks_is_still_checked():
+    """The rule silences a paragraph carrying a marker, not the rest of the file."""
+    text = SECOND_LICENSE.replace(
+        "func First() {}\n",
+        "// a line that ends mid-clause because it was\n"
+        "// wrapped at a column.\n"
+        "func First() {}\n")
+    assert kinds(text, "demo.go") == [(5, "wrap")]
+
+
+def test_a_comment_paragraph_naming_no_licence_is_untouched():
+    assert kinds("package demo\n"
+                 "\n"
+                 "// a line that ends mid-clause because it was\n"
+                 "// wrapped at a column.\n", "demo.go") == [(3, "wrap")]
+
+
+# --- tables ---------------------------------------------------------------
+
+PIPELESS_TABLE = (
+    "Method | Collections\n"
+    "---|---\n"
+    "get returns a shared reference to the value | HashMap and TreeMap\n"
+    "insert replaces the value already stored there | HashMap only\n"
+)
+
+
+def test_a_table_row_that_omits_its_leading_pipe_is_not_prose():
+    """The first character marks nothing, so the delimiter row has to mark the block."""
+    assert kinds(PIPELESS_TABLE) == []
+
+
+def test_a_quoted_table_behaves_like_an_unquoted_one():
+    quoted = "".join(f"> {line}\n" for line in PIPELESS_TABLE.splitlines())
+    assert kinds(quoted) == []
+
+
+def test_a_paragraph_containing_a_pipe_is_still_checked():
+    """A pipe is a character prose uses; only a delimiter row under it means a table."""
+    assert kinds("the flag reads a | separated list and it was\n"
+                 "wrapped at a column.\n") == [(1, "wrap")]
+
+
+def test_a_row_of_dashes_without_a_pipe_opens_no_table():
+    """A setext underline would otherwise swallow the heading text above it."""
+    assert kinds("One thing here. Another thing here.\n---\n") == [(1, "fused")]
+
+
+def test_prose_after_a_table_is_still_checked():
+    assert kinds(PIPELESS_TABLE + "\n"
+                 "a line that ends mid-clause because it was\n"
+                 "wrapped at a column.\n") == [(6, "wrap")]
+
+
+# --- commented-out code ---------------------------------------------------
+
+COMMENTED_OUT = (
+    "package example\n"
+    "\n"
+    "// Open a session and close it when the work is done.\n"
+    "// session, err := pool.Acquire(ctx)\n"
+    "// if err != nil {\n"
+    "//     return err\n"
+    "// }\n"
+    "// defer session.Release()\n"
+)
+
+
+def test_a_lone_closing_brace_is_not_measured_against_the_line_below_it():
+    """A worked example written as line comments never reaches the indented-example rule.
+
+    The closing brace ends no clause and the call under it starts none,
+    so the two were read as one wrapped sentence.
+    """
+    assert kinds(COMMENTED_OUT, "example.go") == []
+
+
+@pytest.mark.parametrize("line", ["}", "})", "});", ")", "],", "} )"])
+def test_a_line_of_only_code_punctuation_is_not_prose(line):
+    assert check_linefeeds.comment_body(line) is None
+
+
+@pytest.mark.parametrize("line", [
+    "}, and the handler returns",
+    "The closing brace } ends the block",
+    "—",
+])
+def test_a_line_carrying_anything_else_is_still_prose(line):
+    """The rule reads a whole line, not a character class found anywhere in one.
+
+    An em dash alone is punctuation a person wrote,
+    and swallowing it would hide the boundary it stands at.
+    """
+    assert check_linefeeds.comment_body(line) == line
+
+
+# --- dividers -------------------------------------------------------------
+
+DASH_DIVIDER = ("package example\n"
+                "\n"
+                "// ----------------------\n"
+                "// Write Operations\n"
+                "// ----------------------\n")
+
+
+def test_a_divider_breaks_the_paragraph_around_it():
+    """The label under a rule of dashes continues no sentence above it.
+
+    A dash ends a line legitimately, so this pair never reported a wrap.
+    It reached the sampling frame instead,
+    where it sat as a boundary about which there was nothing to decide.
+    """
+    stream = check_linefeeds.prose_stream(DASH_DIVIDER, "example.go")
+    assert [(n, p) for n, _, p in stream if p is not None] == [(4, "Write Operations")]
+
+
+def test_a_divider_of_a_character_that_ends_no_line_no_longer_wraps():
+    assert kinds("package example\n"
+                 "\n"
+                 "// ======================\n"
+                 "// write operations here\n", "example.go") == []
+
+
+@pytest.mark.parametrize("line", ["---", "======================", "***", "..."])
+def test_a_run_of_one_punctuation_mark_is_not_prose(line):
+    assert check_linefeeds.comment_body(line) is None
+
+
+@pytest.mark.parametrize("line", ["—", "--", "-=-=-=", "- a list item"])
+def test_a_line_short_of_a_rule_is_still_prose(line):
+    """Three characters minimum, of one mark, so nothing a person wrote mid-sentence goes."""
+    assert check_linefeeds.comment_body(line) == line
+
+
+def test_prose_containing_dashes_is_untouched():
+    assert kinds("package example\n"
+                 "\n"
+                 "// a line -- with dashes in it -- that ends mid-clause and was\n"
+                 "// wrapped at a column.\n", "example.go") == [(3, "wrap")]
+
+
+def test_prose_after_commented_out_code_is_still_measured():
+    """The rule breaks the paragraph; it does not switch the checker off for the rest."""
+    text = ("package example\n"
+            "\n"
+            "// }\n"
+            "// a line that ends mid-clause because it was\n"
+            "// wrapped at a column.\n")
+    assert kinds(text, "example.go") == [(4, "wrap")]
+
+
 # --- blockquotes ----------------------------------------------------------
 
 QUOTED = [
