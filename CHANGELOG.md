@@ -5,6 +5,56 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-08-11
+
+The release that measured itself.
+A corpus of 359 boundaries from six projects was labeled by three model families
+and settled by the maintainer, independently of anything this tool reports.
+Every number below is measured against those labels rather than against the checker's own output.
+
+### Changed
+
+- **`wrap` no longer reaches the model.**
+  It misfired on six of 450 labeled non-violations,
+  and a kind that complains about correct prose cannot be the kind that refuses an edit.
+  `fused` is now the only finding that exits 2.
+  `SEMLF_EXPERIMENTAL_WRAP=1` puts `wrap` back as advice that never blocks,
+  and `--file` audits keep it unconditionally.
+- Hook mode's advisory wording asks for a judgment rather than a rewrite,
+  because a finding this release could not trust must not be delivered as an instruction.
+
+### Fixed
+
+- **Abbreviations no longer read as fused sentences.**
+  `cf.`, `esp.`, `viz.`, and `vs.` are excluded,
+  derived from the rule they amend rather than from a list of abbreviations.
+- **Closing emphasis no longer hides terminal punctuation.**
+  `**required.**` ends in a full stop.
+  Only a delimiter something opened is peeled, and a code span is never touched.
+- **A list item is no longer measured against the next one.**
+  Every item starts a new paragraph; continuation lines inside one item do not.
+- **A blockquote no longer strips a line of every exemption it would have unquoted.**
+  The markers used to come off after every rule had already run against them,
+  so fenced code, indented code, headings, tables, reference definitions,
+  and inline HTML all reached the detector as prose once quoted.
+- `--file --json PATH` parses.
+  An option word standing where a path belongs used to leave `--file` with nothing to consume.
+
+### Added
+
+- A labeled corpus, its manifest, and a sealed-holdout mechanism,
+  with recall recorded as floors per kind and per stratum
+  so a loss of recall fails a run rather than passing quietly.
+- A compliant corpus of prose that must draw no complaint, and a positive control that proves the gate can hear.
+
+### Measured
+
+- Recall against the labels: `wrap` 163 of 220, `fused` 31 of 37.
+- False positives: one of 450 labeled non-violations, down from seven.
+- Sixty-three true violations the checker does not report are recorded as accepted misses rather than hidden.
+- The list-item repair cost two detections and removed four false positives.
+  That trade is priced in the manifest instead of being absorbed.
+
 ## [0.4.0] - 2026-08-09
 
 ### Added

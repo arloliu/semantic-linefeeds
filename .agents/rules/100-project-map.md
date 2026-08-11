@@ -17,10 +17,28 @@ tests/                            # pytest harness; see 300-testing.md
 ## The Core Stays One File
 
 `scripts/check_linefeeds.py` is Python 3.9+ with stdlib imports only
-(`argparse collections json re sys`).
+(`argparse collections json os re sys tempfile`).
 Every adapter depends on the "copy one file, runs on bare python3" property;
 adding a dependency or splitting the file breaks every install story at once.
-Split into a package only if the file exceeds ~1000 lines.
+
+The old "split at ~1000 lines" threshold is withdrawn.
+[ADR-0004](../../docs/decisions/0004-portable-core-and-repository-cli.md) replaced it.
+The boundary is drawn by what a thing needs, not by how long the file has become:
+
+- The **core** keeps extraction, the predicates, suppression semantics, span filtering,
+  diagnostic construction, hook configuration discovery, and the hook entry points.
+  Every adapter invokes the core without any CLI,
+  so policy discovery living outside it would let hooks and CI disagree.
+- A **repository CLI** would own git snapshot selection, subcommand routing,
+  the installation lifecycle, doctor, and SARIF rendering.
+  It reuses the core's discovery function rather than carrying its own.
+
+A packaging proof under [`docs/proofs/zipapp-packaging/`](../../docs/proofs/zipapp-packaging/)
+shows the split ships as one artifact, and one command replays it.
+Line count is no longer the test.
+The tests are executable:
+copy the core alone into an empty directory, replay every adapter payload,
+run it under Python 3.9, and reject any import outside the stdlib allowlist.
 
 ## Invariants
 

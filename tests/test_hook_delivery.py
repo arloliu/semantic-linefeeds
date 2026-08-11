@@ -184,6 +184,32 @@ def test_a_file_audit_still_reports_wrap(tmp_path):
     assert "[wrap]" in r.stdout
 
 
+# Valid JSON that is not the payload shape either host documents.
+# A hook that crashes on one of these fails closed,
+# which is the failure mode a post-edit hook is least allowed to have.
+MALFORMED = ['[1, 2]', '"a string"', '42', 'null', 'true',
+             '{"tool_input": "not an object"}',
+             '{"tool_input": {"file_path": 7}}',
+             '{"tool_input": {"file_path": "a.md", "content": 7}}',
+             '{"tool_name": "apply_patch", "tool_input": [1, 2]}',
+             '{"tool_name": "apply_patch", "tool_input": {"command": 42}}']
+
+
+@pytest.mark.parametrize("agent", AGENTS)
+@pytest.mark.parametrize("payload", MALFORMED, ids=lambda p: p[:24])
+def test_a_payload_of_the_wrong_shape_fails_open(agent, payload):
+    """Parsing succeeded and the shape was still wrong, which is not the same case.
+
+    The JSON guard already covers text that does not parse.
+    Attribute access was reached unguarded, and raised,
+    for text that parses into a list, a number, or an object whose fields hold the wrong type.
+    """
+    r = run_cli(["--hook", agent], payload)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout == ""
+    assert r.stderr == ""
+
+
 def test_codex_advisory_keeps_the_approximate_position_note():
     """Codex line numbers are positions within the patch, not the file.
 

@@ -30,7 +30,7 @@ import re
 import sys
 import tempfile
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 DEFAULT_LONG_LINE = 120
 CLI_LONG_LIMIT = None  # set by --long-limit in main()
@@ -762,19 +762,36 @@ def deliver(reports, snippet=True, note=None):
     return 0
 
 
-def run_hook_claude():
+def read_payload():
+    """The hook payload as an object, or None when stdin was not one.
+
+    Parsing and shape are separate failures.
+    Text that parses into a list or a number reached attribute access unguarded,
+    and a post-edit hook that raises has failed closed on an edit it was only meant to inspect.
+    """
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def run_hook_claude():
+    payload = read_payload()
+    if payload is None:
         return 0
-    tool_input = payload.get("tool_input") or {}
-    path = tool_input.get("file_path") or ""
+    tool_input = payload.get("tool_input")
+    if not isinstance(tool_input, dict):
+        return 0
+    path = tool_input.get("file_path")
+    if not isinstance(path, str):
+        return 0
     if not (is_markdown(path) or lang_for_path(path) is not None):
         return 0
     if skip_path(path):
         return 0
     text = tool_input.get("new_string") or tool_input.get("content") or ""
-    if not text:
+    if not isinstance(text, str) or not text:
         return 0
     return deliver([(path, check(text, path))])
 
@@ -823,21 +840,23 @@ def added_text_by_file(patch):
 
 
 def run_hook_codex():
-    try:
-        payload = json.load(sys.stdin)
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    payload = read_payload()
+    if payload is None:
         return 0
     if payload.get("tool_name") != "apply_patch":
         return 0
     tool_input = payload.get("tool_input")
     if isinstance(tool_input, str):
         patch = tool_input
-    else:
-        tool_input = tool_input or {}
+    elif isinstance(tool_input, dict):
         # "command" is the current stable contract; "input"/"patch" are
         # best-effort fallbacks for older payload shapes.
         patch = (tool_input.get("command") or tool_input.get("input")
                  or tool_input.get("patch") or "")
+    else:
+        return 0
+    if not isinstance(patch, str):
+        return 0
     reports = [(path, check(text, path))
                for path, text in sorted(added_text_by_file(patch).items())
                if not skip_path(path)]
@@ -883,8 +902,8 @@ def main():
                            "withheld unless SEMLF_EXPERIMENTAL_WRAP is set "
                            "(default agent: claude)")
     # Zero or more, with a trailing catch-all, so that `--file --json PATH` parses.
-    # With `nargs="+"` an option word standing where a path belongs
-    # left `--file` with nothing to consume and turned a common ordering into a usage error.
+    # With `nargs="+"`, an option word standing where a path belongs left `--file` with
+    # nothing to consume, which turned a common ordering into a usage error.
     mode.add_argument("--file", nargs="*", default=None, metavar="PATH",
                       help="check whole files and report to stdout; exit 1 on any "
                            "fused/wrap violation (long findings are advisory only)")

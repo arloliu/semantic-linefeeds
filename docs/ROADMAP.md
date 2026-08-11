@@ -59,62 +59,17 @@ and each carries many commits.
 
 Every ordering constraint established above is preserved,
 but as **commit order inside a release** rather than as a separate tag.
-That distinction matters:
-the trust repairs below reach `main` in the first commits of v0.4.1,
-months before the tag, and nothing waits on the corpus work that follows them.
 
-### v0.4.1 — Trust and precision
+### Carried out of v0.4.1
 
-Two commit groups, in this order.
+v0.4.1 shipped; its record is in [`CHANGELOG.md`](../CHANGELOG.md).
+One piece of it did not, and it gates the next round of tuning rather than the last one.
 
-**Group 1 — contract repairs.**
-No heuristic changes, no new design, landing first because each is active trust damage.
-
-- Hook mode exits 2 only for `fused` or `wrap`;
-  `long` prints feedback and exits 0, matching `--file`, the README, and the skill.
-- **Non-blocking findings use each host's model-visible protocol.**
-  `long`-only results exit 0 and emit the host JSON object on stdout,
-  with `hookEventName: "PostToolUse"` and the rendered advice in `additionalContext`.
-  Exit 2 with stderr is retained for `fused` or `wrap`,
-  which is the behavior in force until group 2 withdraws `wrap` from default feedback.
-  Without this, exit 0 hides the advice in Claude and Codex rather than unblocking it.
-- **The opencode adapter surfaces advisory output on exit 0 as well.**
-  It renders the advisory text rather than raw transport JSON.
-  It currently appends output only at exit 2 (`adapters/opencode/semantic-linefeeds.ts:47-61`),
-  so the exit-code change alone would silently delete every `long` advisory for its users.
-- The renderer stops opening a `long`-only report with "Fix these"
-  (`scripts/check_linefeeds.py:568-584`), which contradicts the instruction to leave such a line long.
-- The module docstring, CLI help, and the authoritative exit-code text are updated together
-  (`scripts/check_linefeeds.py:10-18`, `scripts/check_linefeeds.py:707-719`,
-  `.agents/rules/100-project-map.md:35-39`).
-- `long`-only contract tests across the Claude, Codex, and opencode paths,
-  asserting the host JSON shape and model-visible content rather than subprocess stderr alone,
-  plus a mixed advisory-and-blocking case that stays at exit 2 without duplicating advice.
-- **Temp-directory discovery fails open.**
-  `skip_path()` calls `tempfile.gettempdir()` unprotected (`scripts/check_linefeeds.py:143-159`),
-  and both hook entries catch only JSON errors,
-  so an unwritable temp directory makes the hook exit 1 before it checks anything.
-  That breaks Principle 7.
-  The failure is caught, the temp exclusion is skipped, and a deterministic test covers it.
-- `--version` on the core, sourced from one embedded version constant.
-
-**Group 2 — precision.**
-
-- `wrap` withdrawn from default hook feedback, per ADR-0002, and retained in `--file` audits.
-- Abbreviation exclusions for `fused`, derived from the active regex.
-  These land **in the same commit** as the withdrawal, per ADR-0002,
-  with a release-level test asserting the two become visible together.
-- The hook-output matrix from ADR-0002, with the `SEMLF_EXPERIMENTAL_WRAP` opt-in surface.
-- Connector, clustering, and width work all drop out of the plan with the withdrawal.
-- The narrow emphasis repair from ADR-0002.
-- A paragraph break at every Markdown list item.
-- The labeled corpus from ADR-0003, manifest, accepted-miss list, and gates.
-- The portable-core boundary from ADR-0004 recorded, and `100-project-map.md` amended.
-- Fix `--file --json PATH` ordering.
-
-Exit criterion: zero false positives across the compliant corpus for every kind still in default feedback,
-no `wrap` finding reachable without the explicit opt-in,
-and every mutation test failing when its exception is removed.
+- **The sealed holdout is built but empty.**
+  Its three sources are chosen and pinned, and the mechanism that refuses to open it is tested.
+  Nothing has been drawn, labeled, or sealed.
+  Until that happens, every rate this project reports is measured on the corpus it was tuned against.
+  The predicate must be frozen first, and the session that labels the holdout must not be one that tunes.
 
 ### v0.5 — Changed spans, suppression, and the judgment layer
 
