@@ -51,6 +51,28 @@ A latency figure quoted in v2 (`git diff` at 0.65ms median over 20 runs, one mac
 is retained only as a local observation.
 No decision depends on it.
 
+## Open precision questions
+
+Two sealed holdouts have been drawn, opened, and spent.
+Four items came out of them that nobody has repaired,
+and none belongs to a release yet:
+each changes the predicate, so each wants its own decision about whether a fresh round comes first.
+The last is the only one that has cost precision, and it is the one worth doing first.
+
+| Open item | Evidence |
+|---|---|
+| `fused` recall on unseen Markdown | 25 of 47 in the second round, where the first returned 66 of 79 |
+| A `//go:build` directive above a block-comment licence header defeats the licence cut | the same header without the directives yields no boundaries and with them yields six |
+| The generated-file test reads only a file's first five lines | four boundaries from generated Go whose `DO NOT EDIT` marker sits under the licence block |
+| Code reaches the prose stream from Markdown written with HTML entities | all three false positives in the second round |
+
+The `fused` question is not a defect anyone has localized, and this round cannot localize it:
+its labels were deleted when the bundle was spent.
+Doing so needs the calibration side or a third round,
+and until something does, no `fused` rate may be published.
+How a round is read when one floor clears and another does not is
+[ADR-0009](decisions/0009-a-round-scores-what-the-change-could-move.md).
+
 ## Releases
 
 Five releases to 1.0, not eight.
@@ -59,52 +81,6 @@ and each carries many commits.
 
 Every ordering constraint established above is preserved,
 but as **commit order inside a release** rather than as a separate tag.
-
-### v0.4.2 — What the holdout found
-
-v0.4.1 shipped and was scored against a sealed holdout;
-both records are in [`CHANGELOG.md`](../CHANGELOG.md).
-The holdout found five things the repairs had not,
-and the plan for them is
-[`v0.4.2-what-the-holdout-found.md`](plans/active/v0.4.2-what-the-holdout-found.md).
-What that round cost and what it bought is
-[ADR-0008](decisions/0008-a-holdout-is-spent-by-being-opened.md).
-
-- Four false positive classes, every one of them found by labelers disagreeing rather than by a test:
-  code commented out inside a doc comment,
-  a Markdown table row that does not begin with a pipe,
-  a second licence block further down a file,
-  and a rule of dashes used as a divider.
-  All four are repaired.
-- One recall hole that two independent samples agree on.
-  A line ending in inline markup is a `wrap` the detector reports once in 21 on one sample
-  and six times in 30 on the other.
-  The repair is written, and a second holdout scored it at 219 of 276 against a floor of 0.70.
-  It ships.
-- A second holdout, drawn because the first was spent scoring v0.4.1, and now spent in turn.
-  Both records are in [`CHANGELOG.md`](../CHANGELOG.md).
-
-Everything planned for this release is done, and what remains is the release itself.
-
-**One question it opened, and left open.**
-`fused` recall came back at 50 of 77 against a floor of 0.68,
-and the whole loss is in Markdown: 25 of 47, against 66 of 79 in the first round.
-Nothing in v0.4.2 changes how a fused line is found, so it blocks no repair in it,
-but it does block any published `fused` rate until something localizes it.
-This round cannot: its labels were deleted when the bundle was spent.
-Localizing it needs the calibration side or a third round,
-and how a round is read when one floor clears and another does not is
-[ADR-0009](decisions/0009-a-round-scores-what-the-change-could-move.md).
-
-**Three defects the round exposed and nobody has repaired.**
-Each one changes the predicate, so each wants its own decision about whether a fresh round comes first.
-The third is the only one that cost precision, and it is the one worth doing first.
-
-| Defect | Evidence |
-|---|---|
-| A `//go:build` directive above a block-comment licence header defeats the licence cut | the same header without the directives yields no boundaries and with them yields six |
-| The generated-file test reads only a file's first five lines | four boundaries from generated Go whose `DO NOT EDIT` marker sits under the licence block |
-| Code reaches the prose stream from Markdown written with HTML entities | all three false positives in the second round |
 
 ### v0.5 — Changed spans, suppression, and the judgment layer
 
