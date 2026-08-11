@@ -5,6 +5,56 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+The release that repairs what two spent holdouts left behind.
+Three of the four items below were recorded as open defects when v0.4.2 shipped;
+the fourth was found while repairing the third, and it corrects the record.
+
+### Fixed
+
+- **A build directive above a licence header no longer defeats the licence cut.**
+  A Go build constraint is not a comment scope of its own,
+  and reading it as one ended the leading region at the blank line the language requires under it.
+  The licence below was then judged as prose:
+  the same header yields no boundaries without the directives and six with them.
+  A leading run of directives is stepped over,
+  and only a run that actually opens with one, so a file that starts with a comment reads as before.
+  `// +build`, the legacy form, is a directive too — it was not on Go's list at all.
+- **A generated-file marker below a licence block is found.**
+  Only the first five lines were read, and a licence header is longer than five,
+  so `DO NOT EDIT` under one was missed.
+  Every comment line above the first line of code is read now.
+  That reach is added to the first five lines rather than replacing them,
+  because narrowing the older rule would start checking files it now skips.
+- **Code inside an HTML `<pre>` block in Markdown is not prose.**
+  The opening tag was already skipped for starting with a bracket,
+  and every line of code under it was read as prose.
+- **A code fence is closed only by a run of its own mark, at least as long as its own.**
+  One flag served both marks, so a tilde run inside a backtick block closed it,
+  and a fence long enough to quote a shorter one was closed by the one it quoted.
+  Either inverts every fence after that point in the file,
+  so prose is skipped and the code in the next block is read as prose.
+
+  This is the one repair here that adds findings as well as removing them:
+  prose the inversion was skipping is checked again.
+  It has not been scored on prose nobody tuned against, and the next holdout scores it first.
+  What can be measured now was:
+  the frozen status of all 718 labeled units is unmoved,
+  the compliant corpus is unmoved at eleven findings,
+  and this repository's own files gain and lose nothing.
+
+### Measured
+
+- **The three false positives the second holdout found were recorded as one class, and only two are.**
+  Both of those sit inside a `<pre>` block in one proposal.
+  The third sits inside a fenced block the extractor believed was closed,
+  which is a different defect and the fourth item above.
+  [ADR-0009](docs/decisions/0009-a-round-scores-what-the-change-could-move.md)
+  read that round on the false positive rate rather than the count,
+  and on none of them coming from a line ending in a code span;
+  both still hold.
+
 ## [0.4.2] - 2026-08-11
 
 The release that reads what the labelers argued about.

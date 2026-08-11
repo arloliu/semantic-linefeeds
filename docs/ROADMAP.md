@@ -54,22 +54,24 @@ No decision depends on it.
 ## Open precision questions
 
 Two sealed holdouts have been drawn, opened, and spent.
-Four items came out of them that nobody has repaired,
-and none belongs to a release yet:
-each changes the predicate, so each wants its own decision about whether a fresh round comes first.
-The last is the only one that has cost precision, and it is the one worth doing first.
+The three false positive classes they left behind are repaired,
+and repairing them turned up a fourth that the record had folded into one of the three.
+Two questions remain, and both need prose nobody has tuned against.
 
-| Open item | Evidence |
-|---|---|
-| `fused` recall on unseen Markdown | 25 of 47 in the second round, where the first returned 66 of 79 |
-| A `//go:build` directive above a block-comment licence header defeats the licence cut | the same header without the directives yields no boundaries and with them yields six |
-| The generated-file test reads only a file's first five lines | four boundaries from generated Go whose `DO NOT EDIT` marker sits under the licence block |
-| Code reaches the prose stream from Markdown written with HTML entities | all three false positives in the second round |
+| Open item | Evidence | What it needs |
+|---|---|---|
+| `fused` recall on unseen Markdown | 25 of 47 in the second round, where the first returned 66 of 79 | the calibration side, or a third round |
+| A fence is now closed only by its own mark, which releases prose the old rule skipped | one file gained 75 findings and lost 53 | a third round, which scores it first |
 
-The `fused` question is not a defect anyone has localized, and this round cannot localize it:
+The `fused` question is not a defect anyone has localized, and the round that found it cannot:
 its labels were deleted when the bundle was spent.
-Doing so needs the calibration side or a third round,
-and until something does, no `fused` rate may be published.
+Until something localizes it, no `fused` rate may be published.
+
+The fence repair is the only change since the last round that adds findings as well as removing them,
+so it is the first thing a third holdout has to score.
+What could be measured without one was:
+no frozen status among the 718 labeled units moved,
+and the compliant corpus is unmoved.
 How a round is read when one floor clears and another does not is
 [ADR-0009](decisions/0009-a-round-scores-what-the-change-could-move.md).
 
