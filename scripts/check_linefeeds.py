@@ -132,6 +132,12 @@ LIST_ITEM_RE = re.compile(r"^(?:[-*+]|\d+[.)])\s+")
 # A pipe is still required in it, so a setext underline stays a setext underline.
 TABLE_DELIMITER_RE = re.compile(r"^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$")
 
+# A code fence, which only a run of its own mark and at least its own length closes.
+# One flag for both marks let a tilde run inside a backtick block close it,
+# and a fence long enough to quote a shorter one was closed by the one it quoted.
+# Either inverts every fence after that point,
+# so prose is skipped and the code in the next block is read as prose.
+FENCE_RE = re.compile(r"^(`{3,}|~{3,})")
 
 # An HTML block whose content is code.
 # The opening tag is skipped for starting with a bracket,
@@ -397,7 +403,7 @@ def prose_lines_markdown(text):
 
     Yields (lineno, None, None) for lines that break paragraph continuity.
     """
-    fence = False
+    fence = None  # the mark and length of the open fence, which only its own closes
     in_frontmatter = False
     in_pre = False
     after_refdef = False
@@ -436,11 +442,16 @@ def prose_lines_markdown(text):
                 in_table = True  # this line is the header the delimiter names
                 yield i, None, None
                 continue
-        if stripped.startswith(("```", "~~~")):
-            fence = not fence
+        marker = FENCE_RE.match(stripped)
+        if marker:
+            mark, width = marker.group(1)[0], len(marker.group(1))
+            if fence is None:
+                fence = (mark, width)
+            elif fence[0] == mark and width >= fence[1]:
+                fence = None
             yield i, None, None
             continue
-        if fence:
+        if fence is not None:
             yield i, None, None
             continue
         if content.startswith(("    ", "\t")):

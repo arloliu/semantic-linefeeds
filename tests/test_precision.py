@@ -506,6 +506,52 @@ def test_prose_after_a_pre_block_is_still_checked():
     assert kinds(text) == [(9, "wrap")]
 
 
+FENCE_CLOSED_BY_THE_OTHER_MARK = (
+    "```\n"
+    "~~~~~~~\n"
+    "```\n"
+    "\n"
+    "Intro paragraph.\n"
+    "\n"
+    "```swift\n"
+    "struct Foo {\n"
+    "  let bar: Int\n"
+    "}\n"
+    "```\n"
+)
+
+
+def test_a_fence_is_closed_only_by_its_own_mark():
+    """One flag for both marks lets a tilde run inside a backtick fence close it.
+
+    Every fence after that point is inverted,
+    so prose is skipped and the code in the next block is read as prose.
+    """
+    assert kinds(FENCE_CLOSED_BY_THE_OTHER_MARK) == []
+
+
+def test_a_tilde_fence_still_opens_and_closes_on_its_own():
+    text = ("~~~\n"
+            "struct Foo {\n"
+            "  let bar: Int\n"
+            "}\n"
+            "~~~\n"
+            "\n"
+            "a line that ends mid-clause because it was\n"
+            "wrapped at a column.\n")
+    assert kinds(text) == [(7, "wrap")]
+
+
+def test_a_backtick_run_inside_a_tilde_fence_closes_nothing():
+    text = ("~~~\n"
+            "```\n"
+            "~~~\n"
+            "\n"
+            "a line that ends mid-clause because it was\n"
+            "wrapped at a column.\n")
+    assert kinds(text) == [(5, "wrap")]
+
+
 # --- blockquotes ----------------------------------------------------------
 
 QUOTED = [
