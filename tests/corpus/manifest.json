@@ -177,7 +177,12 @@
     "the wrapping columns of the first six sources were measured by a script nobody kept; the instrument is now tests/corpus/qualify.py, and replaying it over the same six commits reproduces five of the six columns within two and disagrees with client_golang by eight, so a column is comparable within a round and not across the two",
     "the three round 1 holdout sources were read by the sessions that repaired what that round found, so they are spent; a holdout source declares the round it belongs to and a spent round is never drawn from again",
     "parti is pinned at a commit dated three weeks before this plugin existed, so no hook of this project can have shaped the comments the round 2 sample is drawn from",
-    "swiftlang/swift-evolution is Apache-2.0 with a runtime library exception; the exception grants additional permission for compiled binaries and does not reach this prose"
+    "swiftlang/swift-evolution is Apache-2.0 with a runtime library exception; the exception grants additional permission for compiled binaries and does not reach this prose",
+    "a //go:build directive above a block-comment licence header defeats the licence cut: the same header with the directives removed yields no boundaries at all, and with them yields six; 39 of the 387 boundaries drawn for round 2 are Apache boilerplate reached this way, and they were kept as units rather than marked sampling defects because the enumerator and the checker share without_license_text, so the checker is not structurally unable to report them",
+    "the generated-file test reads the first five lines of a file, so a DO NOT EDIT marker placed under a licence header is missed; four round 2 boundaries come from protoc-generated Go this way",
+    "one labeling family answered 14 of the 15 units in a batch and dropped the same unit on four independent runs, including one with an enforced reply shape; that boundary carries a labeling defect and left the sample, because a unit judged by two of three blind passes reads as unanimity wherever those two agree",
+    "pairwise agreement between families on round 2 ran 82% to 92%, against 93% to 100% in the pilot, so this material discriminates between labelers where the pilot material did not",
+    "round 2 sent 117 of 772 records to adjudication against 27 of 718 on the calibration side; 67 of the 117 were the licence class and 26 were source code that reached the prose stream, so the referral rate measures two extraction defects more than it measures labeler disagreement"
   ],
   "sources": [
     {
