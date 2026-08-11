@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 The release that repairs what two spent holdouts left behind.
-Three of the four items below were recorded as open defects when v0.4.2 shipped;
+Three of the first four items below were recorded as open defects when v0.4.2 shipped;
 the fourth was found while repairing the third, and it corrects the record.
+The fifth came out of diagnosing the second round's `fused` miss on the open data,
+by rebuilding both spent draws from their pinned public sources.
 
 ### Fixed
 
@@ -36,13 +38,28 @@ the fourth was found while repairing the third, and it corrects the record.
   Either inverts every fence after that point in the file,
   so prose is skipped and the code in the next block is read as prose.
 
-  This is the one repair here that adds findings as well as removing them:
+  This is one of two repairs here that add findings as well as removing them:
   prose the inversion was skipping is checked again.
   It has not been scored on prose nobody tuned against, and the next holdout scores it first.
   What can be measured now was:
   the frozen status of all 718 labeled units is unmoved,
   the compliant corpus is unmoved at eleven findings,
   and this repository's own files gain and lose nothing.
+- **A `fused` stop is read across inline markup.**
+  The rule required the sentence's final word to be all lowercase letters
+  and the next sentence to open on an uppercase one,
+  and Markdown prose that names APIs breaks both constantly.
+  Three shapes are admitted:
+  a sentence may end on a code span,
+  close inside the emphasis it was written in,
+  or hand off to a sentence that opens with a code span something follows.
+  Emphasis before the stop stays outside the rule, so a bolded label beside a sentence stays quiet,
+  and a bracketed enumeration and the lowercase guard that keeps `e.g.` out are both untouched.
+
+  The widening is strict, so no finding the old rule reported is lost.
+  Like the fence repair it adds findings the corpus in hand cannot score:
+  the labeled corpus is unmoved at 31 of 37 and 169 of 220,
+  and the next holdout scores both on the same terms.
 
 ### Measured
 
