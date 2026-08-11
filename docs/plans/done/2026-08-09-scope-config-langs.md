@@ -883,8 +883,8 @@ git commit -m "docs: rewrite README around the install story"
 ## Verification checklist (run after the final task)
 
 - `python3 -m pytest tests/ -q` — all green.
-- Hook smoke: pipe a Write payload targeting `$(python3 -c "import tempfile;print(tempfile.gettempdir())")/x.md`
-  with fused text into `python3 scripts/check_linefeeds.py --hook` — exit 0, silent.
+- Hook smoke: pipe a Write payload with fused text into `python3 scripts/check_linefeeds.py --hook`,
+  targeting `$(python3 -c "import tempfile;print(tempfile.gettempdir())")/x.md` — exit 0, silent.
 - `python3 scripts/check_linefeeds.py --file README.md --long-limit 0` — no `[long]` lines.
 - `SEMBR_LONG_LINE=60 python3 scripts/check_linefeeds.py --file README.md` — advisories appear, exit 0.
 - `grep -E "^import|^from" scripts/check_linefeeds.py` — stdlib only.

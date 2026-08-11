@@ -161,8 +161,7 @@ Source: https://github.com/rtk-ai/rtk/blob/develop/src/hooks/init.rs (8,387 line
 The dispatch in `Commands::Init` (`src/main.rs`) routes to one function per tool in `src/hooks/init.rs`;
 each does real, different filesystem work, not a shared template:
 
-- **Claude Code (default mode, `run_default_mode`):** resolves `~/.claude/`
-  via `resolve_claude_dir()` (honors `$CLAUDE_CONFIG_DIR`, falls back to `dirs::home_dir()`),
+- **Claude Code (default mode, `run_default_mode`):** resolves `~/.claude/` via `resolve_claude_dir()` (honors `$CLAUDE_CONFIG_DIR`, falls back to `dirs::home_dir()`),
   reads `settings.json` as JSON (or starts from `{}`), and calls `insert_hook_entry`,
   which pushes a new object onto the `hooks.PreToolUse` array —
   `{"matcher": "Bash", "hooks": [{"type": "command", "command": hook_command}]}` —

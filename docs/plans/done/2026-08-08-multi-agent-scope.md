@@ -608,8 +608,7 @@ def check(text, path):
 ```
 
 Delete `is_go()`,
-and update `run_hook`'s target test from `is_markdown(path) or is_go(path)`
-to `is_markdown(path) or lang_for_path(path) is not None`.
+and update `run_hook`'s target test from `is_markdown(path) or is_go(path)` to `is_markdown(path) or lang_for_path(path) is not None`.
 
 Two behavior notes worth a code comment:
 the column-break and block-opener cases yield TWO items for the same lineno

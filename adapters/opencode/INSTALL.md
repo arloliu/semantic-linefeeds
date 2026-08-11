@@ -8,9 +8,9 @@ The quick path is the installer:
 
 The manual steps below remain for review or for unusual setups.
 
-1. Copy `adapters/opencode/semantic-linefeeds.ts` and `scripts/check_linefeeds.py`
-   into `~/.config/opencode/plugins/` (global) or `<project>/.opencode/plugins/` —
-   the two files must sit side by side
+1. Copy two files into `~/.config/opencode/plugins/` (global) or `<project>/.opencode/plugins/`:
+   `adapters/opencode/semantic-linefeeds.ts` and `scripts/check_linefeeds.py`.
+   The two files must sit side by side
    (or export `SEMANTIC_LINEFEEDS_CHECK=/abs/path/to/check_linefeeds.py` instead of copying the script).
 2. The skill needs no port:
    opencode reads `.claude/skills/` and `~/.claude/skills/` natively,

@@ -278,8 +278,7 @@ tables and reference definitions must stay on the never-flag list as scope widen
 
 - Fixtures: `crates/ruff_linter/resources/test/fixtures/<plugin>/<RULE>.py`
   (e.g. `pycodestyle/E501.py`), one file per rule/scenario.
-- Tests: `#[test_case(Rule::LineTooLong, Path::new("E501.py"))]` cases in each plugin's `mod.rs`
-  call `test_path` + `assert_diagnostics`,
+- Tests: `#[test_case(Rule::LineTooLong, Path::new("E501.py"))]` cases in each plugin's `mod.rs` call `test_path` + `assert_diagnostics`,
   and expected diagnostics are **insta** snapshots in `src/rules/<plugin>/snapshots/*.snap`
   (verified: `ruff_linter__rules__pycodestyle__tests__E101_E101.py.snap` etc.).
   insta (https://insta.rs) provides the review/update workflow (`cargo insta review`).
@@ -342,8 +341,7 @@ The evidence (superpowers' layout, Codex's deliberate Claude-compat, opencode's 
    Codex edits via `apply_patch`/`shell`, not `Edit`/`Write`,
    so the matcher and the `tool_input` parsing differ, and `tool_response` replaces `tool_output`.
    Budget for Codex's hook-trust prompt in the install docs.
-4. **opencode adapter:** a ~30-line TypeScript plugin in `.opencode/plugins/`
-   registering `tool.execute.after` for edit/write tools,
+4. **opencode adapter:** a ~30-line TypeScript plugin in `.opencode/plugins/` registering `tool.execute.after` for edit/write tools,
    shelling out to the core CLI via the provided Bun `$`,
    and appending findings to `output.output` (advisory, like our PostToolUse feedback).
    The skill needs no port: opencode already reads `.claude/skills/` and `~/.claude/skills/`.
