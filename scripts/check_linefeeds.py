@@ -30,7 +30,7 @@ import re
 import sys
 import tempfile
 
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 
 DEFAULT_LONG_LINE = 120
 CLI_LONG_LIMIT = None  # set by --long-limit in main()

@@ -5,13 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.3] - 2026-08-12
 
-The release that repairs what two spent holdouts left behind.
+The release that repairs what two spent holdouts left behind,
+and the first whose finding-adding repairs were scored by a fresh sealed round before shipping.
 Three of the first four items below were recorded as open defects when v0.4.2 shipped;
 the fourth was found while repairing the third, and it corrects the record.
 The fifth came out of diagnosing the second round's `fused` miss on the open data,
 by rebuilding both spent draws from their pinned public sources.
+A third holdout then cleared both floors it stated.
 
 ### Fixed
 
@@ -40,11 +42,11 @@ by rebuilding both spent draws from their pinned public sources.
 
   This is one of two repairs here that add findings as well as removing them:
   prose the inversion was skipping is checked again.
-  It has not been scored on prose nobody tuned against, and the next holdout scores it first.
-  What can be measured now was:
+  What could be measured before a round was:
   the frozen status of all 718 labeled units is unmoved,
   the compliant corpus is unmoved at eleven findings,
   and this repository's own files gain and lose nothing.
+  The third holdout then scored it, below.
 - **A `fused` stop is read across inline markup.**
   The rule required the sentence's final word to be all lowercase letters
   and the next sentence to open on an uppercase one,
@@ -58,11 +60,36 @@ by rebuilding both spent draws from their pinned public sources.
 
   The widening is strict, so no finding the old rule reported is lost.
   Like the fence repair it adds findings the corpus in hand cannot score:
-  the labeled corpus is unmoved at 31 of 37 and 169 of 220,
-  and the next holdout scores both on the same terms.
+  the labeled corpus is unmoved at 31 of 37 and 169 of 220.
+  The third holdout scored both repairs on the same terms, below.
 
 ### Measured
 
+- **A third sealed holdout scored the fence repair and the markup repair, and both cleared.**
+  356 boundaries from three sources fresh to the corpus — mebo, etcd, carbon-lang —
+  drawn against a predicate frozen before any unit existed,
+  labeled by three blind model families, adjudicated on 14 referrals, sealed, and opened once.
+  Floors of 0.70 for `wrap` and 0.68 for `fused` were stated before the draw
+  and carried no credit for either repair.
+  The round returned 213 of 260 `wrap` and 69 of 82 `fused`,
+  each lower bound nearly seven points above its floor.
+  The Markdown `fused` stratum returned 50 of 59
+  where the second round returned 25 of 47, the two intervals disjoint,
+  so the publication block on `fused` rates is lifted for the predicate that ships.
+  Four false positives in 360 labeled non-violations,
+  none from either repair under test:
+  three are the non-connector class
+  [ADR-0002](docs/decisions/0002-wrap-withdrawn-from-default-feedback.md) records,
+  and one is a `gofail:` directive reaching the prose stream,
+  which is recorded with carbon-lang's HTML-comment licence block
+  as the next extraction defects to cut.
+- **The `fused` loss the second round reported is localized, without recovering a label.**
+  Both spent draws were rebuilt deterministically from their pinned public sources,
+  and every recorded Markdown miss fails one condition inside the fused rule,
+  which is what the markup repair above answers.
+  Whether that round's gap was its draw or the unlabeled population proxy is closed as unanswerable:
+  its labels were deleted when the bundle was spent,
+  and the question is moot for the predicate that ships.
 - **The three false positives the second holdout found were recorded as one class, and only two are.**
   Both of those sit inside a `<pre>` block in one proposal.
   The third sits inside a fenced block the extractor believed was closed,
