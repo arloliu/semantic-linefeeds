@@ -25,7 +25,7 @@ sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(HERE.parent))
 
 from collect import answers  # noqa: E402
-from corpus_harness import LABELS, resolution  # noqa: E402
+from corpus_harness import LABELS, defect, resolution  # noqa: E402
 
 
 def pending(corpus, round_dir):
@@ -33,7 +33,7 @@ def pending(corpus, round_dir):
     sample = json.loads((corpus / "sample.json").read_text(encoding="utf-8"))
     # A unit the sampler should never have drawn is reported, not decided.
     # Asking a maintainer to label a licence header would settle a defect by vote.
-    units = {unit["id"]: unit for unit in sample["units"] if not unit.get("sampling_defect")}
+    units = {unit["id"]: unit for unit in sample["units"] if not defect(unit)}
     votes = collections.defaultdict(dict)
     for path in sorted(round_dir.glob("*.out")):
         for answer in answers(path):

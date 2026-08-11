@@ -22,7 +22,7 @@ sys.path.insert(0, str(TESTS.parent / "scripts"))
 sys.path.insert(0, str(HERE.parent))
 
 from collect import answers  # noqa: E402
-from corpus_harness import KINDS, resolution  # noqa: E402
+from corpus_harness import KINDS, defect, resolution  # noqa: E402
 
 MANIFEST = TESTS / "corpus" / "manifest.json"
 
@@ -48,7 +48,7 @@ def main(corpus, labels, root):
 
     findings, units = {}, []
     for unit in sample["units"]:
-        if unit.get("sampling_defect") or unit["id"] not in votes:
+        if defect(unit) or unit["id"] not in votes:
             continue
         cast = votes[unit["id"]]
         key = unit["source"], unit["path"]

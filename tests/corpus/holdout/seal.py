@@ -29,7 +29,7 @@ sys.path.insert(0, str(TESTS.parent / "scripts"))
 sys.path.insert(0, str(HERE.parent.parent))
 
 from collect import answers  # noqa: E402
-from corpus_harness import KINDS, Holdout, resolution  # noqa: E402
+from corpus_harness import KINDS, Holdout, defect, resolution  # noqa: E402
 
 CORPUS = TESTS / "corpus"
 HOLDOUT = CORPUS / "holdout"
@@ -52,15 +52,28 @@ def payload(round_dir):
                for entry in json.loads(
                    (round_dir / "adjudications.json").read_text(encoding="utf-8"))}
 
-    passes = {}
+    passes, families = {}, set()
     for out in sorted((round_dir / "labels").glob("*.out")):
         labeler = out.name.rsplit("-", 1)[0]
+        families.add(labeler)
         for answer in answers(out):
             for kind in KINDS:
                 passes.setdefault((answer["id"], kind), {})[labeler] = answer[kind]
 
+    # A unit judged by two passes is not the same instrument as one judged by three.
+    # Resolving it anyway would read as unanimity wherever the two happened to agree,
+    # so a short unit stops the seal until somebody records why it is short.
+    drawn = [unit for unit in sample["units"] if not defect(unit)]
+    short = sorted(unit["id"] for unit in drawn
+                   if set(passes.get((unit["id"], KINDS[0]), {})) != families)
+    if short:
+        sys.exit("these units were not judged by every labeling pass:\n  "
+                 + "\n  ".join(short)
+                 + "\nrerun the batch, or mark the unit in sample.json with a labeling_defect "
+                   "naming what failed; nothing was written")
+
     records = []
-    for unit in sample["units"]:
+    for unit in drawn:
         for kind in KINDS:
             key = (unit["id"], kind)
             three = passes[key]

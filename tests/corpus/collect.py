@@ -21,7 +21,7 @@ HERE = pathlib.Path(__file__).resolve()
 TESTS = HERE.parent.parent
 sys.path.insert(0, str(TESTS))
 
-from corpus_harness import REPORTING, level_of, resolution  # noqa: E402
+from corpus_harness import REPORTING, defect, level_of, resolution  # noqa: E402
 
 
 def reported_dimensions(sample):
@@ -51,7 +51,7 @@ def answers(path):
 
 def main(corpus, labels):
     sample = json.loads((corpus / "sample.json").read_text(encoding="utf-8"))
-    units = {unit["id"]: unit for unit in sample["units"] if not unit.get("sampling_defect")}
+    units = {unit["id"]: unit for unit in sample["units"] if not defect(unit)}
     dimensions = reported_dimensions(sample)
 
     passes = collections.defaultdict(dict)

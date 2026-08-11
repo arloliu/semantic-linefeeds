@@ -89,6 +89,21 @@ class ScoringRefused(Exception):
     """
 
 
+def defect(unit):
+    """Why a drawn unit carries no label, or None when it carries one.
+
+    A sampling defect is a unit the frame should never have offered,
+    such as a licence header, which the detector is structurally unable to report.
+    A labeling defect is a unit the frame was right to offer
+    and a pass would not answer, which is a fact about the labeler rather than the prose.
+
+    Both leave the sample rather than being decided by whoever is left.
+    A unit judged by two of three blind passes reads as unanimity wherever those two agree,
+    and that is a different instrument reported under the same name.
+    """
+    return unit.get("sampling_defect") or unit.get("labeling_defect")
+
+
 def resolution(passes):
     """The label three blind passes settle on, or "adjudicated" when they cannot.
 
