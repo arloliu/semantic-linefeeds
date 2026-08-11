@@ -132,6 +132,12 @@ LIST_ITEM_RE = re.compile(r"^(?:[-*+]|\d+[.)])\s+")
 # A pipe is still required in it, so a setext underline stays a setext underline.
 TABLE_DELIMITER_RE = re.compile(r"^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$")
 
+
+# An HTML block whose content is code.
+# The opening tag is skipped for starting with a bracket,
+# and without a state the lines under it are read as prose.
+PRE_OPEN_RE = re.compile(r"<pre\b|<pre>", re.IGNORECASE)
+
 # A bare "and" is usually a compound object (not a boundary); require the
 # comma-led form, or strong punctuation, before advising a split.
 BOUNDARY_HINT_RE = re.compile(
@@ -153,7 +159,7 @@ def _lang(name, extensions, line=None, doc_lines=(), blocks=(), block_prefix="",
 
 LANGUAGES = [
     _lang("go", [".go"], line="//", blocks=[("/*", "*/")],
-          directives=[r"^//[a-zA-Z0-9_+-]+:"]),
+          directives=[r"^//[a-zA-Z0-9_+-]+:", r"^//\s*\+build\b"]),
     _lang("cfamily",
           [".c", ".h", ".cc", ".cpp", ".hpp", ".hh", ".java",
            ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".cs",
@@ -223,6 +229,29 @@ def skip_path(path):
     return bool(tmp_root) and p.startswith(tmp_root + "/")
 
 
+def _after_directive_preamble(lines, lang):
+    """The index where the leading comment region starts, past any build directives.
+
+    A build constraint is not a comment scope of its own.
+    Reading it as one ends the region at the blank line the language requires
+    under a Go build tag, which leaves the licence below it judged as prose.
+    Only a run that actually opens with a directive is stepped over,
+    so a file whose first line is a blank or a comment is read exactly as before.
+    """
+    if not lang.directives:
+        return 0
+    start = 0
+    seen = False
+    for i, raw in enumerate(lines):
+        s = raw.strip()
+        if any(rx.match(s) for rx in lang.directives):
+            seen = True
+        elif not (seen and not s):
+            break
+        start = i + 1
+    return start if seen else 0
+
+
 def license_header_extent(text, lang):
     """Return the last lineno of a leading license comment region, else 0.
 
@@ -239,7 +268,9 @@ def license_header_extent(text, lang):
     in_block = False
     close = ""
     style = None  # "line" or "block", fixed by the first comment line
-    for i, raw in enumerate(text.splitlines(), 1):
+    lines = text.splitlines()
+    start = _after_directive_preamble(lines, lang)
+    for i, raw in enumerate(lines[start:], start + 1):
         s = raw.strip()
         if in_block:
             end = i
@@ -366,8 +397,9 @@ def prose_lines_markdown(text):
 
     Yields (lineno, None, None) for lines that break paragraph continuity.
     """
-    in_fence = False
+    fence = False
     in_frontmatter = False
+    in_pre = False
     after_refdef = False
     in_table = False
     lines = text.splitlines()
@@ -381,6 +413,13 @@ def prose_lines_markdown(text):
         if in_frontmatter:
             if stripped == "---":
                 in_frontmatter = False
+            yield i, None, None
+            continue
+        if in_pre:
+            # Code inside an HTML block carries pipes and braces of its own,
+            # so it leaves before any rule that reads either as markup.
+            if "</pre" in stripped.lower():
+                in_pre = False
             yield i, None, None
             continue
         if in_table:
@@ -398,13 +437,17 @@ def prose_lines_markdown(text):
                 yield i, None, None
                 continue
         if stripped.startswith(("```", "~~~")):
-            in_fence = not in_fence
+            fence = not fence
             yield i, None, None
             continue
-        if in_fence:
+        if fence:
             yield i, None, None
             continue
         if content.startswith(("    ", "\t")):
+            yield i, None, None
+            continue
+        if PRE_OPEN_RE.match(stripped):
+            in_pre = "</pre" not in stripped.lower()
             yield i, None, None
             continue
         if re.match(r"^!?\[[^\]]+\]:", stripped):
@@ -643,6 +686,43 @@ def prose_lines_code(text, lang):
 
 GENERATED_RE = re.compile(r"Code generated|@generated|DO NOT EDIT")
 
+
+def header_comment_text(text, lang):
+    """Every comment line standing above a file's first line of code.
+
+    A generator writes its marker under whatever licence it emits,
+    so a fixed number of leading lines misses the marker exactly when a licence stands first.
+    The first line of code ends the header, which is what keeps the scan
+    from reading a `DO NOT EDIT` written in prose further down as one.
+    """
+    header = []
+    in_block = False
+    close = ""
+    for raw in text.splitlines():
+        s = raw.strip()
+        if in_block:
+            header.append(s)
+            if close in s:
+                in_block = False
+            continue
+        if not s:
+            continue
+        opened = False
+        for open_d, close_d in lang.blocks:
+            if s.startswith(open_d):
+                header.append(s)
+                in_block = close_d not in s[len(open_d):]
+                close = close_d
+                opened = True
+                break
+        if opened:
+            continue
+        if lang.line and s.startswith(lang.line):
+            header.append(s)
+            continue
+        break
+    return "\n".join(header)
+
 PATCH_FILE_RE = re.compile(r"^\*\*\* (?:Add|Update) File: (.+)$")
 PATCH_MOVE_RE = re.compile(r"^\*\*\* Move to: (.+)$")
 
@@ -654,8 +734,11 @@ def prose_stream(text, path):
     lang = lang_for_path(path)
     if lang is None:
         return None
+    # Two reaches, and the header is added to the first five lines rather than
+    # replacing them: narrowing the older rule would start checking files it
+    # now skips, and a change that adds findings is not one this corpus can score.
     head = "\n".join(text.splitlines()[:5])
-    if GENERATED_RE.search(head):
+    if GENERATED_RE.search(head) or GENERATED_RE.search(header_comment_text(text, lang)):
         return iter(())
     return prose_lines_code(text, lang)
 
