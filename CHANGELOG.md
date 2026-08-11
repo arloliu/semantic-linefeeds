@@ -59,6 +59,21 @@ Every number below is measured against those labels rather than against the chec
 - The list-item repair cost two detections and removed four false positives.
   That trade is priced in the manifest instead of being absorbed.
 
+### Scored against a sealed holdout
+
+376 boundaries from three projects this tool had never been run against,
+drawn after the predicate was frozen and opened once after the repairs were done.
+
+| | calibration | holdout |
+|---|---|---|
+| `wrap` | 163 of 220, 74.1% | 231 of 311, 74.3% |
+| `fused` | 31 of 37, 83.8% | 81 of 100, 81.0% |
+| false positives | 1 of 450 | 1 of 331 |
+
+Both floors were stated before the holdout existed, and both are met.
+The rates land on top of the corpus the repairs were tuned against,
+which is the claim this mechanism was built to be able to make.
+
 ## [0.4.0] - 2026-08-09
 
 ### Added

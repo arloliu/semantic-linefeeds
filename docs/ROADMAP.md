@@ -60,16 +60,25 @@ and each carries many commits.
 Every ordering constraint established above is preserved,
 but as **commit order inside a release** rather than as a separate tag.
 
-### Carried out of v0.4.1
+### v0.4.2 — What the holdout found
 
-v0.4.1 shipped; its record is in [`CHANGELOG.md`](../CHANGELOG.md).
-One piece of it did not, and it gates the next round of tuning rather than the last one.
+v0.4.1 shipped and was scored against a sealed holdout;
+both records are in [`CHANGELOG.md`](../CHANGELOG.md).
+The holdout found five things the repairs had not,
+and the plan for them is
+[`v0.4.2-what-the-holdout-found.md`](plans/active/v0.4.2-what-the-holdout-found.md).
 
-- **The sealed holdout is built but empty.**
-  Its three sources are chosen and pinned, and the mechanism that refuses to open it is tested.
-  Nothing has been drawn, labeled, or sealed.
-  Until that happens, every rate this project reports is measured on the corpus it was tuned against.
-  The predicate must be frozen first, and the session that labels the holdout must not be one that tunes.
+- Four false positive classes, every one of them found by labelers disagreeing rather than by a test:
+  code commented out inside a doc comment,
+  a Markdown table row that does not begin with a pipe,
+  a second licence block further down a file,
+  and a rule of dashes used as a divider.
+- One recall hole that two independent samples agree on.
+  A line ending in inline markup is a `wrap` the detector reports once in 21 on one sample
+  and six times in 30 on the other.
+- **A second holdout**, because the first was spent scoring v0.4.1.
+  The recall repair cannot be trusted without one,
+  and neither can the precision claim after it.
 
 ### v0.5 — Changed spans, suppression, and the judgment layer
 
