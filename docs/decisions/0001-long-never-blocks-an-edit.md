@@ -47,3 +47,6 @@ not through stderr.
   (`adapters/opencode/semantic-linefeeds.ts:47-61`).
 - The renderer must stop opening a `long`-only report with "Fix these",
   which contradicts the instruction to leave such a line long.
+- [ADR-0002](0002-wrap-withdrawn-from-default-feedback.md) narrowed the decision above.
+  `fused` is now the only kind that exits 2,
+  because a labeled corpus measured what `wrap` costs in false positives.

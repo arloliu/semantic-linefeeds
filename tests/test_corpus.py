@@ -115,17 +115,12 @@ def test_the_gate_can_still_hear_a_complaint():
         "nothing; a checkout under the platform temp directory does exactly this")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="correct prose still draws complaints: the abbreviation exclusions, "
-           "the emphasis repair, the list-item break, and the default-kind "
-           "filter are not implemented",
-)
 def test_compliant_corpus_draws_no_complaint():
-    """The goal this release exists to reach.
+    """The goal this release exists to reach, and now reaches.
 
-    Marked strict, so it fails the moment it starts passing
-    and the marker cannot outlive the defect it describes.
+    Eleven findings against this corpus survive in `check()` and are recorded above.
+    Every one of them is a `wrap`, which is the kind this release withholds from the model,
+    so a person auditing a file still sees them and a model being written for does not.
     """
     if not gate_can_hear():
         pytest.skip("hook mode cannot see this checkout, so silence here would "

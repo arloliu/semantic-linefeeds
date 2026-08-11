@@ -32,10 +32,17 @@ def load_fixture(path):
     return "\n".join(out_lines) + "\n", expected
 
 
-def run_cli(args, stdin_text=""):
+def run_cli(args, stdin_text="", env=None):
+    """Run the checker as a subprocess, optionally adding environment variables."""
+    import os
+
+    environment = None
+    if env:
+        environment = dict(os.environ)
+        environment.update(env)
     return subprocess.run(
         [sys.executable, str(SCRIPT)] + args,
-        input=stdin_text, capture_output=True, text=True,
+        input=stdin_text, capture_output=True, text=True, env=environment,
     )
 
 

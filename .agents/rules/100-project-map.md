@@ -34,8 +34,10 @@ Split into a package only if the file exceeds ~1000 lines.
   `long` findings never affect the exit code in either mode.
 - **Exit codes are a contract.**
   `--file`: 0 clean, 1 violations or unreadable input.
-  `--hook`: 2 for a `fused` or `wrap` finding, with the report on stderr;
+  `--hook`: 2 for a `fused` finding, with the report on stderr;
   0 for clean, not applicable, or advisories only.
+  `wrap` never reaches hook feedback unless `SEMLF_EXPERIMENTAL_WRAP` is set,
+  and it never blocks even then.
   64 usage error;
   `--help` and `--version` exit 0.
 - **Status decides transport.**

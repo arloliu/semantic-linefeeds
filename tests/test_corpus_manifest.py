@@ -343,9 +343,9 @@ def test_every_frozen_status_still_holds():
 
 @pytest.mark.xfail(
     strict=True,
-    reason="seven of 450 labeled non-violations still draw a complaint: four are one list "
-           "item measured against the next, two are Go code indented inside a blockquote, "
-           "and one is plain prose",
+    reason="one of 450 labeled non-violations still draws a complaint: a line already "
+           "carrying a fused sentence, whose wrap the labelers judged to be the same defect "
+           "counted twice; the precision repairs cleared the other six",
 )
 def test_no_labeled_non_violation_draws_a_complaint():
     """Zero false positives, measured against prose somebody read rather than prose we wrote.

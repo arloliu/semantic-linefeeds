@@ -1,4 +1,4 @@
 {
-  "digest": "sha256:bdcd2ef3aacfa5c90f408cf5c5f8a2a67233c12ac4af69d81ff6aa87db44aa34",
-  "reason": "359 labeled boundaries entered as 718 records with 27 maintainer decisions; recall stands at 165/220 for boundaries and 31/37 for fused lines, against 7 false positives in 450 labeled non-violations; those rates are now recorded as floors, per kind and per stratum, together with the floors the holdout must clear"
+  "digest": "sha256:e3e91ee0faf3f2d820798e31fd280422c088beee293523a4ac4ba917bcb63613",
+  "reason": "the precision repairs landed; the list-item break moved two labeled wrap violations from detected to an accepted miss, so wrap recall is 163/220 rather than 165/220 and the floors were lowered to match; fused is unchanged at 31/37; the four false positives at list boundaries and the two inside a blockquote are gone"
 }

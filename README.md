@@ -74,8 +74,11 @@ This kit backs the rule with three layers instead of trusting the model to remem
    a post-edit hook runs a deterministic detector over the text just written to any supported file.
    Violations come back as feedback the moment they happen,
    which is the one channel that survives a long session.
-   Only `fused` and `wrap` stop the edit;
+   Only `fused` stops the edit;
    a long line comes back as advice, because leaving it long is often the right answer.
+   `wrap` is not reported to the model at all,
+   because a labeled corpus measured its false positives and the number was not small enough to act on.
+   Set `SEMLF_EXPERIMENTAL_WRAP=1` to see it anyway, as advice that never blocks.
 2. **Skill** —
    `semantic-linefeeds` carries the judgment calls the detector can't make on its own:
    what counts as a clause boundary, the compound-object `and` test, the never-break list.
@@ -85,6 +88,7 @@ This kit backs the rule with three layers instead of trusting the model to remem
    Three precision-tuned heuristics:
    `fused` (two sentences on one line), `wrap` (a line severed mid-clause),
    and `long` (over a configurable limit, default 120 chars, with a likely clause boundary).
+   `--file` audits report all three, because an audit is read by the person who asked for it.
    It checks only the text just written, never the rest of the file,
    so legacy column-wrapped files are never flagged into a noisy rewrap.
 
@@ -148,6 +152,10 @@ Set it per run with `--long-limit N` (0 disables the advisory),
 or per environment with `SEMLF_LONG_LINE=N` — the flag wins over the environment variable.
 Fused and wrap findings are never affected;
 only the advisory threshold moves.
+
+`SEMLF_EXPERIMENTAL_WRAP=1` puts `wrap` back in hook feedback,
+where it arrives as advice at exit 0 and never blocks an edit.
+Any value other than `0`, `false`, `no`, or `off` turns it on.
 
 Hook mode skips paths under the platform temp directory and any `tmp/` component,
 so agent scratch files are never flagged.

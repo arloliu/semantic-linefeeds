@@ -47,43 +47,9 @@
       "wrap"
     ]
   ],
-  "markdown/abbreviations.md": [
-    [
-      3,
-      "fused"
-    ],
-    [
-      4,
-      "fused"
-    ]
-  ],
-  "markdown/adjacent_list_items.md": [
-    [
-      3,
-      "wrap"
-    ],
-    [
-      6,
-      "wrap"
-    ]
-  ],
   "markdown/release_notes.md": [
     [
       3,
-      "wrap"
-    ]
-  ],
-  "markdown/trailing_emphasis.md": [
-    [
-      3,
-      "wrap"
-    ],
-    [
-      6,
-      "wrap"
-    ],
-    [
-      9,
       "wrap"
     ]
   ]

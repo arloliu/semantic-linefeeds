@@ -25,8 +25,13 @@ LONG_ONLY = (
 )
 FUSED_ONLY = "One sentence here. Another sentence follows.\n"
 FUSED_PLUS_LONG = FUSED_ONLY + LONG_ONLY
+WRAP_ONLY = "a line that ends mid-clause because it was\nwrapped at a column.\n"
+FUSED_PLUS_WRAP = FUSED_ONLY + "\n" + WRAP_ONLY
 
 AGENTS = ["claude", "codex"]
+
+# The opt-in that puts `wrap` back in front of the model.
+OPT_IN = {"SEMLF_EXPERIMENTAL_WRAP": "1"}
 
 
 def claude_payload(text):
@@ -51,8 +56,8 @@ def codex_payload(text):
 PAYLOAD_FOR = {"claude": claude_payload, "codex": codex_payload}
 
 
-def deliver(agent, text):
-    return run_cli(["--hook", agent], PAYLOAD_FOR[agent](text))
+def deliver(agent, text, env=None):
+    return run_cli(["--hook", agent], PAYLOAD_FOR[agent](text), env=env)
 
 
 def advisory(result):
@@ -76,6 +81,8 @@ def test_case_texts_produce_the_intended_kinds():
     assert kinds(LONG_ONLY) == {"long"}
     assert kinds(FUSED_ONLY) == {"fused"}
     assert kinds(FUSED_PLUS_LONG) == {"fused", "long"}
+    assert kinds(WRAP_ONLY) == {"wrap"}
+    assert kinds(FUSED_PLUS_WRAP) == {"fused", "wrap"}
 
 
 @pytest.mark.parametrize("agent", AGENTS)
@@ -123,6 +130,58 @@ def test_advisory_does_not_tell_the_model_to_fix_anything(agent):
     which is why the closing line depends on the kinds present.
     """
     assert "Fix these" not in advisory(deliver(agent, LONG_ONLY))
+
+
+@pytest.mark.parametrize("agent", AGENTS)
+def test_wrap_alone_tells_the_model_nothing(agent):
+    """The withdrawal.
+
+    `wrap` is the kind the labeled corpus shows misfiring,
+    so it leaves hook feedback entirely rather than being downgraded to advice.
+    Silence is the point: advice the model must weigh still costs it attention.
+    """
+    r = deliver(agent, WRAP_ONLY)
+    assert r.returncode == 0
+    assert r.stdout == ""
+    assert r.stderr == ""
+
+
+@pytest.mark.parametrize("agent", AGENTS)
+def test_wrap_is_withheld_from_a_report_it_would_otherwise_share(agent):
+    """A blocking report must not smuggle the withdrawn kind in beside the blocking one."""
+    r = deliver(agent, FUSED_PLUS_WRAP)
+    assert r.returncode == 2
+    assert "[fused]" in r.stderr
+    assert "[wrap]" not in r.stderr
+
+
+@pytest.mark.parametrize("agent", AGENTS)
+def test_the_opt_in_brings_wrap_back_without_blocking(agent):
+    r = deliver(agent, WRAP_ONLY, env=OPT_IN)
+    assert r.returncode == 0
+    assert "[wrap]" in advisory(r)
+    assert r.stderr == ""
+
+
+@pytest.mark.parametrize("agent", AGENTS)
+def test_the_opt_in_asks_for_a_judgment_rather_than_a_rewrite(agent):
+    """`wrap` is under evaluation, and the wording has to say so.
+
+    A false positive becomes a change to correct prose
+    exactly when the model is told to fix a finding this release could not trust.
+    """
+    context = advisory(deliver(agent, WRAP_ONLY, env=OPT_IN))
+    assert "Fix these" not in context
+    assert "evaluation" in context
+
+
+def test_a_file_audit_still_reports_wrap(tmp_path):
+    """The withdrawal is about what the model is told, not about what the tool can see."""
+    target = tmp_path / "doc.md"
+    target.write_text(WRAP_ONLY, encoding="utf-8")
+    r = run_cli(["--file", str(target)])
+    assert r.returncode == 1
+    assert "[wrap]" in r.stdout
 
 
 def test_codex_advisory_keeps_the_approximate_position_note():

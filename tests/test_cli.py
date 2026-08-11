@@ -18,8 +18,10 @@ def test_hook_bad_edit_blocks():
     r = hook("claude_edit_bad.json")
     assert r.returncode == 2
     assert "[fused]" in r.stderr
-    assert "[wrap]" in r.stderr
     assert "semantic-linefeeds skill" in r.stderr
+    # This payload also carries a wrap, which this release withholds from hook feedback.
+    # `test_wrap_is_withheld_from_a_report_it_would_otherwise_share` is where that is asserted.
+    assert "[wrap]" not in r.stderr
 
 
 def test_hook_good_edit_passes():
@@ -91,6 +93,35 @@ def test_file_json_long_only_still_exits_zero(tmp_path):
     r = run_cli(["--file", str(f), "--json"])
     assert r.returncode == 0
     assert json.loads(r.stdout)[0]["findings"][0]["kind"] == "long"
+
+
+def test_json_may_stand_between_the_flag_and_its_paths(tmp_path):
+    """`--file --json PATH` is the order people write, and it used to be a usage error.
+
+    `--file` takes one or more paths.
+    An option word standing where a path belongs left it with nothing to consume.
+    """
+    text, expected = load_fixture(FIXTURES / "go" / "bad_wrapped.go")
+    f = tmp_path / "bad_wrapped.go"
+    f.write_text(text)
+    r = run_cli(["--file", "--json", str(f)])
+    assert r.returncode == 1, r.stderr
+    got = [(x["line"], x["kind"]) for x in json.loads(r.stdout)[0]["findings"]]
+    assert sorted(got) == sorted(expected)
+
+
+def test_paths_on_both_sides_of_an_option_are_all_checked(tmp_path):
+    first = tmp_path / "a.md"
+    second = tmp_path / "b.md"
+    for path in (first, second):
+        path.write_text("One sentence here. Another sentence follows.\n")
+    r = run_cli(["--file", str(first), "--json", str(second)])
+    assert r.returncode == 1, r.stderr
+    assert {report["path"] for report in json.loads(r.stdout)} == {str(first), str(second)}
+
+
+def test_the_flag_with_no_paths_at_all_is_still_a_usage_error():
+    assert run_cli(["--file", "--json"]).returncode == 64
 
 
 def test_unreadable_file_exits_1(tmp_path):

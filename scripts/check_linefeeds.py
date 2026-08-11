@@ -10,7 +10,8 @@ and "long" is a line over the threshold that appears to contain a clause boundar
 Two modes.
 "--hook [claude|codex]" reads a PostToolUse JSON payload on stdin (agent defaults to claude)
 and checks only the text just written.
-A fused or wrap finding blocks the edit: exit 2, with the report on stderr.
+A fused finding blocks the edit: exit 2, with the report on stderr.
+A wrap finding reaches the model only when SEMLF_EXPERIMENTAL_WRAP is set, and never blocks.
 A result carrying only advisories exits 0 instead,
 delivering them as one JSON object on stdout under hookSpecificOutput.additionalContext,
 which is the shape both hosts make visible to the model.
@@ -77,10 +78,34 @@ CONNECTORS = {
 # Characters that can legitimately end a semantically broken line.
 OK_LINE_ENDERS = tuple(".!?;:,—-–)”\"'`")
 
-# Sentence end followed by a new sentence on the same line.  Requires two or
-# more lowercase letters before the terminal punctuation so that "e.g." and
-# "i.e." do not match.
-FUSED_RE = re.compile(r"\b[a-z]{2,}[.!?][\"')\]]*\s+[A-Z]")
+# Abbreviations that end mid-sentence rather than ending a sentence.
+# Derived from the rule below rather than from a general list of abbreviations.
+# "Fig.", "No.", "Eq.", "e.g." and "i.e." cannot match that rule at all,
+# so listing them would widen the exclusion the day the rule changes,
+# without narrowing anything today.
+# "etc." and "resp." are left out for the opposite reason:
+# both commonly do end a sentence.
+MID_SENTENCE_ABBREVIATIONS = ("cf", "esp", "viz", "vs")
+
+# Sentence end followed by a new sentence on the same line.
+# Two or more lowercase letters are required before the terminal punctuation,
+# which is what keeps "e.g." and "i.e." from matching.
+FUSED_RE = re.compile(
+    r"\b(?!(?:" + "|".join(MID_SENTENCE_ABBREVIATIONS) + r")\.)"
+    r"[a-z]{2,}[.!?][\"')\]]*\s+[A-Z]")
+
+# Emphasis delimiters standing between the terminal punctuation and the end of the line,
+# where they hide that punctuation from the wrap check.
+# The backtick is deliberately absent.
+# It already ends a line legitimately,
+# so peeling it would expose whatever punctuation the code span happens to contain.
+CLOSING_EMPHASIS_RE = re.compile(r"(\*{1,3}|_{1,3}|~{1,2})$")
+
+# One blockquote marker: up to three leading spaces, ">", and at most one space after it.
+QUOTE_MARKER_RE = re.compile(r"^ {0,3}> ?")
+
+# A list marker, and the space that must follow it before the item's content.
+LIST_ITEM_RE = re.compile(r"^(?:[-*+]|\d+[.)])\s+")
 
 # A bare "and" is usually a compound object (not a boundary); require the
 # comma-led form, or strong punctuation, before advising a split.
@@ -248,6 +273,40 @@ def comment_body(body):
     return body
 
 
+def peel_emphasis(prose):
+    """Strip closing emphasis delimiters so the line-ender test sees the punctuation.
+
+    Only a delimiter something opened is peeled.
+    A lone "*" at the end of a line is a multiplication sign or a typo,
+    and treating it as emphasis would hide a real wrap behind it.
+    """
+    while True:
+        match = CLOSING_EMPHASIS_RE.search(prose)
+        if not match:
+            return prose
+        head = prose[:match.start()]
+        if match.group(1) not in head:
+            return prose
+        prose = head
+
+
+def strip_quote_markers(raw):
+    """The content a blockquote holds, with the markers in front of it removed.
+
+    The markers come off before anything else looks at the line.
+    Every rule that decides a line is not prose — fences, indented code, headings,
+    tables, reference definitions, inline HTML — reads the content rather than the marker,
+    and a rule that ran first would see the marker instead and call the line prose.
+
+    The indentation inside the quote is kept, because the four-space rule depends on it.
+    """
+    while True:
+        match = QUOTE_MARKER_RE.match(raw)
+        if not match:
+            return raw
+        raw = raw[match.end():]
+
+
 def prose_lines_markdown(text):
     """Yield (lineno, raw_line, prose) for checkable Markdown lines.
 
@@ -257,7 +316,8 @@ def prose_lines_markdown(text):
     in_frontmatter = False
     after_refdef = False
     for i, raw in enumerate(text.splitlines(), 1):
-        stripped = raw.strip()
+        content = strip_quote_markers(raw)
+        stripped = content.strip()
         if i == 1 and stripped == "---":
             in_frontmatter = True
             yield i, None, None
@@ -274,7 +334,7 @@ def prose_lines_markdown(text):
         if in_fence:
             yield i, None, None
             continue
-        if raw.startswith(("    ", "\t")):
+        if content.startswith(("    ", "\t")):
             yield i, None, None
             continue
         if re.match(r"^!?\[[^\]]+\]:", stripped):
@@ -299,8 +359,12 @@ def prose_lines_markdown(text):
         ):
             yield i, None, None
             continue
-        # Strip list markers and blockquote markers for content analysis.
-        prose = re.sub(r"^(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?", "", stripped)
+        # A new list item starts a new paragraph.
+        # One item measured against the next is two thoughts compared as though they were one,
+        # and the break between them was never a wrap.
+        if LIST_ITEM_RE.match(stripped):
+            yield i, None, None
+        prose = LIST_ITEM_RE.sub("", stripped)
         yield i, raw, prose
 
 
@@ -557,7 +621,7 @@ def check(text, path):
             prev_no, prev_prose = prev
             first_word = re.match(r"[a-z]+", prose)
             if (
-                not prev_prose.endswith(OK_LINE_ENDERS)
+                not peel_emphasis(prev_prose).endswith(OK_LINE_ENDERS)
                 and first_word
                 and first_word.group(0) not in CONNECTORS
             ):
@@ -601,21 +665,63 @@ def format_findings(findings, path, snippet):
         # An advisory report must not say "Fix these".
         # Where a long line carries no clause boundary,
         # the skill's own instruction is to leave it long.
-        lines.append(
-            f"Consider these, and change nothing you are not sure about: "
-            f"a line over ~{limit} chars is worth splitting only at a real clause boundary "
-            f"where both sides stand alone. "
-            f"If there is no such boundary, leaving the line long is the right answer. "
-            f"Never break URLs, directives, or example code. "
-            f"If unsure of the rules, load the semantic-linefeeds skill."
+        kinds = {kind for _, kind, _, _ in findings}
+        closing = ["Consider these, and change nothing you are not sure about."]
+        if WITHHELD_KIND in kinds:
+            closing.append(
+                f"A {WITHHELD_KIND} finding is an evaluation of this checker rather than an "
+                f"instruction to you: decide whether the line already ends at a real clause "
+                f"boundary, and leave it exactly as it is if it does."
+            )
+        if "long" in kinds:
+            closing.append(
+                f"A line over ~{limit} chars is worth splitting only at a real clause boundary "
+                f"where both sides stand alone. "
+                f"If there is no such boundary, leaving the line long is the right answer."
+            )
+        closing.append(
+            "Never break URLs, directives, or example code. "
+            "If unsure of the rules, load the semantic-linefeeds skill."
         )
+        lines.append(" ".join(closing))
     return "\n".join(lines)
 
 
 # The kinds that stop an edit.
 # Everything else is advice,
 # and advice that blocks costs more trust than the advice is worth.
-BLOCKING_KINDS = frozenset({"fused", "wrap"})
+# `wrap` left this set with the release that measured it:
+# a labeled corpus put its false positives at seven in 450,
+# and a kind that misfires on correct prose cannot be the one that refuses an edit.
+BLOCKING_KINDS = frozenset({"fused"})
+
+# The kind under evaluation.
+# It is withheld from hook feedback entirely rather than downgraded to advice,
+# because advice the model has to weigh still costs it attention.
+# `--file` audits keep it, since an audit is read by a person who asked for it.
+WITHHELD_KIND = "wrap"
+
+WITHHELD_OPT_IN = "SEMLF_EXPERIMENTAL_WRAP"
+
+# Values that read as "off" rather than as an opt-in.
+DISABLED_VALUES = {"", "0", "false", "no", "off"}
+
+
+def opted_into_withheld_kind():
+    """Whether the caller asked to see the kind this release withholds."""
+    return os.environ.get(WITHHELD_OPT_IN, "").strip().lower() not in DISABLED_VALUES
+
+
+def model_visible(findings):
+    """The findings a hook may put in front of the model.
+
+    Narrower than what `check` returns, and deliberately so.
+    The gate this release is measured by asks what the model is told,
+    not what the checker can see.
+    """
+    if opted_into_withheld_kind():
+        return list(findings)
+    return [finding for finding in findings if finding[1] != WITHHELD_KIND]
 
 
 def blocking_kinds(findings):
@@ -639,6 +745,7 @@ def deliver(reports, snippet=True, note=None):
     Both hosts accept the same object shape,
     so the transport does not vary by agent.
     """
+    reports = [(path, model_visible(findings)) for path, findings in reports]
     reports = [(path, findings) for path, findings in reports if findings]
     if not reports:
         return 0
@@ -771,12 +878,17 @@ def main():
     mode.add_argument("--hook", nargs="?", const="claude",
                       choices=["claude", "codex"], default=None,
                       help="read a PostToolUse JSON payload on stdin and check only the "
-                           "text just written; fused/wrap exit 2 with the report on "
-                           "stderr, advisory-only findings exit 0 as JSON on stdout "
+                           "text just written; fused exits 2 with the report on stderr, "
+                           "advisory-only findings exit 0 as JSON on stdout; wrap is "
+                           "withheld unless SEMLF_EXPERIMENTAL_WRAP is set "
                            "(default agent: claude)")
-    mode.add_argument("--file", nargs="+", default=None, metavar="PATH",
+    # Zero or more, with a trailing catch-all, so that `--file --json PATH` parses.
+    # With `nargs="+"` an option word standing where a path belongs
+    # left `--file` with nothing to consume and turned a common ordering into a usage error.
+    mode.add_argument("--file", nargs="*", default=None, metavar="PATH",
                       help="check whole files and report to stdout; exit 1 on any "
                            "fused/wrap violation (long findings are advisory only)")
+    ap.add_argument("paths", nargs="*", metavar="PATH", help=argparse.SUPPRESS)
     ap.add_argument("--version", action="version",
                     version=f"check_linefeeds {__version__}",
                     help="print the version and exit")
@@ -795,15 +907,16 @@ def main():
             sys.exit(64)
         global CLI_LONG_LIMIT
         CLI_LONG_LIMIT = args.long_limit
-    if args.json and not args.file:
+    files = None if args.file is None else args.file + args.paths
+    if args.json and files is None:
         print("check_linefeeds: --json requires --file", file=sys.stderr)
         sys.exit(64)
     if args.hook == "claude":
         sys.exit(run_hook_claude())
     if args.hook == "codex":
         sys.exit(run_hook_codex())
-    if args.file:
-        sys.exit(run_files(args.file, as_json=args.json))
+    if files:
+        sys.exit(run_files(files, as_json=args.json))
     ap.print_usage(sys.stderr)
     sys.exit(64)
 
