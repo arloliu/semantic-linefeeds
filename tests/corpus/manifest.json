@@ -59,14 +59,14 @@
         ]
       },
       "calibration": {
-        "wrap": 0.74,
+        "wrap": 0.76,
         "fused": 0.83
       },
       "calibration_strata": {
         "language": {
           "wrap": {
             "go": 0.8,
-            "markdown": 0.67
+            "markdown": 0.73
           },
           "fused": {
             "go": 0.8
@@ -74,7 +74,7 @@
         },
         "markdown_nesting": {
           "wrap": {
-            "0": 0.74
+            "0": 0.77
           },
           "fused": {
             "0": 0.81
@@ -82,7 +82,7 @@
         },
         "list_item_adjacency": {
           "wrap": {
-            "False": 0.75
+            "False": 0.78
           },
           "fused": {
             "False": 0.82
@@ -90,8 +90,7 @@
         },
         "trailing_inline_markup": {
           "wrap": {
-            "False": 0.81,
-            "True": 0.04
+            "False": 0.81
           },
           "fused": {
             "False": 0.83
@@ -99,16 +98,16 @@
         },
         "indentation_depth": {
           "wrap": {
-            "..0": 0.69,
+            "..0": 0.74,
             "5..8": 0.79,
             "9..": 0.83
           }
         },
         "raw_end_column": {
           "wrap": {
-            "65..71": 0.74,
-            "72..78": 0.8,
-            "79..85": 0.76
+            "65..71": 0.78,
+            "72..78": 0.83,
+            "79..85": 0.79
           }
         }
       },
@@ -6758,7 +6757,7 @@
       },
       "question": "wrap",
       "label": "true",
-      "expected": "accepted_miss"
+      "expected": "detected"
     },
     {
       "id": "go-proposal:design/27539-internal-abi.md:128#fused",
@@ -7379,7 +7378,7 @@
       },
       "question": "wrap",
       "label": "true",
-      "expected": "accepted_miss"
+      "expected": "detected"
     },
     {
       "id": "go-proposal:design/2981-go-test-json.md:344#fused",
@@ -9479,7 +9478,7 @@
       },
       "question": "wrap",
       "label": "true",
-      "expected": "accepted_miss"
+      "expected": "detected"
     },
     {
       "id": "go-proposal:design/42372-wasmexport.md:108#fused",
@@ -10298,7 +10297,7 @@
       },
       "question": "wrap",
       "label": "true",
-      "expected": "accepted_miss"
+      "expected": "detected"
     },
     {
       "id": "go-proposal:design/43651-type-parameters.md:3561#fused",
@@ -11437,7 +11436,7 @@
       },
       "question": "wrap",
       "label": "true",
-      "expected": "accepted_miss"
+      "expected": "detected"
     },
     {
       "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:673#fused",
@@ -18644,7 +18643,7 @@
       },
       "question": "wrap",
       "label": "true",
-      "expected": "accepted_miss"
+      "expected": "detected"
     },
     {
       "id": "go-proposal:design/go2draft-contracts.md:662#fused",

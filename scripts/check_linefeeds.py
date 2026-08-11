@@ -101,6 +101,11 @@ FUSED_RE = re.compile(
 # so peeling it would expose whatever punctuation the code span happens to contain.
 CLOSING_EMPHASIS_RE = re.compile(r"(\*{1,3}|_{1,3}|~{1,2})$")
 
+# A code span that closes the line it sits on.
+# The backtick is a legitimate line ender, so a line ending in a span is never a wrap
+# and the clause the span was attached to is never read at all.
+TRAILING_CODE_SPAN_RE = re.compile(r"`[^`]+`$")
+
 # A comment line holding nothing but code punctuation.
 # Commented-out code written as line comments rather than as an indented block
 # reaches the extractor as prose, and a lone closing brace then forms a boundary
@@ -314,6 +319,29 @@ def peel_emphasis(prose):
         if match.group(1) not in head:
             return prose
         prose = head
+
+
+def peel_code_span(prose):
+    """Remove a code span that closes the line, so the clause in front of it can be read.
+
+    This is not the emphasis peel.
+    That one strips a delimiter to reveal the punctuation standing behind it,
+    and the punctuation was always the line's own.
+    A code span carries punctuation of its own that says nothing about the sentence,
+    so the whole span goes and the question becomes what the span was attached to.
+
+    A line that is nothing but a code span keeps its ending.
+    Code alone is not a clause, so there is no clause end to look for behind it.
+    """
+    match = TRAILING_CODE_SPAN_RE.search(prose)
+    if not match:
+        return prose
+    return prose[:match.start()].rstrip() or prose
+
+
+def line_ending(prose):
+    """What a line ends with, once the trailing markup that hides it is removed."""
+    return peel_emphasis(peel_code_span(peel_emphasis(prose)))
 
 
 def strip_quote_markers(raw):
@@ -699,7 +727,7 @@ def check(text, path):
             prev_no, prev_prose = prev
             first_word = re.match(r"[a-z]+", prose)
             if (
-                not peel_emphasis(prev_prose).endswith(OK_LINE_ENDERS)
+                not line_ending(prev_prose).endswith(OK_LINE_ENDERS)
                 and first_word
                 and first_word.group(0) not in CONNECTORS
             ):

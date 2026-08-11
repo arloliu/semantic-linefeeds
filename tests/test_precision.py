@@ -83,13 +83,61 @@ def test_an_unopened_delimiter_is_left_alone(line):
     assert check_linefeeds.peel_emphasis(line) == line
 
 
-def test_a_code_span_is_never_peeled():
-    """The backtick already ends a line legitimately.
+def test_a_code_span_is_never_peeled_as_emphasis():
+    """Peeling the delimiter alone would expose whatever punctuation the code contains.
 
-    Stripping it would expose whatever punctuation the code happens to contain,
-    which is a new false positive rather than a repair.
+    A code span is removed whole instead, by `peel_code_span`, and for the opposite reason:
+    the punctuation inside it says nothing about the sentence it sits in.
     """
     assert check_linefeeds.peel_emphasis("run `go build`") == "run `go build`"
+
+
+# --- trailing code spans --------------------------------------------------
+
+@pytest.mark.parametrize("line,peeled", [
+    ("the compiler will assume all functions provide an `ABIInternal`",
+     "the compiler will assume all functions provide an"),
+    ("method: `window/collectInput`", "method:"),
+    ("just using the measured `$r$`", "just using the measured"),
+])
+def test_a_span_that_closes_the_line_is_removed_whole(line, peeled):
+    assert check_linefeeds.peel_code_span(line) == peeled
+
+
+@pytest.mark.parametrize("line", [
+    "`the whole line is one code span`",
+    "run `go build` and then stop",
+    "a line with no span at all",
+    "a line with an unclosed `span",
+])
+def test_nothing_else_is_peeled(line):
+    assert check_linefeeds.peel_code_span(line) == line
+
+
+def test_a_line_ending_in_a_code_span_is_now_read_by_what_precedes_it():
+    """The exemption cost four fifths of the stratum it covers.
+
+    A backtick ends a line legitimately, so the clause the span was attached to
+    was never examined at all.
+    """
+    assert kinds("the compiler will assume all functions provide an `ABIInternal`\n"
+                 "implementation.\n") == [(1, "wrap")]
+
+
+def test_a_line_ending_at_a_clause_boundary_before_a_span_is_left_alone():
+    """The refutation case, and the reason the whole span goes rather than the delimiter.
+
+    The punctuation that ends the clause stands in front of the span,
+    and removing the span is what makes it readable.
+    """
+    assert kinds("method: `window/collectInput`\n"
+                 "params: `FormField[]`\n") == []
+
+
+def test_a_line_that_is_only_a_code_span_keeps_its_ending():
+    """Code alone is not a clause, so there is no clause end to look for behind it."""
+    assert kinds("`type [T] type Vector []T`\n"
+                 "and the syntax described above is preferred.\n") == []
 
 
 def test_emphasis_hiding_terminal_punctuation_no_longer_wraps():

@@ -1,4 +1,4 @@
 {
-  "digest": "sha256:e3e91ee0faf3f2d820798e31fd280422c088beee293523a4ac4ba917bcb63613",
-  "reason": "the precision repairs landed; the list-item break moved two labeled wrap violations from detected to an accepted miss, so wrap recall is 163/220 rather than 165/220 and the floors were lowered to match; fused is unchanged at 31/37; the four false positives at list boundaries and the two inside a blockquote are gone"
+  "digest": "sha256:149102f68cdf5119c78de5337081578a9e3944f319bc9c132615ab6d9a4554d3",
+  "reason": "a line ending in a code span is now read by what stands in front of the span, which moved six labeled wrap violations from an accepted miss to detected; wrap recall is 169/220 rather than 163/220 and every floor it raised was restated rather than left to drift; fused is unchanged at 31/37; no labeled non-violation started drawing a complaint and the compliant corpus is unmoved, so the change costs no measured precision here; the wrap floor for trailing_inline_markup=True was removed because that level now reports 7 of 21 instead of 1 of 21, and its interval is wider than the 15 points the reporting rules allow a published rate, so the level carries counts and no rate; the per-unit frozen statuses are what guard it in the meantime"
 }
