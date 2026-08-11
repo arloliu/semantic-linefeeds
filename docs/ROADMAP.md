@@ -53,24 +53,30 @@ No decision depends on it.
 
 ## Open precision questions
 
-Two sealed holdouts have been drawn, opened, and spent,
-and the false positive classes they left behind are repaired.
-The `fused` loss the second round reported is localized:
-both spent draws were rebuilt from their pinned public sources,
-the rebuild shows one regex condition walking past sentences that end or begin on inline markup,
-and the markup repair now reads across those shapes.
-What remains open needs prose nobody has tuned against.
+Three sealed holdouts have been drawn, opened, and spent.
+The third stated floors of 0.70 for `wrap` and 0.68 for `fused` before it was drawn,
+carried no credit for the two unscored repairs it existed to score,
+and cleared both:
+213 of 260 and 69 of 82, each lower bound nearly seven points above its floor.
+Its Markdown `fused` stratum returned 50 of 59 where the second round returned 25 of 47,
+the two intervals disjoint,
+so the fence repair and the markup repair generalize and a `fused` rate is publishable again.
+Whether the second round's own gap was its draw or the proxy is closed as unanswerable:
+its labels are gone, and the question is moot for the predicate that ships.
+
+What remains open is smaller and named:
 
 | Open item | Evidence | What it needs |
 |---|---|---|
-| Whether the fence repair and the markup repair generalize | both add findings the labeled corpus cannot reach | the third round, which is pinned and scores them first |
-| Whether the second round's `fused` gap was its draw or the proxy | the two rounds sit in opposite tails of their own resampled populations | labeled prose from a third source |
+| A licence block inside an HTML comment reaches the prose stream | five carbon-lang units, kept and labeled false | an extraction cut, scoreable on the corpus in hand |
+| A `gofail:` directive line reaches the prose stream | one measured false positive at `etcd:server/storage/backend/backend.go:617` | the same |
+| Adjacent telegraphic notes in Go comments read as one severed clause | three of the third round's four false positives | ADR-0002 territory: a positive-evidence `wrap` test, or nothing |
 
-The magnitude question is why no `fused` rate may be published yet:
-the classes are localized,
-but only labeled prose can settle whether a draw or the unlabeled proxy carried the gap,
-and a 386-boundary draw supports a Markdown `fused` interval wide enough to hide a modest repair.
-A stratum too wide to publish is withheld by the reporting rule rather than resized for.
+The declined repairs stay declined with their numbers on record:
+the bracket and emphasis forms of the markup class,
+and the non-lowercase final word,
+in the diagnosis and in
+[`docs/plans/done/v0.4.2-what-the-holdout-found.md`](plans/done/v0.4.2-what-the-holdout-found.md).
 How a round is read when one floor clears and another does not is
 [ADR-0009](decisions/0009-a-round-scores-what-the-change-could-move.md).
 
