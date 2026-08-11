@@ -26,7 +26,8 @@ while the ledger holds no freeze naming the predicate in front of it.
 
 ## The sequence
 
-1. **Freeze the predicate** and commit the ledger line before anything is drawn.
+1. **Freeze the predicate**: `python3 tests/corpus/holdout/freeze.py <round> "<why this predicate, now>"`,
+   and commit the ledger line before anything is drawn.
    The record names a predicate digest and nothing that has been read yet.
    Committing it first is what records the order in `git log`,
    where a reviewer can check it,
