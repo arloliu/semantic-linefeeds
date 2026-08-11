@@ -1,0 +1,372 @@
+{
+  "drawn_by": {
+    "base": 200,
+    "per_level": 38,
+    "population": 47791,
+    "quotas": {
+      "indentation_depth": {
+        "bands": [
+          0,
+          4,
+          8
+        ],
+        "per_level": 38
+      },
+      "list_item_adjacency": {
+        "bands": null,
+        "per_level": 38
+      },
+      "markdown_nesting": {
+        "bands": null,
+        "per_level": 38
+      },
+      "raw_end_column": {
+        "bands": [
+          64,
+          71,
+          78,
+          85
+        ],
+        "per_level": 38
+      },
+      "trailing_inline_markup": {
+        "bands": null,
+        "per_level": 38
+      }
+    },
+    "seed": "holdout-2"
+  },
+  "records": 772,
+  "boundaries": 386,
+  "floors": {
+    "wrap": 0.7,
+    "fused": 0.68
+  },
+  "floors_met": false,
+  "floor_problems": [
+    "fused: 50 of 77 is 0.649, below the floor of 0.68"
+  ],
+  "recall": {
+    "wrap": {
+      "detected": 219,
+      "true": 276,
+      "rate": 0.7934782608695652,
+      "interval": [
+        0.7418499784599751,
+        0.8370492335534957
+      ],
+      "withheld": []
+    },
+    "fused": {
+      "detected": 50,
+      "true": 77,
+      "rate": 0.6493506493506493,
+      "interval": [
+        0.5379942353978194,
+        0.7465132479593756
+      ],
+      "withheld": []
+    }
+  },
+  "strata": {
+    "language": {
+      "wrap": {
+        "go": {
+          "detected": 82,
+          "true": 102,
+          "rate": 0.803921568627451,
+          "withheld": []
+        },
+        "markdown": {
+          "detected": 137,
+          "true": 174,
+          "rate": 0.7873563218390804,
+          "withheld": []
+        }
+      },
+      "fused": {
+        "go": {
+          "detected": 25,
+          "true": 30,
+          "rate": 0.8333333333333334,
+          "withheld": []
+        },
+        "markdown": {
+          "detected": 25,
+          "true": 47,
+          "rate": 0.5319148936170213,
+          "withheld": []
+        }
+      }
+    },
+    "markdown_nesting": {
+      "wrap": {
+        "0": {
+          "detected": 190,
+          "true": 238,
+          "rate": 0.7983193277310925,
+          "withheld": []
+        },
+        "1": {
+          "detected": 23,
+          "true": 30,
+          "rate": 0.7666666666666667,
+          "withheld": []
+        },
+        "2": {
+          "detected": 6,
+          "true": 8,
+          "rate": null,
+          "withheld": [
+            "fewer than 10 true violations",
+            "interval wider than 15 points"
+          ]
+        }
+      },
+      "fused": {
+        "0": {
+          "detected": 46,
+          "true": 68,
+          "rate": 0.6764705882352942,
+          "withheld": []
+        },
+        "1": {
+          "detected": 3,
+          "true": 8,
+          "rate": null,
+          "withheld": [
+            "fewer than 10 true violations",
+            "interval wider than 15 points"
+          ]
+        },
+        "2": {
+          "detected": 1,
+          "true": 1,
+          "rate": null,
+          "withheld": [
+            "fewer than 10 true violations",
+            "interval wider than 15 points"
+          ]
+        }
+      }
+    },
+    "list_item_adjacency": {
+      "wrap": {
+        "False": {
+          "detected": 219,
+          "true": 276,
+          "rate": 0.7934782608695652,
+          "withheld": []
+        },
+        "True": {
+          "detected": 0,
+          "true": 0,
+          "rate": null,
+          "withheld": [
+            "fewer than 10 true violations",
+            "more than a quarter of the labels are ambiguous"
+          ]
+        }
+      },
+      "fused": {
+        "False": {
+          "detected": 50,
+          "true": 77,
+          "rate": 0.6493506493506493,
+          "withheld": []
+        },
+        "True": {
+          "detected": 0,
+          "true": 0,
+          "rate": null,
+          "withheld": [
+            "fewer than 10 true violations"
+          ]
+        }
+      }
+    },
+    "trailing_inline_markup": {
+      "wrap": {
+        "False": {
+          "detected": 207,
+          "true": 254,
+          "rate": 0.8149606299212598,
+          "withheld": []
+        },
+        "True": {
+          "detected": 12,
+          "true": 22,
+          "rate": null,
+          "withheld": [
+            "interval wider than 15 points"
+          ]
+        }
+      },
+      "fused": {
+        "False": {
+          "detected": 49,
+          "true": 74,
+          "rate": 0.6621621621621622,
+          "withheld": []
+        },
+        "True": {
+          "detected": 1,
+          "true": 3,
+          "rate": null,
+          "withheld": [
+            "fewer than 10 true violations",
+            "interval wider than 15 points"
+          ]
+        }
+      }
+    },
+    "indentation_depth": {
+      "wrap": {
+        "..0": {
+          "detected": 138,
+          "true": 178,
+          "rate": 0.7752808988764045,
+          "withheld": []
+        },
+        "1..4": {
+          "detected": 28,
+          "true": 34,
+          "rate": 0.8235294117647058,
+          "withheld": []
+        },
+        "5..8": {
+          "detected": 23,
+          "true": 30,
+          "rate": 0.7666666666666667,
+          "withheld": []
+        },
+        "9..": {
+          "detected": 30,
+          "true": 34,
+          "rate": 0.8823529411764706,
+          "withheld": []
+        }
+      },
+      "fused": {
+        "..0": {
+          "detected": 32,
+          "true": 49,
+          "rate": 0.6530612244897959,
+          "withheld": []
+        },
+        "1..4": {
+          "detected": 3,
+          "true": 10,
+          "rate": null,
+          "withheld": [
+            "interval wider than 15 points"
+          ]
+        },
+        "5..8": {
+          "detected": 8,
+          "true": 10,
+          "rate": null,
+          "withheld": [
+            "interval wider than 15 points"
+          ]
+        },
+        "9..": {
+          "detected": 7,
+          "true": 8,
+          "rate": null,
+          "withheld": [
+            "fewer than 10 true violations",
+            "interval wider than 15 points"
+          ]
+        }
+      }
+    },
+    "raw_end_column": {
+      "wrap": {
+        "..64": {
+          "detected": 23,
+          "true": 32,
+          "rate": 0.71875,
+          "withheld": []
+        },
+        "65..71": {
+          "detected": 52,
+          "true": 69,
+          "rate": 0.7536231884057971,
+          "withheld": []
+        },
+        "72..78": {
+          "detected": 95,
+          "true": 113,
+          "rate": 0.8407079646017699,
+          "withheld": []
+        },
+        "79..85": {
+          "detected": 27,
+          "true": 37,
+          "rate": 0.7297297297297297,
+          "withheld": []
+        },
+        "86..": {
+          "detected": 22,
+          "true": 25,
+          "rate": 0.88,
+          "withheld": []
+        }
+      },
+      "fused": {
+        "..64": {
+          "detected": 3,
+          "true": 6,
+          "rate": null,
+          "withheld": [
+            "fewer than 10 true violations",
+            "interval wider than 15 points"
+          ]
+        },
+        "65..71": {
+          "detected": 14,
+          "true": 22,
+          "rate": null,
+          "withheld": [
+            "interval wider than 15 points"
+          ]
+        },
+        "72..78": {
+          "detected": 17,
+          "true": 27,
+          "rate": null,
+          "withheld": [
+            "interval wider than 15 points"
+          ]
+        },
+        "79..85": {
+          "detected": 9,
+          "true": 11,
+          "rate": null,
+          "withheld": [
+            "interval wider than 15 points"
+          ]
+        },
+        "86..": {
+          "detected": 7,
+          "true": 11,
+          "rate": null,
+          "withheld": [
+            "interval wider than 15 points"
+          ]
+        }
+      }
+    }
+  },
+  "false_positives": {
+    "count": 3,
+    "of_labeled_non_violations": 402,
+    "ids": [
+      "swift-evolution:proposals/0005-objective-c-name-translation.md:529#wrap",
+      "swift-evolution:proposals/0005-objective-c-name-translation.md:547#wrap",
+      "swift-evolution:proposals/0503-suppressed-associated-types.md:819#wrap"
+    ]
+  },
+  "ambiguous": 17
+}
