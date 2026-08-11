@@ -86,6 +86,12 @@ The holdout floors are keyed by round.
 The calibration rates a floor is derived from move as the detector is repaired,
 so one floor covering every round would have to be restated once a round had already answered it.
 
+A floor a round missed is recorded beside them,
+naming what the miss is attributed to and what it blocks.
+The suite fails when a round misses a floor and nothing here says so,
+because the `floors_met` a result file records is otherwise consulted by nothing
+and a missed prediction is then read by the next reader as a pass.
+
 ## `calibration/`, `pilot/`, and `labeled/`
 
 `pilot/` is the first 48 boundaries, drawn on one stratum to measure the prevalence that sets the sample size.

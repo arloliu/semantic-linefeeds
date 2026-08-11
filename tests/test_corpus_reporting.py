@@ -237,3 +237,37 @@ def test_every_holdout_round_declares_its_floors_while_it_is_unlabeled():
 def test_every_reported_rate_names_the_frame_it_was_measured_in():
     document = on_disk()
     assert {unit["frame"] for unit in document["units"]} == {"main"}
+
+
+# --- a scored round on disk -----------------------------------------------
+
+def scored_rounds():
+    """Every round that has been opened, by number, with what it measured."""
+    return sorted(
+        ((int(path.parent.name.split("-")[1]), json.loads(path.read_text(encoding="utf-8")))
+         for path in (REPO / "tests" / "corpus" / "holdout").glob("round-*/result.json")),
+        key=lambda scored: scored[0])
+
+
+def test_a_round_that_opened_was_scored_against_the_floors_it_declared():
+    document = on_disk()
+    declared = document["reporting"]["recall_floors"]["holdout"]
+    for number, result in scored_rounds():
+        assert result["floors"] == declared[str(number)], number
+
+
+def test_a_floor_a_round_missed_says_what_it_is_attributed_to_and_what_it_blocks():
+    """A missed prediction nobody wrote down is read by the next reader as a pass.
+
+    The floors are stated before a round is drawn and the round answers them once.
+    Nothing else in this repository fails when one of those answers is no,
+    so a miss survives only as a field in a result file that no gate consults.
+    Acknowledging it here is what makes ignoring one an edit somebody has to make.
+    """
+    acknowledged = on_disk()["reporting"]["recall_floors"]["holdout_misses"]
+    for number, result in scored_rounds():
+        entries = acknowledged.get(str(number), [])
+        assert [entry["problem"] for entry in entries] == result["floor_problems"], number
+        for entry in entries:
+            assert entry["attributed_to"].strip(), entry["problem"]
+            assert entry["blocks"].strip(), entry["problem"]

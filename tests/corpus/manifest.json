@@ -124,6 +124,17 @@
       "holdout_basis": {
         "1": "the lower end of the calibration interval for each kind, 0.689 for both, rounded down; the holdout is three unseen projects, so the prediction is the weaker end of what this corpus supports rather than its point estimate",
         "2": "the lower end of the calibration interval for each kind as it stands after the code-span repair, 0.708 for wrap and 0.689 for fused, rounded down; the calibration rates behind them are 169 of 220 and 31 of 37, and the wrap floor is two points above round 1 because that repair raised the rate it derives from; stated before this round was drawn, so no unit of it existed when the number was chosen"
+      },
+      "holdout_misses": {
+        "note": "a floor stated before a holdout round and missed by it is acknowledged here, naming what the miss is attributed to and what it blocks; a round that misses a floor and says nothing here fails the suite, because a missed prediction that nobody writes down is read by the next reader as a pass",
+        "2": [
+          {
+            "problem": "fused: 50 of 77 is 0.649, below the floor of 0.68",
+            "attributed_to": "the fused heuristic on unseen Markdown, and to nothing this release changed: a fused finding is a regex over one line, the only positive test this release altered is the trailing code span peel, and that peel is read at exactly one call site inside the wrap branch, so no edit in this release can move a fused count by one unit; the loss is entirely in Markdown, 25 of 47 against 66 of 79 in round 1, while Go rose to 25 of 30",
+            "blocks": "any published fused recall rate, and any claim that a later repair to the fused heuristic works; it does not block the code-span repair, which is scored against the wrap floor that repair raised and cleared at 219 of 276",
+            "diagnosable": "not from this round: its labels were sealed and deleted when the bundle was spent, so localizing the loss needs the calibration side or a third round"
+          }
+        ]
       }
     }
   },
