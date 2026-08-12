@@ -175,7 +175,10 @@ def _lang(name, extensions, line=None, doc_lines=(), blocks=(), block_prefix="",
 
 LANGUAGES = [
     _lang("go", [".go"], line="//", blocks=[("/*", "*/")],
-          directives=[r"^//[a-zA-Z0-9_+-]+:", r"^//\s*\+build\b"]),
+          # gofail failpoints are written with a space (`// gofail: var x T`),
+          # so the unspaced marker pattern never reaches them.
+          directives=[r"^//[a-zA-Z0-9_+-]+:", r"^//\s*\+build\b",
+                      r"^//\s*gofail:"]),
     _lang("cfamily",
           [".c", ".h", ".cc", ".cpp", ".hpp", ".hh", ".java",
            ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".cs",

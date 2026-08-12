@@ -662,3 +662,31 @@ def test_the_sole_blocking_kind_no_longer_misfires_on_an_abbreviation(abbreviati
 def test_the_blocking_kind_still_refuses_a_genuine_fusion():
     """The other half: an exclusion set wide enough to block nothing blocks nothing."""
     assert hook_status("One sentence here. Another sentence follows.\n") == 2
+
+
+# --- a gofail directive in a Go comment -----------------------------------
+
+
+def test_a_gofail_directive_line_is_not_prose():
+    """`// gofail: var x T` is machine input for a failpoint generator.
+
+    The spaced form slips past the unspaced directive pattern,
+    and the third corpus round measured a wrap accusation on one.
+    """
+    text = ("package backend\n"
+            "\n"
+            "func defragdb() error {\n"
+            "\t// gofail: var defragdbFail string\n"
+            "\t// return fmt.Errorf(defragdbFail)\n"
+            "\treturn nil\n"
+            "}\n")
+    assert kinds(text, "backend.go") == []
+
+
+def test_a_spaced_prose_label_is_not_read_as_a_directive():
+    """Only `gofail:` earns the spaced-directive reading; prose labels stay prose."""
+    text = ("package demo\n"
+            "\n"
+            "// note: a line that ends mid-clause because it was\n"
+            "// wrapped at a column.\n")
+    assert kinds(text, "demo.go") == [(3, "wrap")]
