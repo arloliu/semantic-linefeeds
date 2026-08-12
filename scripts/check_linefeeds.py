@@ -1372,49 +1372,6 @@ def run_hook_claude():
     return 0
 
 
-def added_text_by_file(patch):
-    """Map file path -> added text from an apply_patch body.
-
-    Disjoint addition runs (separated by context, deletions, or hunk
-    markers) are joined with blank lines so they can never merge into one
-    paragraph and fabricate a wrap finding.  A `*** Move to:` rename
-    re-keys the entry to the destination path, whose extension decides
-    language dispatch.
-    """
-    files = {}   # path -> list of runs, each run a list of added lines
-    current = None
-    in_run = False
-    for line in patch.splitlines():
-        m = PATCH_FILE_RE.match(line)
-        if m:
-            current = m.group(1).strip()
-            files.setdefault(current, [])
-            in_run = False
-            continue
-        mv = PATCH_MOVE_RE.match(line)
-        if mv and current is not None:
-            dest = mv.group(1).strip()
-            files[dest] = files.pop(current)
-            current = dest
-            in_run = False
-            continue
-        if line.startswith("*** "):
-            current = None  # Delete File / End Patch
-            in_run = False
-            continue
-        if current is None:
-            continue
-        if line.startswith("+"):
-            if not in_run:
-                files[current].append([])
-                in_run = True
-            files[current][-1].append(line[1:])
-        else:
-            in_run = False  # context, deletion, or @@ ends the run
-    return {p: "\n\n".join("\n".join(r) for r in runs)
-            for p, runs in files.items() if runs}
-
-
 def hunks_by_file(patch):
     """Map file path -> hunks, each a list of (kind, text) lines.
 
@@ -1547,8 +1504,10 @@ def run_hook_codex():
         if spans:
             reports.append((path, _as_tuples(diagnose(snapshot, path, spans=spans)), False))
         else:
-            # Mirror added_text_by_file's run semantics: a run is a maximal contiguous stretch of "add" lines, broken by any other entry (context, deletion, or a new hunk).
-            # Joining whole hunks with a bare "\n" would glue two disjoint "+" groups in one hunk into a single paragraph and fabricate a wrap finding neither run has on its own.
+            # A run is a maximal contiguous stretch of "add" lines,
+            # broken by any other entry: context, deletion, or a new hunk.
+            # Joining whole hunks with a bare "\n" would glue two disjoint "+" groups in one hunk into a single paragraph,
+            # fabricating a wrap finding neither run has on its own.
             runs = []
             for hunk in hunks:
                 run = None

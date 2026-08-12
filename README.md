@@ -114,6 +114,9 @@ Trailing, after the line it judges:
 A long judged line that runs on past the limit. <!-- semlf-ignore long -->
 ```
 
+A two-line `wrap` finding anchors on its upper line,
+so a trailing carrier suppressing it must sit on that first line, not the second.
+
 Each directive takes zero or more kind arguments (`fused`, `wrap`, `long`);
 no arguments suppresses every kind on that line.
 A recognized directive name with any unrecognized argument is malformed and inert —

@@ -283,3 +283,15 @@ def test_a_degraded_codex_note_comes_before_the_instruction():
     body = advisory(result)
     assert "approximate positions" in body
     assert body.index("approximate positions") < body.index(AGENT_SUPPRESSION_NOTE)
+
+
+def test_the_agent_instruction_wording_is_pinned():
+    # The endswith/placement tests above import AGENT_SUPPRESSION_NOTE and
+    # assert against the constant itself, so a rewording keeps them green.
+    # This pins the literal text (scripts/check_linefeeds.py) so a
+    # rewording is caught here instead.
+    assert AGENT_SUPPRESSION_NOTE == (
+        "An agent never adds a suppression directive on its own authority: "
+        "if you judge a finding to be a false positive, leave the text as it is "
+        "and surface the disagreement to the user instead."
+    )

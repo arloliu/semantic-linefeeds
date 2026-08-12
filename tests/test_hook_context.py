@@ -7,7 +7,7 @@ import uuid
 import pytest
 
 from conftest import REPO, run_cli
-from check_linefeeds import skip_path, _locate_unique, _read_snapshot
+from check_linefeeds import AGENT_SUPPRESSION_NOTE, skip_path, _locate_unique, _read_snapshot
 
 FUSED = "One sentence here. Another sentence follows."
 
@@ -52,6 +52,18 @@ def test_an_edit_reports_real_file_line_numbers(hook_dir):
     assert "line 31" in result.stderr
     assert "of your edit" not in result.stderr
     assert "text just written" not in result.stderr
+
+
+def test_a_mapped_report_still_ends_with_the_agent_instruction(hook_dir):
+    # test_hook_delivery.py's two constant-last tests both use degraded
+    # (unmapped) payloads; this pins the same property for a MAPPED,
+    # real-line-number report.
+    doc = hook_dir / "doc.md"
+    doc.write_text("filler\n" * 30 + FUSED + "\n")
+    result = run_cli(["--hook", "claude"], claude_edit(doc, FUSED))
+    assert result.returncode == 2
+    assert "line 31" in result.stderr
+    assert result.stderr.rstrip().endswith(AGENT_SUPPRESSION_NOTE)
 
 
 def test_an_ambiguous_edit_falls_back_to_the_snippet_report(hook_dir):
@@ -214,6 +226,31 @@ def test_a_located_patch_reports_real_line_numbers_without_the_note(hook_dir):
     assert NOTE_MARK not in result.stderr
 
 
+def test_a_move_to_rename_reports_the_destination_path(hook_dir):
+    # A `*** Move to:` rename must re-key the hunk to the destination
+    # path, both for language dispatch and for what the report names.
+    old_doc = hook_dir / "orig.md"
+    new_doc = hook_dir / "renamed.md"
+    new_doc.write_text("filler\n" * 10 + FUSED + "\n")
+    patch = ("*** Begin Patch\n"
+             f"*** Update File: {old_doc}\n"
+             f"*** Move to: {new_doc}\n"
+             "@@\n"
+             f"+{FUSED}\n"
+             "*** End Patch")
+    payload = json.dumps({
+        "hook_event_name": "PostToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": patch},
+    })
+    result = run_cli(["--hook", "codex"], payload)
+    assert result.returncode == 2
+    assert str(new_doc) in result.stderr
+    assert str(old_doc) not in result.stderr
+    assert "line 11" in result.stderr
+    assert NOTE_MARK not in result.stderr
+
+
 def test_context_lines_disambiguate_a_repeated_addition(hook_dir):
     # The same added text occurs twice on disk;
     # hunk context makes the mapping unique where a bare addition run could not.
@@ -295,6 +332,24 @@ def test_an_interior_substring_hit_is_not_an_exact_hunk(hook_dir):
     assert NOTE_MARK in result.stderr
 
 
+def test_a_line_bounded_hit_beside_an_interior_one_still_maps_exactly(hook_dir):
+    # The hunk body occurs twice: once as a complete line (the real hit)
+    # and once as an interior substring of a longer, unrelated line.
+    # An interior hit neither matches nor makes the real one ambiguous,
+    # so the mapping must still be exact rather than degrading.
+    doc = hook_dir / "doc.md"
+    doc.write_text(
+        "filler\n" * 3 + FUSED + "\n"
+        "quiet middle prose\n"
+        "a longer line embedding " + FUSED + " in its middle\n"
+    )
+    result = run_cli(["--hook", "codex"], codex_patch((str(doc), FUSED)))
+    assert result.returncode == 2
+    assert "line 4" in result.stderr
+    assert "line 1 of your edit" not in result.stderr
+    assert NOTE_MARK not in result.stderr
+
+
 def _codex_payload(patch):
     return json.dumps({
         "hook_event_name": "PostToolUse",
@@ -362,6 +417,46 @@ def test_a_deletion_closing_a_hunk_at_eof_terminates_cleanly(hook_dir):
     result = run_cli(["--hook", "codex"], _codex_payload(patch))
     assert result.returncode == 0
     assert result.stdout.strip() == ""
+
+
+def test_a_true_eof_deletion_collapses_to_the_located_end(hook_dir, monkeypatch):
+    # ADR-0005: a true-EOF deletion must collapse to located["end"].
+    # A stray end + 1 would run one code point past the text.
+    # The cleanliness test above tolerates either value,
+    # since normalize_span accepts an out-of-range offset silently on an empty result.
+    # This test captures the span diagnose actually receives.
+    import io
+
+    import check_linefeeds
+
+    doc = hook_dir / "doc.md"
+    snapshot_text = "closing prose line stands alone"  # no trailing newline
+    doc.write_bytes(snapshot_text.encode())
+    patch = ("*** Begin Patch\n"
+             f"*** Update File: {doc}\n"
+             "@@\n"
+             " closing prose line stands alone\n"
+             "-\n"
+             "*** End Patch")
+    payload = json.dumps({
+        "hook_event_name": "PostToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": patch},
+    })
+
+    real_diagnose = check_linefeeds.diagnose
+    captured = []
+
+    def recording_diagnose(text, path, spans=None):
+        captured.append(spans)
+        return real_diagnose(text, path, spans=spans)
+
+    monkeypatch.setattr(check_linefeeds, "diagnose", recording_diagnose)
+    monkeypatch.setattr(check_linefeeds.sys, "stdin", io.StringIO(payload))
+    result = check_linefeeds.run_hook_codex()
+
+    assert result == 0
+    assert captured == [[{"at": len(snapshot_text)}]]
 
 
 def test_disjoint_runs_in_a_fallback_hunk_do_not_merge(hook_dir):

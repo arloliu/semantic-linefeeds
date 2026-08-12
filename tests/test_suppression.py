@@ -309,3 +309,17 @@ def test_the_ascii_standalone_forms_still_suppress():
     # and test_a_standalone_html_directive_amid_prose_is_a_boundary above.
     assert kinds_at("# semlf-ignore-next fused\n# " + FUSED, "x.py") == []
     assert kinds_at("<!--semlf-ignore-next fused-->\n" + FUSED) == []
+
+
+def test_a_directive_after_a_licence_paragraph_still_suppresses():
+    # Both cuts run in one file: the licence paragraph is silenced by the
+    # licence cut, and the standalone directive in the paragraph after it
+    # still reaches recognition and suppresses its own target.
+    # "Copyright (c)." followed by "All" would itself read as fused,
+    # which is what proves the licence line was actually cut rather than
+    # merely clean on its own.
+    md = ("Copyright (c) 2026 Example. All rights are reserved statically.\n"
+          "\n"
+          "<!-- semlf-ignore-next fused -->\n"
+          + FUSED)
+    assert kinds_at(md) == []
