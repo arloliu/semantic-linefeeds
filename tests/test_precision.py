@@ -690,3 +690,35 @@ def test_a_spaced_prose_label_is_not_read_as_a_directive():
             "// note: a line that ends mid-clause because it was\n"
             "// wrapped at a column.\n")
     assert kinds(text, "demo.go") == [(3, "wrap")]
+
+
+# --- licence paragraphs in Markdown ---------------------------------------
+
+CARBON_HEADER = (
+    "<!--\n"
+    "Part of the Carbon Language project, under the Apache License v2.0 with LLVM\n"
+    "Exceptions. See /LICENSE for license information.\n"
+    "SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n"
+    "-->\n"
+    "\n"
+    "# Title\n"
+    "\n"
+    "Real prose stays checked. Another sentence here.\n")
+
+
+def test_a_licence_block_inside_an_html_comment_is_not_in_the_frame():
+    """carbon-lang opens every Markdown file with this block, and it reached the stream."""
+    assert prose_after_the_licence_cut(CARBON_HEADER, "README.md") == [
+        (9, "Real prose stays checked. Another sentence here.")]
+
+
+def test_a_visible_markdown_licence_paragraph_is_silent():
+    """The paragraph cut reaches Markdown too: licence text is nothing to judge."""
+    text = ("Licensed under the Apache License, Version 2.0 (the \"License\"); you may not\n"
+            "use this file except in compliance with the License.\n"
+            "Copyright (c) 2026 Arlo Liu.\n")
+    assert kinds(text) == []
+
+
+def test_markdown_prose_after_a_licence_paragraph_is_still_checked():
+    assert kinds(CARBON_HEADER) == [(9, "fused")]

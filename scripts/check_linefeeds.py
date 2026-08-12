@@ -787,15 +787,14 @@ def without_license_text(lines, text, path):
     whose own first line carries nothing a marker matches.
     Every other comment paragraph is cut when some line of it carries a marker,
     which reaches the second copyright block a generated file puts below its code.
+    Markdown has no leading extent and gets only the paragraph cut,
+    which reaches the licence block a carbon-lang file opens inside an HTML comment.
 
     Both readers of the extractor cut here, and that is the point of the function.
     A sampling frame that enumerated a boundary the checker refuses to judge
     would hold a violation no predicate could ever reach.
     """
-    if is_markdown(path):
-        yield from lines
-        return
-    lang = lang_for_path(path)
+    lang = None if is_markdown(path) else lang_for_path(path)
     cut = license_header_extent(text, lang) if lang else 0
     paragraph = []
     for lineno, raw, prose in lines:
