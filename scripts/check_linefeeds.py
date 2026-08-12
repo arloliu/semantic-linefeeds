@@ -1180,6 +1180,13 @@ def trailing_carrier(line, is_md, lang):
 # and a kind that misfires on correct prose cannot be the one that refuses an edit.
 BLOCKING_KINDS = frozenset({"fused"})
 
+# ADR-0010: hook feedback is a judgment-layer surface and carries this verbatim.
+AGENT_SUPPRESSION_NOTE = (
+    "An agent never adds a suppression directive on its own authority: "
+    "if you judge a finding to be a false positive, leave the text as it is "
+    "and surface the disagreement to the user instead."
+)
+
 # The kind under evaluation.
 # It is withheld from hook feedback entirely rather than downgraded to advice,
 # because advice the model has to weigh still costs it attention.
@@ -1280,6 +1287,7 @@ def deliver(reports, note=None):
     body = "\n".join(format_findings(f, p, s) for p, f, s in reports)
     if note and any(s for _, _, s in reports):
         body += "\n" + note
+    body += "\n" + AGENT_SUPPRESSION_NOTE
     if any(blocking_kinds(f) for _, f, _ in reports):
         print(body, file=sys.stderr)
         return 2

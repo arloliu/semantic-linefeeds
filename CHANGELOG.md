@@ -8,9 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 The two extraction defects the third holdout measured, repaired now that it is spent.
-The first slice of v0.5: the span model and the versioned diagnostic schema.
-Hook behavior does not change in this slice;
-context-aware hooks and suppression ship together in the next one.
+v0.5's architectural release: the span model, context-aware hooks, and suppression.
 
 ### Added
 
@@ -23,6 +21,14 @@ context-aware hooks and suppression ship together in the next one.
 - **A versioned diagnostic schema.**
   `--json` now emits `schema_version: 1` documents whose diagnostics carry the ranges,
   and the text renderer draws from the same structure.
+- **Suppression directives** (ADR-0010): `semlf-ignore` and `semlf-ignore-next`,
+  each scoped to exactly one line, standalone or trailing a comment leader.
+  A recognized name with an unrecognized argument is malformed and wholly inert.
+- **Context-aware hooks.**
+  Both the Claude Code and Codex hooks now read a stable snapshot of the edited file,
+  locate the edit inside it, and report real line numbers,
+  where the Codex hook previously reported positions relative to the patch.
+  Either falls back to the payload-only snippet report when the edit cannot be mapped onto the file.
 
 ### Fixed
 
@@ -42,6 +48,10 @@ context-aware hooks and suppression ship together in the next one.
 
 - The `--json` output shape replaced `findings` records with `diagnostics` records.
   The version field exists so the next break announces itself.
+- Hook feedback now ends with an instruction that an agent never adds a suppression directive on its own authority (ADR-0010).
+  It is the last text of every report on both transports.
+- The Codex hook's approximate-position footer now prints only on a degraded report,
+  since a mapped report already carries real line numbers.
 
 ## [0.4.3] - 2026-08-12
 

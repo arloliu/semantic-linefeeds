@@ -257,3 +257,29 @@ def test_codex_mixed_files_block_and_carry_the_advisory():
     assert r.stdout == ""
     assert "[fused]" in r.stderr
     assert "[long]" in r.stderr
+
+
+from check_linefeeds import AGENT_SUPPRESSION_NOTE
+
+
+def test_a_blocking_report_ends_with_the_instruction():
+    for agent in AGENTS:
+        result = deliver(agent, FUSED_ONLY)
+        assert result.stderr.count(AGENT_SUPPRESSION_NOTE) == 1
+        assert result.stderr.rstrip().endswith(AGENT_SUPPRESSION_NOTE)
+
+
+def test_an_advisory_report_ends_with_the_instruction():
+    for agent in AGENTS:
+        result = deliver(agent, LONG_ONLY)
+        assert advisory(result).rstrip().endswith(AGENT_SUPPRESSION_NOTE)
+
+
+def test_a_degraded_codex_note_comes_before_the_instruction():
+    # The delivery-test Codex payloads name files absent on disk, so the
+    # report is degraded and carries the approximate-position note; the
+    # instruction must still be the report's last text.
+    result = deliver("codex", LONG_ONLY)
+    body = advisory(result)
+    assert "approximate positions" in body
+    assert body.index("approximate positions") < body.index(AGENT_SUPPRESSION_NOTE)

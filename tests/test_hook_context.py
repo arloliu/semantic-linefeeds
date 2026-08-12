@@ -103,6 +103,16 @@ def test_a_write_reports_whole_file_line_numbers(hook_dir):
     assert "of your edit" not in result.stderr
 
 
+def test_an_opencode_style_write_as_new_string_maps_to_the_file(hook_dir):
+    doc = hook_dir / "doc.md"
+    content = "clean opening prose\n\n" + FUSED + "\n"
+    doc.write_text(content)
+    result = run_cli(["--hook", "claude"], claude_edit(doc, content))
+    assert result.returncode == 2
+    assert "line 3" in result.stderr
+    assert "of your edit" not in result.stderr
+
+
 def test_an_empty_new_string_is_an_explicit_no_op(hook_dir):
     doc = hook_dir / "doc.md"
     doc.write_text(FUSED + "\n")

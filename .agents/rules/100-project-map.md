@@ -52,9 +52,9 @@ run it under Python 3.9, and reject any import outside the stdlib allowlist.
 - Reporting is restricted to diagnostics **owned** by a change:
   a diagnostic is reported under spans only when its ownership range touches a changed span or boundary (ADR-0005),
   and a diagnostic whose ownership could not be located exactly is withheld under spans rather than guessed at.
-- Hooks still hand the core payload-only text today;
-  wiring spans into them is the context-aware-hooks change,
-  which ships together with suppression.
+- Both hooks read the edited file and pass real spans into `diagnose`,
+  with snippet mode (payload-only text) as the degraded fallback
+  when the file can't be read or the edit can't be located in it.
 - `--file` mode checks whole files,
   and `long` findings never affect the exit code in either mode.
 - **Exit codes are a contract.**

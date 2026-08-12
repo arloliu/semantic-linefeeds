@@ -89,8 +89,40 @@ This kit backs the rule with three layers instead of trusting the model to remem
    `fused` (two sentences on one line), `wrap` (a line severed mid-clause),
    and `long` (over a configurable limit, default 120 chars, with a likely clause boundary).
    `--file` audits report all three, because an audit is read by the person who asked for it.
-   It checks only the text just written, never the rest of the file,
-   so legacy column-wrapped files are never flagged into a noisy rewrap.
+   The hook reads a stable snapshot of the edited file for context,
+   so it can report a real line number and skip findings an edit didn't touch,
+   and it falls back to checking only the text just written when that mapping fails.
+   Either way, legacy column-wrapped files are never flagged into a noisy rewrap.
+
+## Suppressing a finding
+
+Two directives, each scoped to exactly one line:
+
+- `semlf-ignore` — withholds every finding anchored on the line carrying it.
+- `semlf-ignore-next` — withholds every finding anchored on the next line.
+
+Standalone, on a line of its own:
+
+```markdown
+<!-- semlf-ignore-next -->
+A line the checker will leave alone.
+```
+
+Trailing, after the line it judges:
+
+```markdown
+A long judged line that runs on past the limit. <!-- semlf-ignore long -->
+```
+
+Each directive takes zero or more kind arguments (`fused`, `wrap`, `long`);
+no arguments suppresses every kind on that line.
+A recognized directive name with any unrecognized argument is malformed and inert —
+it suppresses nothing, and the findings it would have hidden stay visible.
+
+Suppression is user-directed.
+An agent never adds a `semlf-ignore` or `semlf-ignore-next` directive on its own authority:
+when it judges a finding to be a false positive,
+it leaves the text as written and raises the disagreement with you instead.
 
 ## Quick Start
 

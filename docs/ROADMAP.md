@@ -102,11 +102,15 @@ because widening what the hook can see without an escape hatch is what makes use
 
 - `diagnose(text, path, spans)`, with anchor, evidence, and ownership ranges (ADR-0005),
   while `check(text, path)` stays the tuple projection existing consumers keep.
-- Provenance and degraded-mapping fallback; the snippet mode retained as that fallback.
+- Context-aware hooks: both hosts read a stable snapshot of the edited file
+  and pass real spans into `diagnose`,
+  falling back to snippet mode when the edit cannot be mapped onto it.
 - A versioned diagnostic schema, with text as one renderer over it.
-- Real Codex line numbers; the footer emitted once per run.
+- Real Codex line numbers, with the approximate-position footer only on a degraded report.
 - No numeric `confidence` until observed rates support one.
-- Suppression, on the suppression contract, shipped together with context-aware hooks.
+- Suppression: `semlf-ignore` and `semlf-ignore-next` directives,
+  on the stateless single-line contract in ADR-0010,
+  shipped together with context-aware hooks.
 - The judgment layer for **every** agent, not only Claude:
   native `SKILL.md` installation for Codex with status and idempotent upgrade,
   `SNIPPET.md` carrying the judgment rules as the fallback for agents without a skill mechanism,
