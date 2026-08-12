@@ -79,6 +79,7 @@ def test_line_offsets_partition_exactly_as_splitlines_does():
         assert offsets == sorted(offsets)
         assert offsets[-1] == len(text)
 
+
 def test_locate_finds_a_unique_needle():
     text = "one line\ntwo words here\n"
     offsets = check_linefeeds.line_offsets(text)

@@ -903,9 +903,11 @@ def diagnose(text, path, spans=None):
     `anchor` is the raw line the finding was read from.
     `evidence` is what the finder looked at — both lines for `wrap`.
     `ownership` is the causal tokens, or None when a locate could not pin them exactly.
-    `spans` is accepted for the incremental-check filter added later;
-    this function ignores it.
+    `spans=None` reports everything;
+    a spans list restricts reporting to diagnostics whose ownership touches a normalized span,
+    and a degraded diagnostic is withheld under spans.
     """
+    normalized = None if spans is None else [normalize_span(span) for span in spans]
     lines = prose_stream(text, path)
     if lines is None:
         return []
@@ -979,7 +981,11 @@ def diagnose(text, path, spans=None):
 
         prev = (lineno, prose)
     findings.sort(key=lambda d: d["line"])
-    return findings
+    if normalized is None:
+        return findings
+    return [d for d in findings
+            if d["ownership"] is not None
+            and any(touches(d["ownership"], span) for span in normalized)]
 
 
 def check(text, path):

@@ -1,4 +1,6 @@
 """tests/test_diagnostics.py — the ranges every diagnostic carries."""
+import pytest
+
 import check_linefeeds
 
 
@@ -142,3 +144,119 @@ def test_check_is_a_projection_of_diagnose():
     assert check_linefeeds.check(text, "doc.md") == [
         (d["line"], d["kind"], d["message"], d["excerpt"])
         for d in check_linefeeds.diagnose(text, "doc.md")]
+
+
+def test_none_spans_report_everything_and_empty_spans_nothing():
+    text = "One sentence here. Another sentence follows.\n"
+    assert len(diags(text, spans=None)) == 1
+    assert diags(text, spans=[]) == []
+
+
+def test_a_span_inside_the_ownership_reports_the_diagnostic():
+    text = "One sentence here. Another sentence follows.\n"
+    (d,) = diags(text)
+    inside = d["ownership"]["start"] + 1
+    assert len(diags(text, spans=[{"start": inside, "end": inside + 1}])) == 1
+
+
+def test_a_span_elsewhere_in_the_line_reports_nothing():
+    text = "One sentence here. Another sentence follows.\n"
+    assert diags(text, spans=[{"start": 0, "end": 2}]) == []
+
+
+def test_a_span_ending_or_starting_at_the_ownership_edge_reports_nothing():
+    text = "One sentence here. Another sentence follows.\n"
+    (d,) = diags(text)
+    own = d["ownership"]
+    assert diags(text, spans=[{"start": 0, "end": own["start"]}]) == []
+    assert diags(text, spans=[{"start": own["end"], "end": len(text)}]) == []
+
+
+def test_a_zero_width_boundary_on_the_newline_owns_a_wrap():
+    text = ("the compiler will assume all functions provide an `ABIInternal`\n"
+            "implementation.\n")
+    newline_at = text.index("\n")
+    assert len(diags(text, spans=[{"at": newline_at}])) == 1
+
+
+def test_an_unchanged_boundary_is_not_reported_for_changed_evidence():
+    """ADR-0005's founding case: new evidence must not resurrect an old boundary.
+
+    The edit lands inside the lower line's tail, far from the boundary tokens,
+    so the wrap whose evidence includes that line is still not owned by it.
+    """
+    text = ("the compiler will assume all functions provide an `ABIInternal`\n"
+            "implementation of every method named in the manifest below.\n")
+    tail = text.rindex("manifest")
+    assert diags(text, spans=[{"start": tail, "end": tail + 8}]) == []
+
+
+def test_a_degraded_diagnostic_never_reports_under_spans():
+    text = "Stop aa. Bb then aa. Bb again.\n"
+    assert len(diags(text, spans=None)) == 1
+    everything = [{"start": 0, "end": len(text)}]
+    assert diags(text, spans=everything) == []
+
+
+def test_an_ambiguous_wrap_token_suppresses_rather_than_widens():
+    """`Use *`value`*` peels to a bare `*`, which its raw line holds twice.
+
+    Whole-line fallback would let the tail edit below own this wrap;
+    dropping ownership keeps the unrelated edit silent.
+    """
+    text = "Use *`value`*\nimplementation tail words here\n"
+    assert "wrap" in [d["kind"] for d in diags(text)]
+    tail = text.index("words")
+    assert diags(text, spans=[{"start": tail, "end": tail + 5}]) == []
+
+
+def test_editing_only_the_quote_marker_reports_no_long_advisory():
+    text = "> " + LONG_PROSE + "\n"
+    assert diags(text, spans=[{"start": 0, "end": 2}]) == []
+    (d,) = diags(text)
+    inside = d["ownership"]["start"] + 5
+    assert len(diags(text, spans=[{"start": inside, "end": inside + 1}])) == 1
+
+
+def test_editing_only_the_list_or_comment_marker_reports_nothing():
+    listed = "- " + LONG_PROSE + "\n"
+    assert diags(listed, spans=[{"start": 0, "end": 2}]) == []
+    (d,) = diags(listed)
+    inside = d["ownership"]["start"] + 5
+    assert len(diags(listed, spans=[{"start": inside, "end": inside + 1}])) == 1
+    commented = "// " + LONG_PROSE + "\n"
+    assert diags(commented, "main.go", spans=[{"start": 0, "end": 3}]) == []
+    (d,) = diags(commented, "main.go")
+    inside = d["ownership"]["start"] + 5
+    assert len(diags(commented, "main.go", spans=[{"start": inside, "end": inside + 1}])) == 1
+
+
+def test_a_span_in_the_tab_separated_tail_reports_nothing():
+    text = "One sentence here. Another\tword follows and then more\n"
+    tail = text.index("follows")
+    assert diags(text, spans=[{"start": tail, "end": tail + 7}]) == []
+
+
+def test_a_repeated_boundary_token_keeps_unrelated_edits_silent():
+    for text, needle in (
+        ("the count matches the count\nremains stable for now\n", "now"),
+        ("the outcome depends on each\nvalue equals the value here\n", "here"),
+    ):
+        assert len(diags(text, spans=None)) == 1
+        tail = text.rindex(needle)
+        assert diags(text, spans=[{"start": tail, "end": tail + len(needle)}]) == []
+
+
+def test_a_degraded_mapping_span_still_filters_by_ownership():
+    # What a degraded mapping forfeits is the hook's decision (Plan B);
+    # the core filter treats both mapping values identically in this slice.
+    text = "One sentence here. Another sentence follows.\n"
+    (d,) = diags(text)
+    inside = d["ownership"]["start"] + 1
+    span = {"start": inside, "end": inside + 1, "mapping": "degraded"}
+    assert len(diags(text, spans=[span])) == 1
+
+
+def test_a_malformed_span_raises_even_for_a_non_target_path():
+    with pytest.raises(ValueError):
+        check_linefeeds.diagnose("plain\n", "photo.png", [{"bogus": 1}])
