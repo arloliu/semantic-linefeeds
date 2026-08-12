@@ -884,13 +884,34 @@ def without_license_text(lines, text, path):
     yield from _paragraph_without_license(paragraph)
 
 
-def check(text, path):
-    """Return a list of (lineno, kind, message, excerpt) findings."""
+def _line_range(text, offsets, lineno):
+    """The raw line as a half-open range, its line terminator excluded.
+
+    splitlines strips whichever terminator ends the line — LF, CRLF,
+    bare CR, or a Unicode separator — so the range never accuses one.
+    """
+    start, end = offsets[lineno - 1], offsets[lineno]
+    split = text[start:end].splitlines()
+    content = split[0] if split else ""
+    return {"start": start, "end": start + len(content)}
+
+
+def diagnose(text, path, spans=None):
+    """Return a list of diagnostic dicts, sorted by line.
+
+    Each dict carries the finding plus its three ranges.
+    `anchor` is the raw line the finding was read from.
+    `evidence` is what the finder looked at — both lines for `wrap`.
+    `ownership` is the causal tokens, or None when a locate could not pin them exactly.
+    `spans` is accepted for the incremental-check filter added later;
+    this function ignores it.
+    """
     lines = prose_stream(text, path)
     if lines is None:
         return []
     lines = without_license_text(lines, text, path)
 
+    offsets = line_offsets(text)
     findings = []
     limit = active_long_limit()
     prev = None  # (lineno, prose) of previous prose line in the same paragraph
@@ -899,12 +920,23 @@ def check(text, path):
             prev = None
             continue
 
-        if FUSED_RE.search(prose):
-            findings.append((
-                lineno, "fused",
-                "two sentences on one line — one sentence per line",
-                prose,
-            ))
+        match = FUSED_RE.search(prose)
+        if match:
+            anchor = _line_range(text, offsets, lineno)
+            located = locate_in_line(text, offsets, lineno, match.group(0))
+            if located and located["end"] <= anchor["end"]:
+                tail = re.search(r"\s", text[located["end"]:anchor["end"]])
+                end = located["end"] + tail.start() if tail else anchor["end"]
+                ownership, basis = {"start": located["start"], "end": end}, "token"
+            else:
+                ownership, basis = None, "degraded"
+            findings.append({
+                "kind": "fused", "line": lineno,
+                "message": "two sentences on one line — one sentence per line",
+                "excerpt": prose,
+                "anchor": anchor, "evidence": dict(anchor),
+                "ownership": ownership, "ownership_basis": basis,
+            })
 
         if prev is not None:
             prev_no, prev_prose = prev
@@ -914,22 +946,46 @@ def check(text, path):
                 and first_word
                 and first_word.group(0) not in CONNECTORS
             ):
-                findings.append((
-                    prev_no, "wrap",
-                    "ends mid-clause (column-wrapped?) — break at sentence or clause boundaries, not at a column",
-                    prev_prose,
-                ))
+                upper_words = line_ending(prev_prose).rsplit(maxsplit=1)
+                upper = (locate_in_line(text, offsets, prev_no, upper_words[-1])
+                         if upper_words else None)
+                lower = locate_in_line(text, offsets, lineno, first_word.group(0))
+                anchor = _line_range(text, offsets, prev_no)
+                evidence = {"start": anchor["start"],
+                            "end": _line_range(text, offsets, lineno)["end"]}
+                if upper and lower and upper["end"] <= lower["start"]:
+                    ownership, basis = {"start": upper["start"], "end": lower["end"]}, "token"
+                else:
+                    ownership, basis = None, "degraded"
+                findings.append({
+                    "kind": "wrap", "line": prev_no,
+                    "message": "ends mid-clause (column-wrapped?) — break at sentence or clause boundaries, not at a column",
+                    "excerpt": prev_prose,
+                    "anchor": anchor, "evidence": evidence,
+                    "ownership": ownership, "ownership_basis": basis,
+                })
 
         if limit and len(raw) > limit and BOUNDARY_HINT_RE.search(prose):
-            findings.append((
-                lineno, "long",
-                f"advisory: {len(raw)} chars with a possible clause boundary — scan from ~{limit} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long",
-                prose,
-            ))
+            anchor = _line_range(text, offsets, lineno)
+            located = locate_in_line(text, offsets, lineno, prose)
+            ownership, basis = (located, "token") if located else (None, "degraded")
+            findings.append({
+                "kind": "long", "line": lineno,
+                "message": f"advisory: {len(raw)} chars with a possible clause boundary — scan from ~{limit} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long",
+                "excerpt": prose,
+                "anchor": anchor, "evidence": dict(anchor),
+                "ownership": ownership, "ownership_basis": basis,
+            })
 
         prev = (lineno, prose)
-    findings.sort(key=lambda f: f[0])
+    findings.sort(key=lambda d: d["line"])
     return findings
+
+
+def check(text, path):
+    """Return a list of (lineno, kind, message, excerpt) findings."""
+    return [(d["line"], d["kind"], d["message"], d["excerpt"])
+            for d in diagnose(text, path)]
 
 
 def format_findings(findings, path, snippet):
