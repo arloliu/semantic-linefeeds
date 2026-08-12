@@ -9,7 +9,8 @@ and "long" is a line over the threshold that appears to contain a clause boundar
 
 Two modes.
 "--hook [claude|codex]" reads a PostToolUse JSON payload on stdin (agent defaults to claude)
-and checks only the text just written.
+and reads a stable snapshot of the edited file to report real line numbers,
+falling back to checking only the payload's own text when the edit cannot be mapped to it exactly.
 A fused finding blocks the edit: exit 2, with the report on stderr.
 A wrap finding reaches the model only when SEMLF_EXPERIMENTAL_WRAP is set, and never blocks.
 A result carrying only advisories exits 0 instead,
@@ -1213,7 +1214,49 @@ def blocking_kinds(findings):
     return any(kind in BLOCKING_KINDS for _, kind, _, _ in findings)
 
 
-def deliver(reports, snippet=True, note=None):
+def _identity(stat):
+    """The four fields that must agree for a snapshot to be one file."""
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+
+
+def _read_snapshot(path):
+    """One stable snapshot of path, or None when it cannot be trusted.
+
+    Strict decoding: a replacement character would shift offsets while
+    the mapping still claimed to be exact.
+    The descriptor is stat'd before and after the read (an in-place
+    change moves size or mtime), and the path is stat'd after it (an
+    atomic replacement moves the inode), so bytes from a file the path
+    no longer names degrade instead of being labeled exact.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            before = os.fstat(f.fileno())
+            text = f.read()
+            after = os.fstat(f.fileno())
+        final = os.stat(path)
+    except (OSError, UnicodeDecodeError):
+        return None
+    if not (_identity(before) == _identity(after) == _identity(final)):
+        return None
+    return text
+
+
+def _locate_unique(text, needle):
+    """The span of needle's only occurrence, or None.
+
+    Overlapping repeats count as ambiguous, so the second search starts
+    one code point after the first hit rather than after its end.
+    """
+    if not needle:
+        return None
+    first = text.find(needle)
+    if first < 0 or text.find(needle, first + 1) >= 0:
+        return None
+    return {"start": first, "end": first + len(needle)}
+
+
+def deliver(reports, note=None):
     """Write hook findings on the transport their status implies, and return the status.
 
     Status comes from the kinds present, and transport comes from the status.
@@ -1223,20 +1266,21 @@ def deliver(reports, snippet=True, note=None):
     Claude Code files it under its debug log,
     and Codex reads non-blocking feedback only from JSON on stdout.
 
-    `reports` is a sequence of (path, findings) pairs rather than one pair,
-    since a single Codex patch can touch several files
-    and the non-blocking transport is one JSON object.
+    `reports` is a sequence of (path, findings, snippet) triples rather
+    than one pair, since a single Codex patch can touch several files,
+    each report carries its own snippet flag per ADR-0005's span-source
+    table, and the non-blocking transport is one JSON object.
     Both hosts accept the same object shape,
     so the transport does not vary by agent.
     """
-    reports = [(path, model_visible(findings)) for path, findings in reports]
-    reports = [(path, findings) for path, findings in reports if findings]
+    reports = [(p, model_visible(f), s) for p, f, s in reports]
+    reports = [(p, f, s) for p, f, s in reports if f]
     if not reports:
         return 0
-    body = "\n".join(format_findings(f, p, snippet) for p, f in reports)
-    if note:
+    body = "\n".join(format_findings(f, p, s) for p, f, s in reports)
+    if note and any(s for _, _, s in reports):
         body += "\n" + note
-    if any(blocking_kinds(findings) for _, findings in reports):
+    if any(blocking_kinds(f) for _, f, _ in reports):
         print(body, file=sys.stderr)
         return 2
     print(json.dumps({"hookSpecificOutput": {
@@ -1274,10 +1318,27 @@ def run_hook_claude():
         return 0
     if skip_path(path):
         return 0
-    text = tool_input.get("new_string") or tool_input.get("content") or ""
-    if not isinstance(text, str) or not text:
-        return 0
-    return deliver([(path, check(text, path))])
+    new_string = tool_input.get("new_string")
+    if isinstance(new_string, str):
+        if not new_string:
+            # A deletion: its zero-width boundary has no locatable text
+            # without a preimage, and a guess would own text the edit
+            # never touched.
+            # A missed finding is the accepted cost.
+            return 0
+        snapshot = None if tool_input.get("replace_all") else _read_snapshot(path)
+        span = _locate_unique(snapshot, new_string) if snapshot is not None else None
+        if span:
+            return deliver([(path, _as_tuples(diagnose(snapshot, path, spans=[span])), False)])
+        return deliver([(path, check(new_string, path), True)])
+    content = tool_input.get("content")
+    if isinstance(content, str) and content:
+        # A Write hands over the whole file: content is both the context
+        # and one whole-file span (ADR-0005), so degraded ownership is
+        # withheld rather than guessed.
+        spans = [{"start": 0, "end": len(content)}]
+        return deliver([(path, _as_tuples(diagnose(content, path, spans=spans)), False)])
+    return 0
 
 
 def added_text_by_file(patch):
@@ -1341,7 +1402,7 @@ def run_hook_codex():
         return 0
     if not isinstance(patch, str):
         return 0
-    reports = [(path, check(text, path))
+    reports = [(path, check(text, path), True)
                for path, text in sorted(added_text_by_file(patch).items())
                if not skip_path(path)]
     return deliver(reports, note=(
