@@ -564,6 +564,18 @@ def prose_lines_markdown(text):
                 yield i, None, None  # a destination; a title may follow
                 continue
             after_refdef = False
+        comment = MD_STANDALONE_RE.match(stripped)
+        if comment:
+            content = comment.group(1).strip(" \t")
+            parsed = parse_directive(content)
+            if parsed is not None and parsed is not MALFORMED:
+                # A directive-only HTML comment is the one markup line the
+                # stream keeps: recognition happens downstream, after the
+                # licence cut has had its say (ADR-0010).
+                yield i, raw, content
+                continue
+        # A malformed or non-directive comment falls through to the
+        # exclusion below and stays markup.
         if (
             not stripped
             or stripped.startswith("#")
@@ -1096,6 +1108,9 @@ def parse_directive(content):
 # A trailing HTML-comment carrier: the rightmost comment, ending the line.
 # [^<>] keeps the match inside one comment, so an earlier comment stays prose.
 MD_TRAILING_RE = re.compile(r"<!--([^<>]*)-->[ \t]*$")
+
+# A line that is exactly one HTML comment; its content may be a directive.
+MD_STANDALONE_RE = re.compile(r"^<!--([^<>]*)-->$")
 
 
 def trailing_carrier(line, is_md, lang):

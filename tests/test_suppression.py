@@ -1,7 +1,7 @@
 """The suppression contract of ADR-0010: grammar, carriers, and the diagnose filter."""
 
 from check_linefeeds import (
-    DIRECTIVE_KINDS, MALFORMED, parse_directive,
+    DIRECTIVE_KINDS, MALFORMED, parse_directive, prose_lines_markdown,
 )
 
 
@@ -78,3 +78,46 @@ def test_a_malformed_tail_is_inert_and_strips_nothing():
 
 def test_a_bare_token_with_no_leader_is_not_a_carrier():
     assert trailing_carrier("no comment here semlf-ignore", True, None) is None
+
+
+def first_row(md):
+    return list(prose_lines_markdown(md))[0]
+
+
+def test_a_directive_only_html_comment_is_yielded_as_prose():
+    assert first_row("<!-- semlf-ignore-next fused -->\nprose\n") == \
+        (1, "<!-- semlf-ignore-next fused -->", "semlf-ignore-next fused")
+
+
+def test_a_blockquoted_directive_comment_is_yielded_as_prose():
+    assert first_row("> <!-- semlf-ignore -->\n")[2] == "semlf-ignore"
+
+
+def test_a_directive_comment_inside_a_fence_stays_excluded():
+    rows = list(prose_lines_markdown("```\n<!-- semlf-ignore-next -->\n```\n"))
+    assert rows[1] == (2, None, None)
+
+
+def test_an_indented_directive_comment_stays_excluded():
+    assert first_row("    <!-- semlf-ignore-next -->\n") == (1, None, None)
+
+
+def test_a_malformed_directive_comment_stays_markup():
+    assert first_row("<!-- semlf-ignore fussed -->\n") == (1, None, None)
+
+
+def test_an_ordinary_html_comment_stays_markup():
+    assert first_row("<!-- an ordinary comment -->\n") == (1, None, None)
+
+
+def test_the_sampler_drops_a_standalone_directive_like_the_checker():
+    # The sampling frame must enumerate the prose the detector sees;
+    # a directive line the checker treats as a boundary must not be a sampled prose line.
+    # The Markdown case uses the new HTML-comment candidate deliberately:
+    # once the extractor yields it as prose, an unfixed sampler would join all three lines into one sampled run —
+    # this test is the red gate for the `paragraphs` change.
+    from corpus_harness import paragraphs
+    md = "upper prose line one\n<!-- semlf-ignore-next -->\nlower prose line two\n"
+    assert paragraphs(md, "doc.md") == []
+    py = "# upper prose line one\n# semlf-ignore-next\n# lower prose line two\n"
+    assert paragraphs(py, "x.py") == []

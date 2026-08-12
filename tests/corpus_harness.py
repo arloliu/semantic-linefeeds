@@ -198,7 +198,12 @@ def paragraphs(text, path):
     stream = check_linefeeds.without_license_text(stream, text, path)
     runs, current = [], []
     for lineno, raw, prose in stream:
-        if prose is None:
+        parsed = (check_linefeeds.parse_directive(prose)
+                  if prose is not None else None)
+        is_directive = parsed is not None and parsed is not check_linefeeds.MALFORMED
+        if prose is None or is_directive:
+            # A well-formed standalone directive is a paragraph boundary
+            # to the checker, so the frame must not sample it as prose.
             if len(current) > 1:
                 runs.append(current)
             current = []
