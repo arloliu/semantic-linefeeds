@@ -1063,6 +1063,36 @@ def format_findings(findings, path, snippet):
     return "\n".join(lines)
 
 
+# ADR-0010: the suppression grammar.
+# Longest name first, so `semlf-ignore-next` is one token,
+# never `semlf-ignore` trailed by an unknown argument.
+DIRECTIVE_KINDS = frozenset({"fused", "wrap", "long"})
+DIRECTIVE_NAMES = ("semlf-ignore-next", "semlf-ignore")
+
+# A recognized name with an unknown argument suppresses nothing at all;
+# a sentinel keeps that state distinct from "not a directive".
+MALFORMED = object()
+
+
+def parse_directive(content):
+    """Parse content that should be exactly one directive.
+
+    Returns (offset, kinds) for a well-formed directive,
+    where offset 0 targets the carrier's own line and 1 the next raw line,
+    MALFORMED for a recognized name with any unknown argument,
+    and None when content is not a directive at all.
+    WS is ASCII space or horizontal tab, per the contract.
+    """
+    tokens = [t for t in re.split(r"[ \t]+", content) if t]
+    if not tokens or tokens[0] not in DIRECTIVE_NAMES:
+        return None
+    args = tokens[1:]
+    if any(a not in DIRECTIVE_KINDS for a in args):
+        return MALFORMED
+    offset = 1 if tokens[0] == "semlf-ignore-next" else 0
+    return offset, (frozenset(args) or DIRECTIVE_KINDS)
+
+
 # The kinds that stop an edit.
 # Everything else is advice,
 # and advice that blocks costs more trust than the advice is worth.
