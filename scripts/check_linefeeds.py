@@ -1093,6 +1093,40 @@ def parse_directive(content):
     return offset, (frozenset(args) or DIRECTIVE_KINDS)
 
 
+# A trailing HTML-comment carrier: the rightmost comment, ending the line.
+# [^<>] keeps the match inside one comment, so an earlier comment stays prose.
+MD_TRAILING_RE = re.compile(r"<!--([^<>]*)-->[ \t]*$")
+
+
+def trailing_carrier(line, is_md, lang):
+    """The parsed directive, judged prefix, and carrier suffix, or None.
+
+    ADR-0010: the carrier is the rightmost leader-to-line-end suffix
+    after the end trim, and a malformed tail is wholly inert —
+    it neither suppresses nor is stripped from the judged text.
+    The returned carrier is the exact suffix the caller must also
+    strip from the extracted prose, so raw and prose never diverge.
+    """
+    trimmed = line.rstrip(" \t")
+    if is_md:
+        m = MD_TRAILING_RE.search(trimmed)
+        if not m:
+            return None
+        parsed = parse_directive(m.group(1))
+        if parsed is None or parsed is MALFORMED:
+            return None
+        return parsed, trimmed[:m.start()].rstrip(" \t"), trimmed[m.start():]
+    if lang is None or not lang.line:
+        return None
+    idx = trimmed.rfind(lang.line)
+    if idx <= 0:
+        return None  # no marker, or only the comment's own leading marker
+    parsed = parse_directive(trimmed[idx + len(lang.line):])
+    if parsed is None or parsed is MALFORMED:
+        return None
+    return parsed, trimmed[:idx].rstrip(" \t"), trimmed[idx:]
+
+
 # The kinds that stop an edit.
 # Everything else is advice,
 # and advice that blocks costs more trust than the advice is worth.
