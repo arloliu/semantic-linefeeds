@@ -47,9 +47,16 @@ run it under Python 3.9, and reject any import outside the stdlib allowlist.
   when a heuristic is uncertain, skip the line.
   A miss is acceptable;
   a false positive is a bug.
-- **Hook modes check only the text just written**, never the whole file;
-  `--file` mode checks whole files.
-  `long` findings never affect the exit code in either mode.
+- Analysis may see the whole file:
+  `diagnose(text, path, spans)` reads one stable snapshot.
+- Reporting is restricted to diagnostics **owned** by a change:
+  a diagnostic is reported under spans only when its ownership range touches a changed span or boundary (ADR-0005),
+  and a diagnostic whose ownership could not be located exactly is withheld under spans rather than guessed at.
+- Hooks still hand the core payload-only text today;
+  wiring spans into them is the context-aware-hooks change,
+  which ships together with suppression.
+- `--file` mode checks whole files,
+  and `long` findings never affect the exit code in either mode.
 - **Exit codes are a contract.**
   `--file`: 0 clean, 1 violations or unreadable input.
   `--hook`: 2 for a `fused` finding, with the report on stderr;

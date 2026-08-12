@@ -100,7 +100,8 @@ the span model lands before context-aware hooks,
 and suppression lands with them rather than after,
 because widening what the hook can see without an escape hatch is what makes users disable a guardrail.
 
-- `check(text, path, spans)`, with anchor, evidence, and ownership ranges (ADR-0005).
+- `diagnose(text, path, spans)`, with anchor, evidence, and ownership ranges (ADR-0005),
+  while `check(text, path)` stays the tuple projection existing consumers keep.
 - Provenance and degraded-mapping fallback; the snippet mode retained as that fallback.
 - A versioned diagnostic schema, with text as one renderer over it.
 - Real Codex line numbers; the footer emitted once per run.

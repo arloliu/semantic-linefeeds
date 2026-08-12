@@ -3,9 +3,16 @@
 **Status:** accepted  
 **Date:** 2026-08-10
 
+**Amended:** 2026-08-12 —
+the rich entry point is named `diagnose(text, path, spans)`;
+`check(text, path)` remains the four-tuple projection existing consumers keep.
+The touching rule is fixed as strict overlap for non-zero ranges,
+with zero-width boundaries touching on edges,
+and a diagnostic whose ownership cannot be located exactly is withheld under spans rather than owned by its whole line.
+
 ## Decision
 
-The three entry points unify on `check(full_text, path, changed_spans)`,
+The three entry points unify on `diagnose(full_text, path, changed_spans)`,
 which gives context-awareness, real Codex line numbers, and one contract for the git modes.
 
 ### Three ranges, not two
@@ -43,6 +50,8 @@ Width never appears in ownership, since ADR-0002 leaves it qualifying nothing.
 Preimage comparison is a second condition, never a substitute.
 Ranges are defined over Unicode code points,
 with explicit rules for zero-width intersection and discontiguous evidence.
+Those rules: non-zero ranges must strictly overlap;
+a zero-width boundary touches a range anywhere on it, edges included.
 
 ### Span sources
 
@@ -62,6 +71,6 @@ The core reads one stable snapshot and detects modification during the read;
 on any mismatch or degraded mapping it falls back to payload-only checking.
 **The existing snippet mode is retained as that fallback, not deleted.**
 
-`.agents/rules/100-project-map.md:27-34` is amended in the same change,
+`.agents/rules/100-project-map.md` is amended in the same change,
 restated as: analysis may see the whole file;
 reporting is restricted to diagnostics **owned** by a change.

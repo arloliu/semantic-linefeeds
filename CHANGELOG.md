@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 The two extraction defects the third holdout measured, repaired now that it is spent.
+The first slice of v0.5: the span model and the versioned diagnostic schema.
+Hook behavior does not change in this slice;
+context-aware hooks and suppression ship together in the next one.
+
+### Added
+
+- **Every finding carries anchor, evidence, and ownership ranges** (ADR-0005).
+  `diagnose(text, path, spans)` is the rich entry point,
+  reporting only diagnostics whose ownership a changed span strictly touches,
+  and `check` remains the tuple projection every existing consumer sees.
+  A diagnostic whose ownership cannot be located exactly reports normally without spans
+  and is withheld under them, because precision outranks recall.
+- **A versioned diagnostic schema.**
+  `--json` now emits `schema_version: 1` documents whose diagnostics carry the ranges,
+  and the text renderer draws from the same structure.
 
 ### Fixed
 
@@ -22,6 +37,11 @@ The two extraction defects the third holdout measured, repaired now that it is s
   and five of its boilerplate units reached the third round's sampling frame.
   The paragraph cut that already silences licence text in code comments reaches Markdown now,
   so licence text is nothing to judge wherever it sits.
+
+### Changed
+
+- The `--json` output shape replaced `findings` records with `diagnostics` records.
+  The version field exists so the next break announces itself.
 
 ## [0.4.3] - 2026-08-12
 
