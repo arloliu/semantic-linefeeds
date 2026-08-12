@@ -283,3 +283,29 @@ def test_a_standalone_html_directive_amid_prose_is_a_boundary():
           "<!-- semlf-ignore-next wrap -->\n"
           "and this clause continues it across the break.\n")
     assert kinds_at(md) == []
+
+
+# ADR-0010 permits only ASCII space/tab as directive WS.
+# That includes the whitespace between a comment leader and the directive,
+# and the whitespace at the raw line's ends.
+# The extractor's own Unicode-aware .strip() calls fold wider whitespace
+# (NBSP, em space, ...) away before parse_directive ever sees it.
+# Left unguarded, that would let text outside the grammar authorize a suppression.
+
+
+def test_nbsp_after_a_comment_leader_does_not_authorize_suppression():
+    text = "# semlf-ignore-next fused\n# " + FUSED
+    assert kinds_at(text, "x.py") == [(2, "fused")]
+
+
+def test_em_space_padded_markdown_standalone_does_not_authorize_suppression():
+    text = " <!--semlf-ignore-next fused--> \n" + FUSED
+    assert kinds_at(text) == [(2, "fused")]
+
+
+def test_the_ascii_standalone_forms_still_suppress():
+    # The legit forms this guard must leave alone.
+    # See also test_a_bare_directive_line_in_a_docstring_suppresses_the_next_line
+    # and test_a_standalone_html_directive_amid_prose_is_a_boundary above.
+    assert kinds_at("# semlf-ignore-next fused\n# " + FUSED, "x.py") == []
+    assert kinds_at("<!--semlf-ignore-next fused-->\n" + FUSED) == []

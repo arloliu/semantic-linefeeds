@@ -938,11 +938,16 @@ def diagnose(text, path, spans=None):
             prev = None
             continue
 
+        # Checked against the still-unrebound raw line: the trailing-carrier
+        # block below this one reassigns `raw` later in the same iteration.
         parsed = parse_directive(prose)
-        if parsed is not None and parsed is not MALFORMED:
+        if (parsed is not None and parsed is not MALFORMED
+                and _standalone_carrier_is_ascii(raw, prose)):
             # A well-formed standalone directive line is a paragraph boundary,
             # not prose (ADR-0010).
-            # A MALFORMED line falls through and stays visible prose.
+            # A MALFORMED line, or one whose carrier whitespace is not
+            # ASCII (ADR-0010's WS grammar), falls through and stays
+            # visible prose.
             offset, kinds = parsed
             suppressions.setdefault(lineno + offset, set()).update(kinds)
             prev = None
@@ -1114,6 +1119,24 @@ DIRECTIVE_NAMES = ("semlf-ignore-next", "semlf-ignore")
 # A recognized name with an unknown argument suppresses nothing at all;
 # a sentinel keeps that state distinct from "not a directive".
 MALFORMED = object()
+
+
+def _standalone_carrier_is_ascii(raw, prose):
+    """Whether raw's whitespace around the recognized directive text is ASCII-only.
+
+    ADR-0010 permits only ASCII space/tab as directive WS,
+    including between a comment leader and the directive and at the raw line's ends.
+    The extractors reach `prose` through Python's Unicode-aware .strip(),
+    which folds NBSP, em space, and other Unicode whitespace away just like the ASCII forms.
+    This checks the same characters `str.strip()` removes.
+    Left unguarded, that fold would let text the grammar forbids masquerade as a well-formed carrier.
+    A non-whitespace character on either side (a comment leader, `<!--`/`-->`) is carrier syntax and always fine.
+    """
+    idx = raw.find(prose)
+    if idx < 0:
+        return False
+    outer = raw[:idx] + raw[idx + len(prose):]
+    return all(ch in " \t\r" for ch in outer if ch.isspace())
 
 
 def parse_directive(content):
