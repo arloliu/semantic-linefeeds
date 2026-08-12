@@ -566,14 +566,20 @@ def prose_lines_markdown(text):
                 continue
             after_refdef = False
         comment = MD_STANDALONE_RE.match(stripped)
-        if comment:
-            content = comment.group(1).strip(" \t")
-            parsed = parse_directive(content)
+        # ADR-0010 permits only ASCII space/tab as directive WS,
+        # including at the raw line's ends.
+        # `stripped` reached the "<!--...-->" form through Python's Unicode-aware .strip(),
+        # which folds NBSP, em space, and other wide whitespace away exactly like the ASCII forms.
+        # An ASCII-only strip of the same text must land on the same string,
+        # or a candidate the grammar never authorized would be yielded as a directive carrier instead of staying markup.
+        if comment and content.strip(" \t\r") == stripped:
+            carrier_content = comment.group(1).strip(" \t")
+            parsed = parse_directive(carrier_content)
             if parsed is not None and parsed is not MALFORMED:
                 # A directive-only HTML comment is the one markup line the
                 # stream keeps: recognition happens downstream, after the
                 # licence cut has had its say (ADR-0010).
-                yield i, raw, content
+                yield i, raw, carrier_content
                 continue
         # A malformed or non-directive comment falls through to the
         # exclusion below and stays markup.

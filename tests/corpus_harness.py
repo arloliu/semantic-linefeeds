@@ -200,7 +200,13 @@ def paragraphs(text, path):
     for lineno, raw, prose in stream:
         parsed = (check_linefeeds.parse_directive(prose)
                   if prose is not None else None)
-        is_directive = parsed is not None and parsed is not check_linefeeds.MALFORMED
+        # The bare-prose and code-comment standalone forms are never gated at extraction time.
+        # diagnose applies this same ASCII-adjacency rule before honoring one.
+        # The sampler must apply it too,
+        # or a Unicode-WS candidate would be dropped here
+        # while diagnose still judges it as ordinary prose.
+        is_directive = (parsed is not None and parsed is not check_linefeeds.MALFORMED
+                         and check_linefeeds._standalone_carrier_is_ascii(raw, prose))
         if prose is None or is_directive:
             # A well-formed standalone directive is a paragraph boundary
             # to the checker, so the frame must not sample it as prose.

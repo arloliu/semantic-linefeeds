@@ -311,6 +311,40 @@ def test_the_ascii_standalone_forms_still_suppress():
     assert kinds_at("<!--semlf-ignore-next fused-->\n" + FUSED) == []
 
 
+def test_a_rejected_html_carrier_does_not_fabricate_wraps_with_neighbors():
+    # The tests above use FUSED as a neighbor,
+    # whose capital "One" never trips wrap detection either way,
+    # so they cannot see a carrier leaking into the prose stream.
+    # A rejected directive HTML comment must drop as markup,
+    # exactly like a malformed one: a paragraph boundary.
+    # It must not leak into the prose stream as visible text
+    # and form a wrap with its real, lowercase-starting neighbors.
+    upper = "a line that ends mid-clause because it was\n"
+    lower = "wrapped at a column.\n"
+
+    def wrapped(pad):
+        return upper + pad + "<!-- semlf-ignore-next fused -->" + pad + "\n" + lower
+
+    def leading_only(pad):
+        return upper + pad + "<!-- semlf-ignore-next fused -->\n" + lower
+
+    def trailing_only(pad):
+        return upper + "<!-- semlf-ignore-next fused -->" + pad + "\n" + lower
+
+    for pad in (" ", "\xa0"):  # em space, NBSP
+        assert kinds_at(wrapped(pad)) == []
+        assert kinds_at(leading_only(pad)) == []
+        assert kinds_at(trailing_only(pad)) == []
+
+
+def test_a_rejected_html_carrier_still_does_not_suppress_its_target():
+    # The non-suppression contract, re-checked against lowercase neighbors.
+    # The carrier is now a paragraph boundary rather than leaked prose,
+    # and the planted finding on its "-next" target must still survive untouched.
+    md = " <!--semlf-ignore-next fused--> \n" + FUSED
+    assert kinds_at(md) == [(2, "fused")]
+
+
 def test_a_directive_after_a_licence_paragraph_still_suppresses():
     # Both cuts run in one file: the licence paragraph is silenced by the
     # licence cut, and the standalone directive in the paragraph after it
