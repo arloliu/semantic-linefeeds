@@ -1384,6 +1384,79 @@ def added_text_by_file(patch):
             for p, runs in files.items() if runs}
 
 
+def hunks_by_file(patch):
+    """Map file path -> hunks, each a list of (kind, text) lines.
+
+    kind is "add", "ctx", or "del".
+    A deleted line contributes no post-state text but keeps its position,
+    because its collapse point is a changed boundary ADR-0005 requires as a zero-width span.
+    Context lines carry the apply_patch space prefix when present;
+    one is stripped.
+    A `*** Move to:` rename re-keys the entry to the destination path.
+    """
+    files = {}
+    current = None
+    hunk = None
+    for line in patch.splitlines():
+        m = PATCH_FILE_RE.match(line)
+        if m:
+            current = m.group(1).strip()
+            files.setdefault(current, [])
+            hunk = None
+            continue
+        mv = PATCH_MOVE_RE.match(line)
+        if mv and current is not None:
+            files[mv.group(1).strip()] = files.pop(current)
+            current = mv.group(1).strip()
+            hunk = None
+            continue
+        if line.startswith("*** "):
+            current = None
+            hunk = None
+            continue
+        if current is None:
+            continue
+        if line.startswith("@@"):
+            hunk = None
+            continue
+        if hunk is None:
+            hunk = []
+            files[current].append(hunk)
+        if line.startswith("+"):
+            hunk.append(("add", line[1:]))
+        elif line.startswith("-"):
+            hunk.append(("del", ""))
+        else:
+            hunk.append(("ctx", line[1:] if line.startswith(" ") else line))
+    return {p: [h for h in hunks if h] for p, hunks in files.items()
+            if any(hunks)}
+
+
+def _locate_hunk(text, body):
+    """The unique line-bounded occurrence of a hunk body, or None.
+
+    A hunk is whole lines,
+    so its match must start at offset 0 or after a newline and end at end-of-text or before one;
+    a body embedded in a longer unchanged line is not this hunk,
+    and such interior hits neither match nor make the real one ambiguous.
+    """
+    if not body:
+        return None
+    found = None
+    start = 0
+    while True:
+        idx = text.find(body, start)
+        if idx < 0:
+            return found
+        end = idx + len(body)
+        if ((idx == 0 or text[idx - 1] == "\n")
+                and (end == len(text) or text[end] == "\n")):
+            if found is not None:
+                return None
+            found = {"start": idx, "end": end}
+        start = idx + 1
+
+
 def run_hook_codex():
     payload = read_payload()
     if payload is None:
@@ -1402,9 +1475,63 @@ def run_hook_codex():
         return 0
     if not isinstance(patch, str):
         return 0
-    reports = [(path, check(text, path), True)
-               for path, text in sorted(added_text_by_file(patch).items())
-               if not skip_path(path)]
+    reports = []
+    for path, hunks in sorted(hunks_by_file(patch).items()):
+        if skip_path(path):
+            continue
+        snapshot = _read_snapshot(path)
+        spans = [] if snapshot is not None else None
+        for hunk in hunks if spans is not None else ():
+            post = [(kind, text) for kind, text in hunk if kind != "del"]
+            body = "\n".join(text for _, text in post)
+            located = _locate_hunk(snapshot, body)
+            if located is None:
+                spans = None
+                break
+            starts, offset = [], 0
+            for _, text in post:
+                starts.append(offset)
+                offset += len(text) + 1  # the joining newline
+            index = 0
+            for kind, text in hunk:
+                if kind == "del":
+                    # The deletion run collapsed here: a zero-width after-state boundary,
+                    # at the start of the next post-state line.
+                    # When the deletion closes the hunk,
+                    # the collapse point sits after the retained terminator, never before it
+                    # — a boundary at the end of the line's content would touch ownership on the retained line
+                    # and over-own an unchanged finding there.
+                    if index < len(post):
+                        at = located["start"] + starts[index]
+                    elif located["end"] < len(snapshot):
+                        at = located["end"] + 1  # past the retained "\n"
+                    else:
+                        at = located["end"]  # true end-of-text
+                    spans.append({"at": at})
+                    continue
+                if kind == "add":
+                    spans.append({"start": located["start"] + starts[index],
+                                  "end": located["start"] + starts[index] + len(text)})
+                index += 1
+        if spans:
+            reports.append((path, _as_tuples(diagnose(snapshot, path, spans=spans)), False))
+        else:
+            # Mirror added_text_by_file's run semantics: a run is a maximal contiguous stretch of "add" lines, broken by any other entry (context, deletion, or a new hunk).
+            # Joining whole hunks with a bare "\n" would glue two disjoint "+" groups in one hunk into a single paragraph and fabricate a wrap finding neither run has on its own.
+            runs = []
+            for hunk in hunks:
+                run = None
+                for kind, text in hunk:
+                    if kind == "add":
+                        if run is None:
+                            run = []
+                            runs.append(run)
+                        run.append(text)
+                    else:
+                        run = None
+            added = "\n\n".join("\n".join(run) for run in runs)
+            findings = check(added, path) if added.strip() else []
+            reports.append((path, findings, True))
     return deliver(reports, note=(
         "(line numbers are approximate positions within the added "
         "lines of your patch; locate findings by the quoted excerpts)"))

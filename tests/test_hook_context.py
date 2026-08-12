@@ -171,3 +171,206 @@ def test_read_snapshot_degrades_on_an_atomic_replacement(hook_dir, monkeypatch):
 
     monkeypatch.setattr(check_linefeeds.os, "stat", swapped_stat)
     assert _read_snapshot(str(doc)) is None
+
+
+import subprocess
+import sys
+
+from conftest import SCRIPT
+
+
+def codex_patch(*entries):
+    body = "*** Begin Patch\n"
+    for path, added in entries:
+        body += f"*** Update File: {path}\n@@\n"
+        body += "".join("+" + line + "\n" for line in added.splitlines())
+    body += "*** End Patch"
+    return json.dumps({
+        "hook_event_name": "PostToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": body},
+    })
+
+
+NOTE_MARK = "approximate positions"
+
+
+def test_a_located_patch_reports_real_line_numbers_without_the_note(hook_dir):
+    doc = hook_dir / "doc.md"
+    doc.write_text("filler\n" * 10 + FUSED + "\n")
+    result = run_cli(["--hook", "codex"], codex_patch((str(doc), FUSED)))
+    assert result.returncode == 2
+    assert "line 11" in result.stderr
+    assert NOTE_MARK not in result.stderr
+
+
+def test_context_lines_disambiguate_a_repeated_addition(hook_dir):
+    # The same added text occurs twice on disk;
+    # hunk context makes the mapping unique where a bare addition run could not.
+    doc = hook_dir / "doc.md"
+    doc.write_text(FUSED + "\n\nunique anchor prose\n" + FUSED + "\n")
+    patch = ("*** Begin Patch\n"
+             f"*** Update File: {doc}\n"
+             "@@\n"
+             " unique anchor prose\n"
+             f"+{FUSED}\n"
+             "*** End Patch")
+    payload = json.dumps({
+        "hook_event_name": "PostToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": patch},
+    })
+    result = run_cli(["--hook", "codex"], payload)
+    assert result.returncode == 2
+    assert "line 4" in result.stderr
+    assert NOTE_MARK not in result.stderr
+
+
+def test_an_ambiguous_hunk_falls_back_with_the_note(hook_dir):
+    doc = hook_dir / "doc.md"
+    doc.write_text(FUSED + "\n\nmiddle prose here\n\n" + FUSED + "\n")
+    result = run_cli(["--hook", "codex"], codex_patch((str(doc), FUSED)))
+    assert result.returncode == 2
+    assert "line 1 of your edit" in result.stderr
+    assert NOTE_MARK in result.stderr
+
+
+def test_mixed_files_carry_the_note_once(hook_dir):
+    real = hook_dir / "real.md"
+    real.write_text("filler\n" * 5 + FUSED + "\n")
+    result = run_cli(["--hook", "codex"], codex_patch(
+        (str(real), FUSED), (str(hook_dir / "gone.md"), FUSED)))
+    assert result.returncode == 2
+    assert "line 6" in result.stderr
+    assert result.stderr.count(NOTE_MARK) == 1
+
+
+def test_a_clean_degraded_file_does_not_resurrect_the_note(hook_dir):
+    # The degraded file's only content is clean,
+    # so no snippet report survives filtering and the note must stay out.
+    real = hook_dir / "real.md"
+    real.write_text("filler\n" * 5 + FUSED + "\n")
+    result = run_cli(["--hook", "codex"], codex_patch(
+        (str(real), FUSED), (str(hook_dir / "gone.md"), "clean prose line")))
+    assert result.returncode == 2
+    assert "line 6" in result.stderr
+    assert NOTE_MARK not in result.stderr
+
+
+def test_a_blank_only_addition_terminates_and_stays_silent(hook_dir):
+    doc = hook_dir / "doc.md"
+    doc.write_text("existing prose\n")
+    payload = json.dumps({
+        "hook_event_name": "PostToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": (
+            "*** Begin Patch\n"
+            f"*** Update File: {doc}\n"
+            "@@\n+\n*** End Patch")},
+    })
+    completed = subprocess.run(
+        [sys.executable, str(SCRIPT), "--hook", "codex"],
+        input=payload, capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0
+
+
+def test_an_interior_substring_hit_is_not_an_exact_hunk(hook_dir):
+    # The added text exists on disk only inside a longer unchanged line,
+    # so the mapping must degrade rather than own the wrong text.
+    doc = hook_dir / "doc.md"
+    doc.write_text("a longer line embedding " + FUSED + " in its middle\n")
+    result = run_cli(["--hook", "codex"], codex_patch((str(doc), FUSED)))
+    assert result.returncode == 2
+    assert "line 1 of your edit" in result.stderr
+    assert NOTE_MARK in result.stderr
+
+
+def _codex_payload(patch):
+    return json.dumps({
+        "hook_event_name": "PostToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": patch},
+    })
+
+
+def test_a_deleted_blank_line_owns_the_wrap_it_creates(hook_dir):
+    # ADR-0005: a deletion collapses to a zero-width boundary that must still own the finding it creates.
+    # wrap is model-visible only under the opt-in,
+    # and it is advisory,
+    # so the report is the JSON envelope on stdout.
+    doc = hook_dir / "doc.md"
+    doc.write_text("a line that ends mid-clause because it was\n"
+                   "wrapped at a column.\n")
+    patch = ("*** Begin Patch\n"
+             f"*** Update File: {doc}\n"
+             "@@\n"
+             " a line that ends mid-clause because it was\n"
+             "-\n"
+             " wrapped at a column.\n"
+             "*** End Patch")
+    result = run_cli(["--hook", "codex"], _codex_payload(patch),
+                     env={"SEMLF_EXPERIMENTAL_WRAP": "1"})
+    assert result.returncode == 0
+    body = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert "[wrap] line 1" in body
+    assert NOTE_MARK not in body
+
+
+def test_a_deletion_after_a_retained_finding_does_not_own_it(hook_dir):
+    # Red today: the current hook is deletion-blind and emits nothing at all for a deletion-only patch.
+    # The corrected mapping owns the new wrap between the neighbors
+    # and delivers it under the opt-in,
+    # while the boundary sits past the retained terminator and so does not touch the unchanged blocking fused finding,
+    # whose ownership runs to the retained line's content end.
+    # A boundary one code point early owns that fused finding too and turns this report blocking
+    # — three behaviors, one assertion set.
+    doc = hook_dir / "doc.md"
+    doc.write_text("One sentence here. Ok\nfollowing prose line\n")
+    patch = ("*** Begin Patch\n"
+             f"*** Update File: {doc}\n"
+             "@@\n"
+             " One sentence here. Ok\n"
+             "-\n"
+             "*** End Patch")
+    result = run_cli(["--hook", "codex"], _codex_payload(patch),
+                     env={"SEMLF_EXPERIMENTAL_WRAP": "1"})
+    assert result.returncode == 0
+    body = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert "[wrap] line 1" in body
+    assert "fused" not in body
+
+
+def test_a_deletion_closing_a_hunk_at_eof_terminates_cleanly(hook_dir):
+    doc = hook_dir / "doc.md"
+    doc.write_bytes(b"closing prose line stands alone")  # no trailing newline
+    patch = ("*** Begin Patch\n"
+             f"*** Update File: {doc}\n"
+             "@@\n"
+             " closing prose line stands alone\n"
+             "-\n"
+             "*** End Patch")
+    result = run_cli(["--hook", "codex"], _codex_payload(patch))
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+
+def test_disjoint_runs_in_a_fallback_hunk_do_not_merge(hook_dir):
+    # One hunk, two "+" runs split by a context line.
+    # The file does not exist, so the snapshot path is unavailable, and the hunk falls back to the added-text check without ever needing to locate context.
+    # Run-granularity joining keeps the two runs as separate paragraphs, so neither line's ending is judged against the other's start.
+    # Joining the whole hunk with a bare "\n" instead would glue them into one paragraph and fabricate a wrap finding neither run has alone.
+    doc = hook_dir / "gone.md"
+    patch = ("*** Begin Patch\n"
+             f"*** Update File: {doc}\n"
+             "@@\n"
+             " unrelated context one\n"
+             "+This line ends without punctuation\n"
+             " unrelated context two\n"
+             "+continues awkwardly here.\n"
+             "*** End Patch")
+    # wrap is withheld by default;
+    # opt in so a fabricated wrap would actually surface instead of being silently filtered either way.
+    result = run_cli(["--hook", "codex"], _codex_payload(patch),
+                     env={"SEMLF_EXPERIMENTAL_WRAP": "1"})
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
