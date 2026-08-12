@@ -394,6 +394,53 @@ def line_ending(prose):
     return peel_emphasis(peel_code_span(peel_emphasis(prose)))
 
 
+# A changed span is where an edit landed in the after-state text.
+# Half-open over code points, except that a deleted newline leaves no
+# after-state text at all, so a boundary is carried as a zero-width span.
+# "mapping" records whether the adapter located the edit exactly or fell
+# back to something coarser; the hook, not the core, decides what a
+# degraded mapping forfeits.
+def normalize_span(span):
+    if not isinstance(span, dict):
+        raise ValueError(f"span must be a mapping: {span!r}")
+    unknown = set(span) - {"at", "start", "end", "mapping"}
+    if unknown:
+        raise ValueError(f"span carries unknown keys: {span!r}")
+    if "at" in span:
+        if "start" in span or "end" in span:
+            raise ValueError(f"span mixes 'at' with a range: {span!r}")
+        start = end = span["at"]
+    elif "start" in span and "end" in span:
+        start, end = span["start"], span["end"]
+    else:
+        raise ValueError(f"span needs 'at' or 'start' and 'end': {span!r}")
+    for offset in (start, end):
+        if isinstance(offset, bool) or not isinstance(offset, int):
+            raise ValueError(f"span offsets must be integers: {span!r}")
+    if start < 0 or end < start:
+        raise ValueError(f"span is not a forward range: {span!r}")
+    mapping = span.get("mapping", "exact")
+    if mapping not in ("exact", "degraded"):
+        raise ValueError(f"span mapping must be exact or degraded: {span!r}")
+    return {"start": start, "end": end, "mapping": mapping}
+
+
+def touches(rng, span):
+    """Strict overlap for ranges; a zero-width boundary touches on an edge.
+
+    Two half-open ranges must share a code point: an edit that stops
+    exactly where the accused text begins changed nothing inside it,
+    and reporting there is a false positive.
+    A deleted newline leaves no after-state text at all,
+    so a zero-width boundary counts when it lies anywhere on the range, edges included.
+    """
+    lo = max(rng["start"], span["start"])
+    hi = min(rng["end"], span["end"])
+    if rng["start"] == rng["end"] or span["start"] == span["end"]:
+        return lo <= hi
+    return lo < hi
+
+
 def strip_quote_markers(raw):
     """The content a blockquote holds, with the markers in front of it removed.
 
