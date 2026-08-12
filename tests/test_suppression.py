@@ -121,3 +121,165 @@ def test_the_sampler_drops_a_standalone_directive_like_the_checker():
     assert paragraphs(md, "doc.md") == []
     py = "# upper prose line one\n# semlf-ignore-next\n# lower prose line two\n"
     assert paragraphs(py, "x.py") == []
+
+
+from check_linefeeds import diagnose
+
+
+def kinds_at(text, path="doc.md", spans=None):
+    return [(d["line"], d["kind"]) for d in diagnose(text, path, spans=spans)]
+
+
+FUSED = "One sentence here. Another sentence follows.\n"
+FUSED_WRAP_UPPER = "One sentence here. Another sentence continues"
+LOWER = "onto the lower line.\n"
+
+
+def test_the_baseline_texts_produce_the_expected_kinds():
+    # A characterization pin, green before and after this task.
+    assert kinds_at(FUSED) == [(1, "fused")]
+    assert kinds_at(FUSED_WRAP_UPPER + "\n" + LOWER) == [(1, "fused"), (1, "wrap")]
+
+
+def test_a_trailing_directive_suppresses_its_own_line():
+    text = "One sentence here. Another sentence follows. <!-- semlf-ignore fused -->\n"
+    assert kinds_at(text) == []
+
+
+def test_kind_narrowing_leaves_the_other_kind_alone():
+    text = FUSED_WRAP_UPPER + " <!-- semlf-ignore fused -->\n" + LOWER
+    assert kinds_at(text) == [(1, "wrap")]
+
+
+def test_a_union_of_two_directives_covers_both_kinds():
+    text = ("<!-- semlf-ignore-next wrap -->\n"
+            + FUSED_WRAP_UPPER + " <!-- semlf-ignore fused -->\n" + LOWER)
+    assert kinds_at(text) == []
+
+
+def test_suppression_also_drops_a_span_owned_finding():
+    text = "One sentence here. Another sentence follows. <!-- semlf-ignore fused -->\n"
+    whole = [{"start": 0, "end": len(text)}]
+    assert kinds_at(FUSED, spans=[{"start": 0, "end": len(FUSED)}]) == [(1, "fused")]
+    assert kinds_at(text, spans=whole) == []
+
+
+def test_a_standalone_next_directive_suppresses_the_following_line():
+    assert kinds_at("<!-- semlf-ignore-next -->\n" + FUSED) == []
+    assert kinds_at("# semlf-ignore-next\n# " + FUSED[:-1] + "\n", "x.py") == []
+
+
+def test_the_next_directive_never_skips_a_blank_line():
+    # A characterization pin for the no-skip rule.
+    assert kinds_at("<!-- semlf-ignore-next -->\n\n" + FUSED) == [(3, "fused")]
+
+
+def test_a_malformed_trailing_directive_suppresses_nothing():
+    # Green today; it pins that a typo cannot half-work.
+    text = "One sentence here. Another sentence follows. <!-- semlf-ignore fussed -->\n"
+    assert kinds_at(text) == [(1, "fused")]
+
+
+def test_a_malformed_standalone_line_stays_visible_prose():
+    # ADR-0010: inert means the findings stay visible, so the line stays prose.
+    text = "semlf-ignore fussed. Another sentence follows.\n"
+    assert kinds_at(text) == [(1, "fused")]
+
+
+def test_a_malformed_standalone_line_still_forms_a_wrap():
+    text = FUSED_WRAP_UPPER + "\nsemlf-ignore fussed here.\n"
+    assert kinds_at(text) == [(1, "fused"), (1, "wrap")]
+
+
+def test_a_repeated_marker_carrier_with_marker_leading_prose():
+    # The carrier suffix is stripped from raw and prose alike,
+    # so the leftover directive text can never fabricate a wrap.
+    code = ("// // semlf-ignore-next fused\n"
+            "// lower prose continues here.\n")
+    assert kinds_at(code, "x.go") == []
+
+
+def test_a_bare_directive_line_in_a_docstring_suppresses_the_next_line():
+    py = ('def f():\n    """\n    semlf-ignore-next\n'
+          "    One sentence here. Another sentence follows.\n"
+          '    """\n')
+    assert kinds_at(py, "x.py") == []
+
+
+def test_a_standalone_directive_line_dissolves_a_wrap_it_stands_inside():
+    code = ("# a line that ends mid-clause because it was\n"
+            "# semlf-ignore\n"
+            "# wrapped at a column.\n")
+    assert kinds_at(code, "x.py") == []
+
+
+def test_a_directive_as_the_last_fence_line_cannot_reach_past_the_fence():
+    # A characterization pin: fenced lines are excluded before recognition.
+    text = "```\n<!-- semlf-ignore-next -->\n```\n" + FUSED
+    assert kinds_at(text) == [(4, "fused")]
+
+
+def test_a_bare_directive_inside_a_licence_paragraph_is_inert():
+    md = ("opening prose stands alone\n\n"
+          "Copyright (c) 2026 Example\n"
+          "semlf-ignore-next fused\n"
+          "One sentence here. Another sentence follows.\n"
+          "\n"
+          "One sentence here. Another sentence follows.\n")
+    assert kinds_at(md) == [(7, "fused")]
+
+
+def test_an_html_directive_inside_a_licence_paragraph_is_inert():
+    # The directive-only comment now travels the stream as prose,
+    # so the licence cut silences it with its paragraph and diagnose
+    # never sees a carrier — the ordering ADR-0010 requires.
+    md = ("opening prose stands alone\n\n"
+          "Copyright (c) 2026 Example\n"
+          "<!-- semlf-ignore-next fused -->\n"
+          "One sentence here. Another sentence follows.\n"
+          "\n"
+          "One sentence here. Another sentence follows.\n")
+    assert kinds_at(md) == [(7, "fused")]
+
+
+def test_a_prose_line_that_is_exactly_a_directive_is_the_accepted_capture():
+    assert kinds_at("some prose stands here\nsemlf-ignore-next\n" + FUSED) == []
+
+
+def test_trailing_carriers_survive_every_prose_transform():
+    cases = [
+        ("> One sentence here. Another sentence follows. <!-- semlf-ignore fused -->\n",
+         "doc.md"),
+        ("- One sentence here. Another sentence follows. <!-- semlf-ignore fused -->\n",
+         "doc.md"),
+        ("/*\n * One sentence here. Another sentence follows.  // semlf-ignore fused\n */\n",
+         "x.c"),
+        ('def f():\n    """\n    One sentence here. Another sentence follows.  # semlf-ignore fused\n    """\n',
+         "x.py"),
+    ]
+    for text, path in cases:
+        assert kinds_at(text, path) == [], (text, path)
+
+
+def test_long_is_suppressed_by_its_kind():
+    long_line = ("This clause runs on and on well past the configured advisory "
+                 "threshold of one hundred and twenty characters, and the tail "
+                 "keeps going. <!-- semlf-ignore long -->\n")
+    assert kinds_at(long_line) == []
+
+
+def test_long_measures_the_judged_prefix_not_the_carrier():
+    base = ("This clause stops just short of the configured advisory threshold "
+            "of one hundred and twenty characters, and no more.")
+    raw = base + " <!-- semlf-ignore fused -->"
+    assert len(base) <= 120 < len(raw)
+    assert kinds_at(raw + "\n") == []
+
+
+def test_a_standalone_html_directive_amid_prose_is_a_boundary():
+    # Task 3 made this line prose; until this task recognizes it, a wrap
+    # is manufactured across it.  Recognition makes it a boundary again.
+    md = ("This is the first sentence of a paragraph\n"
+          "<!-- semlf-ignore-next wrap -->\n"
+          "and this clause continues it across the break.\n")
+    assert kinds_at(md) == []

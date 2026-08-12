@@ -920,10 +920,13 @@ def diagnose(text, path, spans=None):
     and a degraded diagnostic is withheld under spans.
     """
     normalized = None if spans is None else [normalize_span(span) for span in spans]
+    suppressions = {}
     lines = prose_stream(text, path)
     if lines is None:
         return []
     lines = without_license_text(lines, text, path)
+    is_md = is_markdown(path)
+    lang = None if is_md else lang_for_path(path)
 
     offsets = line_offsets(text)
     findings = []
@@ -933,6 +936,29 @@ def diagnose(text, path, spans=None):
         if prose is None:
             prev = None
             continue
+
+        parsed = parse_directive(prose)
+        if parsed is not None and parsed is not MALFORMED:
+            # A well-formed standalone directive line is a paragraph boundary,
+            # not prose (ADR-0010).
+            # A MALFORMED line falls through and stays visible prose.
+            offset, kinds = parsed
+            suppressions.setdefault(lineno + offset, set()).update(kinds)
+            prev = None
+            continue
+        tail = trailing_carrier(raw, is_md, lang)
+        if tail:
+            (offset, kinds), judged_raw, carrier = tail
+            trimmed_prose = prose.rstrip(" \t")
+            if trimmed_prose.endswith(carrier):
+                suppressions.setdefault(lineno + offset, set()).update(kinds)
+                raw = judged_raw
+                prose = trimmed_prose[:-len(carrier)].rstrip(" \t")
+                if not prose:
+                    prev = None
+                    continue
+            # else: the carrier is not a shared suffix of both views;
+            # treat the tail as unrecognized so raw and prose stay one text.
 
         match = FUSED_RE.search(prose)
         if match:
@@ -993,11 +1019,14 @@ def diagnose(text, path, spans=None):
 
         prev = (lineno, prose)
     findings.sort(key=lambda d: d["line"])
-    if normalized is None:
-        return findings
-    return [d for d in findings
-            if d["ownership"] is not None
-            and any(touches(d["ownership"], span) for span in normalized)]
+    if normalized is not None:
+        findings = [d for d in findings
+                    if d["ownership"] is not None
+                    and any(touches(d["ownership"], span) for span in normalized)]
+    if suppressions:
+        findings = [d for d in findings
+                    if d["kind"] not in suppressions.get(d["line"], frozenset())]
+    return findings
 
 
 def check(text, path):
