@@ -5,6 +5,24 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+The two extraction defects the third holdout measured, repaired now that it is spent.
+
+### Fixed
+
+- **A spaced `gofail:` line is read as a directive.**
+  A gofail failpoint is written `// gofail: var x T`,
+  with a space the unspaced Go directive pattern never matches,
+  so the line and the commented code under it reached the prose stream.
+  The third round measured one wrap accusation on exactly that line;
+  rechecking the pinned file removes it and one more of the same class, and adds nothing.
+- **A Markdown paragraph carrying a licence marker is cut from the frame.**
+  carbon-lang opens every Markdown file with a licence block inside an HTML comment,
+  and five of its boilerplate units reached the third round's sampling frame.
+  The paragraph cut that already silences licence text in code comments reaches Markdown now,
+  so licence text is nothing to judge wherever it sits.
+
 ## [0.4.3] - 2026-08-12
 
 The release that repairs what two spent holdouts left behind,

@@ -68,9 +68,12 @@ What remains open is smaller and named:
 
 | Open item | Evidence | What it needs |
 |---|---|---|
-| A licence block inside an HTML comment reaches the prose stream | five carbon-lang units, kept and labeled false | an extraction cut, scoreable on the corpus in hand |
-| A `gofail:` directive line reaches the prose stream | one measured false positive at `etcd:server/storage/backend/backend.go:617` | the same |
 | Adjacent telegraphic notes in Go comments read as one severed clause | three of the third round's four false positives | ADR-0002 territory: a positive-evidence `wrap` test, or nothing |
+
+The round's two extraction defects are repaired and off this table:
+the `gofail:` directive cut and the Markdown licence-paragraph cut both landed,
+scored against the pinned round-3 sources,
+removing only the measured class and adding nothing.
 
 The declined repairs stay declined with their numbers on record:
 the bracket and emphasis forms of the markup class,
