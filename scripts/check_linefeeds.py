@@ -994,7 +994,32 @@ def check(text, path):
             for d in diagnose(text, path)]
 
 
+DIAGNOSTIC_SCHEMA_VERSION = 1
+
+
+def to_schema(path, diagnostics):
+    """The versioned document one file's diagnostics travel in.
+
+    Text output, SARIF, and annotations are renderers over this shape;
+    the version field is what lets the next breaking change announce itself instead of being discovered by a consumer's parser.
+    """
+    return {"schema_version": DIAGNOSTIC_SCHEMA_VERSION,
+            "path": path,
+            "diagnostics": diagnostics}
+
+
+def _as_tuples(findings):
+    """Normalize either legacy tuples or diagnostic dicts to the tuple shape.
+
+    `format_findings` is the one renderer both callers share,
+    and this line is what lets it stay ignorant of which shape it received.
+    """
+    return [(f["line"], f["kind"], f["message"], f["excerpt"])
+            if isinstance(f, dict) else f for f in findings]
+
+
 def format_findings(findings, path, snippet):
+    findings = _as_tuples(findings)
     where = "the text just written to" if snippet else ""
     lines = [f"semantic-linefeeds: {len(findings)} issue(s) in {where} {path}:".replace("  ", " ")]
     for lineno, kind, msg, excerpt in findings:
@@ -1228,13 +1253,11 @@ def run_files(paths, as_json=False):
             print(f"semantic-linefeeds: cannot read {path}: {e}", file=sys.stderr)
             read_errors += 1
             continue
-        findings = check(text, path)
+        findings = diagnose(text, path)
         if findings:
-            violations += sum(1 for f in findings if f[1] != "long")
+            violations += sum(1 for d in findings if d["kind"] != "long")
             if as_json:
-                reports.append({"path": path, "findings": [
-                    {"line": n, "kind": k, "message": m, "excerpt": e}
-                    for n, k, m, e in findings]})
+                reports.append(to_schema(path, findings))
             else:
                 print(format_findings(findings, path, snippet=False))
     if as_json:
