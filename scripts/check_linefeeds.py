@@ -441,6 +441,36 @@ def touches(rng, span):
     return lo < hi
 
 
+def line_offsets(text):
+    """Code-point offset of each 1-based line's start, with an end sentinel.
+
+    Partitions text with str.splitlines like the extractors do.
+    Every terminator it recognizes (LF, CRLF, bare CR, Unicode separators)
+    starts a new line in both the table and the extractors' numbering.
+    """
+    offsets = [0]
+    for line in text.splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(line))
+    return offsets
+
+
+def locate_in_line(text, offsets, lineno, needle):
+    """The absolute range of a needle that occurs exactly once in a line.
+
+    Prose usually appears verbatim once markers are stripped.
+    Return None when stripping or repetition breaks this assumption.
+    This forces the caller to drop ownership rather than guess.
+    """
+    if not needle or lineno < 1 or lineno >= len(offsets):
+        return None
+    start, end = offsets[lineno - 1], offsets[lineno]
+    line = text[start:end]
+    first = line.find(needle)
+    if first < 0 or line.find(needle, first + 1) >= 0:
+        return None
+    return {"start": start + first, "end": start + first + len(needle)}
+
+
 def strip_quote_markers(raw):
     """The content a blockquote holds, with the markers in front of it removed.
 
