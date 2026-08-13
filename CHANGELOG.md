@@ -47,7 +47,9 @@ and ships as a pipx/uv package alongside the zipapp.
 - **`install.py --uninstall`** (ADR-0014): removes an installed mode's artifacts.
   It is preflight-then-apply, admitting only the current rendering or a manifest-managed one
   and refusing everything else without `--force`.
-  It never touches `hooks.json`, the AGENTS.md target, or `semlf.bak`,
+  It never deletes or unlinks `hooks.json` or the AGENTS.md target;
+  only their owned entries or the sentinel block are removed, by rewrite.
+  It never touches `semlf.bak`,
   and it closes the native-skill-removal deferral [ADR-0006](docs/decisions/0006-judgment-layer-for-every-agent.md) recorded.
 - **`semlf doctor`** (ADR-0014): replays synthetic payloads through the installed artifact end to end —
   the Claude and Codex hooks, in both directions —

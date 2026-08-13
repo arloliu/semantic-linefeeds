@@ -243,7 +243,17 @@ def pyz_state(path):
             for name in sorted(archive.namelist()):
                 digest.update(name.encode("utf-8"))
                 digest.update(archive.read(name))
-    except (OSError, zipfile.BadZipFile):
+    # An artifact's identity check must never crash the installer:
+    # a hostile or merely corrupt archive can raise far more than BadZipFile —
+    # an encrypted member raises RuntimeError,
+    # an unsupported compression method raises NotImplementedError,
+    # a truncated or tampered deflate stream can surface as zlib.error,
+    # and a tampered LZMA member's properties raise lzma.LZMAError,
+    # which is not an OSError subclass and is not named here directly:
+    # lzma is an optional stdlib module that zipfile itself only imports lazily,
+    # so a bare "except Exception" is this function's actual totality contract —
+    # every one of these means the same thing here: not a usable pyz.
+    except Exception:
         return None
     return (digest.hexdigest(), owner_exec, first_line)
 
@@ -323,12 +333,17 @@ def _publish_new(staged, dest):
     return True
 
 
-def _exclusive_backup(src, bak):
-    """Copy src's bytes to bak, claiming the slot exclusively.
+def _exclusive_backup(src, bak, data):
+    """Write data — the already-guarded classification snapshot — to bak.
 
-    O_EXCL is the point: the backup slot is claimed atomically,
+    data, never a fresh read of src, is the point:
+    the caller took src's bytes through the no-follow snapshot primitive once, to classify it,
+    and the backup must preserve exactly what was classified, not whatever src holds by the time this runs.
+    O_EXCL is the other half: the backup slot is claimed atomically,
     so a concurrent double --force cannot overwrite the only copy of a hand-patched artifact,
     and a pre-existing symlink at bak is refused, never followed.
+    copystat still reads src's own metadata (permissions, timestamps) — that is a stat call, not a content read,
+    and src is already proven a regular file by the caller before this runs.
     The cleanup covers every step including copystat:
     a failure at any point releases the slot,
     so a retry never finds it occupied by a half-made backup.
@@ -336,7 +351,7 @@ def _exclusive_backup(src, bak):
     fd = os.open(str(bak), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(fd, "wb") as fh:
-            fh.write(Path(src).read_bytes())
+            fh.write(data)
         shutil.copystat(src, bak)
     except BaseException:
         os.unlink(bak)
@@ -415,7 +430,7 @@ def install_cli(dry, force):
         if divergent and not managed:
             bak = dest.with_name(dest.name + ".bak")
             try:
-                _exclusive_backup(dest, bak)
+                _exclusive_backup(dest, bak, snapshot[1])
             except FileExistsError:
                 os.unlink(staged)
                 print(f"refusing to overwrite {bak}: a backup already "
@@ -565,8 +580,18 @@ def _semlf_note():
 
 def install_agentsmd(target, dry):
     block = agents_block()
-    if target.exists():
-        text = target.read_text(encoding="utf-8")
+    if os.path.lexists(target):
+        data = manifest.read_regular_bytes(target, manifest.CLASSIFY_LIMIT)
+        if data is None:
+            print(f"refusing to touch {target}: it exists but is not a "
+                  "readable regular file.", file=sys.stderr)
+            return 1
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            print(f"refusing to touch {target}: cannot decode it as "
+                  "UTF-8; repair it by hand.", file=sys.stderr)
+            return 1
         has_open = SENTINEL_OPEN in text
         has_close = SENTINEL_CLOSE in text
         if has_open != has_close:
@@ -642,8 +667,14 @@ def _plan_codex_hook(actions, refusals):
                         "determine a home directory to uninstall it from.")
         return
     path = home / "hooks.json"
-    if not os.path.lexists(path):
+    try:
+        os.lstat(path)
+    except FileNotFoundError:
         actions.append((f"codex: not installed ({path})", None))
+        return
+    except OSError as exc:
+        refusals.append(f"refusing to uninstall the codex hook: cannot "
+                        f"inspect {path}: {exc}.")
         return
     data = manifest.read_state_json(path)
     # Same parity as install_codex's own guard: a shape too strange to locate PostToolUse in — a non-dict top level, a "hooks" value that isn't a dict, or a "PostToolUse" value that isn't a list — is a refusal, not silently nothing-to-do.
@@ -729,8 +760,12 @@ def _plan_file(label, dest, reference_bytes, name, force, actions, refusals,
     dest = Path(dest)
     try:
         st = os.lstat(dest)
-    except OSError:
+    except FileNotFoundError:
         actions.append((f"{label}: not installed ({dest})", None))
+        return
+    except OSError as exc:
+        refusals.append(f"refusing to uninstall the {label}: cannot "
+                        f"inspect {dest}: {exc}.")
         return
     if stat.S_ISDIR(st.st_mode):
         refusals.append(f"refusing to remove {dest}: it is a directory; "
@@ -792,9 +827,13 @@ def _plan_cli(actions, refusals, force):
     dest = Path(dest)
     try:
         st = os.lstat(dest)
-    except OSError:
+    except FileNotFoundError:
         actions.append((f"cli: not installed ({dest})", None))
         _plan_cli_bak_note(dest, actions)
+        return
+    except OSError as exc:
+        refusals.append(f"refusing to uninstall the cli: cannot inspect "
+                        f"{dest}: {exc}.")
         return
     if stat.S_ISDIR(st.st_mode):
         refusals.append(f"refusing to remove {dest}: it is a directory; "
@@ -849,8 +888,12 @@ def _plan_agentsmd(target, actions, refusals):
     """
     try:
         st = os.lstat(target)
-    except OSError:
+    except FileNotFoundError:
         actions.append((f"agentsmd: not installed ({target})", None))
+        return
+    except OSError as exc:
+        refusals.append(f"refusing to uninstall agentsmd: cannot inspect "
+                        f"{target}: {exc}.")
         return
     if not stat.S_ISREG(st.st_mode):
         refusals.append(f"refusing to touch {target}: it is not a regular "
@@ -1065,27 +1108,38 @@ def status():
     else:
         hooks_path = home / "hooks.json"
         state = "not installed"
-        if hooks_path.exists():
+        if os.path.lexists(hooks_path):
             data = manifest.read_state_json(hooks_path)
-            if data is None:
+            # Every level is guarded by isinstance before it is indexed or iterated —
+            # mirrors _plan_codex_hook and doctor's own guarded walk,
+            # so a wrong-shaped but parseable hooks.json
+            # (a list at the top, "hooks" or "PostToolUse" holding the wrong type)
+            # reports "unreadable" instead of raising TypeError.
+            # A key that is simply absent (rather than present with the wrong type)
+            # is empty, not strange, and stays "not installed".
+            if not isinstance(data, dict):
                 state = "unreadable"
             else:
-                try:
-                    managed = [h.get("command", "")
-                               for block in data.get("hooks", {}).get("PostToolUse", [])
-                               if isinstance(block, dict)
-                               for h in block.get("hooks", [])
-                               if isinstance(h, dict)
-                               and manifest.parse_managed_codex_hook(
-                                   block.get("matcher"), h) is not None]
-                except AttributeError:
-                    managed = []
+                hooks = data.get("hooks", {})
+                if not isinstance(hooks, dict):
                     state = "unreadable"
                 else:
-                    if any(c == desired_codex_command() for c in managed):
-                        state = "installed"
-                    elif managed:
-                        state = "installed (stale checker path; re-run --codex)"
+                    post = hooks.get("PostToolUse", [])
+                    if not isinstance(post, list):
+                        state = "unreadable"
+                    else:
+                        managed = [h.get("command", "")
+                                   for block in post
+                                   if isinstance(block, dict)
+                                   and isinstance(block.get("hooks"), list)
+                                   for h in block["hooks"]
+                                   if isinstance(h, dict)
+                                   and manifest.parse_managed_codex_hook(
+                                       block.get("matcher"), h) is not None]
+                        if any(c == desired_codex_command() for c in managed):
+                            state = "installed"
+                        elif managed:
+                            state = "installed (stale checker path; re-run --codex)"
         print(f"codex: {state} ({hooks_path})")
 
     skill_dest = codex_skill_dest()
@@ -1134,15 +1188,24 @@ def status():
         else:
             print(f"opencode: not installed ({d})")
 
-    agents = Path("AGENTS.md").resolve()
+    # The guarded read stays on the relative "AGENTS.md" string
+    # so lstat never follows a symlink planted at that name.
+    # The display path is built with os.path.abspath, not Path.resolve():
+    # abspath is a lexical string join against the cwd and never touches the filesystem,
+    # so a self-referential or cyclic symlink at that name cannot make it raise the way resolve()'s realpath call would.
+    agents_display = os.path.abspath("AGENTS.md")
     mark = "absent"
-    if agents.exists():
-        try:
-            if SENTINEL_OPEN in agents.read_text(encoding="utf-8"):
-                mark = "present"
-        except (ValueError, OSError):
+    if os.path.lexists("AGENTS.md"):
+        raw = manifest.read_regular_bytes("AGENTS.md", manifest.CLASSIFY_LIMIT)
+        if raw is None:
             mark = "absent (unreadable)"
-    print(f"agentsmd: block {mark} in {agents}")
+        else:
+            try:
+                if SENTINEL_OPEN in raw.decode("utf-8"):
+                    mark = "present"
+            except UnicodeDecodeError:
+                mark = "absent (unreadable)"
+    print(f"agentsmd: block {mark} in {agents_display}")
 
     print("claude: managed by Claude Code itself — install with:")
     print("  claude plugin marketplace add /path/to/semantic-linefeeds  # or a private git remote")

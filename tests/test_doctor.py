@@ -134,6 +134,79 @@ def test_doctor_fails_a_hook_that_blocks_everything(tmp_path):
     assert "clean patch expected exit 0" in r.stdout
 
 
+def test_doctor_survives_a_nul_carrying_checker_path(tmp_path):
+    # A hostile hooks.json can carry a NUL byte inside an otherwise owned-shaped command;
+    # shlex handles it fine, but os.lstat raises ValueError ("embedded null byte"), not OSError.
+    # doctor's checker gate must catch that too and fail the check, never traceback (fix-report P0-2a).
+    # Built as JSON directly rather than via write_text on a Python string literal:
+    # json.dumps renders the embedded NUL as a JSON escape sequence,
+    # and json.loads decodes it right back to a real NUL byte,
+    # so this is the same hostile bytes an attacker-controlled hooks.json would carry on disk.
+    pyz, env = installed_pyz(tmp_path)
+    hooks = tmp_path / "codex" / "hooks.json"
+    hooks.parent.mkdir(parents=True, exist_ok=True)
+    checker_path = "/tmp/evil\x00dir/check_linefeeds.py"
+    command = f'python3 "{checker_path}" --hook codex'
+    payload = json.dumps({"hooks": {"PostToolUse": [
+        {"matcher": "apply_patch",
+         "hooks": [{"type": "command", "command": command}]}
+    ]}})
+    hooks.write_text(payload, encoding="utf-8")
+    assert "\x00" in json.loads(payload)["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
+    r = run_doctor(pyz, env, tmp_path)
+    assert r.returncode == 1
+    assert "Traceback" not in r.stderr
+    assert "codex hook: FAIL" in r.stdout
+
+
+def test_doctor_survives_a_surrogate_checker_path_in_hooks_json(tmp_path):
+    # A hostile hooks.json can carry an unpaired UTF-16 surrogate inside an otherwise owned-shaped checker path;
+    # JSON's \uXXXX escape admits any codepoint, including a lone surrogate that no UTF-8 stream can encode.
+    # Built the same way as the NUL case above — a plain-ASCII JSON escape on disk that json.loads decodes right back to the real hostile character —
+    # so this is the same bytes an attacker-controlled hooks.json would carry on disk.
+    # os.lstat correctly raises (UnicodeEncodeError, a ValueError subclass) for that path,
+    # but the FAIL message must not re-interpolate the same hostile string unguarded,
+    # or printing the diagnosis crashes the diagnosis (fix-report P0-2a).
+    # PYTHONIOENCODING pins the child's stdout to strict UTF-8 so the test cannot pass by accident on a locale that already tolerates surrogates.
+    pyz, env = installed_pyz(tmp_path)
+    env["PYTHONIOENCODING"] = "utf-8:strict"
+    hooks = tmp_path / "codex" / "hooks.json"
+    hooks.parent.mkdir(parents=True, exist_ok=True)
+    checker_path = "/tmp/evil\ud800dir/check_linefeeds.py"
+    command = f'python3 "{checker_path}" --hook codex'
+    payload = json.dumps({"hooks": {"PostToolUse": [
+        {"matcher": "apply_patch",
+         "hooks": [{"type": "command", "command": command}]}
+    ]}})
+    hooks.write_text(payload, encoding="utf-8")
+    assert "\\ud800" in payload
+    assert json.loads(payload)["hooks"]["PostToolUse"][0]["hooks"][0][
+        "command"] == command
+    r = run_doctor(pyz, env, tmp_path)
+    assert r.returncode == 1
+    assert "Traceback" not in r.stderr
+    assert "codex hook: FAIL" in r.stdout
+
+
+def test_doctor_drops_a_surrogate_provenance_path_and_runs_clean(tmp_path):
+    # A hostile cli.json state entry can carry the same unpaired surrogate in its recorded path, via a JSON \uXXXX escape.
+    # manifest._valid_entry now probes os.fsencode and rejects any path the filesystem encoding cannot represent,
+    # so this entry never survives load():
+    # it is dropped at the schema gate, never reaches a provenance print, and doctor finishes clean rather than crashing on it (fix-report P0-2b).
+    pyz, env = installed_pyz(tmp_path)
+    entry = {"path": "/tmp/evil\ud800dir/semlf",
+             "sha256": "a" * 64, "version": "0.6.0"}
+    payload = json.dumps(entry)
+    artifacts = tmp_path / "state" / "semlf" / "artifacts"
+    artifacts.mkdir(parents=True, exist_ok=True)
+    (artifacts / "cli.json").write_text(payload, encoding="utf-8")
+    assert "\\ud800" in payload
+    r = run_doctor(pyz, env, tmp_path)
+    assert r.returncode == 0
+    assert "Traceback" not in r.stderr
+    assert "provenance: cli" not in r.stdout
+
+
 def test_doctor_fails_when_the_replay_misbehaves(tmp_path, monkeypatch):
     # Full isolation for a direct in-process call:
     # without it, doctor's codex check would resolve the developer's real CODEX_HOME and execute a live installed hook from inside a unit test.

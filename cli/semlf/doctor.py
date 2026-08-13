@@ -39,6 +39,15 @@ CODEX_CLEAN_PAYLOAD = json.dumps({
     "tool_response": {"output": "Done"}})
 
 
+def _diag(s):
+    """An arbitrary string, made safe to interpolate into a printed line.
+
+    A recorded provenance path or a hooks.json checker path is schema-valid but attacker-controlled text.
+    Backslash-escaping every non-ASCII character keeps every diagnostic line printable no matter what the source string contains, even on a strict UTF-8 stdout.
+    """
+    return s.encode("ascii", "backslashreplace").decode("ascii")
+
+
 def _artifact_command(artifact):
     """How to invoke the running artifact as a child process."""
     if artifact and os.path.isfile(artifact) and os.access(artifact, os.X_OK):
@@ -171,7 +180,7 @@ def _provenance_line(name, entry, dest):
     if state != "unrecorded":
         return f"provenance: {name} {state} ({entry['version']})"
     if not os.path.lexists(str(dest)):
-        return (f"provenance: {name} warn — recorded at {entry['path']} "
+        return (f"provenance: {name} warn — recorded at {_diag(entry['path'])} "
                 "but missing")
     try:
         mismatch = (os.path.realpath(str(dest))
@@ -179,7 +188,7 @@ def _provenance_line(name, entry, dest):
     except (OSError, ValueError):
         mismatch = False
     if mismatch:
-        return (f"provenance: {name} warn — recorded for {entry['path']}, "
+        return (f"provenance: {name} warn — recorded for {_diag(entry['path'])}, "
                 f"expected {dest}")
     return f"provenance: {name} unrecorded ({entry['version']})"
 
@@ -235,10 +244,12 @@ def _codex_hook_check():
         try:
             if not stat.S_ISREG(os.lstat(argv[1]).st_mode):
                 print(f"codex hook: FAIL — configured checker is not a "
-                      f"regular file ({argv[1]})")
+                      f"regular file ({_diag(argv[1])})")
                 return 1
-        except OSError:
-            print(f"codex hook: FAIL — configured checker missing ({argv[1]})")
+        # A NUL-carrying or otherwise unencodable path makes os.lstat raise ValueError, not OSError —
+        # a hostile hooks.json must fail this check, never crash the doctor.
+        except (OSError, ValueError):
+            print(f"codex hook: FAIL — configured checker missing ({_diag(argv[1])})")
             return 1
         fused = _pipe(argv, CODEX_PAYLOAD)
         clean = _pipe(argv, CODEX_CLEAN_PAYLOAD)

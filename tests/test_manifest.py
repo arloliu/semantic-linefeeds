@@ -79,6 +79,15 @@ def test_invalid_entries_are_dropped_at_load(tmp_path, monkeypatch):
     assert manifest.load() == {}
 
 
+def test_valid_entry_rejects_an_unencodable_surrogate_path():
+    # An unpaired UTF-16 surrogate can reach a Python string from JSON's \uXXXX escape,
+    # and no OS filesystem call can ever open, stat, or otherwise identify a destination by that string.
+    # Schema validity must reject it here, at load, rather than let it survive into a classification or diagnostic call downstream (fix-report P0-2b).
+    entry = {"path": "/tmp/evil\ud800dir/semlf",
+             "sha256": "a" * 64, "version": "0.6.0"}
+    assert manifest._valid_entry(entry) is False
+
+
 def test_unknown_artifact_names_are_never_read(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     artifact = tmp_path / "semlf"

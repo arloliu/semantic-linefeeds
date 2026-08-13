@@ -318,6 +318,27 @@ def test_status_handles_undecodable_hooks_json(tmp_path):
     assert r.stderr == ""
 
 
+@pytest.mark.parametrize("payload,label", [
+    ({"hooks": []}, "unreadable"),
+    ([1, 2, 3], "unreadable"),
+    ({"hooks": {"PostToolUse": [
+        {"matcher": "apply_patch", "hooks": 5}]}}, "not installed"),
+    ({"hooks": {"PostToolUse": ["a", "b"]}}, "not installed"),
+])
+def test_status_handles_a_malformed_hooks_shape_without_crashing(tmp_path, payload, label):
+    # Wrong-shaped-but-parseable JSON must never raise TypeError out of the comprehension:
+    # every level is isinstance-guarded before it is indexed or iterated,
+    # mirroring _plan_codex_hook and doctor's own walk.
+    env = isolated_env(tmp_path)
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    r = run_install([], env, cwd=tmp_path)
+    assert r.returncode == 0
+    assert r.stderr == ""
+    assert f"codex: {label}" in r.stdout
+
+
 def test_status_handles_undecodable_agentsmd(tmp_path):
     target = tmp_path / "AGENTS.md"
     target.write_bytes(b"\xff\xfe{")
@@ -936,6 +957,74 @@ def test_pyz_state_is_none_for_a_non_zip_file(tmp_path):
     assert install_module.pyz_state(tmp_path / "missing") is None
 
 
+def test_pyz_state_is_none_for_an_encrypted_member(tmp_path):
+    """Totality over hostile-but-valid archives (fix-report P0-2c).
+
+    zipfile cannot itself write an encrypted member,
+    so the general purpose bit flag (bit 0, "encrypted") is set by hand in both the local file header and the central directory of an otherwise normal archive.
+    Reading that member then raises RuntimeError deep inside zipfile —
+    exactly the shape a hostile pyz could present —
+    and pyz_state's identity check must degrade to None, never crash.
+    """
+    import zipfile as zf
+
+    src = tmp_path / "plain.zip"
+    with zf.ZipFile(src, "w") as archive:
+        archive.writestr("a.txt", b"hello world")
+    data = bytearray(src.read_bytes())
+    local_idx = data.find(b"PK\x03\x04")
+    central_idx = data.find(b"PK\x01\x02")
+    assert local_idx != -1 and central_idx != -1
+    data[local_idx + 6] |= 0x01     # local file header flag bit 0
+    data[central_idx + 8] |= 0x01   # central directory flag bit 0
+
+    hostile = tmp_path / "hostile.zip"
+    hostile.write_bytes(bytes(data))
+    hostile.chmod(0o755)
+    # Confirm the fixture actually reproduces the hostile condition.
+    with zf.ZipFile(hostile) as archive:
+        with pytest.raises(RuntimeError):
+            archive.read("a.txt")
+    assert install_module.pyz_state(hostile) is None
+
+
+def test_pyz_state_is_none_for_a_tampered_lzma_member(tmp_path):
+    """lzma.LZMAError is not an OSError subclass; pyz_state must still degrade to None.
+
+    ZIP_LZMA is a real member compression method zipfile supports writing.
+    Corrupting the embedded LZMA filter properties (not the payload)
+    makes the decompressor raise lzma.LZMAError on read,
+    which the earlier named-exception tuple did not cover —
+    this pins the deliberately bare "except Exception" that replaced it.
+    """
+    import zipfile as zf
+
+    src = tmp_path / "plain.zip"
+    with zf.ZipFile(src, "w", zf.ZIP_LZMA) as archive:
+        archive.writestr("a.txt", b"hello world" * 200)
+    data = bytearray(src.read_bytes())
+    local_idx = data.find(b"PK\x03\x04")
+    assert local_idx != -1
+    fname_len = int.from_bytes(data[local_idx + 26:local_idx + 28], "little")
+    extra_len = int.from_bytes(data[local_idx + 28:local_idx + 30], "little")
+    stream_start = local_idx + 30 + fname_len + extra_len
+    # zipfile's LZMA member format: 2-byte version, 2-byte properties size,
+    # then the properties themselves — corrupt only that region.
+    psize = int.from_bytes(data[stream_start + 2:stream_start + 4], "little")
+    for i in range(stream_start + 4, stream_start + 4 + psize):
+        data[i] = 0xFF
+
+    hostile = tmp_path / "hostile-lzma.zip"
+    hostile.write_bytes(bytes(data))
+    hostile.chmod(0o755)
+    # Confirm the fixture actually reproduces the hostile condition.
+    import lzma
+    with zf.ZipFile(hostile) as archive:
+        with pytest.raises(lzma.LZMAError):
+            archive.read("a.txt")
+    assert install_module.pyz_state(hostile) is None
+
+
 def test_pyz_runnable_accepts_a_fresh_build(tmp_path):
     pyz = tmp_path / "semlf"
     install_module.build_pyz(pyz)
@@ -978,6 +1067,30 @@ def test_pyz_runnable_rejects_each_broken_property(tmp_path):
         c.write_bytes(b"#!" + install_module.PYZ_INTERPRETER.encode() + b"\n" + content)
         c.chmod(0o755)
         assert not install_module.pyz_runnable(c)
+
+
+def test_status_handles_an_encrypted_member_pyz_at_the_cli_destination(tmp_path):
+    # Integration companion to test_pyz_state_is_none_for_an_encrypted_member:
+    # a hostile pyz at the real cli destination must not crash status()
+    # end to end through the guarded read path — it degrades to "not runnable".
+    import zipfile as zf
+    env = isolated_env(tmp_path)
+    dest = single_file_destinations(tmp_path)["--cli"]
+    dest.parent.mkdir(parents=True)
+    plain = tmp_path / "plain.zip"
+    with zf.ZipFile(plain, "w") as archive:
+        archive.writestr("a.txt", b"hello world")
+    data = bytearray(plain.read_bytes())
+    local_idx = data.find(b"PK\x03\x04")
+    central_idx = data.find(b"PK\x01\x02")
+    data[local_idx + 6] |= 0x01
+    data[central_idx + 8] |= 0x01
+    dest.write_bytes(b"#!" + install_module.PYZ_INTERPRETER.encode()
+                     + b"\n" + bytes(data))
+    dest.chmod(0o755)
+    r = run_install([], env, timeout=10)
+    assert r.returncode == 0
+    assert "cli: present but not runnable" in r.stdout
 
 
 def test_install_cli_places_semlf_on_local_bin(tmp_path, monkeypatch, capsys):
@@ -1236,9 +1349,37 @@ def test_a_failed_backup_releases_the_slot(tmp_path, monkeypatch):
         raise OSError("copystat failed")
     monkeypatch.setattr(install.shutil, "copystat", boom)
     with pytest.raises(OSError):
-        install._exclusive_backup(src, bak)
+        install._exclusive_backup(src, bak, b"artifact bytes")
     assert not bak.exists()
     assert src.read_bytes() == b"artifact bytes"
+
+
+def test_backup_preserves_the_classified_snapshot_not_a_later_read(tmp_path, monkeypatch):
+    # Red-capable: dest is mutated on disk between classification and the backup write —
+    # from inside the second build_pyz call install_cli makes in that exact window —
+    # simulating a same-user race.
+    # The backup must hold what classification saw,
+    # never a fresh read of the (now different) live destination.
+    install = load_install_module()
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    assert install.install_cli(dry=False, force=False) == 0
+    dest = tmp_path / "home" / ".local" / "bin" / "semlf"
+    patched = patch_installed_cli(dest)
+
+    real_build_pyz = install.build_pyz
+    calls = []
+    def spy_build_pyz(target):
+        real_build_pyz(target)
+        calls.append(target)
+        if len(calls) == 2:
+            # The staged-replacement build: classification already ran.
+            dest.write_bytes(b"mutated-after-classification\n")
+    monkeypatch.setattr(install, "build_pyz", spy_build_pyz)
+
+    assert install.install_cli(dry=False, force=True) == 0
+    bak = dest.with_name("semlf.bak")
+    assert bak.read_bytes() == patched
 
 
 def test_a_failed_backup_fails_install_cli_cleanly(tmp_path, monkeypatch):
@@ -1510,6 +1651,93 @@ def test_status_reports_unreadable_for_a_dangling_symlink_opencode_destination(t
     assert "opencode: unreadable" in r.stdout
 
 
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="platform has no mkfifo")
+@pytest.mark.parametrize("force", [[], ["--force"]])
+def test_a_fifo_at_the_agentsmd_target_refuses_install(tmp_path, force):
+    target = tmp_path / "AGENTS.md"
+    os.mkfifo(target)
+    r = run_install(["--agentsmd", str(target)] + force,
+                    isolated_env(tmp_path), timeout=10)
+    assert r.returncode == 1
+    assert stat.S_ISFIFO(os.lstat(target).st_mode)
+
+
+@pytest.mark.parametrize("dangling", [False, True])
+@pytest.mark.parametrize("force", [[], ["--force"]])
+def test_a_symlink_at_the_agentsmd_target_refuses_install(tmp_path, dangling, force):
+    target = tmp_path / "AGENTS.md"
+    if dangling:
+        real = tmp_path / "nowhere"
+    else:
+        real = tmp_path / "real-target"
+        real.write_text("x", encoding="utf-8")
+    target.symlink_to(real)
+    r = run_install(["--agentsmd", str(target)] + force, isolated_env(tmp_path))
+    assert r.returncode == 1
+    assert target.is_symlink()
+    if not dangling:
+        assert real.read_text(encoding="utf-8") == "x"
+
+
+@pytest.mark.parametrize("force", [[], ["--force"]])
+def test_a_directory_at_the_agentsmd_target_refuses_install(tmp_path, force):
+    # Asserts the named refusal message and a clean stderr, not just exit 1:
+    # the pre-fix code let target.read_text() raise IsADirectoryError straight out of install_agentsmd,
+    # which also exits 1 but via a traceback rather than a diagnosed refusal.
+    target = tmp_path / "AGENTS.md"
+    target.mkdir()
+    (target / "keep").write_text("x", encoding="utf-8")
+    r = run_install(["--agentsmd", str(target)] + force, isolated_env(tmp_path))
+    assert r.returncode == 1
+    assert (target / "keep").exists()
+    assert "not a readable regular file" in r.stderr
+    assert "Traceback" not in r.stderr
+
+
+def test_undecodable_bytes_at_the_agentsmd_target_refuse_install(tmp_path):
+    # Closes the UnicodeDecodeError branch install_agentsmd's guarded read adds:
+    # a present, readable, regular file that just isn't UTF-8 must refuse,
+    # rather than be silently treated as empty or overwritten.
+    # Asserts the named message and a clean stderr, not just exit 1:
+    # the pre-fix code let target.read_text() raise UnicodeDecodeError straight out of install_agentsmd,
+    # which also exits 1 but via a traceback rather than a diagnosed refusal.
+    target = tmp_path / "AGENTS.md"
+    target.write_bytes(b"\xff\xfe{")
+    r = run_install(["--agentsmd", str(target)], isolated_env(tmp_path))
+    assert r.returncode == 1
+    assert target.read_bytes() == b"\xff\xfe{"
+    assert "cannot decode it as" in r.stderr
+    assert "Traceback" not in r.stderr
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="platform has no mkfifo")
+def test_status_handles_a_fifo_agentsmd_target_without_hanging(tmp_path):
+    # cwd is the tmp dir status probes as ./AGENTS.md;
+    # a FIFO there must neither hang the read nor be followed.
+    target = tmp_path / "AGENTS.md"
+    os.mkfifo(target)
+    r = run_install([], isolated_env(tmp_path), cwd=tmp_path, timeout=10)
+    assert r.returncode == 0
+    assert "absent (unreadable)" in r.stdout
+
+
+def test_status_handles_a_symlink_cycle_at_agentsmd_without_a_traceback(tmp_path):
+    # A self-referential symlink at ./AGENTS.md makes Path.resolve() raise
+    # (RuntimeError/OSError depending on version) because it follows the
+    # link to build a display path before the guarded classification runs.
+    # status must build that display path lexically instead
+    # (fix-report P0-1), so the guarded reader is still the only thing
+    # that ever touches the target, and a cyclic link degrades to the
+    # same honest "absent (unreadable)" label as any other unreadable
+    # AGENTS.md — never a crash.
+    target = tmp_path / "AGENTS.md"
+    target.symlink_to(target)
+    r = run_install([], isolated_env(tmp_path), cwd=tmp_path, timeout=10)
+    assert r.returncode == 0
+    assert "Traceback" not in r.stderr
+    assert "absent (unreadable)" in r.stdout
+
+
 def test_codex_refuses_a_hooks_bak_symlink_without_following(tmp_path):
     path = codex_hooks_path(tmp_path)
     path.parent.mkdir(parents=True)
@@ -1556,6 +1784,19 @@ def test_uninstall_codex_when_absent_is_a_noop(tmp_path):
     r = run_install(["--uninstall", "--codex"], isolated_env(tmp_path))
     assert r.returncode == 0
     assert "not installed" in r.stdout
+
+
+def test_a_non_directory_codex_home_refuses_uninstall_without_touching_anything(tmp_path):
+    # Same P1-1 pattern as _plan_file/_plan_cli/_plan_agentsmd, one level up:
+    # $CODEX_HOME itself is a plain file, so lstat on its hooks.json raises
+    # NotADirectoryError, which must refuse, not read as "not installed".
+    env = isolated_env(tmp_path)
+    codex_home_path = Path(env["CODEX_HOME"])
+    codex_home_path.write_text("not a directory", encoding="utf-8")
+    r = run_install(["--uninstall", "--codex"], env)
+    assert r.returncode == 1
+    assert codex_home_path.is_file()
+    assert codex_home_path.read_text(encoding="utf-8") == "not a directory"
 
 
 def test_an_edited_skill_refuses_the_whole_codex_request(tmp_path):
@@ -1800,6 +2041,24 @@ def test_uninstall_codex_preserves_a_pre_existing_empty_foreign_block(tmp_path):
     r = run_install(["--uninstall", "--codex"], env)
     assert r.returncode == 0
     assert path.read_bytes() == original
+
+
+def test_a_non_directory_parent_refuses_uninstall_without_touching_anything(tmp_path):
+    # Only FileNotFoundError means "absent";
+    # every other OSError from lstat
+    # (here NotADirectoryError, because a path component is a plain file standing
+    # where a directory belongs)
+    # must become a named refusal that touches nothing,
+    # not a silent "not installed" no-op (fix-report P1-1).
+    env = isolated_env(tmp_path)
+    skill_dir = tmp_path / "home" / ".agents" / "skills"
+    skill_dir.mkdir(parents=True)
+    blocker = skill_dir / "semantic-linefeeds"
+    blocker.write_text("not a directory", encoding="utf-8")
+    r = run_install(["--uninstall", "--codex"], env)
+    assert r.returncode == 1
+    assert blocker.is_file()
+    assert blocker.read_text(encoding="utf-8") == "not a directory"
 
 
 def test_forget_failure_after_a_successful_unlink_is_reported_accurately(tmp_path):

@@ -110,13 +110,21 @@ def read_state_json(path, limit=65536):
 def _valid_entry(entry):
     # An empty or NUL-carrying path would make the os.path functions raise instead of classify;
     # schema validity must imply totality.
-    return (isinstance(entry, dict)
+    if not (isinstance(entry, dict)
             and isinstance(entry.get("path"), str)
             and entry["path"] != ""
             and "\x00" not in entry["path"]
             and isinstance(entry.get("sha256"), str)
             and _HEX64_RE.match(entry["sha256"]) is not None
-            and isinstance(entry.get("version"), str))
+            and isinstance(entry.get("version"), str)):
+        return False
+    # An unpaired surrogate, or any other text the filesystem encoding cannot represent, can never identify a real destination.
+    # Dropping it here keeps every downstream os.path/os.lstat call, and every diagnostic print of entry["path"], free of a string this hostile.
+    try:
+        os.fsencode(entry["path"])
+    except (UnicodeError, ValueError):
+        return False
+    return True
 
 
 def load():
