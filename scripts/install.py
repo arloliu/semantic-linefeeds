@@ -283,6 +283,26 @@ def _publish_new(staged, dest):
     return True
 
 
+def _exclusive_backup(src, bak):
+    """Copy src's bytes to bak, claiming the slot exclusively.
+
+    O_EXCL is the point: the backup slot is claimed atomically,
+    so a concurrent double --force cannot overwrite the only copy of a hand-patched artifact,
+    and a pre-existing symlink at bak is refused, never followed.
+    The cleanup covers every step including copystat:
+    a failure at any point releases the slot,
+    so a retry never finds it occupied by a half-made backup.
+    """
+    fd = os.open(str(bak), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(Path(src).read_bytes())
+        shutil.copystat(src, bak)
+    except BaseException:
+        os.unlink(bak)
+        raise
+
+
 def install_cli(dry, force):
     """Install the executable pyz as the semlf command.
 
@@ -319,8 +339,15 @@ def install_cli(dry, force):
                 return 1
             divergent = True
     if dry:
-        print(f"would back up and replace {dest}" if divergent
-              else f"would install {dest}")
+        if divergent:
+            bak = dest.with_name(dest.name + ".bak")
+            if os.path.lexists(bak):
+                print(f"refusing to overwrite {bak}: a backup already "
+                      "exists; move it aside and re-run.", file=sys.stderr)
+                return 1
+            print(f"would back up and replace {dest}")
+        else:
+            print(f"would install {dest}")
         return 0
     dest.parent.mkdir(parents=True, exist_ok=True)
     fd, staged_name = tempfile.mkstemp(dir=str(dest.parent), prefix=dest.name)
@@ -329,7 +356,19 @@ def install_cli(dry, force):
     try:
         build_pyz(staged)
         if divergent:
-            shutil.copy2(dest, dest.with_name(dest.name + ".bak"))
+            bak = dest.with_name(dest.name + ".bak")
+            try:
+                _exclusive_backup(dest, bak)
+            except FileExistsError:
+                os.unlink(staged)
+                print(f"refusing to overwrite {bak}: a backup already "
+                      "exists; move it aside and re-run.", file=sys.stderr)
+                return 1
+            except OSError as exc:
+                os.unlink(staged)
+                print(f"cannot back up {dest} to {bak}: {exc}",
+                      file=sys.stderr)
+                return 1
             os.replace(staged, dest)
         elif not _publish_new(staged, dest):
             print(f"refusing to overwrite {dest}: it appeared after "

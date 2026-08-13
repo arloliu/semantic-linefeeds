@@ -1076,3 +1076,123 @@ def test_pyz_runs_staged_mode_in_a_repository(tmp_path, monkeypatch):
                        cwd=str(repo_dir))
     assert r.returncode == 1
     assert "fused" in r.stdout
+
+
+def install_cli_once(tmp_path):
+    env = isolated_env(tmp_path)
+    r = run_install(["--cli"], env)
+    assert r.returncode == 0
+    return tmp_path / "home" / ".local" / "bin" / "semlf", env
+
+
+def patch_installed_cli(dest):
+    """Overwrite dest with content pyz_state actually sees as divergent.
+
+    Bytes merely appended after a zipapp's central directory sit in the zip comment region
+    and are invisible to every zip reader (comment length is read from the EOCD record, not inferred from file size),
+    so they would not register as a divergence at all;
+    a full rewrite is the only reliable way to simulate a hand-patched artifact.
+    """
+    patched = b"#!/usr/bin/env python3\n# hand-patched\n"
+    dest.write_bytes(patched)
+    return patched
+
+
+def test_force_refuses_when_a_backup_already_exists(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    patched = patch_installed_cli(dest)
+    bak = dest.with_name("semlf.bak")
+    bak.write_bytes(b"precious earlier backup")
+    r = run_install(["--cli", "--force"], env)
+    assert r.returncode == 1
+    assert "semlf.bak" in r.stderr
+    assert bak.read_bytes() == b"precious earlier backup"
+    assert dest.read_bytes() == patched
+    leftovers = [p for p in dest.parent.iterdir() if p.name not in ("semlf", "semlf.bak")]
+    assert leftovers == []
+
+
+def test_force_refuses_a_backup_symlink_without_following(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    patch_installed_cli(dest)
+    target = tmp_path / "elsewhere"
+    bak = dest.with_name("semlf.bak")
+    bak.symlink_to(target)
+    r = run_install(["--cli", "--force"], env)
+    assert r.returncode == 1
+    assert not target.exists()
+    assert bak.is_symlink()
+    leftovers = [p for p in dest.parent.iterdir() if p.name not in ("semlf", "semlf.bak")]
+    assert leftovers == []
+
+
+def test_force_with_a_free_backup_slot_still_replaces(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    patched = patch_installed_cli(dest)
+    r = run_install(["--cli", "--force"], env)
+    assert r.returncode == 0
+    assert dest.with_name("semlf.bak").read_bytes() == patched
+    assert dest.read_bytes() != patched
+
+
+def test_dry_run_force_reports_an_occupied_backup_slot(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    patch_installed_cli(dest)
+    dest.with_name("semlf.bak").write_bytes(b"occupied")
+    r = run_install(["--cli", "--force", "--dry-run"], env)
+    assert r.returncode == 1
+    assert "semlf.bak" in r.stderr
+
+
+def test_dry_run_force_with_a_free_slot_reports_and_writes_nothing(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    patched = patch_installed_cli(dest)
+    r = run_install(["--cli", "--force", "--dry-run"], env)
+    assert r.returncode == 0
+    assert "would back up and replace" in r.stdout
+    assert dest.read_bytes() == patched
+    assert not dest.with_name("semlf.bak").exists()
+
+
+def load_install_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("install", INSTALL)
+    install = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(install)
+    return install
+
+
+def test_a_failed_backup_releases_the_slot(tmp_path, monkeypatch):
+    # Helper-level: inject a copystat failure
+    # and prove the slot is released, the destination untouched, and the error surfaced.
+    install = load_install_module()
+    src = tmp_path / "src"
+    src.write_bytes(b"artifact bytes")
+    bak = tmp_path / "semlf.bak"
+    def boom(*_args, **_kwargs):
+        raise OSError("copystat failed")
+    monkeypatch.setattr(install.shutil, "copystat", boom)
+    with pytest.raises(OSError):
+        install._exclusive_backup(src, bak)
+    assert not bak.exists()
+    assert src.read_bytes() == b"artifact bytes"
+
+
+def test_a_failed_backup_fails_install_cli_cleanly(tmp_path, monkeypatch):
+    # Call-site level: the same failure through install_cli must be a normal exit-1 diagnostic —
+    # staged file cleaned up, destination unchanged, backup slot free, no traceback.
+    # This test fails if install_cli ever stops catching the helper's OSError.
+    install = load_install_module()
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    assert install.install_cli(dry=False, force=False) == 0
+    dest = tmp_path / "home" / ".local" / "bin" / "semlf"
+    patched = patch_installed_cli(dest)
+    def boom(*_args, **_kwargs):
+        raise OSError("backup failed")
+    monkeypatch.setattr(install, "_exclusive_backup", boom)
+    assert install.install_cli(dry=False, force=True) == 1
+    assert dest.read_bytes() == patched
+    assert not dest.with_name("semlf.bak").exists()
+    leftovers = [p for p in dest.parent.iterdir() if p.name != "semlf"]
+    assert leftovers == []
