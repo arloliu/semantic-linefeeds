@@ -92,28 +92,6 @@ and each carries many commits.
 Every ordering constraint established above is preserved,
 but as **commit order inside a release** rather than as a separate tag.
 
-### v0.6 — Repository tooling and lifecycle
-
-Where the kit stops being agent-only.
-The packaged CLI lands before the first git mode, so no mode precedes the command that owns it.
-
-- A packaged `semlf` artifact, on the packaging proof in ADR-0004.
-- `--staged` first, against the index blob, with an index-versus-worktree test matrix;
-  then `--diff` and `--changed` on the same provider contract.
-- `.pre-commit-hooks.yaml`, after the staged mode has its tests.
-- Project config on the shared discovery function in ADR-0004.
-- `uninstall`, `doctor`, and agent auto-detection.
-  Skill removal is covered by `uninstall`.
-- Managed upgrade on a provenance manifest recording installed digest and version,
-  so an untouched older release updates while a hand edit still refuses.
-- `pipx` and `uv tool` distribution, with the zipapp retained for air-gapped and mirrored installs.
-- `SEMANTIC_LINEFEEDS_CHECK` renamed to `SEMLF_*` with a deprecated alias
-  (`adapters/opencode/semantic-linefeeds.ts:44`).
-- `--agentsmd` refuses to default to the current directory (`scripts/install.py:186`),
-  and `status()` reports against the resolved install target rather than `./AGENTS.md`
-  (`scripts/install.py:239-247`).
-- Windows paths and CRLF become testable here, across every adapter.
-
 ### v0.7 — Fixes and team integration
 
 - Hook-side mutation of the suggested replacement, gated by a content-hash check immediately before writing (ADR-0007);
@@ -177,8 +155,6 @@ and it replays a synthetic payload end to end rather than checking that files ex
   A concrete ordering is added when the ADR-0005 ownership ranges make "the affected two lines" precise.
 - **More languages.**
   Marginal value has flattened.
-- **Agent auto-detection for `semlf install`.**
-  Useful, and cheap once the lifecycle commands exist, so it is scheduled with v0.6 rather than deferred.
 - **More agent installers and an LSP.**
   A generic `--stdin --path` surface makes new adapters cheap;
   build that before adding targets one at a time.

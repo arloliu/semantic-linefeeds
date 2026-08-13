@@ -5,89 +5,78 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-08-14
 
-v0.6a: the CLI exists.
-A repository can now tune the checker once, and run it as a standalone command,
-instead of every adapter carrying its own copy of the checker's defaults.
-
-v0.6b: `semlf` checks git snapshots directly, and a repository can exclude paths from discovery.
-
-v0.6c: `semlf` gains a full lifecycle —
-uninstall, doctor, agent auto-detection, and provenance-aware upgrades —
-and ships as a pipx/uv package alongside the zipapp.
+The checker now works as repository tooling, not only as editor hooks:
+a standalone `semlf` command with git-aware modes, project configuration,
+pre-commit integration, pipx and uv installation,
+and a full install lifecycle with uninstall, doctor, and managed upgrades.
 
 ### Added
 
-- **Project configuration** (ADR-0012): `.semlf.ini` at the repository root, section `[semlf]`,
-  key `long-limit`.
-  The core discovers it with `load_config`,
-  walking upward from the checked path and stopping at the first directory holding either the file or a `.git` entry, file or directory.
-  Precedence is `--long-limit` flag, then `$SEMLF_LONG_LINE`, then the discovered config, then the built-in default of 120.
-  A missing, unreadable, or malformed file is inert and falls through to the next precedence leg,
-  rather than breaking the run.
-- **The `semlf` repository CLI** (`cli/semlf/`, ADR-0004): a thin subcommand router —
-  `semlf check PATH...` (alias for `--file`), `--hook [claude|codex]`, `--json`, `--long-limit N` —
-  that delegates every diagnostic to the portable core and touches nothing else.
-- **`install.py --cli`** builds `semlf` as an executable zipapp and installs it at
-  `~/.local/bin/semlf`, alongside the existing `--codex`, `--opencode`, and `--agentsmd` installers.
-  Re-running is idempotent; `--force` allows overwriting a copy whose content has diverged.
-- **A portable AGENTS.md snippet** now tells any agent with no hook surface to run
-  `semlf --file <files you touched>` directly,
-  instead of pointing at a checkout-relative script path that only makes sense inside this repository.
-- **`SEMLF_CHECKER`** replaces the opencode adapter's previous environment variable name for pointing the plugin at an out-of-tree copy of the checker script.
-  The old name still works as a deprecated alias; `SEMLF_CHECKER` wins when both are set.
-- **Git snapshot modes** (ADR-0013): `semlf --staged`/`--diff`/`--changed` check a git snapshot instead of files you name —
-  the index, the unstaged worktree diff, and everything changed since `HEAD`.
-  Policy (`.semlf.ini`) is always read from the working tree, even for `--staged`.
-- **The `exclude` key** (`.semlf.ini`, ADR-0013): filters discovery in hook mode and every git mode by folder, anchored folder chain, or path/component glob, matched case-sensitively per path segment.
-  A path named explicitly on `--file` is never affected.
-- **A `.pre-commit-hooks.yaml` hook definition**: `id: semlf` runs `semlf --staged` with `pass_filenames: false`,
-  so pre-commit's own file list plays no role and the mode owns discovery.
-- **`install.py --uninstall`** (ADR-0014): removes an installed mode's artifacts.
-  It is preflight-then-apply, admitting only the current rendering or a manifest-managed one
-  and refusing everything else without `--force`.
-  It never deletes or unlinks `hooks.json` or the AGENTS.md target;
-  only their owned entries or the sentinel block are removed, by rewrite.
-  It never touches `semlf.bak`,
-  and it closes the native-skill-removal deferral [ADR-0006](docs/decisions/0006-judgment-layer-for-every-agent.md) recorded.
-- **`semlf doctor`** (ADR-0014): replays synthetic payloads through the installed artifact end to end —
-  the Claude and Codex hooks, in both directions —
-  instead of checking file existence, and certifies a hook or fails it, never a silent pass.
-  Its platform and install-failure lines are the evidence stream
-  [ADR-0011](docs/decisions/0011-go-port-gated-on-field-evidence.md)'s gate reads.
-- **`install.py --auto`**: detects installed agents by evidence —
+- **The `semlf` command**: `semlf check PATH...` (alias for `--file`),
+  `--hook [claude|codex]`, `--json`, `--long-limit N`, and `--version`.
+  Every diagnostic comes from the same single-file core the editor hooks run.
+- **Project configuration**: `.semlf.ini` at the repository root,
+  section `[semlf]`, key `long-limit`.
+  The file is found by walking upward from the checked path
+  and stopping at the first directory holding either the file or a `.git` entry.
+  Precedence is the `--long-limit` flag, then `$SEMLF_LONG_LINE`,
+  then the discovered file, then the default of 120.
+  A broken file never breaks a run:
+  an invalid value drops only its own key,
+  and a missing or unreadable file falls through to the next source.
+- **Git snapshot modes**: `--staged`, `--diff`, and `--changed` check a git snapshot instead of files named one by one —
+  the staging area, unstaged edits, or everything changed since `HEAD`.
+  Configuration is always read from the working tree,
+  even when checking staged content.
+- **Path excludes**: an `exclude` key in `.semlf.ini` filters hook and git mode discovery by folder or glob pattern.
+  A path named explicitly with `--file` is always checked.
+- **pre-commit integration**: a `.pre-commit-hooks.yaml` definition (`id: semlf`)
+  runs `semlf --staged` in an environment pre-commit builds itself,
+  so nothing has to be on `PATH` beforehand.
+- **pipx and uv installation**:
+  `pipx install git+https://github.com/arloliu/semantic-linefeeds`,
+  or the equivalent `uv tool install`,
+  installs `semlf` straight from the repository.
+- **`install.py --cli`**: builds `semlf` as a self-contained zipapp
+  and installs it at `~/.local/bin/semlf`,
+  for machines and mirrors where pipx and uv are not available.
+  Re-running is idempotent;
+  `--force` replaces a copy whose content has diverged.
+- **`install.py --auto`**: detects installed agents —
   a binary on `PATH` or the agent's own config directory —
-  and installs a matching mode for each, plus the cli unconditionally.
-  Mutually exclusive with an explicit mode flag or `--uninstall`.
-- **A provenance manifest and managed upgrade** (ADR-0014): one state file per artifact under
-  `$XDG_STATE_HOME/semlf/artifacts/`, recording schema, path identity,
-  and a digest of the bytes the installer itself staged.
-  A recorded release upgrades silently on re-install;
-  every kind of trouble degrades to `unrecorded`, which means refusal, never overwrite.
-- **An exclusive backup slot** (ADR-0014): `--force` claims `semlf.bak` with `O_EXCL` before replacing a hand-edited copy,
-  so a concurrent double `--force` cannot overwrite the only copy of what it was about to replace.
-  A managed upgrade skips the backup entirely,
-  since a recorded release is not the only copy of anything.
-- **pipx and uv packaging** (ADR-0015): `pyproject.toml` builds `semlf` straight from the repository —
-  `pipx install git+https://github.com/arloliu/semantic-linefeeds`, or the equivalent `uv tool install` —
-  mapping `cli/semlf` and `scripts/check_linefeeds.py` from their existing locations rather than forking either.
-  PyPI publication stays a maintainer release act, not repository automation.
+  prints the evidence for each detection,
+  and installs a matching mode for each agent found, plus the command itself.
+- **`install.py --uninstall`**: removes an installed mode's artifacts.
+  It checks everything before removing anything,
+  edits shared files such as `hooks.json` or an AGENTS.md in place instead of deleting them,
+  and refuses to remove a copy whose content it does not recognize.
+- **`semlf doctor`**: verifies an install by replaying a real edit payload through every installed hook end to end,
+  rather than only checking that files exist.
+  It reports the platform, version, configuration, and excludes in force,
+  and explicitly certifies or fails each hook.
+- **Managed upgrades**: the installer records what it installed —
+  path and content digest,
+  one state file per artifact under `$XDG_STATE_HOME/semlf/artifacts/` —
+  so an unmodified install from an earlier release upgrades in place without `--force`,
+  while a hand-edited copy is refused until `--force` says to replace it.
+- **Exclusive backups**: replacing a hand-edited `semlf` with `--force` first claims the `semlf.bak` slot exclusively,
+  and refuses if a backup is already there,
+  so two concurrent runs cannot overwrite the only backup.
 
 ### Changed
 
-- **`--agentsmd` requires an explicit path.**
-  `scripts/install.py --agentsmd` with no value now refuses and exits with an error,
-  instead of silently defaulting to `./AGENTS.md` in the caller's working directory —
-  a bare flag was a likely mistake, not a considered choice of target file,
-  once the flag started shipping in a packaged CLI invoked from arbitrary directories.
-- **An invalid `.semlf.ini` value now drops only its own key** (amends ADR-0012 via ADR-0013):
-  one bad `long-limit` no longer silences a good `exclude` in the same file.
-  File-level trouble — missing, unreadable, undecodable, or unparsable as INI — still drops the whole file.
-- **The pre-commit hook definition now uses `language: python`** (ADR-0015),
-  letting pre-commit build this repository into its own managed environment instead of requiring `semlf` on `PATH` beforehand.
-- **The zipapp packaging proof now builds through the shipped `build_pyz`** instead of a second, hand-maintained build script,
-  so the proof and `install.py --cli` can never drift apart on what a zipapp contains.
+- **`install.py --agentsmd` requires an explicit target path.**
+  It no longer defaults to `./AGENTS.md` in the current working directory,
+  where a bare flag was more likely a mistake than a considered choice.
+- **The AGENTS.md snippet now says `semlf --file <files you touched>`.**
+  It previously pointed at a script path
+  that only made sense inside a checkout of this repository.
+- **`SEMLF_CHECKER` replaces `SEMANTIC_LINEFEEDS_CHECK`**
+  as the opencode plugin's variable for pointing at an out-of-tree copy of the checker script.
+  The old name still works as a deprecated alias;
+  the new name wins when both are set.
 
 ## [0.5.0] - 2026-08-13
 
