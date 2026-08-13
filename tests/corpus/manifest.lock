@@ -1,4 +1,4 @@
 {
   "digest": "sha256:b4d19b012d5ccacb969ec9e3707e9d97082ab6a320c03a87382b9910f69d291f",
-  "reason": "task 4 of the judgment layer: added the 'Bounded disagreement' section to the skill before 'Common mistakes', pinning the AGENT_SUPPRESSION_NOTE sentence verbatim alongside bounded-disagreement guidance, and updated the installer guide and fallback snippet to document the judgment-layer surfaces; the rubric digest was updated to reflect the changed SKILL.md"
+  "reason": "the skill gained a 'Bounded disagreement' section before 'Common mistakes', pinning the AGENT_SUPPRESSION_NOTE sentence verbatim alongside the bounded-disagreement guidance, and the installer guide and fallback snippet were updated to document the judgment-layer surfaces; the rubric digest was repinned to match the changed SKILL.md"
 }

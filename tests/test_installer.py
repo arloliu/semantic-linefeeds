@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import sys
 
-from conftest import REPO
+from conftest import REPO, SCRIPT
 from check_linefeeds import AGENT_SUPPRESSION_NOTE
 
 INSTALL = REPO / "scripts" / "install.py"
@@ -566,12 +566,22 @@ def test_help_mentions_the_skill_and_the_widened_force_scope(tmp_path):
     assert "codex-skill" in normalized
 
 
+# The loop-stop sentence is pinned in tests/test_judgment_texts.py against the two source files.
+# This asserts it again against the installed copy,
+# so a rewrite dropping the sentence during installation would not go unnoticed.
+LOOP_STOP_SENTENCE = (
+    "stop retrying and surface the disagreement to the user instead of "
+    "rewriting correct prose again."
+)
+
+
 def test_codex_skill_install_carries_the_bounded_disagreement_text(tmp_path):
     r = run_install(["--codex"], isolated_env(tmp_path))
     assert r.returncode == 0
     text = codex_skill_path(tmp_path).read_text(encoding="utf-8")
     assert "## Bounded disagreement" in text
     assert AGENT_SUPPRESSION_NOTE in text
+    assert LOOP_STOP_SENTENCE in text
 
 
 def test_codex_skill_install_has_no_relative_links(tmp_path):
@@ -579,3 +589,49 @@ def test_codex_skill_install_has_no_relative_links(tmp_path):
     assert r.returncode == 0
     text = codex_skill_path(tmp_path).read_text(encoding="utf-8")
     assert "../" not in text
+
+
+def test_the_installed_skill_is_visible_to_the_codex_hint(tmp_path, monkeypatch):
+    # The installed skill body is the installer's real ~4.5KB transformed copy, not a hand-written fixture --
+    # large enough that _looks_like_the_skill's 1025-byte read takes its TRUNCATED branch.
+    # Nothing else runs the installer and then asks the probe or hook delivery to recognize the result,
+    # so a mutation that rejected every truncated file would stay green without this test.
+    env = isolated_env(tmp_path)
+    r = run_install(["--codex"], env)
+    assert r.returncode == 0
+    installed = codex_skill_path(tmp_path)
+    assert len(installed.read_bytes()) > 1025
+
+    # Run from a skill-free directory
+    # so a positive result can only come from the $HOME probe, never from an incidental cwd-relative match.
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+
+    # (1) the probe itself, imported straight from the core.
+    monkeypatch.setenv("HOME", env["HOME"])
+    monkeypatch.chdir(elsewhere)
+    from check_linefeeds import _judgment_layer_present
+    assert _judgment_layer_present("codex") is True
+
+    # (2) one real Codex advisory hook payload, driven through the same entrypoint an installed hook actually runs.
+    text = ("This clause runs on and on well past the configured advisory "
+            "threshold of one hundred and twenty characters, and the tail "
+            "keeps going.\n")
+    added = "".join("+" + line + "\n" for line in text.splitlines())
+    patch = ("*** Begin Patch\n*** Update File: doc.md\n@@\n"
+              + added + "*** End Patch")
+    payload = json.dumps({
+        "hook_event_name": "PostToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": patch},
+    })
+    hook_env = os.environ.copy()
+    hook_env["HOME"] = env["HOME"]
+    hook = subprocess.run(
+        [sys.executable, str(SCRIPT), "--hook", "codex"],
+        input=payload, capture_output=True, text=True,
+        env=hook_env, cwd=str(elsewhere),
+    )
+    assert hook.returncode == 0
+    context = json.loads(hook.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert "load the semantic-linefeeds skill" in context
