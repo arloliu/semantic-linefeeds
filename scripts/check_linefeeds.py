@@ -1773,18 +1773,19 @@ def run_hook_codex():
         "lines of your patch; locate findings by the quoted excerpts)"))
 
 
-def run_files(paths, as_json=False):
+def run_sources(sources, as_json=False):
+    """Check (path, text) pairs and report exactly like --file mode.
+
+    The one rendering and exit-code loop every checking mode shares:
+    run_files feeds it disk reads,
+    and the semlf git modes feed it snapshot content.
+    Reading and read-error policy stay with the caller,
+    because only the caller knows what a missing source means there.
+    Exit 1 on any fused/wrap violation; long stays advisory.
+    """
     violations = 0
-    read_errors = 0
     reports = []
-    for path in paths:
-        try:
-            with open(path, encoding="utf-8", errors="replace") as f:
-                text = f.read()
-        except OSError as e:
-            print(f"semantic-linefeeds: cannot read {path}: {e}", file=sys.stderr)
-            read_errors += 1
-            continue
+    for path, text in sources:
         findings = diagnose(text, path)
         if findings:
             violations += sum(1 for d in findings if d["kind"] != "long")
@@ -1794,7 +1795,21 @@ def run_files(paths, as_json=False):
                 print(format_findings(findings, path, snippet=False))
     if as_json:
         print(json.dumps(reports, indent=2))
-    return 1 if (violations or read_errors) else 0
+    return 1 if violations else 0
+
+
+def run_files(paths, as_json=False):
+    read_errors = 0
+    pairs = []
+    for path in paths:
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                pairs.append((path, f.read()))
+        except OSError as e:
+            print(f"semantic-linefeeds: cannot read {path}: {e}", file=sys.stderr)
+            read_errors += 1
+    rc = run_sources(pairs, as_json=as_json)
+    return 1 if read_errors else rc
 
 
 def main(prog=None):
