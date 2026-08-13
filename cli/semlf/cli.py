@@ -27,6 +27,7 @@ modes:
   --diff                 check unstaged changes against the index
   --changed              check all changes against HEAD
   --hook [claude|codex]  run as a PostToolUse hook reading JSON on stdin
+  doctor                 replay a synthetic payload end to end and report evidence
 options forwarded to the core: --json, --long-limit N (git modes accept both)
 """
 
@@ -79,6 +80,9 @@ def main(argv=None):
         return 64
     if argv and argv[0] == "check":
         argv = ["--file"] + argv[1:]
+    if argv[:1] == ["doctor"]:
+        from semlf import doctor
+        return doctor.run(argv[1:])
     head = argv[: argv.index("--")] if "--" in argv else argv
     if any(flag in head for flag in GIT_MODE_FLAGS):
         return _git_mode(argv)

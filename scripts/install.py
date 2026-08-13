@@ -41,7 +41,8 @@ PYZ_INTERPRETER = "/usr/bin/env python3"
 MAIN_STUB = "from semlf.cli import main\nraise SystemExit(main())\n"
 PYZ_REQUIRED_MEMBERS = {"__main__.py", "check_linefeeds.py",
                         "semlf/__init__.py", "semlf/cli.py",
-                        "semlf/providers.py"}
+                        "semlf/providers.py", "semlf/doctor.py",
+                        "semlf/manifest.py"}
 
 SENTINEL_OPEN = "<!-- semantic-linefeeds -->"
 SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"
