@@ -568,3 +568,69 @@ def test_excluded_resolves_symlinked_paths_to_the_real_tree(tmp_path):
     link = tmp_path / "link"
     link.symlink_to(repo)
     assert check_linefeeds.excluded(str(link / "generated" / "doc.md"))
+
+
+EXCLUDING_CONFIG = "[semlf]\nexclude = generated/\n"
+
+
+def test_excluded_path_silences_the_claude_hook(tmp_path):
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / ".semlf.ini", EXCLUDING_CONFIG)
+    write(tmp_path / "generated" / "doc.go", FUSED_LINE + "\n")
+    payload = claude_payload("generated/doc.go", FUSED_LINE)
+    r = run_hook(payload, tmp_path)
+    assert r.returncode == 0
+    assert kinds_in(r.stderr) == set()
+    # Control: the same payload bites once the config stops excluding it.
+    (tmp_path / ".semlf.ini").unlink()
+    r = run_hook(payload, tmp_path)
+    assert r.returncode == 2
+    assert kinds_in(r.stderr) == {"fused"}
+
+
+def test_excluded_file_never_hides_its_patch_neighbors(tmp_path):
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / ".semlf.ini", EXCLUDING_CONFIG)
+    write(tmp_path / "generated" / "a.go", FUSED_LINE + "\n")
+    write(tmp_path / "b.go", FUSED_LINE + "\n")
+    patch = ("*** Begin Patch\n*** Update File: generated/a.go\n@@\n+"
+             + FUSED_LINE +
+             "\n*** End Patch\n*** Begin Patch\n*** Update File: b.go\n@@\n+"
+             + FUSED_LINE + "\n*** End Patch")
+    payload = codex_payload("b.go", FUSED_LINE)
+    payload["tool_input"] = {"command": patch}
+    r = run_hook(payload, tmp_path, agent="codex")
+    assert r.returncode == 2
+    assert "b.go" in r.stderr
+    assert "a.go" not in r.stderr
+
+
+def test_explicit_file_mode_ignores_excludes(tmp_path):
+    """Naming a path beats the discovery filter — always."""
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / ".semlf.ini", EXCLUDING_CONFIG)
+    write(tmp_path / "generated" / "doc.md",
+          "One sentence. Another fused on the same line.\n")
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), "--file", "generated/doc.md"],
+        capture_output=True, text=True, cwd=str(tmp_path))
+    assert r.returncode == 1
+    assert "fused" in r.stdout
+
+
+def test_hostile_exclude_configs_never_change_hook_kinds(tmp_path):
+    """The v0.6a hostile matrix, re-run with exclude payloads."""
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "doc.go").write_text(FUSED_LINE + "\n", encoding="utf-8")
+    payload = claude_payload("doc.go", FUSED_LINE)
+    hostile_excludes = [
+        "[semlf]\nexclude = \n",
+        "[semlf]\nexclude = doc.go\nexclude = doc.go\n",
+        "[semlf]\nexclude = [\n",
+        "[DEFAULT]\nexclude = doc.go\n[semlf]\nlong-limit = 120\n",
+    ]
+    for hostile in hostile_excludes:
+        (tmp_path / ".semlf.ini").write_text(hostile, encoding="utf-8")
+        r = run_hook(payload, tmp_path)
+        assert r.returncode == 2, hostile
+        assert kinds_in(r.stderr) == {"fused"}, hostile

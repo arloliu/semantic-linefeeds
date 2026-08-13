@@ -1710,7 +1710,7 @@ def run_hook_claude():
         return 0
     if not (is_markdown(path) or lang_for_path(path) is not None):
         return 0
-    if skip_path(path):
+    if skip_path(path) or excluded(path):
         return 0
     new_string = tool_input.get("new_string")
     if isinstance(new_string, str):
@@ -1828,7 +1828,7 @@ def run_hook_codex():
         return 0
     reports = []
     for path, hunks in sorted(hunks_by_file(patch).items()):
-        if skip_path(path):
+        if skip_path(path) or excluded(path):
             continue
         snapshot = _read_snapshot(path)
         spans = [] if snapshot is not None else None
