@@ -537,6 +537,21 @@ def test_a_degraded_codex_patch_still_carries_the_suggestion(hook_dir):
     assert "    Go on." in result.stderr
 
 
+def test_a_two_file_patch_names_the_file_in_each_suggestion_label(hook_dir):
+    # Both files carry the same fused "?" addition on the same line number,
+    # so a label that dropped the file name would make the two suggestion blocks indistinguishable.
+    doc_a = hook_dir / "a.md"
+    doc_b = hook_dir / "b.md"
+    fused = "Stop now? Go on."
+    doc_a.write_text(fused + "\n")
+    doc_b.write_text(fused + "\n")
+    result = run_cli(["--hook", "codex"],
+                     codex_patch((str(doc_a), fused), (str(doc_b), fused)))
+    assert result.returncode == 2
+    assert f"Suggested replacement for line 1 of {doc_a}:" in result.stderr
+    assert f"Suggested replacement for line 1 of {doc_b}:" in result.stderr
+
+
 def _write_skill_frontmatter(path, name="semantic-linefeeds"):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"---\nname: {name}\ndescription: test fixture\n---\n\nBody.\n",

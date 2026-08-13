@@ -437,7 +437,7 @@ def test_a_non_breaking_space_separator_gets_no_suggestion():
     # gate (design condition 3) is what withholds it.
     # A literal non-breaking space is visually indistinguishable from an
     # ASCII one, so the escape below is deliberate.
-    text = "Stop now?" + " " + "Go on.\n"
+    text = "Stop now?" + "\u00a0" + "Go on.\n"
     (d,) = diags(text)
     assert d["kind"] == "fused"
     assert "suggestion" not in d

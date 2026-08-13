@@ -558,12 +558,94 @@ def test_status_reports_codex_skill_states(tmp_path):
     assert "codex skill: unreadable" in r.stdout
 
 
+def test_status_and_rerun_detect_a_crlf_converted_skill(tmp_path):
+    # Python's text-mode read universally translates "\r\n" back to "\n".
+    # A same-content-but-CRLF copy would therefore compare equal under a read_text() comparison, hiding from both status and a rerun --
+    # exactly the gap the hook probe's own byte-level read does not have.
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    skill = codex_skill_path(tmp_path)
+    skill.write_bytes(skill.read_text(encoding="utf-8").replace("\n", "\r\n").encode("utf-8"))
+
+    r = run_install([], env, cwd=tmp_path)
+    assert "codex skill: diverged" in r.stdout
+
+    r = run_install(["--codex"], env)
+    assert r.returncode == 1
+    assert "--force" in r.stderr
+
+
 def test_help_mentions_the_skill_and_the_widened_force_scope(tmp_path):
     r = run_install(["--help"], isolated_env(tmp_path))
     assert r.returncode == 0
     normalized = " ".join(r.stdout.split())
     assert "native semantic-linefeeds skill" in normalized
     assert "codex-skill" in normalized
+
+
+import install as install_module  # noqa: E402 -- unit-style access to the module itself
+
+
+def test_codex_skill_dest_is_none_when_home_is_unresolvable(monkeypatch):
+    # os.path.expanduser("~") returns its input unchanged when it cannot resolve a home directory;
+    # Path.home() raises instead.
+    # A real account with no resolvable home is not something a test can set up hermetically,
+    # so the failure is simulated by monkeypatching the same expansion the core's own probe (_judgment_layer_present) already treats this way.
+    monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
+    assert install_module.codex_skill_dest() is None
+
+
+def test_install_codex_skill_refuses_without_a_resolvable_home(monkeypatch, capsys):
+    monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
+    rc = install_module.install_codex_skill(False, False)
+    assert rc == 1
+    assert "home" in capsys.readouterr().err.lower()
+
+
+def test_status_reports_no_home_to_check(monkeypatch, capsys, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    # Bypass the two other Path.home() call sites (codex_home, opencode_plugins_dir)
+    # so only the skill-destination guard is exercised.
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
+    install_module.status()
+    assert "codex skill: no home to check" in capsys.readouterr().out
+
+
+def test_status_reports_no_home_on_every_path_without_env_overrides(monkeypatch, capsys):
+    # No CODEX_HOME/XDG_CONFIG_HOME override here, unlike the test above --
+    # this reaches codex_home()'s and opencode_plugins_dir()'s own guards,
+    # not just codex_skill_dest()'s, and must not crash on the way.
+    monkeypatch.delenv("CODEX_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
+    rc = install_module.status()
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "codex: no home to check" in out
+    assert "opencode: no home to check" in out
+    assert "codex skill: no home to check" in out
+
+
+def test_install_codex_refuses_without_a_resolvable_home(monkeypatch, capsys, tmp_path):
+    monkeypatch.delenv("CODEX_HOME", raising=False)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
+    rc = install_module.install_codex(False)
+    assert rc == 1
+    assert "home" in capsys.readouterr().err.lower()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_install_opencode_refuses_without_a_resolvable_home(monkeypatch, capsys, tmp_path):
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
+    rc = install_module.install_opencode(False, False)
+    assert rc == 1
+    assert "home" in capsys.readouterr().err.lower()
+    assert list(tmp_path.iterdir()) == []
 
 
 # The loop-stop sentence is pinned in tests/test_judgment_texts.py against the two source files.

@@ -34,11 +34,30 @@ TRUST_NOTE = ("note: Codex hashes unmanaged hooks; on your next interactive "
 
 
 def codex_home():
-    return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+    """$CODEX_HOME, or ~/.codex, or None when neither resolves.
+
+    Same guard as `codex_skill_dest`:
+    `Path.home()` raises when a home directory cannot be determined,
+    so the env var is checked first and `os.path.expanduser` stands in for the unguarded fallback.
+    """
+    if os.environ.get("CODEX_HOME"):
+        return Path(os.environ["CODEX_HOME"])
+    home = os.path.expanduser("~")
+    return None if home == "~" else Path(home) / ".codex"
 
 
 def opencode_plugins_dir():
-    base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    """$XDG_CONFIG_HOME/opencode/plugins, or ~/.config/..., or None.
+
+    Same guard as `codex_home`.
+    """
+    if os.environ.get("XDG_CONFIG_HOME"):
+        base = Path(os.environ["XDG_CONFIG_HOME"])
+    else:
+        home = os.path.expanduser("~")
+        if home == "~":
+            return None
+        base = Path(home) / ".config"
     return base / "opencode" / "plugins"
 
 
@@ -68,7 +87,12 @@ def atomic_write(path, text, dry):
 
 
 def install_codex(dry):
-    path = codex_home() / "hooks.json"
+    home = codex_home()
+    if home is None:
+        print("refusing to install the codex hook: cannot determine a "
+              "home directory to install it under.", file=sys.stderr)
+        return 1
+    path = home / "hooks.json"
     command = desired_codex_command()
     entry = {"matcher": "apply_patch",
              "hooks": [{"type": "command", "command": command}]}
@@ -125,7 +149,17 @@ CODEX_SKILL_README_LINK_OLD = "../../README.md"
 
 
 def codex_skill_dest():
-    return Path.home() / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    """Where the native skill installs, or None when no home resolves.
+
+    Uses `os.path.expanduser("~")` rather than `Path.home()`.
+    `expanduser` returns its input unchanged when it cannot resolve;
+    `Path.home()` would raise instead.
+    That mirrors `_judgment_layer_present` in `scripts/check_linefeeds.py`, the hook probe's own check.
+    """
+    home = os.path.expanduser("~")
+    if home == "~":
+        return None
+    return Path(home) / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
 
 
 def codex_skill_body():
@@ -138,11 +172,16 @@ def codex_skill_body():
 
 def install_codex_skill(dry, force):
     dest = codex_skill_dest()
+    if dest is None:
+        print("refusing to install the codex skill: cannot determine a "
+              "home directory to install it under.", file=sys.stderr)
+        return 1
     body = codex_skill_body()
+    payload = body.encode("utf-8")
     if dest.exists():
         try:
-            same = dest.read_text(encoding="utf-8") == body
-        except (OSError, UnicodeDecodeError):
+            same = dest.read_bytes() == payload
+        except OSError:
             same = False
         if same:
             print(f"codex skill: already installed ({dest})")
@@ -159,6 +198,10 @@ def install_codex_skill(dry, force):
 
 def install_opencode(dry, force):
     dest_dir = opencode_plugins_dir()
+    if dest_dir is None:
+        print("refusing to install opencode: cannot determine a "
+              "home directory to install it under.", file=sys.stderr)
+        return 1
     rc = 0
     copied = skipped = 0
     for src in (OPENCODE_PLUGIN, CHECKER):
@@ -257,45 +300,64 @@ def main():
 
 
 def status():
-    hooks_path = codex_home() / "hooks.json"
-    state = "not installed"
-    if hooks_path.exists():
-        try:
-            data = json.loads(hooks_path.read_text(encoding="utf-8"))
-            cmds = [h.get("command", "")
-                    for block in data.get("hooks", {}).get("PostToolUse", [])
-                    if isinstance(block, dict)
-                    for h in block.get("hooks", [])
-                    if isinstance(h, dict)]
-        except (ValueError, AttributeError, OSError):
-            cmds = []
-            state = "unreadable"
-        if any(c == desired_codex_command() for c in cmds):
-            state = "installed"
-        elif any("check_linefeeds.py" in c for c in cmds):
-            state = "installed (stale checker path; re-run --codex)"
-    print(f"codex: {state} ({hooks_path})")
+    home = codex_home()
+    if home is None:
+        print("codex: no home to check")
+    else:
+        hooks_path = home / "hooks.json"
+        state = "not installed"
+        if hooks_path.exists():
+            try:
+                data = json.loads(hooks_path.read_text(encoding="utf-8"))
+                cmds = [h.get("command", "")
+                        for block in data.get("hooks", {}).get("PostToolUse", [])
+                        if isinstance(block, dict)
+                        for h in block.get("hooks", [])
+                        if isinstance(h, dict)]
+            except (ValueError, AttributeError, OSError):
+                cmds = []
+                state = "unreadable"
+            if any(c == desired_codex_command() for c in cmds):
+                state = "installed"
+            elif any("check_linefeeds.py" in c for c in cmds):
+                state = "installed (stale checker path; re-run --codex)"
+        print(f"codex: {state} ({hooks_path})")
 
     skill_dest = codex_skill_dest()
-    skill_state = "not installed"
-    if skill_dest.exists():
-        try:
-            skill_state = ("installed"
-                            if skill_dest.read_text(encoding="utf-8") == codex_skill_body()
-                            else "diverged")
-        except (OSError, UnicodeDecodeError):
-            skill_state = "unreadable"
-    print(f"codex skill: {skill_state} ({skill_dest})")
+    if skill_dest is None:
+        print("codex skill: no home to check")
+    else:
+        skill_state = "not installed"
+        if skill_dest.exists():
+            try:
+                raw = skill_dest.read_bytes()
+            except OSError:
+                skill_state = "unreadable"
+            else:
+                try:
+                    raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    skill_state = "unreadable"
+                else:
+                    # Byte-level, like the install-time check above and the hook probe's own read.
+                    # A text-mode comparison would launder a CRLF-converted copy back through universal-newline translation.
+                    # It would call the copy installed.
+                    skill_state = ("installed" if raw == codex_skill_body().encode("utf-8")
+                                    else "diverged")
+        print(f"codex skill: {skill_state} ({skill_dest})")
 
     d = opencode_plugins_dir()
-    present = [s.name for s in (OPENCODE_PLUGIN, CHECKER)
-               if (d / s.name).exists() and (d / s.name).read_bytes() == s.read_bytes()]
-    if len(present) == 2:
-        print(f"opencode: installed ({d})")
-    elif present:
-        print(f"opencode: partial — only {present[0]} matches ({d})")
+    if d is None:
+        print("opencode: no home to check")
     else:
-        print(f"opencode: not installed ({d})")
+        present = [s.name for s in (OPENCODE_PLUGIN, CHECKER)
+                   if (d / s.name).exists() and (d / s.name).read_bytes() == s.read_bytes()]
+        if len(present) == 2:
+            print(f"opencode: installed ({d})")
+        elif present:
+            print(f"opencode: partial — only {present[0]} matches ({d})")
+        else:
+            print(f"opencode: not installed ({d})")
 
     agents = Path("AGENTS.md")
     mark = "absent"

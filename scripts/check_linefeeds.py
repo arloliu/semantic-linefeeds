@@ -1465,6 +1465,8 @@ def deliver(reports, transport, note=None):
     A finding that carries a `suggestion` (the automatic `!`/`?` class ADR-0007 restricts
     delivery to) gets its own block after the report bodies, labeled with the same line-number
     phrasing the body uses.
+    A single-file delivery keeps that line-number label as-is, since the report body right above it already names the one file in play;
+    once a second report is present, each label also names its file, or two findings sharing a line number across files would read as the same one.
     """
     reports = [(p, model_visible(f), s) for p, f, s in reports]
     reports = [(p, f, s) for p, f, s in reports if f]
@@ -1472,11 +1474,14 @@ def deliver(reports, transport, note=None):
         return 0
     skill_hint = _judgment_layer_present(transport)
     body = "\n".join(format_findings(f, p, s, skill_hint=skill_hint) for p, f, s in reports)
-    for _, findings, snippet in reports:
+    multi = len(reports) > 1
+    for path, findings, snippet in reports:
         for finding in findings:
             if not isinstance(finding, dict) or "suggestion" not in finding:
                 continue
             label = f"line {finding['line']} of your edit" if snippet else f"line {finding['line']}"
+            if multi:
+                label = f"{label} of {path}"
             line1, line2 = finding["suggestion"]["lines"]
             body += f"\nSuggested replacement for {label}:\n    {line1}\n    {line2}"
     if note and any(s for _, _, s in reports):
