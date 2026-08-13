@@ -2,14 +2,14 @@
 """Install the semantic-linefeeds adapters into local AI coding agents.
 
 Modes:
-  --codex           merge the PostToolUse hook into $CODEX_HOME/hooks.json (default ~/.codex/hooks.json), append-never-overwrite
+  --codex           merge the PostToolUse hook into $CODEX_HOME/hooks.json (default ~/.codex/hooks.json), append-never-overwrite; also installs the native semantic-linefeeds skill under ~/.agents/skills
   --opencode        copy the plugin and the checker side by side into $XDG_CONFIG_HOME/opencode/plugins (default ~/.config/...)
   --agentsmd [PATH] manage a sentinel-marked snippet block in AGENTS.md (default ./AGENTS.md)
   (no mode)         report install status and Claude Code guidance
 
 Claude Code is installed through its own plugin marketplace and is never touched by this script.
 Options: --dry-run prints planned actions without writing.
---force allows overwriting an opencode file whose content has diverged.
+--force allows overwriting an opencode or codex-skill file whose content has diverged.
 Exit codes: 0 success or no-op, 1 refusal or error, 64 usage error.
 """
 import argparse
@@ -24,6 +24,7 @@ REPO = Path(__file__).resolve().parent.parent
 CHECKER = REPO / "scripts" / "check_linefeeds.py"
 OPENCODE_PLUGIN = REPO / "adapters" / "opencode" / "semantic-linefeeds.ts"
 SNIPPET = REPO / "adapters" / "agentsmd" / "SNIPPET.md"
+SKILL_SOURCE = REPO / "skills" / "semantic-linefeeds" / "SKILL.md"
 
 SENTINEL_OPEN = "<!-- semantic-linefeeds -->"
 SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"
@@ -108,6 +109,54 @@ def install_codex(dry):
     return 0
 
 
+# The three exact literal edits ADR-0006 requires:
+# the fenced command line points at this checkout's absolute path instead of a plugin-only env var,
+# the CLAUDE_PLUGIN_ROOT fallback sentence — meaningless outside Claude Code — is removed,
+# and the skill's relative suppression-section link is rewritten to this checkout's absolute README path,
+# so it still resolves once installed under ~/.agents/skills.
+CODEX_SKILL_COMMAND_OLD = (
+    'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/check_linefeeds.py" --file <files>'
+)
+CODEX_SKILL_FALLBACK_LINE = (
+    "(If `CLAUDE_PLUGIN_ROOT` is unset, the script is at "
+    "`../../scripts/check_linefeeds.py` relative to this SKILL.md.)\n\n"
+)
+CODEX_SKILL_README_LINK_OLD = "../../README.md"
+
+
+def codex_skill_dest():
+    return Path.home() / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+
+
+def codex_skill_body():
+    text = SKILL_SOURCE.read_text(encoding="utf-8")
+    text = text.replace(CODEX_SKILL_COMMAND_OLD,
+                         f'python3 "{REPO}/scripts/check_linefeeds.py" --file <files>')
+    text = text.replace(CODEX_SKILL_FALLBACK_LINE, "")
+    return text.replace(CODEX_SKILL_README_LINK_OLD, f"{REPO}/README.md")
+
+
+def install_codex_skill(dry, force):
+    dest = codex_skill_dest()
+    body = codex_skill_body()
+    if dest.exists():
+        try:
+            same = dest.read_text(encoding="utf-8") == body
+        except (OSError, UnicodeDecodeError):
+            same = False
+        if same:
+            print(f"codex skill: already installed ({dest})")
+            return 0
+        if not force:
+            print(f"refusing to overwrite {dest}: its content differs "
+                  "from this repo's copy (hand-patched or older version). "
+                  "re-run with --force to replace it.", file=sys.stderr)
+            return 1
+    atomic_write(dest, body, dry)
+    print(f"codex skill: installed {dest}")
+    return 0
+
+
 def install_opencode(dry, force):
     dest_dir = opencode_plugins_dir()
     rc = 0
@@ -180,7 +229,7 @@ def main():
     ap = argparse.ArgumentParser(prog="install", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--codex", action="store_true",
-                    help="install the Codex CLI hook")
+                    help="install the Codex CLI hook and the native semantic-linefeeds skill")
     ap.add_argument("--opencode", action="store_true",
                     help="install the opencode plugin and checker")
     ap.add_argument("--agentsmd", nargs="?", const="AGENTS.md", default=None,
@@ -189,7 +238,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true",
                     help="print planned actions without writing anything")
     ap.add_argument("--force", action="store_true",
-                    help="overwrite opencode files whose content has diverged")
+                    help="overwrite opencode or codex-skill files whose content has diverged")
     try:
         args = ap.parse_args()
     except SystemExit as e:
@@ -197,6 +246,7 @@ def main():
     codes = []
     if args.codex:
         codes.append(install_codex(args.dry_run))
+        codes.append(install_codex_skill(args.dry_run, args.force))
     if args.opencode:
         codes.append(install_opencode(args.dry_run, args.force))
     if args.agentsmd is not None:
@@ -225,6 +275,17 @@ def status():
         elif any("check_linefeeds.py" in c for c in cmds):
             state = "installed (stale checker path; re-run --codex)"
     print(f"codex: {state} ({hooks_path})")
+
+    skill_dest = codex_skill_dest()
+    skill_state = "not installed"
+    if skill_dest.exists():
+        try:
+            skill_state = ("installed"
+                            if skill_dest.read_text(encoding="utf-8") == codex_skill_body()
+                            else "diverged")
+        except (OSError, UnicodeDecodeError):
+            skill_state = "unreadable"
+    print(f"codex skill: {skill_state} ({skill_dest})")
 
     d = opencode_plugins_dir()
     present = [s.name for s in (OPENCODE_PLUGIN, CHECKER)

@@ -300,6 +300,7 @@ def make_source_repo(tmp_path):
     src.mkdir()
     shutil.copytree(REPO / "scripts", src / "scripts")
     shutil.copytree(REPO / "adapters", src / "adapters")
+    shutil.copytree(REPO / "skills", src / "skills")
     git = ["git", "-C", str(src), "-c", "user.email=t@t", "-c", "user.name=t"]
     subprocess.run(git + ["init", "-q"], check=True)
     subprocess.run(git + ["add", "-A"], check=True)
@@ -324,6 +325,17 @@ def test_install_sh_clones_and_installs_codex(tmp_path):
     assert r.returncode == 0, r.stderr
     assert (home / "scripts" / "install.py").exists()
     assert codex_hooks_path(tmp_path).exists()
+
+
+def test_install_sh_clone_installs_the_native_skill(tmp_path):
+    src = make_source_repo(tmp_path)
+    home = tmp_path / "sembr-home"
+    r = run_install_sh(["--repo", str(src), "--home", str(home), "--codex"],
+                       isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    skill = codex_skill_path(tmp_path)
+    assert skill.exists()
+    assert "CLAUDE_PLUGIN_ROOT" not in skill.read_text(encoding="utf-8")
 
 
 def test_install_sh_rerun_pulls_and_is_idempotent(tmp_path):
@@ -371,11 +383,19 @@ def test_install_sh_quotes_apostrophe_in_pass_through_arg(tmp_path):
     assert target.exists()
 
 
-def test_install_sh_home_flag_without_home_env(tmp_path):
+def test_install_sh_home_flag_selects_the_checkout_with_an_isolated_home(tmp_path):
+    # Proves --home controls where install.sh clones/reuses the checkout,
+    # independent of $HOME --
+    # not that $HOME can safely be absent entirely
+    # (a codex skill install now always resolves Path.home(),
+    # so HOME is set here to an isolated directory the way every other installer test isolates it, rather than removed).
     src = make_source_repo(tmp_path)
     home = tmp_path / "sembr-home"
+    isolated_home = tmp_path / "isolated-home"
+    isolated_home.mkdir()
     env = {
         "PATH": os.environ.get("PATH", ""),
+        "HOME": str(isolated_home),
         "CODEX_HOME": str(tmp_path / "codex"),
         "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
     }
@@ -384,6 +404,36 @@ def test_install_sh_home_flag_without_home_env(tmp_path):
         capture_output=True, text=True, env=env,
     )
     assert r.returncode == 0, r.stderr
+    assert (home / "scripts" / "install.py").exists()
+
+
+def test_install_sh_status_mode_is_safe_with_home_truly_unset(tmp_path):
+    # A true HOME-unset run, with no mode flag at all (status mode), never --codex:
+    # install.sh still clones the checkout into --home --
+    # the one write this proof allows,
+    # and it lands entirely inside tmp_path --
+    # but `scripts/install.py` with no mode flag runs status(),
+    # which only reads (Path.exists()/.read_text()) and prints;
+    # it never calls atomic_write,
+    # so nothing can be written outside tmp_path no matter where the real account's $HOME resolves.
+    # This proves the bootstrapper itself tolerates a missing $HOME,
+    # without ever exercising --codex's skill-install write path --
+    # that path is proven hermetically by the isolated-HOME checkout-selection test above instead,
+    # where the divergence and force-overwrite behavior stay exactly as designed.
+    src = make_source_repo(tmp_path)
+    home = tmp_path / "sembr-home"
+    env = {
+        "PATH": os.environ.get("PATH", ""),
+        "CODEX_HOME": str(tmp_path / "codex"),
+        "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+    }
+    r = subprocess.run(
+        ["sh", str(INSTALL_SH), "--repo", str(src), "--home", str(home)],
+        capture_output=True, text=True, env=env,
+    )
+    assert r.returncode == 0, r.stderr
+    assert "codex skill:" in r.stdout
+    assert (home / "scripts" / "install.py").exists()
 
 
 def test_install_sh_pinned_ref_rerun(tmp_path):
@@ -406,6 +456,7 @@ def test_install_sh_self_checkout_honors_ref(tmp_path):
     src.mkdir()
     shutil.copytree(REPO / "scripts", src / "scripts")
     shutil.copytree(REPO / "adapters", src / "adapters")
+    shutil.copytree(REPO / "skills", src / "skills")
     shutil.copy(INSTALL_SH, src / "install.sh")
     git = ["git", "-C", str(src), "-c", "user.email=t@t", "-c", "user.name=t"]
     subprocess.run(git + ["init", "-q"], check=True)
@@ -416,6 +467,9 @@ def test_install_sh_self_checkout_honors_ref(tmp_path):
     marker = src / "scripts" / "check_linefeeds.py"
     with marker.open("a", encoding="utf-8") as f:
         f.write("\n# MARKER_AFTER_V1\n")
+    skill_marker = src / "skills" / "semantic-linefeeds" / "SKILL.md"
+    with skill_marker.open("a", encoding="utf-8") as f:
+        f.write("\nSKILL_MARKER_AFTER_V1\n")
     subprocess.run(git + ["add", "-A"], check=True)
     subprocess.run(git + ["commit", "-qm", "second commit"], check=True)
 
@@ -430,3 +484,82 @@ def test_install_sh_self_checkout_honors_ref(tmp_path):
     installed = (elsewhere / "scripts" / "check_linefeeds.py").read_text(
         encoding="utf-8")
     assert "MARKER_AFTER_V1" not in installed
+    installed_skill = codex_skill_path(tmp_path).read_text(encoding="utf-8")
+    assert "SKILL_MARKER_AFTER_V1" not in installed_skill
+
+
+def codex_skill_path(tmp_path):
+    return tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+
+
+def test_codex_install_writes_the_native_skill(tmp_path):
+    r = run_install(["--codex"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    skill = codex_skill_path(tmp_path)
+    assert skill.exists()
+    text = skill.read_text(encoding="utf-8")
+    assert f'python3 "{REPO}/scripts/check_linefeeds.py" --file <files>' in text
+    assert "CLAUDE_PLUGIN_ROOT" not in text
+
+
+def test_codex_skill_rerun_is_a_noop(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    before = codex_skill_path(tmp_path).read_text(encoding="utf-8")
+    r = run_install(["--codex"], env)
+    assert r.returncode == 0
+    assert "codex skill: already installed" in r.stdout
+    assert codex_skill_path(tmp_path).read_text(encoding="utf-8") == before
+
+
+def test_codex_skill_hand_edit_requires_force(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    skill = codex_skill_path(tmp_path)
+    skill.write_text("# hand-patched\n", encoding="utf-8")
+    r = run_install(["--codex"], env)
+    assert r.returncode == 1
+    assert "--force" in r.stderr
+    assert skill.read_text(encoding="utf-8") == "# hand-patched\n"
+
+
+def test_codex_skill_force_overwrites_and_backs_up(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    skill = codex_skill_path(tmp_path)
+    skill.write_text("# hand-patched\n", encoding="utf-8")
+    r = run_install(["--codex", "--force"], env)
+    assert r.returncode == 0
+    assert (f'python3 "{REPO}/scripts/check_linefeeds.py" --file <files>'
+            in skill.read_text(encoding="utf-8"))
+    backup = skill.with_name(skill.name + ".bak")
+    assert backup.read_text(encoding="utf-8") == "# hand-patched\n"
+
+
+def test_codex_skill_dry_run_writes_nothing(tmp_path):
+    r = run_install(["--codex", "--dry-run"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    assert not codex_skill_path(tmp_path).exists()
+
+
+def test_status_reports_codex_skill_states(tmp_path):
+    env = isolated_env(tmp_path)
+    r = run_install([], env, cwd=tmp_path)
+    assert "codex skill: not installed" in r.stdout
+    run_install(["--codex"], env)
+    r = run_install([], env, cwd=tmp_path)
+    assert "codex skill: installed" in r.stdout
+    codex_skill_path(tmp_path).write_text("# hand-patched\n", encoding="utf-8")
+    r = run_install([], env, cwd=tmp_path)
+    assert "codex skill: diverged" in r.stdout
+    codex_skill_path(tmp_path).write_bytes(b"\xff\xfe\x00")
+    r = run_install([], env, cwd=tmp_path)
+    assert "codex skill: unreadable" in r.stdout
+
+
+def test_help_mentions_the_skill_and_the_widened_force_scope(tmp_path):
+    r = run_install(["--help"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    normalized = " ".join(r.stdout.split())
+    assert "native semantic-linefeeds skill" in normalized
+    assert "codex-skill" in normalized
