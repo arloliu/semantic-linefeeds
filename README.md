@@ -1,8 +1,9 @@
 # semantic-linefeeds
 
-> **AI coding agents know where a sentence ends — they just don't wrap lines there.**
-> Trained on column-wrapped text, they default to breaking by character count instead of by meaning,
-> and every diff suffers for it.
+> **A diff-aware prose guardrail for AI coding agents and source repositories.**
+> Agents produce non-semantic line breaks,
+> instructions alone don't reliably prevent it,
+> and a deterministic check at the tool boundary catches it.
 
 **The Problem:**
 
@@ -10,10 +11,9 @@ When comments and docs are wrapped to a fixed column width,
 changing one word forces the whole paragraph to reflow,
 and the diff for that one-word edit touches every line below it.
 
-Telling a coding agent **"one sentence per line"** in your instructions doesn't fix this either —
-the agent's training data is column-wrapped text,
-newline characters carry little weight to a language model,
-and it can't reliably count characters while it writes.
+Telling a coding agent **"one sentence per line"** in your instructions doesn't fix this either:
+instructions alone do not reliably prevent non-semantic breaks,
+however prominently the rule is stated.
 
 **What This Kit Does:**
 
@@ -62,13 +62,10 @@ and blame on any sentence finds the commit that wrote it.
 
 ## Why Telling an Agent Isn't Enough
 
-Writing the rule into AGENTS.md, CLAUDE.md, or any other instruction file doesn't hold up at generation time.
+Writing the rule into AGENTS.md, CLAUDE.md, or any other instruction file doesn't hold up at generation time:
+agents keep producing non-semantic line breaks with the rule in plain sight.
 
-The model's training data is overwhelmingly column-wrapped,
-newlines are low-salience to a language model,
-and it can't count characters as it generates text.
-
-This kit backs the rule with three layers instead of trusting the model to remember it:
+So this kit backs the rule with three layers instead of trusting the model to remember it:
 
 1. **Hook** —
    a post-edit hook runs a deterministic detector over the text just written to any supported file.
