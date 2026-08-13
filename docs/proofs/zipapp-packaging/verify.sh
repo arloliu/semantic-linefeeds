@@ -5,8 +5,11 @@
 # the portable core and a repository CLI can ship as one stdlib-only artifact,
 # and the core is not forked to do it.
 #
-# The core is copied from scripts/ at build time and checked for byte identity.
-# It is deliberately NOT committed here, because a second copy would be a fork.
+# The archive is built by scripts/install.py's own build_pyz,
+# the same function the installer uses for `semlf --cli`.
+# Nothing here is copied or forked into this directory:
+# a second recipe would drift from the one that ships,
+# which is exactly the failure this proof exists to catch.
 set -eu
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -19,14 +22,17 @@ ok() { printf '  ok    %s\n' "$1"; }
 die() { printf '  FAIL  %s\n' "$1" >&2; exit 1; }
 
 printf 'building\n'
-cp -R "$here/src" "$work/src"
-cp "$core" "$work/src/check_linefeeds.py"
-
-python3 -m zipapp "$work/src" -o "$work/semlf.pyz" -p "/usr/bin/env python3" -c
-chmod +x "$work/semlf.pyz"
-# The archive embeds modification times, so its own digest is not reproducible
-# across builds.  The embedded core's digest is, and that is the identity that
-# matters: it proves the artifact carries this repository's core and not a fork.
+python3 - "$repo" "$work/semlf.pyz" <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location(
+    "install", sys.argv[1] + "/scripts/install.py")
+install = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(install)
+install.build_pyz(sys.argv[2])
+PY
+# The archive embeds modification times, so its own digest is not reproducible across builds.
+# The embedded core's digest is, and that is the identity that matters:
+# it proves the artifact carries this repository's core and not a fork.
 printf '  core sha256:     %s\n' \
   "$(python3 -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$core")"
 printf '  artifact bytes:  %s\n' "$(wc -c < "$work/semlf.pyz")"
@@ -42,6 +48,20 @@ print("  ok    embedded core byte-identical to scripts/check_linefeeds.py")
 print("        sha256 %s" % hashlib.sha256(source).hexdigest())
 PY2
 
+# The member contract is pinned to the constant the installer publishes with,
+# so a member added to PYZ_REQUIRED_MEMBERS without shipping it is caught here.
+python3 - "$repo" "$work/semlf.pyz" <<'PY3'
+import importlib.util, sys, zipfile
+spec = importlib.util.spec_from_file_location(
+    "install", sys.argv[1] + "/scripts/install.py")
+install = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(install)
+names = set(zipfile.ZipFile(sys.argv[2]).namelist())
+missing = install.PYZ_REQUIRED_MEMBERS - names
+assert not missing, "missing members: %s" % sorted(missing)
+print("  ok    archive carries every required member")
+PY3
+
 printf 'verifying\n'
 
 # 1. runs isolated, from an empty directory, with no site-packages
@@ -54,7 +74,7 @@ ok "runs under python3 -I -S from an empty directory (exit 1)"
 # 2. hook mode through the same artifact
 payload='{"tool_input":{"file_path":"/x/a.md","new_string":"One sentence. Two sentence.\\n"}}'
 rc=0
-printf '%s' "$payload" | python3 -I -S "$work/semlf.pyz" hook claude \
+printf '%s' "$payload" | python3 -I -S "$work/semlf.pyz" --hook claude \
   >"$work/arc.out" 2>"$work/arc.err" || rc=$?
 [ "$rc" -eq 2 ] || die "hook: expected exit 2 from archive, got $rc"
 rc2=0
@@ -76,9 +96,9 @@ git commit -qm init
 printf 'Staged sentence one. Staged sentence two.\n' > d.md
 git add d.md
 printf 'Worktree is clean again.\n' > d.md
-python3 -I -S "$work/semlf.pyz" check --staged 2>&1 | grep -q 'Staged sentence one' \
+python3 -I -S "$work/semlf.pyz" --staged 2>&1 | grep -q 'Staged sentence one' \
   || die "--staged did not read the index blob"
-python3 -I -S "$work/semlf.pyz" check --staged 2>&1 | grep -q 'Worktree is clean' \
+python3 -I -S "$work/semlf.pyz" --staged 2>&1 | grep -q 'Worktree is clean' \
   && die "--staged leaked worktree content" || :
 ok "--staged reports the staged blob and ignores a clean worktree"
 
