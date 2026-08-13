@@ -34,7 +34,9 @@ SKILL_SOURCE = REPO / "skills" / "semantic-linefeeds" / "SKILL.md"
 CLI_PKG = REPO / "cli" / "semlf"
 PYZ_INTERPRETER = "/usr/bin/env python3"
 MAIN_STUB = "from semlf.cli import main\nraise SystemExit(main())\n"
-PYZ_REQUIRED_MEMBERS = {"__main__.py", "check_linefeeds.py", "semlf/__init__.py", "semlf/cli.py"}
+PYZ_REQUIRED_MEMBERS = {"__main__.py", "check_linefeeds.py",
+                        "semlf/__init__.py", "semlf/cli.py",
+                        "semlf/providers.py"}
 
 SENTINEL_OPEN = "<!-- semantic-linefeeds -->"
 SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"

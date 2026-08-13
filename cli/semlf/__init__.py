@@ -1,6 +1,6 @@
 """semlf — the repository CLI layer (ADR-0004).
 
-Owns subcommand routing; git snapshot selection arrives in v0.6b.
+Owns subcommand routing and git snapshot selection.
 It never re-implements analysis:
 every check delegates to the portable core,
 and the version is the core's version.
