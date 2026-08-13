@@ -5,19 +5,25 @@ Modes:
   --codex           merge the PostToolUse hook into $CODEX_HOME/hooks.json (default ~/.codex/hooks.json), append-never-overwrite; also installs the native semantic-linefeeds skill under ~/.agents/skills
   --opencode        copy the plugin and the checker side by side into $XDG_CONFIG_HOME/opencode/plugins (default ~/.config/...)
   --agentsmd [PATH] manage a sentinel-marked snippet block in AGENTS.md (default ./AGENTS.md)
+  --cli             build the semlf zipapp and install it as ~/.local/bin/semlf
   (no mode)         report install status and Claude Code guidance
 
 Claude Code is installed through its own plugin marketplace and is never touched by this script.
 Options: --dry-run prints planned actions without writing.
---force allows overwriting an opencode or codex-skill file whose content has diverged.
+--force allows overwriting opencode, codex-skill, or cli files whose content has diverged.
 Exit codes: 0 success or no-op, 1 refusal or error, 64 usage error.
 """
 import argparse
+import hashlib
 import json
 import os
+import re
 import shutil
+import stat
 import sys
 import tempfile
+import zipapp
+import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -25,6 +31,10 @@ CHECKER = REPO / "scripts" / "check_linefeeds.py"
 OPENCODE_PLUGIN = REPO / "adapters" / "opencode" / "semantic-linefeeds.ts"
 SNIPPET = REPO / "adapters" / "agentsmd" / "SNIPPET.md"
 SKILL_SOURCE = REPO / "skills" / "semantic-linefeeds" / "SKILL.md"
+CLI_PKG = REPO / "cli" / "semlf"
+PYZ_INTERPRETER = "/usr/bin/env python3"
+MAIN_STUB = "from semlf.cli import main\nraise SystemExit(main())\n"
+PYZ_REQUIRED_MEMBERS = {"__main__.py", "check_linefeeds.py", "semlf/__init__.py", "semlf/cli.py"}
 
 SENTINEL_OPEN = "<!-- semantic-linefeeds -->"
 SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"
@@ -162,6 +172,176 @@ def codex_skill_dest():
     return Path(home) / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
 
 
+def build_pyz(dest):
+    """Build and publish the semlf zipapp at dest, atomically and executable.
+
+    The core is copied from scripts/ at build time,
+    same rule as the packaging proof: a committed second copy would be a fork.
+    The archive is staged in dest's own directory and published by os.replace,
+    with the execute bit set before publication,
+    so no observer ever sees a partial or non-runnable file at dest.
+    """
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as td:
+        stage = Path(td) / "stage"
+        (stage / "semlf").mkdir(parents=True)
+        shutil.copy2(CHECKER, stage / CHECKER.name)
+        for src in sorted(CLI_PKG.glob("*.py")):
+            shutil.copy2(src, stage / "semlf" / src.name)
+        (stage / "__main__.py").write_text(MAIN_STUB, encoding="utf-8")
+        fd, tmp = tempfile.mkstemp(dir=str(dest.parent), prefix=dest.name)
+        os.close(fd)
+        try:
+            zipapp.create_archive(stage, tmp, interpreter=PYZ_INTERPRETER)
+            os.chmod(tmp, 0o755)
+            os.replace(tmp, dest)
+        except BaseException:
+            os.unlink(tmp)
+            raise
+
+
+def pyz_state(path):
+    """The installed-equality identity of a pyz, or None when unreadable.
+
+    (member digest, owner-execute bit, interpreter line):
+    member contents because that is what runs,
+    the owner-execute bit and the shebang because without them nothing runs at all.
+    The owner bit, not effective access,
+    so state reflects what was published rather than who is asking.
+    zipapp embeds member timestamps, so they are deliberately excluded.
+    """
+    path = Path(path)
+    try:
+        first_line = path.read_bytes().split(b"\n", 1)[0]
+        owner_exec = bool(path.stat().st_mode & stat.S_IXUSR)
+        digest = hashlib.sha256()
+        with zipfile.ZipFile(path) as archive:
+            for name in sorted(archive.namelist()):
+                digest.update(name.encode("utf-8"))
+                digest.update(archive.read(name))
+    except (OSError, zipfile.BadZipFile):
+        return None
+    return (digest.hexdigest(), owner_exec, first_line)
+
+
+def pyz_runnable(path):
+    """Whether the archive at path can actually run as the semlf command.
+
+    The one validity seam install equality's neighbor status() reuses,
+    so "installed" and "current" can never drift apart:
+    not a symlink (install_cli refuses to manage one, so status must not bless one),
+    readable, executable, the expected interpreter, and every required member.
+    """
+    path = Path(path)
+    if path.is_symlink():
+        return False
+    state = pyz_state(path)
+    if state is None or not state[1]:
+        return False
+    if state[2] != b"#!" + PYZ_INTERPRETER.encode("utf-8"):
+        return False
+    try:
+        with zipfile.ZipFile(path) as archive:
+            names = set(archive.namelist())
+    except (OSError, zipfile.BadZipFile):
+        return False
+    return PYZ_REQUIRED_MEMBERS <= names
+
+
+def cli_bin_dest():
+    """~/.local/bin/semlf, or None when no home resolves.
+
+    Same guard as codex_skill_dest.
+    """
+    home = os.path.expanduser("~")
+    if home == "~":
+        return None
+    return Path(home) / ".local" / "bin" / "semlf"
+
+
+def _path_note(dest):
+    if str(dest.parent) not in os.environ.get("PATH", "").split(os.pathsep):
+        print(f"note: {dest.parent} is not on PATH; add it in your shell profile.")
+
+
+def _publish_new(staged, dest):
+    """Exclusively publish staged at dest; False when dest already appeared.
+
+    os.link fails with FileExistsError when dest exists,
+    so a file that appeared after classification is never replaced unclassified.
+    The staged file is always consumed.
+    """
+    try:
+        os.link(staged, dest)
+    except FileExistsError:
+        return False
+    finally:
+        os.unlink(staged)
+    return True
+
+
+def install_cli(dry, force):
+    """Install the executable pyz as the semlf command.
+
+    Symlinks and non-regular destinations are refused outright;
+    a fresh install publishes exclusively
+    (a dest appearing after classification is refused, not replaced);
+    only a classified, backed-up divergence is replaced under --force.
+    """
+    dest = cli_bin_dest()
+    if dest is None:
+        print("refusing to install the cli: cannot determine a "
+              "home directory to install it under.", file=sys.stderr)
+        return 1
+    if dest.is_symlink():
+        print(f"refusing to touch {dest}: it is a symlink.", file=sys.stderr)
+        return 1
+    if dest.exists() and not dest.is_file():
+        print(f"refusing to touch {dest}: it exists and is not a regular file.",
+              file=sys.stderr)
+        return 1
+    with tempfile.TemporaryDirectory() as td:
+        fresh = Path(td) / "semlf"
+        build_pyz(fresh)
+        divergent = False
+        if dest.is_file():
+            if pyz_state(dest) == pyz_state(fresh):
+                print(f"cli: already installed ({dest})")
+                _path_note(dest)
+                return 0
+            if not force:
+                print(f"refusing to overwrite {dest}: its content differs "
+                      "from this build (hand-patched or older version). "
+                      "re-run with --force to replace it.", file=sys.stderr)
+                return 1
+            divergent = True
+    if dry:
+        print(f"would back up and replace {dest}" if divergent
+              else f"would install {dest}")
+        return 0
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, staged_name = tempfile.mkstemp(dir=str(dest.parent), prefix=dest.name)
+    os.close(fd)
+    staged = Path(staged_name)
+    try:
+        build_pyz(staged)
+        if divergent:
+            shutil.copy2(dest, dest.with_name(dest.name + ".bak"))
+            os.replace(staged, dest)
+        elif not _publish_new(staged, dest):
+            print(f"refusing to overwrite {dest}: it appeared after "
+                  "classification; re-run so it can be classified.", file=sys.stderr)
+            return 1
+    except BaseException:
+        if staged.exists():
+            os.unlink(staged)
+        raise
+    print(f"cli: installed {dest}")
+    _path_note(dest)
+    return 0
+
+
 def codex_skill_body():
     text = SKILL_SOURCE.read_text(encoding="utf-8")
     text = text.replace(CODEX_SKILL_COMMAND_OLD,
@@ -278,10 +458,12 @@ def main():
     ap.add_argument("--agentsmd", nargs="?", const="AGENTS.md", default=None,
                     metavar="PATH",
                     help="write the snippet block into PATH (default ./AGENTS.md)")
+    ap.add_argument("--cli", action="store_true",
+                    help="build the semlf zipapp and install it as ~/.local/bin/semlf")
     ap.add_argument("--dry-run", action="store_true",
                     help="print planned actions without writing anything")
     ap.add_argument("--force", action="store_true",
-                    help="overwrite opencode or codex-skill files whose content has diverged")
+                    help="overwrite opencode, codex-skill, or cli files whose content has diverged")
     try:
         args = ap.parse_args()
     except SystemExit as e:
@@ -294,12 +476,33 @@ def main():
         codes.append(install_opencode(args.dry_run, args.force))
     if args.agentsmd is not None:
         codes.append(install_agentsmd(Path(args.agentsmd), args.dry_run))
+    if args.cli:
+        codes.append(install_cli(args.dry_run, args.force))
     if not codes:
         codes.append(status())
     sys.exit(max(codes))
 
 
 def status():
+    cli_dest = cli_bin_dest()
+    if cli_dest is None:
+        print("cli: no home to check")
+    elif not cli_dest.exists() and not cli_dest.is_symlink():
+        print(f"cli: not installed ({cli_dest})")
+    elif not pyz_runnable(cli_dest):
+        # Same validity seam as install equality: a foreign shebang,
+        # a stripped execute bit, or a missing member is never "installed".
+        print(f"cli: present but not runnable ({cli_dest})")
+    else:
+        try:
+            with zipfile.ZipFile(cli_dest) as archive:
+                text = archive.read("check_linefeeds.py").decode("utf-8")
+            match = re.search(r'^__version__ = "([^"]+)"$', text, re.MULTILINE)
+            version = match.group(1) if match else "unknown"
+        except (OSError, KeyError, zipfile.BadZipFile, UnicodeDecodeError):
+            version = "unknown"
+        print(f"cli: installed (v{version}) ({cli_dest})")
+
     home = codex_home()
     if home is None:
         print("codex: no home to check")

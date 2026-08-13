@@ -14,7 +14,7 @@
 #
 # --repo/--home/--ref (or the SEMLF_REPO/SEMLF_HOME/SEMLF_REF env vars)
 # are consumed here;
-# everything else — --codex, --opencode, --agentsmd, --dry-run, --force,
+# everything else — --codex, --opencode, --agentsmd, --cli, --dry-run, --force,
 # or no arguments at all — passes straight through to install.py.
 set -eu
 

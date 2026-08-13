@@ -118,7 +118,22 @@ def test_usage_error_exits_64(tmp_path):
 
 
 def test_help_exits_zero(tmp_path):
-    assert run_install(["--help"], isolated_env(tmp_path)).returncode == 0
+    r = run_install(["--help"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    assert "--cli" in r.stdout
+
+
+def test_cli_install_end_to_end(tmp_path):
+    env = isolated_env(tmp_path)
+    r = run_install(["--cli"], env)
+    assert r.returncode == 0
+    dest = tmp_path / "home" / ".local" / "bin" / "semlf"
+    assert dest.exists() and os.access(dest, os.X_OK)
+    bad = tmp_path / "bad.md"
+    bad.write_text("One sentence. Another fused here.\n", encoding="utf-8")
+    check = subprocess.run([str(dest), "--file", str(bad)],
+                           capture_output=True, text=True)
+    assert check.returncode == 1
 
 
 def opencode_dir(tmp_path):
@@ -626,6 +641,7 @@ def test_status_reports_no_home_on_every_path_without_env_overrides(monkeypatch,
     assert "codex: no home to check" in out
     assert "opencode: no home to check" in out
     assert "codex skill: no home to check" in out
+    assert "cli: no home to check" in out
 
 
 def test_install_codex_refuses_without_a_resolvable_home(monkeypatch, capsys, tmp_path):
@@ -717,3 +733,281 @@ def test_the_installed_skill_is_visible_to_the_codex_hint(tmp_path, monkeypatch)
     assert hook.returncode == 0
     context = json.loads(hook.stdout)["hookSpecificOutput"]["additionalContext"]
     assert "load the semantic-linefeeds skill" in context
+
+
+def core_version():
+    from check_linefeeds import __version__
+    return __version__
+
+
+def test_build_pyz_produces_a_directly_executable_artifact(tmp_path):
+    pyz = tmp_path / "semlf"
+    install_module.build_pyz(pyz)
+    assert pyz.exists() and os.access(pyz, os.X_OK)
+    bad = tmp_path / "bad.md"
+    bad.write_text("One sentence. Another fused on the same line.\n", encoding="utf-8")
+    # Invoke the artifact itself — not through sys.executable —
+    # so the shebang and the execute bit are what this test proves.
+    r = subprocess.run([str(pyz), "--file", str(bad)],
+                       capture_output=True, text=True, cwd=str(tmp_path))
+    assert r.returncode == 1
+    assert "fused" in r.stdout
+
+
+def test_pyz_version_matches_the_core(tmp_path):
+    pyz = tmp_path / "semlf"
+    install_module.build_pyz(pyz)
+    r = subprocess.run([str(pyz), "--version"], capture_output=True, text=True)
+    assert r.returncode == 0
+    assert r.stdout.strip() == f"semlf {core_version()}"
+
+
+def test_pyz_state_ignores_timestamps(tmp_path):
+    a, b = tmp_path / "a", tmp_path / "b"
+    install_module.build_pyz(a)
+    install_module.build_pyz(b)
+    assert install_module.pyz_state(a) == install_module.pyz_state(b)
+
+
+def test_pyz_state_ignores_timestamps_even_when_forced_to_differ(tmp_path):
+    """Mutation-sensitive proof that pyz_state truly excludes member timestamps.
+
+    Two consecutive builds can coincidentally share ZIP metadata.
+    That comparison alone would still pass a mutant that hashes the whole archive including timestamps.
+    This test forces every member's date_time to a different fixed value,
+    proves the raw bytes changed, then proves pyz_state did not.
+    """
+    import zipfile as zf
+
+    fresh = tmp_path / "fresh"
+    install_module.build_pyz(fresh)
+    original_bytes = fresh.read_bytes()
+
+    retimed = tmp_path / "retimed"
+    with zf.ZipFile(fresh) as src, zf.ZipFile(retimed, "w") as out:
+        for name in src.namelist():
+            info = zf.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
+            info.compress_type = src.getinfo(name).compress_type
+            out.writestr(info, src.read(name))
+    content = retimed.read_bytes()
+    retimed.write_bytes(b"#!" + install_module.PYZ_INTERPRETER.encode() + b"\n" + content)
+    retimed.chmod(0o755)
+
+    assert retimed.read_bytes() != original_bytes
+    assert install_module.pyz_state(retimed) == install_module.pyz_state(fresh)
+
+
+def test_pyz_state_detects_a_stripped_execute_bit(tmp_path):
+    a, b = tmp_path / "a", tmp_path / "b"
+    install_module.build_pyz(a)
+    install_module.build_pyz(b)
+    b.chmod(0o644)
+    assert install_module.pyz_state(a) != install_module.pyz_state(b)
+
+
+def test_pyz_state_measures_owner_execute_not_effective_access(tmp_path):
+    """pyz_state records the owner-execute mode bit, not os.access effective reach.
+
+    Group and other execute staying set must not paper over an owner-execute bit that was actually cleared.
+    """
+    a, b = tmp_path / "a", tmp_path / "b"
+    install_module.build_pyz(a)
+    install_module.build_pyz(b)
+    b.chmod(0o655)  # owner rw-, group/other execute still set
+    assert install_module.pyz_state(a) != install_module.pyz_state(b)
+    assert not install_module.pyz_runnable(b)
+
+
+def test_pyz_state_owner_bit_pinned_against_os_access_mutant(tmp_path, monkeypatch):
+    """Pins pyz_state to the mode bit even when os.access would say otherwise.
+
+    A non-root owner already gets a false os.access(path, os.X_OK) for 0o655,
+    the same answer stat.S_IXUSR gives,
+    so the test above alone would pass under either implementation.
+    Forcing os.access to always return True makes the old os.access-based implementation blind to the cleared owner bit —
+    if pyz_state ever regresses to consulting os.access,
+    the two states below collapse to equal and this assertion catches it.
+    """
+    monkeypatch.setattr(install_module.os, "access", lambda *a, **k: True)
+    a, b = tmp_path / "a", tmp_path / "b"
+    install_module.build_pyz(a)
+    install_module.build_pyz(b)
+    b.chmod(0o655)  # owner rw-, group/other execute still set
+    assert install_module.pyz_state(a) != install_module.pyz_state(b)
+    assert not install_module.pyz_runnable(b)
+
+
+def test_pyz_state_detects_a_changed_interpreter(tmp_path):
+    a, b = tmp_path / "a", tmp_path / "b"
+    install_module.build_pyz(a)
+    install_module.build_pyz(b)
+    body = b.read_bytes().split(b"\n", 1)[1]
+    b.write_bytes(b"#!/usr/bin/env python2\n" + body)
+    b.chmod(0o755)
+    assert install_module.pyz_state(a) != install_module.pyz_state(b)
+
+
+def test_pyz_state_is_none_for_a_non_zip_file(tmp_path):
+    junk = tmp_path / "junk"
+    junk.write_text("not a zip", encoding="utf-8")
+    assert install_module.pyz_state(junk) is None
+    assert install_module.pyz_state(tmp_path / "missing") is None
+
+
+def test_pyz_runnable_accepts_a_fresh_build(tmp_path):
+    pyz = tmp_path / "semlf"
+    install_module.build_pyz(pyz)
+    assert install_module.pyz_runnable(pyz)
+
+
+def test_pyz_runnable_rejects_a_symlink_to_a_valid_build(tmp_path):
+    """install_cli refuses symlink destinations, so status must never bless one."""
+    real = tmp_path / "real"
+    install_module.build_pyz(real)
+    link = tmp_path / "link"
+    link.symlink_to(real)
+    assert install_module.pyz_runnable(real)
+    assert not install_module.pyz_runnable(link)
+
+
+def test_pyz_runnable_rejects_each_broken_property(tmp_path):
+    import zipfile as zf
+    fresh = tmp_path / "fresh"
+    install_module.build_pyz(fresh)
+    # Stripped execute bit.
+    a = tmp_path / "a"
+    shutil.copy2(fresh, a)
+    a.chmod(0o644)
+    assert not install_module.pyz_runnable(a)
+    # Foreign interpreter, members untouched.
+    b = tmp_path / "b"
+    body = fresh.read_bytes().split(b"\n", 1)[1]
+    b.write_bytes(b"#!/usr/bin/env python2\n" + body)
+    b.chmod(0o755)
+    assert not install_module.pyz_runnable(b)
+    # An executable zip missing a required member.
+    for member in sorted(install_module.PYZ_REQUIRED_MEMBERS):
+        c = tmp_path / ("missing-" + member.replace("/", "_"))
+        with zf.ZipFile(fresh) as src, zf.ZipFile(c, "w") as out:
+            for name in src.namelist():
+                if name != member:
+                    out.writestr(name, src.read(name))
+        content = c.read_bytes()
+        c.write_bytes(b"#!" + install_module.PYZ_INTERPRETER.encode() + b"\n" + content)
+        c.chmod(0o755)
+        assert not install_module.pyz_runnable(c)
+
+
+def test_install_cli_places_semlf_on_local_bin(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    rc = install_module.install_cli(False, False)
+    out = capsys.readouterr().out
+    dest = tmp_path / ".local" / "bin" / "semlf"
+    assert rc == 0 and dest.exists() and os.access(dest, os.X_OK)
+    assert "installed" in out
+
+
+def test_install_cli_is_idempotent_and_still_notes_path(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
+    monkeypatch.setenv("PATH", str(empty_bin))
+    assert install_module.install_cli(False, False) == 0
+    capsys.readouterr()
+    assert install_module.install_cli(False, False) == 0
+    out = capsys.readouterr().out
+    assert "already installed" in out
+    # The PATH gap persists across a no-op rerun, so the note must too.
+    assert "not on PATH" in out
+
+
+def test_install_cli_refuses_divergent_file_without_force(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    dest = tmp_path / ".local" / "bin" / "semlf"
+    dest.parent.mkdir(parents=True)
+    dest.write_text("something else", encoding="utf-8")
+    assert install_module.install_cli(False, False) == 1
+    assert "refusing" in capsys.readouterr().err
+
+
+def test_install_cli_force_backs_up_the_old_file(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    dest = tmp_path / ".local" / "bin" / "semlf"
+    dest.parent.mkdir(parents=True)
+    dest.write_text("something else", encoding="utf-8")
+    assert install_module.install_cli(False, True) == 0
+    backup = dest.with_name("semlf.bak")
+    assert backup.read_text(encoding="utf-8") == "something else"
+    assert os.access(dest, os.X_OK)
+
+
+def test_install_cli_refuses_a_directory_destination(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    dest = tmp_path / ".local" / "bin" / "semlf"
+    dest.mkdir(parents=True)
+    assert install_module.install_cli(False, True) == 1
+    assert "refusing" in capsys.readouterr().err
+    assert dest.is_dir()
+
+
+def test_install_cli_refuses_symlink_destinations_even_with_force(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    dest = tmp_path / ".local" / "bin" / "semlf"
+    dest.parent.mkdir(parents=True)
+    real = tmp_path / "real-file"
+    real.write_text("regular", encoding="utf-8")
+    dest.symlink_to(real)  # a symlink TO a regular file — is_file() would say yes
+    assert install_module.install_cli(False, True) == 1
+    assert "symlink" in capsys.readouterr().err
+    assert real.read_text(encoding="utf-8") == "regular"
+    dest.unlink()
+    dest.symlink_to(tmp_path / "nowhere")  # dangling — exists() would say no
+    assert install_module.install_cli(False, True) == 1
+    assert "symlink" in capsys.readouterr().err
+
+
+def test_publish_new_refuses_a_destination_that_appeared(tmp_path):
+    """The exclusive primitive itself: a dest appearing after classification is refused."""
+    staged = tmp_path / "staged"
+    install_module.build_pyz(staged)
+    dest = tmp_path / "dest"
+    dest.write_text("appeared meanwhile", encoding="utf-8")
+    assert install_module._publish_new(staged, dest) is False
+    assert dest.read_text(encoding="utf-8") == "appeared meanwhile"
+
+
+def test_install_cli_dry_run_writes_nothing(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    assert install_module.install_cli(True, False) == 0
+    assert "would install" in capsys.readouterr().out
+    assert not (tmp_path / ".local").exists()
+
+
+def test_cli_bin_dest_is_none_when_home_is_unresolvable(monkeypatch):
+    monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
+    assert install_module.cli_bin_dest() is None
+
+
+def test_install_cli_refuses_without_a_resolvable_home(monkeypatch, capsys, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
+    rc = install_module.install_cli(False, False)
+    assert rc == 1
+    assert "home" in capsys.readouterr().err.lower()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_status_reports_the_cli_states(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.chdir(tmp_path)
+    install_module.status()
+    assert "cli: not installed" in capsys.readouterr().out
+    install_module.install_cli(False, False)
+    capsys.readouterr()
+    install_module.status()
+    assert "cli: installed" in capsys.readouterr().out
+    (tmp_path / ".local" / "bin" / "semlf").chmod(0o644)
+    install_module.status()
+    assert "not runnable" in capsys.readouterr().out
