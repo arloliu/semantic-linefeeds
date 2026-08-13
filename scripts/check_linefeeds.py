@@ -1797,8 +1797,8 @@ def run_files(paths, as_json=False):
     return 1 if (violations or read_errors) else 0
 
 
-def main():
-    ap = argparse.ArgumentParser(prog="check_linefeeds", description=__doc__)
+def main(prog=None):
+    ap = argparse.ArgumentParser(prog=prog or "check_linefeeds", description=__doc__)
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--hook", nargs="?", const="claude",
                       choices=["claude", "codex"], default=None,
@@ -1815,7 +1815,7 @@ def main():
                            "fused/wrap violation (long findings are advisory only)")
     ap.add_argument("paths", nargs="*", metavar="PATH", help=argparse.SUPPRESS)
     ap.add_argument("--version", action="version",
-                    version=f"check_linefeeds {__version__}",
+                    version=f"%(prog)s {__version__}",
                     help="print the version and exit")
     ap.add_argument("--json", action="store_true",
                     help="with --file, emit findings as JSON instead of text")
@@ -1828,13 +1828,13 @@ def main():
         sys.exit(0 if e.code == 0 else 64)
     if args.long_limit is not None:
         if args.long_limit < 0:
-            print("check_linefeeds: --long-limit must be >= 0", file=sys.stderr)
+            print(f"{ap.prog}: --long-limit must be >= 0", file=sys.stderr)
             sys.exit(64)
         global CLI_LONG_LIMIT
         CLI_LONG_LIMIT = args.long_limit
     files = None if args.file is None else args.file + args.paths
     if args.json and files is None:
-        print("check_linefeeds: --json requires --file", file=sys.stderr)
+        print(f"{ap.prog}: --json requires --file", file=sys.stderr)
         sys.exit(64)
     if args.hook == "claude":
         sys.exit(run_hook_claude())
