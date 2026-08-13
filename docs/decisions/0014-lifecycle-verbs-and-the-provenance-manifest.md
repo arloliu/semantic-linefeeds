@@ -63,8 +63,15 @@ Uninstall is preflight-then-apply
 and removes only what it can identify —
 the current rendering, or a manifest-managed one —
 requiring `--force` otherwise.
+For the cli artifact specifically,
+a manifest classification of `edited` refuses removal even when a fresh build's pyz identity matches the installed bytes:
+bytes appended past the zip archive's `EOCD` change nothing a per-member digest can see,
+but they do change the manifest's digest of the full raw file,
+so identity substitutes for a missing record and never overrides one that already says `edited`.
 It never deletes shared files (`hooks.json`, the AGENTS.md target),
 and it never touches `semlf.bak`.
+A `hooks.json` too strangely shaped to locate `PostToolUse` in refuses the same way
+`install_codex`'s own guard does, rather than silently doing nothing.
 Skill removal for every installed adapter is covered here,
 closing the deferral [ADR-0006](0006-judgment-layer-for-every-agent.md) recorded.
 
@@ -84,7 +91,7 @@ and its platform lines are the evidence stream
   this record is that command's decision.
 - [ADR-0011](0011-go-port-gated-on-field-evidence.md) already names doctor and the installers as the source of the platform-distribution and install-failure evidence its gate needs;
   this record specifies what doctor certifies to produce that evidence.
-- `docs/plans/active/v0.6-repository-tooling-umbrella.md`'s v0.6c slice already names uninstall, doctor, the provenance manifest, and the exclusive backup as this slice's scope;
+- `docs/plans/done/v0.6-repository-tooling-umbrella.md`'s v0.6c slice already names uninstall, doctor, the provenance manifest, and the exclusive backup as this slice's scope;
   this record is the architecture those tasks implement against.
 - `scripts/install.py` already holds `install_cli`, `install_codex`, `install_codex_skill`,
   `install_opencode`, `install_agentsmd`, and `status`,

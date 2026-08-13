@@ -8,6 +8,8 @@ Apply before changing any code.
 scripts/check_linefeeds.py        # the core: language table, extractor, checker, CLI, payload parsers
 cli/semlf/                        # repository CLI (ADR-0004); delegates all analysis to the core
 cli/semlf/providers.py             # git snapshot providers (the only place git runs)
+cli/semlf/doctor.py                # end-to-end replay diagnostics (ships in the artifact)
+cli/semlf/manifest.py              # install provenance (read by installer and doctor)
 hooks/hooks.json                  # Claude Code adapter (PostToolUse → --hook claude)
 skills/semantic-linefeeds/        # the skill agents load to fix findings
 adapters/codex/                   # Codex CLI adapter (hooks.json template + INSTALL.md)

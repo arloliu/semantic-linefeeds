@@ -35,6 +35,7 @@ If a record and a rule disagree, the rule wins until a new record supersedes it.
 | [ADR-0012](0012-project-config-is-one-ini-file.md) | Project configuration is one `.semlf.ini` file, discovered by the core with flag/env/config/default precedence and a malformed file left inert |
 | [ADR-0013](0013-git-modes-read-snapshots-through-providers.md) | Git modes read snapshots through providers: `--staged`/`--diff`/`--changed` each read one git enumeration, policy stays the working tree's in every mode, and `exclude` filters discovery only |
 | [ADR-0014](0014-lifecycle-verbs-and-the-provenance-manifest.md) | Install, uninstall, and status stay in `scripts/install.py`; doctor and the identity module ship inside the artifact; provenance is one state file per artifact, refusal over overwrite on any trouble |
+| [ADR-0015](0015-distribution-channels.md) | pipx and uv install `semlf` from the repository, never PyPI automation; the wheel maps `cli/semlf` and `check_linefeeds.py` from their repo locations; the zipapp remains the air-gapped channel; one channel per machine, surfaced by three independent refusals |
 
 ## Principles these records share
 

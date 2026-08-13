@@ -217,6 +217,20 @@ and every later re-run installs and updates from the mirror without repeating it
 For Claude Code,
 `claude plugin marketplace add git@git.internal:you/semantic-linefeeds.git` covers the same case.
 
+## Lifecycle
+
+```bash
+python3 scripts/install.py            # status of every install
+python3 scripts/install.py --auto     # detect agents, install for what's present
+python3 scripts/install.py --uninstall --codex   # remove hook + skill
+semlf doctor                          # replay a payload end to end, report evidence
+```
+
+Upgrades are provenance-aware:
+re-running an installer replaces an untouched older release silently,
+and refuses a hand-edited copy unless you say `--force` —
+which claims `semlf.bak` exclusively and never overwrites an existing backup.
+
 ## Configuration
 
 The long-line advisory threshold defaults to 120 characters.

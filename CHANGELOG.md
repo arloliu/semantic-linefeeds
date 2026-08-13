@@ -13,6 +13,10 @@ instead of every adapter carrying its own copy of the checker's defaults.
 
 v0.6b: `semlf` checks git snapshots directly, and a repository can exclude paths from discovery.
 
+v0.6c: `semlf` gains a full lifecycle —
+uninstall, doctor, agent auto-detection, and provenance-aware upgrades —
+and ships as a pipx/uv package alongside the zipapp.
+
 ### Added
 
 - **Project configuration** (ADR-0012): `.semlf.ini` at the repository root, section `[semlf]`,
@@ -40,6 +44,33 @@ v0.6b: `semlf` checks git snapshots directly, and a repository can exclude paths
   A path named explicitly on `--file` is never affected.
 - **A `.pre-commit-hooks.yaml` hook definition**: `id: semlf` runs `semlf --staged` with `pass_filenames: false`,
   so pre-commit's own file list plays no role and the mode owns discovery.
+- **`install.py --uninstall`** (ADR-0014): removes an installed mode's artifacts.
+  It is preflight-then-apply, admitting only the current rendering or a manifest-managed one
+  and refusing everything else without `--force`.
+  It never touches `hooks.json`, the AGENTS.md target, or `semlf.bak`,
+  and it closes the native-skill-removal deferral [ADR-0006](docs/decisions/0006-judgment-layer-for-every-agent.md) recorded.
+- **`semlf doctor`** (ADR-0014): replays synthetic payloads through the installed artifact end to end —
+  the Claude and Codex hooks, in both directions —
+  instead of checking file existence, and certifies a hook or fails it, never a silent pass.
+  Its platform and install-failure lines are the evidence stream
+  [ADR-0011](docs/decisions/0011-go-port-gated-on-field-evidence.md)'s gate reads.
+- **`install.py --auto`**: detects installed agents by evidence —
+  a binary on `PATH` or the agent's own config directory —
+  and installs a matching mode for each, plus the cli unconditionally.
+  Mutually exclusive with an explicit mode flag or `--uninstall`.
+- **A provenance manifest and managed upgrade** (ADR-0014): one state file per artifact under
+  `$XDG_STATE_HOME/semlf/artifacts/`, recording schema, path identity,
+  and a digest of the bytes the installer itself staged.
+  A recorded release upgrades silently on re-install;
+  every kind of trouble degrades to `unrecorded`, which means refusal, never overwrite.
+- **An exclusive backup slot** (ADR-0014): `--force` claims `semlf.bak` with `O_EXCL` before replacing a hand-edited copy,
+  so a concurrent double `--force` cannot overwrite the only copy of what it was about to replace.
+  A managed upgrade skips the backup entirely,
+  since a recorded release is not the only copy of anything.
+- **pipx and uv packaging** (ADR-0015): `pyproject.toml` builds `semlf` straight from the repository —
+  `pipx install git+https://github.com/arloliu/semantic-linefeeds`, or the equivalent `uv tool install` —
+  mapping `cli/semlf` and `scripts/check_linefeeds.py` from their existing locations rather than forking either.
+  PyPI publication stays a maintainer release act, not repository automation.
 
 ### Changed
 
@@ -51,6 +82,10 @@ v0.6b: `semlf` checks git snapshots directly, and a repository can exclude paths
 - **An invalid `.semlf.ini` value now drops only its own key** (amends ADR-0012 via ADR-0013):
   one bad `long-limit` no longer silences a good `exclude` in the same file.
   File-level trouble — missing, unreadable, undecodable, or unparsable as INI — still drops the whole file.
+- **The pre-commit hook definition now uses `language: python`** (ADR-0015),
+  letting pre-commit build this repository into its own managed environment instead of requiring `semlf` on `PATH` beforehand.
+- **The zipapp packaging proof now builds through the shipped `build_pyz`** instead of a second, hand-maintained build script,
+  so the proof and `install.py --cli` can never drift apart on what a zipapp contains.
 
 ## [0.5.0] - 2026-08-13
 
