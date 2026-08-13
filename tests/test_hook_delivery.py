@@ -259,7 +259,7 @@ def test_codex_mixed_files_block_and_carry_the_advisory():
     assert "[long]" in r.stderr
 
 
-from check_linefeeds import AGENT_SUPPRESSION_NOTE
+from check_linefeeds import AGENT_JUDGMENT_NOTE, AGENT_SUPPRESSION_NOTE
 
 
 def test_a_blocking_report_ends_with_the_instruction():
@@ -295,3 +295,73 @@ def test_the_agent_instruction_wording_is_pinned():
         "if you judge a finding to be a false positive, leave the text as it is "
         "and surface the disagreement to the user instead."
     )
+
+
+def test_the_judgment_note_wording_is_pinned():
+    assert AGENT_JUDGMENT_NOTE == (
+        "Judge a finding before rewriting: if you consider it a false positive, or "
+        "the same finding survives one repair attempt, stop retrying and surface "
+        "the disagreement to the user instead of rewriting correct prose again."
+    )
+
+
+def test_a_blocking_report_carries_the_judgment_note_before_suppression():
+    for agent in AGENTS:
+        result = deliver(agent, FUSED_ONLY)
+        body = result.stderr
+        assert AGENT_JUDGMENT_NOTE in body
+        assert body.index(AGENT_JUDGMENT_NOTE) < body.index(AGENT_SUPPRESSION_NOTE)
+
+
+def test_an_advisory_report_carries_the_judgment_note_before_suppression():
+    for agent in AGENTS:
+        body = advisory(deliver(agent, LONG_ONLY))
+        assert AGENT_JUDGMENT_NOTE in body
+        assert body.index(AGENT_JUDGMENT_NOTE) < body.index(AGENT_SUPPRESSION_NOTE)
+
+
+def test_claude_advisory_always_names_the_skill(tmp_path):
+    r = deliver("claude", LONG_ONLY, env={"HOME": str(tmp_path)})
+    assert "load the semantic-linefeeds skill" in advisory(r)
+
+
+def test_codex_advisory_omits_the_skill_hint_without_an_installed_skill(tmp_path, monkeypatch):
+    # The probe also checks a cwd-relative candidate; chdir into the
+    # empty tmp_path so that branch cannot accidentally see this repo's
+    # own working tree instead of the fixture being tested.
+    monkeypatch.chdir(tmp_path)
+    r = deliver("codex", LONG_ONLY, env={"HOME": str(tmp_path)})
+    assert "load the semantic-linefeeds skill" not in advisory(r)
+
+
+def test_codex_advisory_names_the_skill_when_one_is_installed(tmp_path, monkeypatch):
+    # An installed-shape fixture, not a bare placeholder: the probe
+    # requires real frontmatter naming the skill, so a file that merely
+    # exists at the right path is not enough to satisfy it.
+    skill = tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text(
+        "---\nname: semantic-linefeeds\ndescription: test fixture\n---\n\nBody.\n",
+        encoding="utf-8")
+    # Run from a skill-free directory so this positive result comes from
+    # the HOME probe, not from an incidental cwd-relative match.
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    r = deliver("codex", LONG_ONLY, env={"HOME": str(tmp_path)})
+    assert "load the semantic-linefeeds skill" in advisory(r)
+
+
+def test_the_suggestion_block_precedes_the_judgment_note():
+    r = deliver("claude", "Stop now! Go on.\n")
+    assert r.returncode == 2
+    body = r.stderr
+    assert "Suggested replacement for line 1:" in body
+    assert body.index("Suggested replacement for line 1:") < body.index(AGENT_JUDGMENT_NOTE)
+    assert body.index(AGENT_JUDGMENT_NOTE) < body.index(AGENT_SUPPRESSION_NOTE)
+
+
+def test_a_degraded_note_precedes_the_judgment_note():
+    body = advisory(deliver("codex", LONG_ONLY))
+    assert body.index("approximate positions") < body.index(AGENT_JUDGMENT_NOTE)
+    assert body.index(AGENT_JUDGMENT_NOTE) < body.index(AGENT_SUPPRESSION_NOTE)

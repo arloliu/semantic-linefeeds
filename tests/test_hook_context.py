@@ -7,7 +7,10 @@ import uuid
 import pytest
 
 from conftest import REPO, run_cli
-from check_linefeeds import AGENT_SUPPRESSION_NOTE, skip_path, _locate_unique, _read_snapshot
+from check_linefeeds import (
+    AGENT_SUPPRESSION_NOTE, skip_path, _locate_unique, _read_snapshot,
+    _judgment_layer_present, _looks_like_the_skill,
+)
 
 FUSED = "One sentence here. Another sentence follows."
 
@@ -479,3 +482,155 @@ def test_disjoint_runs_in_a_fallback_hunk_do_not_merge(hook_dir):
                      env={"SEMLF_EXPERIMENTAL_WRAP": "1"})
     assert result.returncode == 0
     assert result.stdout.strip() == ""
+
+
+def test_a_question_fused_edit_reports_a_suggested_replacement(hook_dir):
+    # Claude, mapped: an exact span located in a real snapshot.
+    doc = hook_dir / "doc.md"
+    doc.write_text("filler\n" * 5 + "Stop now? Go on.\n")
+    result = run_cli(["--hook", "claude"], claude_edit(doc, "Stop now? Go on."))
+    assert result.returncode == 2
+    assert "line 6" in result.stderr
+    assert "Suggested replacement for line 6:" in result.stderr
+    assert "    Stop now?" in result.stderr
+    assert "    Go on." in result.stderr
+
+
+def test_a_degraded_claude_edit_still_carries_the_suggestion(hook_dir):
+    # Claude, degraded: the edit's text occurs twice in the file, so the
+    # mapped branch cannot pick one and the snippet fallback fires.
+    doc = hook_dir / "doc.md"
+    fused = "Stop now? Go on."
+    doc.write_text(fused + "\n\nmiddle prose\n\n" + fused + "\n")
+    result = run_cli(["--hook", "claude"], claude_edit(doc, fused))
+    assert result.returncode == 2
+    assert "line 1 of your edit" in result.stderr
+    assert "Suggested replacement for line 1 of your edit:" in result.stderr
+    assert "    Stop now?" in result.stderr
+    assert "    Go on." in result.stderr
+
+
+def test_a_mapped_codex_patch_carries_the_suggestion(hook_dir):
+    # Codex, mapped: the hunk locates exactly once in a real snapshot.
+    doc = hook_dir / "doc.md"
+    doc.write_text("filler\n" * 5 + "Stop now? Go on.\n")
+    result = run_cli(["--hook", "codex"], codex_patch((str(doc), "Stop now? Go on.")))
+    assert result.returncode == 2
+    assert "line 6" in result.stderr
+    assert "Suggested replacement for line 6:" in result.stderr
+    assert "    Stop now?" in result.stderr
+    assert "    Go on." in result.stderr
+
+
+def test_a_degraded_codex_patch_still_carries_the_suggestion(hook_dir):
+    # Codex, degraded: the added text occurs twice, so the hunk cannot
+    # locate exactly and the joined-added-runs fallback fires.
+    doc = hook_dir / "doc.md"
+    fused = "Stop now? Go on."
+    doc.write_text(fused + "\n\nmiddle prose here\n\n" + fused + "\n")
+    result = run_cli(["--hook", "codex"], codex_patch((str(doc), fused)))
+    assert result.returncode == 2
+    assert "line 1 of your edit" in result.stderr
+    assert NOTE_MARK in result.stderr
+    assert "Suggested replacement for line 1 of your edit:" in result.stderr
+    assert "    Stop now?" in result.stderr
+    assert "    Go on." in result.stderr
+
+
+def _write_skill_frontmatter(path, name="semantic-linefeeds"):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"---\nname: {name}\ndescription: test fixture\n---\n\nBody.\n",
+                     encoding="utf-8")
+
+
+def test_judgment_layer_present_true_for_a_valid_home_skill(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    _write_skill_frontmatter(tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md")
+    assert _judgment_layer_present("codex") is True
+
+
+def test_judgment_layer_present_false_for_a_wrong_name_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    _write_skill_frontmatter(tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md",
+                              name="something-else")
+    assert _judgment_layer_present("codex") is False
+
+
+def test_judgment_layer_present_false_for_a_name_line_with_no_frontmatter(tmp_path, monkeypatch):
+    # The exact name line is present in the file's body, but the file
+    # carries no frontmatter block at all -- a bare substring search
+    # would wrongly accept this file.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    skill = tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text(
+        "This file mentions the skill name inline.\nname: semantic-linefeeds\n",
+        encoding="utf-8")
+    assert _judgment_layer_present("codex") is False
+
+
+def test_judgment_layer_present_false_for_an_undecodable_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    skill = tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"\xff\xfe not valid utf-8")
+    assert _judgment_layer_present("codex") is False
+
+
+def test_judgment_layer_present_false_when_the_candidate_path_is_a_directory(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    skill_as_dir = tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    skill_as_dir.mkdir(parents=True)
+    assert _judgment_layer_present("codex") is False
+
+
+def test_judgment_layer_present_true_for_a_repo_local_skill(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "unused-home"))
+    monkeypatch.chdir(tmp_path)
+    _write_skill_frontmatter(tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md")
+    assert _judgment_layer_present("codex") is True
+
+
+def test_judgment_layer_present_false_with_no_skill_anywhere(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    assert _judgment_layer_present("codex") is False
+
+
+def test_judgment_layer_present_skips_the_home_probe_when_expanduser_is_unresolved(
+        tmp_path, monkeypatch):
+    # `os.path.expanduser("~")` returns its input unchanged when it cannot
+    # resolve a home directory (no $HOME and no usable pwd entry); simulate
+    # that directly rather than trying to reproduce it via the environment,
+    # since an unset $HOME still resolves through the passwd database on
+    # most systems this suite runs on.
+    import check_linefeeds
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(check_linefeeds.os.path, "expanduser", lambda p: p)
+    assert _judgment_layer_present("codex") is False
+
+
+def test_looks_like_the_skill_rejects_a_truncated_closing_delimiter(tmp_path):
+    # Byte 1024 completes "\n---", but byte 1025 is "X", not a newline:
+    # the file reads "---X...", not a closing delimiter, and the helper
+    # must not mistake the edge of its own read buffer for end of file.
+    prefix = b"---\nname: semantic-linefeeds\n"
+    pad = 1024 - len(prefix) - len(b"\n---")
+    body = prefix + (b"a" * pad) + b"\n---" + b"X" + b"\ndescription: after\n---\n"
+    assert len(body[:1024]) == 1024 and body[:1024].endswith(b"\n---")
+    skill = tmp_path / "boundary.md"
+    skill.write_bytes(body)
+    assert _looks_like_the_skill(str(skill)) is False
+
+
+def test_looks_like_the_skill_accepts_a_true_end_of_file_close(tmp_path):
+    # The whole file is under 1025 bytes, so the read never truncates;
+    # "\n---" at the very end of that short read is a genuine close.
+    skill = tmp_path / "short.md"
+    skill.write_bytes(b"---\nname: semantic-linefeeds\n---")
+    assert _looks_like_the_skill(str(skill)) is True

@@ -1140,7 +1140,12 @@ def _as_tuples(findings):
             if isinstance(f, dict) else f for f in findings]
 
 
-def format_findings(findings, path, snippet):
+def _kind_of(finding):
+    """The kind of a finding whether it is a diagnostic dict or a legacy tuple."""
+    return finding["kind"] if isinstance(finding, dict) else finding[1]
+
+
+def format_findings(findings, path, snippet, skill_hint=True):
     findings = _as_tuples(findings)
     where = "the text just written to" if snippet else ""
     lines = [f"semantic-linefeeds: {len(findings)} issue(s) in {where} {path}:".replace("  ", " ")]
@@ -1151,14 +1156,16 @@ def format_findings(findings, path, snippet):
         lines.append(f'  [{kind}] {label}: {msg}\n         > {excerpt}')
     limit = active_long_limit() or DEFAULT_LONG_LINE
     if blocking_kinds(findings):
-        lines.append(
+        blocking = [
             f"Fix these in the block you just wrote: one sentence per line; "
             f"split sentences over ~{limit} chars at a real clause boundary (both sides must stand alone); "
             f"never break URLs, directives, or example code. "
             f"A finding can be a false positive (e.g. an 'and' joining a compound object is not a boundary) — "
-            f"judge each one; leave the line alone if the break would sever a clause. "
-            f"If unsure of the rules, load the semantic-linefeeds skill."
-        )
+            f"judge each one; leave the line alone if the break would sever a clause."
+        ]
+        if skill_hint:
+            blocking.append("If unsure of the rules, load the semantic-linefeeds skill.")
+        lines.append(" ".join(blocking))
     else:
         # An advisory report must not say "Fix these".
         # Where a long line carries no clause boundary,
@@ -1177,10 +1184,9 @@ def format_findings(findings, path, snippet):
                 f"where both sides stand alone. "
                 f"If there is no such boundary, leaving the line long is the right answer."
             )
-        closing.append(
-            "Never break URLs, directives, or example code. "
-            "If unsure of the rules, load the semantic-linefeeds skill."
-        )
+        closing.append("Never break URLs, directives, or example code.")
+        if skill_hint:
+            closing.append("If unsure of the rules, load the semantic-linefeeds skill.")
         lines.append(" ".join(closing))
     return "\n".join(lines)
 
@@ -1278,6 +1284,15 @@ def trailing_carrier(line, is_md, lang):
 # and a kind that misfires on correct prose cannot be the one that refuses an edit.
 BLOCKING_KINDS = frozenset({"fused"})
 
+# ADR-0006: the bounded disagreement rule, carried by every judgment-layer
+# surface; appended after the degraded-position note and before the
+# suppression instruction, which ADR-0010 pins as the report's final text.
+AGENT_JUDGMENT_NOTE = (
+    "Judge a finding before rewriting: if you consider it a false positive, or "
+    "the same finding survives one repair attempt, stop retrying and surface "
+    "the disagreement to the user instead of rewriting correct prose again."
+)
+
 # ADR-0010: hook feedback is a judgment-layer surface and carries this verbatim.
 AGENT_SUPPRESSION_NOTE = (
     "An agent never adds a suppression directive on its own authority: "
@@ -1311,12 +1326,12 @@ def model_visible(findings):
     """
     if opted_into_withheld_kind():
         return list(findings)
-    return [finding for finding in findings if finding[1] != WITHHELD_KIND]
+    return [finding for finding in findings if _kind_of(finding) != WITHHELD_KIND]
 
 
 def blocking_kinds(findings):
     """True when some finding must block the edit rather than merely advise."""
-    return any(kind in BLOCKING_KINDS for _, kind, _, _ in findings)
+    return any(_kind_of(f) in BLOCKING_KINDS for f in findings)
 
 
 def _identity(stat):
@@ -1361,7 +1376,73 @@ def _locate_unique(text, needle):
     return {"start": first, "end": first + len(needle)}
 
 
-def deliver(reports, note=None):
+def _looks_like_the_skill(path):
+    """Whether path is a readable file whose frontmatter names this skill.
+
+    A bare existence check, or a bare substring search, would send an
+    agent to load a corrupt or unrelated file at the same path -- a
+    file whose *body* happens to mention the skill's name is not the
+    skill.
+    Requiring the exact name line to sit inside an opened and
+    closed `---` block rules that out without parsing YAML.
+
+    Reads 1025 bytes so a closing delimiter can never be confused with
+    end of file: if fewer than 1025 came back, the buffer already is
+    the whole file, so a trailing `\\n---` at the end of it is a true
+    close.
+    If exactly 1025 came back, the file continues past the
+    probe, so only a closing delimiter followed by `\\n` fully inside
+    the first 1024 decoded characters counts -- the 1025th byte itself
+    never enters the match, since its only job is telling truncated
+    from whole.
+    """
+    try:
+        with open(path, "rb") as f:
+            head = f.read(1025)
+    except OSError:
+        return False
+    truncated = len(head) == 1025
+    if truncated:
+        head = head[:1024]
+    try:
+        text = head.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    if not text.startswith("---\n"):
+        return False
+    body = text[4:]
+    close_pattern = r"\n---\n" if truncated else r"\n---(?:\n|$)"
+    close = re.search(close_pattern, body)
+    if not close:
+        return False
+    frontmatter = body[:close.start()]
+    return "name: semantic-linefeeds" in frontmatter.splitlines()
+
+
+def _judgment_layer_present(transport):
+    """Whether hook feedback may tell the model to load a judgment-layer skill.
+
+    Claude Code always has one: the skill ships inside the plugin that runs
+    this hook.
+    Codex has one only when a candidate at either location Codex resolves
+    standalone skills from (ADR-0006) reads back as this skill: a
+    repository `.agents/skills` directory, or `$HOME/.agents/skills` when
+    `$HOME` actually resolves to something (`os.path.expanduser("~")`
+    returns its input unchanged when it cannot).
+    """
+    if transport == "claude":
+        return True
+    if transport == "codex":
+        candidates = [os.path.join(".agents", "skills", "semantic-linefeeds", "SKILL.md")]
+        home = os.path.expanduser("~")
+        if home != "~":
+            candidates.append(os.path.join(home, ".agents", "skills",
+                                            "semantic-linefeeds", "SKILL.md"))
+        return any(_looks_like_the_skill(p) for p in candidates)
+    return True
+
+
+def deliver(reports, transport, note=None):
     """Write hook findings on the transport their status implies, and return the status.
 
     Status comes from the kinds present, and transport comes from the status.
@@ -1377,14 +1458,30 @@ def deliver(reports, note=None):
     table, and the non-blocking transport is one JSON object.
     Both hosts accept the same object shape,
     so the transport does not vary by agent.
+    `transport` is `"claude"` or `"codex"`;
+    it decides whether the closing "load the semantic-linefeeds skill"
+    sentence is included (ADR-0006):
+    Claude always has the skill, Codex only when a usable copy is present.
+    A finding that carries a `suggestion` (the automatic `!`/`?` class ADR-0007 restricts
+    delivery to) gets its own block after the report bodies, labeled with the same line-number
+    phrasing the body uses.
     """
     reports = [(p, model_visible(f), s) for p, f, s in reports]
     reports = [(p, f, s) for p, f, s in reports if f]
     if not reports:
         return 0
-    body = "\n".join(format_findings(f, p, s) for p, f, s in reports)
+    skill_hint = _judgment_layer_present(transport)
+    body = "\n".join(format_findings(f, p, s, skill_hint=skill_hint) for p, f, s in reports)
+    for _, findings, snippet in reports:
+        for finding in findings:
+            if not isinstance(finding, dict) or "suggestion" not in finding:
+                continue
+            label = f"line {finding['line']} of your edit" if snippet else f"line {finding['line']}"
+            line1, line2 = finding["suggestion"]["lines"]
+            body += f"\nSuggested replacement for {label}:\n    {line1}\n    {line2}"
     if note and any(s for _, _, s in reports):
         body += "\n" + note
+    body += "\n" + AGENT_JUDGMENT_NOTE
     body += "\n" + AGENT_SUPPRESSION_NOTE
     if any(blocking_kinds(f) for _, f, _ in reports):
         print(body, file=sys.stderr)
@@ -1435,15 +1532,15 @@ def run_hook_claude():
         snapshot = None if tool_input.get("replace_all") else _read_snapshot(path)
         span = _locate_unique(snapshot, new_string) if snapshot is not None else None
         if span:
-            return deliver([(path, _as_tuples(diagnose(snapshot, path, spans=[span])), False)])
-        return deliver([(path, check(new_string, path), True)])
+            return deliver([(path, diagnose(snapshot, path, spans=[span]), False)], "claude")
+        return deliver([(path, diagnose(new_string, path), True)], "claude")
     content = tool_input.get("content")
     if isinstance(content, str) and content:
         # A Write hands over the whole file: content is both the context
         # and one whole-file span (ADR-0005), so degraded ownership is
         # withheld rather than guessed.
         spans = [{"start": 0, "end": len(content)}]
-        return deliver([(path, _as_tuples(diagnose(content, path, spans=spans)), False)])
+        return deliver([(path, diagnose(content, path, spans=spans), False)], "claude")
     return 0
 
 
@@ -1577,7 +1674,7 @@ def run_hook_codex():
                                   "end": located["start"] + starts[index] + len(text)})
                 index += 1
         if spans:
-            reports.append((path, _as_tuples(diagnose(snapshot, path, spans=spans)), False))
+            reports.append((path, diagnose(snapshot, path, spans=spans), False))
         else:
             # A run is a maximal contiguous stretch of "add" lines,
             # broken by any other entry: context, deletion, or a new hunk.
@@ -1595,9 +1692,9 @@ def run_hook_codex():
                     else:
                         run = None
             added = "\n\n".join("\n".join(run) for run in runs)
-            findings = check(added, path) if added.strip() else []
+            findings = diagnose(added, path) if added.strip() else []
             reports.append((path, findings, True))
-    return deliver(reports, note=(
+    return deliver(reports, "codex", note=(
         "(line numbers are approximate positions within the added "
         "lines of your patch; locate findings by the quoted excerpts)"))
 
