@@ -1,8 +1,7 @@
 # pre-commit hook definitions (https://pre-commit.com).
-# semlf must be on PATH first: python3 scripts/install.py --cli
 - id: semlf
   name: semlf semantic linefeeds
   description: one-thought-per-line prose in comments, docstrings, and Markdown
   entry: semlf --staged
-  language: system
+  language: python
   pass_filenames: false

@@ -18,6 +18,6 @@ def test_hook_manifest_is_exactly_one_semlf_hook():
         "  name: semlf semantic linefeeds",
         "  description: one-thought-per-line prose in comments, docstrings, and Markdown",
         "  entry: semlf --staged",
-        "  language: system",
+        "  language: python",
         "  pass_filenames: false",
     ]

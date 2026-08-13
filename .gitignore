@@ -1,5 +1,7 @@
 __pycache__/
 tmp/
+build/
+*.egg-info/
 
 # The holdout in the clear, in every round.
 # Only the ciphertext bundle and the ledger belong in history;

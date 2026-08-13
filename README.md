@@ -168,6 +168,22 @@ the standalone `semlf --file`/`semlf check` command the Configuration and snippe
 | opencode | `--opencode` | [adapters/opencode/INSTALL.md](adapters/opencode/INSTALL.md) |
 | Anything else | `--agentsmd PATH` | [adapters/agentsmd/SNIPPET.md](adapters/agentsmd/SNIPPET.md) |
 
+### As a package (pipx or uv)
+
+```bash
+pipx install git+https://github.com/arloliu/semantic-linefeeds
+# or
+uv tool install git+https://github.com/arloliu/semantic-linefeeds
+```
+
+Either gives you the `semlf` command — check, git modes, and doctor.
+Agent hook installs still come from a checkout's `install.py`,
+because the adapter payloads live there.
+Pick one channel per machine:
+a zipapp already at `~/.local/bin/semlf` and a pipx install would otherwise shadow each other,
+and `semlf doctor` will say so.
+The zipapp channel (`install.py --cli`) remains supported for air-gapped and mirrored machines.
+
 ### Claude Code (Marketplace)
 
 The repo embeds its own marketplace (`.claude-plugin/marketplace.json` with `source: "./"`),
@@ -286,8 +302,8 @@ repos:
       - id: semlf
 ```
 
-Install the CLI first (the `--cli` flag from Quick Start above) —
-pre-commit's `language: system` entry expects `semlf` already on `PATH`.
+`language: python` lets pre-commit build this repository into its own environment,
+so `semlf` does not need to be installed or on `PATH` beforehand.
 
 ## Supported Languages
 

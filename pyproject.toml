@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "semlf"
+description = "A diff-aware prose guardrail: one-thought-per-line linefeeds in comments, docstrings, and Markdown"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [{name = "Arlo Liu"}]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/arloliu/semantic-linefeeds"
+
+[project.scripts]
+semlf = "semlf.cli:main"
+
+[tool.setuptools]
+packages = ["semlf"]
+package-dir = {"semlf" = "cli/semlf", "" = "scripts"}
+py-modules = ["check_linefeeds"]
+
+[tool.setuptools.dynamic]
+version = {attr = "check_linefeeds.__version__"}
