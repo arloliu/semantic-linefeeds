@@ -32,9 +32,12 @@ The boundary is drawn by what a thing needs, not by how long the file has become
   and the hook entry points.
   Every adapter invokes the core without any CLI,
   so policy discovery living outside it would let hooks and CI disagree.
-- A **repository CLI** would own git snapshot selection, subcommand routing,
-  the installation lifecycle, doctor, and SARIF rendering.
+- The **repository CLI** (`cli/semlf/`) owns git snapshot selection, subcommand routing,
+  doctor, and rendering.
   It reuses the core's discovery function rather than carrying its own.
+- The **installer** (`scripts/install.py`) owns install, uninstall, and status —
+  the verbs that live beside the payloads they copy and report on
+  ([ADR-0014](../../docs/decisions/0014-lifecycle-verbs-and-the-provenance-manifest.md)).
 
 A packaging proof under [`docs/proofs/zipapp-packaging/`](../../docs/proofs/zipapp-packaging/)
 shows the split ships as one artifact, and one command replays it.

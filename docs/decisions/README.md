@@ -34,6 +34,7 @@ If a record and a rule disagree, the rule wins until a new record supersedes it.
 | [ADR-0011](0011-go-port-gated-on-field-evidence.md) | A Go port is deferred behind a field-evidence gate; v0.6 stays on the Python core and keeps the contract implementation-agnostic |
 | [ADR-0012](0012-project-config-is-one-ini-file.md) | Project configuration is one `.semlf.ini` file, discovered by the core with flag/env/config/default precedence and a malformed file left inert |
 | [ADR-0013](0013-git-modes-read-snapshots-through-providers.md) | Git modes read snapshots through providers: `--staged`/`--diff`/`--changed` each read one git enumeration, policy stays the working tree's in every mode, and `exclude` filters discovery only |
+| [ADR-0014](0014-lifecycle-verbs-and-the-provenance-manifest.md) | Install, uninstall, and status stay in `scripts/install.py`; doctor and the identity module ship inside the artifact; provenance is one state file per artifact, refusal over overwrite on any trouble |
 
 ## Principles these records share
 

@@ -2,6 +2,9 @@
 
 **Status:** accepted  
 **Date:** 2026-08-10
+**Amended:** 2026-08-14 —
+[ADR-0014](0014-lifecycle-verbs-and-the-provenance-manifest.md)
+refines the lifecycle-verb assignment.
 
 ## Decision
 
@@ -14,7 +17,10 @@ The core is at 747 lines against a ~1000-line split point.
 - **Portable core** (`scripts/check_linefeeds.py`) keeps extraction, predicates, suppression semantics,
   span filtering, diagnostic construction, and the hook entry points.
 - **Repository CLI** (`semlf`) owns git snapshot selection, subcommand routing,
-  installation lifecycle, doctor, and SARIF rendering.
+  installation lifecycle, doctor, and SARIF rendering
+  ([ADR-0014](0014-lifecycle-verbs-and-the-provenance-manifest.md) refines this split:
+  install, uninstall, and status move to `scripts/install.py`,
+  while doctor and rendering stay with the CLI and the artifact).
   Config *discovery* is not on this list;
   hook configuration discovery below places it in the core, and the CLI reuses that one function.
 
