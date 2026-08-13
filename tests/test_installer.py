@@ -4,7 +4,9 @@ import shutil
 import subprocess
 import sys
 
-from conftest import REPO, SCRIPT
+import pytest
+
+from conftest import HAS_GIT, REPO, SCRIPT, git, isolate_git_env
 from check_linefeeds import AGENT_SUPPRESSION_NOTE
 
 INSTALL = REPO / "scripts" / "install.py"
@@ -1055,3 +1057,22 @@ def test_agentsmd_warns_when_semlf_is_missing(tmp_path, monkeypatch, capsys):
     # The gap persists on the idempotent rerun, so the warning must too.
     assert install_module.install_agentsmd(target, False) == 0
     assert "not on PATH" in capsys.readouterr().out
+
+
+@pytest.mark.skipif(not HAS_GIT, reason="git is required")
+def test_pyz_runs_staged_mode_in_a_repository(tmp_path, monkeypatch):
+    """The artifact the pre-commit entry invokes must own the git modes."""
+    isolate_git_env(monkeypatch)
+    pyz = tmp_path / "semlf"
+    install_module.build_pyz(pyz)
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    git("init", "-q", cwd=repo_dir)
+    bad = repo_dir / "doc.md"
+    bad.write_text("One sentence. Another fused on the same line.\n",
+                   encoding="utf-8")
+    git("add", "doc.md", cwd=repo_dir)
+    r = subprocess.run([str(pyz), "--staged"], capture_output=True, text=True,
+                       cwd=str(repo_dir))
+    assert r.returncode == 1
+    assert "fused" in r.stdout

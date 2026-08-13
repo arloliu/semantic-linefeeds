@@ -12,6 +12,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 sys.path.insert(0, str(REPO / "cli"))
 import check_linefeeds  # noqa: E402  (imported for path setup parity)
+from semlf import cli as semlf_cli  # noqa: E402
 from semlf import providers  # noqa: E402
 
 pytestmark = pytest.mark.skipif(not HAS_GIT, reason="git is required")
@@ -480,3 +481,237 @@ def test_isolate_git_env_neutralizes_a_hostile_environment(tmp_path, monkeypatch
     assert not (root / ".git" / "hooks" / "post-commit").exists()
     records = providers._raw_records(str(root), "--cached")
     assert [r[0] for r in records] == ["doc.md"]
+
+
+def test_matrix_staged_bad_worktree_fixed(tmp_path, monkeypatch, capsys):
+    """Partial staging, direction one: the index still carries the violation."""
+    root = repo(tmp_path)
+    commit_file(root, "doc.md", CLEAN)
+    stage_file(root, "doc.md", FUSED)
+    (root / "doc.md").write_text(CLEAN, encoding="utf-8")
+    monkeypatch.chdir(root)
+    assert semlf_cli.main(["--staged"]) == 1
+    capsys.readouterr()
+    assert semlf_cli.main(["--diff"]) == 0
+    capsys.readouterr()
+    assert semlf_cli.main(["--changed"]) == 0
+    capsys.readouterr()
+
+
+def test_matrix_staged_clean_worktree_bad(tmp_path, monkeypatch, capsys):
+    """Partial staging, direction two: only the worktree modes see the sin."""
+    root = repo(tmp_path)
+    commit_file(root, "doc.md", CLEAN)
+    stage_file(root, "doc.md", "A staged clean sentence.\n")
+    (root / "doc.md").write_text(FUSED, encoding="utf-8")
+    monkeypatch.chdir(root)
+    assert semlf_cli.main(["--staged"]) == 0
+    capsys.readouterr()
+    assert semlf_cli.main(["--diff"]) == 1
+    capsys.readouterr()
+    assert semlf_cli.main(["--changed"]) == 1
+    capsys.readouterr()
+
+
+def test_matrix_rename_with_edits_reports_the_new_name(tmp_path, monkeypatch, capsys):
+    """Under --no-renames the new path arrives as an addition — still checked."""
+    root = repo(tmp_path)
+    commit_file(root, "old.md", CLEAN)
+    git("mv", "old.md", "new.md", cwd=root)
+    stage_file(root, "new.md", FUSED)
+    monkeypatch.chdir(root)
+    assert semlf_cli.main(["--staged"]) == 1
+    out = capsys.readouterr().out
+    assert "new.md" in out
+    assert "old.md" not in out
+
+
+def test_matrix_subdirectory_invocation_reports_cwd_relative_paths(
+        tmp_path, monkeypatch, capsys):
+    root = repo(tmp_path)
+    commit_file(root, "docs/guide.md", CLEAN)
+    (root / "sub").mkdir()
+    stage_file(root, "docs/guide.md", FUSED)
+    monkeypatch.chdir(root / "sub")
+    assert semlf_cli.main(["--staged"]) == 1
+    out = capsys.readouterr().out
+    assert os.path.join("..", "docs", "guide.md") in out
+
+
+def test_matrix_config_governs_staged_content_from_a_subdirectory(
+        tmp_path, monkeypatch, capsys):
+    """Config discovery keys off the checked path, not the invoking directory."""
+    root = repo(tmp_path)
+    commit_file(root, ".semlf.ini", "[semlf]\nlong-limit = 40\n")
+    line = ("The exporter batches metrics in memory, "
+            "and it retries failed uploads until the queue drains.\n")
+    (root / "sub").mkdir()
+    stage_file(root, "doc.md", line)
+    monkeypatch.chdir(root / "sub")
+    rc = semlf_cli.main(["--staged"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "long" in out
+
+
+def test_matrix_policy_is_the_worktrees_even_for_staged_content(
+        tmp_path, monkeypatch, capsys):
+    """ADR-0013's ruling: one policy source — the working tree — in every mode.
+
+    Direction one: an exclude that exists only in the worktree governs --staged.
+    """
+    root = repo(tmp_path)
+    commit_file(root, "doc.md", CLEAN)
+    stage_file(root, "generated/api.md", FUSED)
+    (root / ".semlf.ini").write_text("[semlf]\nexclude = generated/\n",
+                                     encoding="utf-8")
+    monkeypatch.chdir(root)
+    assert semlf_cli.main(["--staged"]) == 0
+    capsys.readouterr()
+
+
+def test_matrix_a_staged_only_exclude_does_not_govern(tmp_path, monkeypatch, capsys):
+    """Direction two: policy staged but absent from the worktree is not in force."""
+    root = repo(tmp_path)
+    stage_file(root, ".semlf.ini", "[semlf]\nexclude = generated/\n")
+    stage_file(root, "generated/api.md", FUSED)
+    (root / ".semlf.ini").unlink()
+    monkeypatch.chdir(root)
+    assert semlf_cli.main(["--staged"]) == 1
+    assert "fused" in capsys.readouterr().out
+
+
+def test_matrix_a_staged_only_long_limit_does_not_govern(
+        tmp_path, monkeypatch, capsys):
+    """The same divergence pin for the long-limit leg of the policy."""
+    root = repo(tmp_path)
+    line = ("The exporter batches metrics in memory, "
+            "and it retries failed uploads until the queue drains.\n")
+    stage_file(root, ".semlf.ini", "[semlf]\nlong-limit = 40\n")
+    stage_file(root, "doc.md", line)
+    (root / ".semlf.ini").unlink()
+    monkeypatch.chdir(root)
+    rc = semlf_cli.main(["--staged"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "long" not in out
+
+
+def test_matrix_crlf_content_fires_in_every_mode(tmp_path, monkeypatch, capsys):
+    root = repo(tmp_path)
+    crlf = FUSED.replace("\n", "\r\n")
+    (root / "doc.md").write_bytes(crlf.encode("utf-8"))
+    git("-c", "core.autocrlf=false", "add", "doc.md", cwd=root)
+    monkeypatch.chdir(root)
+    assert semlf_cli.main(["--staged"]) == 1
+    assert "fused" in capsys.readouterr().out
+    assert semlf_cli.main(["check", "doc.md"]) == 1
+    assert "fused" in capsys.readouterr().out
+
+
+def test_matrix_crlf_content_fires_in_worktree_modes(tmp_path, monkeypatch, capsys):
+    root = repo(tmp_path)
+    commit_file(root, "doc.md", CLEAN)
+    crlf = FUSED.replace("\n", "\r\n")
+    (root / "doc.md").write_bytes(crlf.encode("utf-8"))
+    monkeypatch.chdir(root)
+    assert semlf_cli.main(["--diff"]) == 1
+    assert "fused" in capsys.readouterr().out
+    assert semlf_cli.main(["--changed"]) == 1
+    assert "fused" in capsys.readouterr().out
+
+
+def test_matrix_crlf_hook_payload_still_blocks(tmp_path):
+    import json
+    (tmp_path / ".git").mkdir()
+    text = "// One sentence. Another fused here.\r\n"
+    (tmp_path / "doc.go").write_bytes(text.encode("utf-8"))
+    payload = {"tool_name": "Edit",
+               "tool_input": {"file_path": "doc.go", "new_string": text}}
+    r = subprocess.run(
+        [sys.executable, str(REPO / "scripts" / "check_linefeeds.py"),
+         "--hook", "claude"],
+        input=json.dumps(payload), capture_output=True, text=True,
+        cwd=str(tmp_path))
+    assert r.returncode == 2
+    assert "fused" in r.stderr
+
+
+def test_matrix_crlf_codex_hook_payload_still_blocks(tmp_path):
+    import json
+    (tmp_path / ".git").mkdir()
+    text = "// One sentence. Another fused here.\r\n"
+    (tmp_path / "doc.go").write_bytes(text.encode("utf-8"))
+    patch = ("*** Begin Patch\n*** Update File: doc.go\n@@\n+"
+             + "// One sentence. Another fused here." + "\n*** End Patch")
+    payload = {"session_id": "s1", "turn_id": "t1", "transcript_path": "/tmp/t",
+               "cwd": ".", "hook_event_name": "PostToolUse", "model": "m",
+               "permission_mode": "default", "tool_name": "apply_patch",
+               "tool_input": {"command": patch},
+               "tool_response": {"output": "Done"}, "tool_use_id": "call_1"}
+    r = subprocess.run(
+        [sys.executable, str(REPO / "scripts" / "check_linefeeds.py"),
+         "--hook", "codex"],
+        input=json.dumps(payload), capture_output=True, text=True,
+        cwd=str(tmp_path))
+    assert r.returncode == 2
+    assert "fused" in r.stderr
+
+
+def test_matrix_staged_nested_path_keeps_worktree_policy(
+        tmp_path, monkeypatch, capsys):
+    """A vanished worktree parent must not cost the file its policy.
+
+    Both halves of the ruling: the root worktree exclude still
+    suppresses the staged nested file, and the root worktree
+    long-limit still governs its diagnosis.
+    """
+    root = repo(tmp_path)
+    commit_file(root, "doc.md", CLEAN)
+    stage_file(root, "nested/doc.md", FUSED)
+    import shutil
+    shutil.rmtree(root / "nested")
+    monkeypatch.chdir(root)
+    (root / ".semlf.ini").write_text("[semlf]\nexclude = nested/\n",
+                                     encoding="utf-8")
+    assert semlf_cli.main(["--staged"]) == 0
+    capsys.readouterr()
+    (root / ".semlf.ini").unlink()
+    assert semlf_cli.main(["--staged"]) == 1
+    capsys.readouterr()
+
+
+def test_matrix_staged_nested_path_keeps_worktree_long_limit(
+        tmp_path, monkeypatch, capsys):
+    root = repo(tmp_path)
+    commit_file(root, "doc.md", CLEAN)
+    line = ("The exporter batches metrics in memory, "
+            "and it retries failed uploads until the queue drains.\n")
+    stage_file(root, "nested/doc.md", line)
+    import shutil
+    shutil.rmtree(root / "nested")
+    monkeypatch.chdir(root)
+    (root / ".semlf.ini").write_text("[semlf]\nlong-limit = 40\n",
+                                     encoding="utf-8")
+    rc = semlf_cli.main(["--staged"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "long" in out
+
+
+def test_matcher_survives_windows_shaped_relative_paths():
+    """The pure matcher sees /-normalized input; these pin the normalization seam."""
+    cfg = check_linefeeds._exclude_match
+    assert cfg("vendor/doc.md", ["vendor/"])
+    assert cfg("docs/generated/api.md", ["docs/generated/"])
+    assert not cfg("docsX/generated/api.md", ["docs/generated/"])
+
+
+def test_excluded_normalizes_backslash_config_patterns(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".semlf.ini").write_text(
+        "[semlf]\nexclude = docs\\generated\\\n", encoding="utf-8")
+    target = tmp_path / "docs" / "generated" / "api.md"
+    target.parent.mkdir(parents=True)
+    target.write_text("text\n", encoding="utf-8")
+    assert check_linefeeds.excluded(str(target))
