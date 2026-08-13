@@ -256,7 +256,7 @@ test("the warning names the user as the one who fixes it", async () => {
   // so it has to say who acts rather than read as a task for the model.
   const [only] = await warnOutputs(["s1"])
   expect(only).toContain("Tell the user")
-  expect(only).toContain("SEMANTIC_LINEFEEDS_CHECK")
+  expect(only).toContain("SEMLF_CHECKER")
   expect(only).toContain("Do not try to repair the installation yourself")
 })
 
@@ -327,4 +327,43 @@ test("a throwing shell is swallowed", async () => {
     output as never,
   )
   expect(output.output).toBe("original output")
+})
+
+async function scriptPathWithEnv(
+  newVar: string | undefined,
+  oldVar: string | undefined,
+): Promise<string> {
+  const saved = {
+    n: process.env.SEMLF_CHECKER,
+    o: process.env.SEMANTIC_LINEFEEDS_CHECK,
+  }
+  try {
+    if (newVar === undefined) delete process.env.SEMLF_CHECKER
+    else process.env.SEMLF_CHECKER = newVar
+    if (oldVar === undefined) delete process.env.SEMANTIC_LINEFEEDS_CHECK
+    else process.env.SEMANTIC_LINEFEEDS_CHECK = oldVar
+    const { calls } = await runAfterHook(0, "")
+    return calls[0]![2] as string
+  } finally {
+    if (saved.n === undefined) delete process.env.SEMLF_CHECKER
+    else process.env.SEMLF_CHECKER = saved.n
+    if (saved.o === undefined) delete process.env.SEMANTIC_LINEFEEDS_CHECK
+    else process.env.SEMANTIC_LINEFEEDS_CHECK = saved.o
+  }
+}
+
+test("SEMLF_CHECKER wins over the deprecated alias", async () => {
+  expect(await scriptPathWithEnv("/new/check.py", "/old/check.py")).toBe("/new/check.py")
+})
+
+test("the deprecated alias still resolves alone", async () => {
+  expect(await scriptPathWithEnv(undefined, "/old/check.py")).toBe("/old/check.py")
+})
+
+test("the new name resolves alone", async () => {
+  expect(await scriptPathWithEnv("/new/check.py", undefined)).toBe("/new/check.py")
+})
+
+test("with neither set the plugin-adjacent copy is used", async () => {
+  expect(await scriptPathWithEnv(undefined, undefined)).toContain("check_linefeeds.py")
 })

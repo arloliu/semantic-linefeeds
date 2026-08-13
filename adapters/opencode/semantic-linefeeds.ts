@@ -1,7 +1,8 @@
 // opencode plugin: enforce semantic linefeeds on edit/write via the core CLI.
 // Install: copy this file AND scripts/check_linefeeds.py into
 // ~/.config/opencode/plugins/ (they must sit side by side), or set
-// SEMANTIC_LINEFEEDS_CHECK to the script's absolute path.
+// SEMLF_CHECKER to the script's absolute path
+// (SEMANTIC_LINEFEEDS_CHECK still works as a deprecated alias).
 import type { Plugin } from "@opencode-ai/plugin"
 
 // Module-private: opencode's loader calls every export as a plugin factory
@@ -70,6 +71,7 @@ function advisoryFrom(stdout: string): Advisory {
 
 export const SemanticLinefeeds: Plugin = async ({ $ }) => {
   const script =
+    process.env.SEMLF_CHECKER ??
     process.env.SEMANTIC_LINEFEEDS_CHECK ??
     new URL("./check_linefeeds.py", import.meta.url).pathname
   // Said once per session, not once per edit:
@@ -119,7 +121,8 @@ export const SemanticLinefeeds: Plugin = async ({ $ }) => {
           "\n\nsemantic-linefeeds: the checker replied in a shape this plugin" +
           " could not read, so advisory findings are being dropped." +
           " Tell the user that check_linefeeds.py should come from the same release" +
-          " as this plugin, either beside it or at the path in SEMANTIC_LINEFEEDS_CHECK." +
+          " as this plugin, either beside it or at the path in SEMLF_CHECKER" +
+          " (SEMANTIC_LINEFEEDS_CHECK is a deprecated alias)." +
           " Do not try to repair the installation yourself."
         return
       }
