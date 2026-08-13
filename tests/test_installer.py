@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from conftest import REPO
+from check_linefeeds import AGENT_SUPPRESSION_NOTE
 
 INSTALL = REPO / "scripts" / "install.py"
 
@@ -563,3 +564,18 @@ def test_help_mentions_the_skill_and_the_widened_force_scope(tmp_path):
     normalized = " ".join(r.stdout.split())
     assert "native semantic-linefeeds skill" in normalized
     assert "codex-skill" in normalized
+
+
+def test_codex_skill_install_carries_the_bounded_disagreement_text(tmp_path):
+    r = run_install(["--codex"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    text = codex_skill_path(tmp_path).read_text(encoding="utf-8")
+    assert "## Bounded disagreement" in text
+    assert AGENT_SUPPRESSION_NOTE in text
+
+
+def test_codex_skill_install_has_no_relative_links(tmp_path):
+    r = run_install(["--codex"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    text = codex_skill_path(tmp_path).read_text(encoding="utf-8")
+    assert "../" not in text

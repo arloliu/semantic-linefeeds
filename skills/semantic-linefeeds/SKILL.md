@@ -69,6 +69,15 @@ Never rewrap stable text elsewhere in the file —
 a whitespace-only reflow of untouched paragraphs makes the diff unreviewable.
 A whole-file reflow happens only when the user asks for one by name, in its own commit.
 
+## Bounded disagreement
+
+Judge a finding before rewriting.
+A finding you believe is a false positive, or one that survives one repair attempt, ends the loop:
+stop retrying and surface the disagreement to the user instead of rewriting correct prose again.
+An agent never adds a suppression directive on its own authority: if you judge a finding to be a false positive, leave the text as it is and surface the disagreement to the user instead.
+Never add a `semlf-ignore` or `semlf-ignore-next` directive on your own authority —
+see the [suppression section](../../README.md#suppressing-a-finding) for who writes one.
+
 ## Common mistakes
 
 | Mistake | Fix |

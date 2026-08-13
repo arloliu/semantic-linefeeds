@@ -1,4 +1,4 @@
 {
-  "digest": "sha256:9ef568748e530103c726fc497fd6b6f39b5191fb96b3845c41b1d857d5797b5f",
-  "reason": "six protocol notes record what round 3 measured and found: both floors cleared, 213 of 260 wrap and 69 of 82 fused, with the Markdown fused stratum at 50 of 59 disjoint from round 2's 25 of 47; referrals fell from 117 to 14, measuring the extraction repairs; four false positives in 360 labeled non-violations, three of the ADR-0002 non-connector class and one from a gofail directive reaching the prose stream; carbon-lang's HTML-comment licence block reaches the stream and is recorded as an extraction defect for a later repair; one labeling family's refusals were recovered by an enforced fourth run; no floor moved, no unit record changed, and no acknowledgement was added because the round missed nothing"
+  "digest": "sha256:b4d19b012d5ccacb969ec9e3707e9d97082ab6a320c03a87382b9910f69d291f",
+  "reason": "task 4 of the judgment layer: added the 'Bounded disagreement' section to the skill before 'Common mistakes', pinning the AGENT_SUPPRESSION_NOTE sentence verbatim alongside bounded-disagreement guidance, and updated the installer guide and fallback snippet to document the judgment-layer surfaces; the rubric digest was updated to reflect the changed SKILL.md"
 }
