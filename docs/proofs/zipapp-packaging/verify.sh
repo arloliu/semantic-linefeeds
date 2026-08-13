@@ -1,5 +1,5 @@
 #!/bin/sh
-# Rebuild and verify the zipapp packaging proof for the roadmap's section 8.1.
+# Rebuild and verify the zipapp packaging proof (ADR-0004's packaging property).
 #
 # It proves one claim:
 # the portable core and a repository CLI can ship as one stdlib-only artifact,

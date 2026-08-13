@@ -84,7 +84,8 @@ Source trouble is `SourceError`, which the CLI turns into exit 1 — never a sil
 - `--diff-filter=AMTUX` requests unmerged (`U`) and unknown (`X`) statuses on purpose,
   so the parser can stop loudly on them instead of git silently omitting them.
 - An unparsable or truncated raw record — a bad mode, a bad object id, a missing NUL, trailing garbage — stops loudly.
-- `HEAD` failing to resolve on a born branch stops loudly.
+- `HEAD` failing to resolve on a born branch stops loudly
+  (only `--changed` consults `HEAD` at all; `--staged` and `--diff` never resolve it).
   Only a **proven-unborn** branch falls back to the empty tree:
   `HEAD` must be symbolic,
   and its target ref must be **probed absent** with `rev-parse --verify --quiet`,

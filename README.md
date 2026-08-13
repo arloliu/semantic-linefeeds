@@ -260,7 +260,8 @@ exclude =
 ```
 
 A trailing `/` names a folder — a bare name like `vendor/` excludes it at any depth,
-while an inner `/` before the trailing one anchors a chain at the repository root,
+while an inner `/` before the trailing one anchors a chain at the config root —
+today the repository root, where `.semlf.ini` lives (ADR-0012) —
 so `docs/generated/` excludes only that path, not `plugins/docs/generated/`.
 A pattern without a trailing `/` is a glob:
 with a `/` it must match the whole relative path, segment by segment;
