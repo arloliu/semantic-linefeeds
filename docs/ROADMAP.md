@@ -92,16 +92,6 @@ and each carries many commits.
 Every ordering constraint established above is preserved,
 but as **commit order inside a release** rather than as a separate tag.
 
-### v0.5 — Changed spans, suppression, and the judgment layer
-
-The architectural release, now built and awaiting its release cut.
-Every planned pillar is merged and recorded in the changelog's unreleased section:
-the span model (ADR-0005), context-aware hooks with real line numbers,
-the versioned diagnostic schema, suppression (ADR-0010),
-and the judgment layer for every agent (ADR-0006).
-One deliberate absence carries forward:
-no numeric `confidence` until observed rates support one.
-
 ### v0.6 — Repository tooling and lifecycle
 
 Where the kit stops being agent-only.
@@ -151,6 +141,9 @@ and it replays a synthetic payload end to end rather than checking that files ex
 
 ## Deferred, with reasons
 
+- **A numeric `confidence` field on diagnostics.**
+  A deliberate absence carried forward from v0.5:
+  no number ships until observed rates support one.
 - **Protected-span masking.**
   Masking URLs, inline code, links, and directives instead of skipping the whole line is a real improvement.
   It is a recall feature, so it follows the precision work, and it fits the v0.5 redesign.
