@@ -263,6 +263,15 @@ def test_git_mode_flags_are_never_abbreviated(capsys):
         assert "semlf" in err
 
 
+def test_git_mode_without_a_mode_flag_is_a_usage_error(capsys):
+    # Unreachable through main()'s routing, which only dispatches here
+    # when a mode flag is present; required=True is the defense that
+    # keeps the provider ternary from silently defaulting if a future
+    # caller arrives without one.
+    from semlf.cli import _git_mode
+    assert _git_mode(["--json"]) == 64
+
+
 def test_option_terminator_escapes_mode_looking_filenames(tmp_path, monkeypatch, capsys):
     """`--` still means: everything after is a path, even one spelled --staged.
 

@@ -38,7 +38,7 @@ def _git_mode(argv):
     """One git snapshot, checked through the core's shared runner."""
     ap = argparse.ArgumentParser(prog="semlf", add_help=False,
                                  allow_abbrev=False)
-    mode = ap.add_mutually_exclusive_group()
+    mode = ap.add_mutually_exclusive_group(required=True)
     for flag in GIT_MODE_FLAGS:
         mode.add_argument(flag, action="store_true")
     ap.add_argument("--json", action="store_true")
