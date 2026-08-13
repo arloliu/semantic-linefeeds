@@ -1,4 +1,6 @@
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -49,3 +51,43 @@ def run_cli(args, stdin_text="", env=None):
 def pytest_addoption(parser):
     parser.addoption("--update-golden", action="store_true",
                      help="rewrite extractor golden files from current output")
+
+
+HAS_GIT = shutil.which("git") is not None
+
+_GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@example.com",
+        "-c", "commit.gpgsign=false"]
+
+
+def git(*args, cwd):
+    """Run git deterministically for repo-building tests."""
+    subprocess.run(_GIT + list(args), cwd=str(cwd), check=True,
+                   capture_output=True)
+
+
+def git_out(*args, cwd):
+    """Captured stdout of a deterministic git command, decoded and stripped."""
+    proc = subprocess.run(_GIT + list(args), cwd=str(cwd), check=True,
+                          capture_output=True)
+    return proc.stdout.decode("utf-8").strip()
+
+
+def isolate_git_env(monkeypatch):
+    """Pin git subprocesses against host config, env injection, and selectors.
+
+    Config files are nulled, GIT_CONFIG_COUNT injection is zeroed,
+    the init template is pointed at a nonexistent directory so no host
+    hook or template file reaches a test repository,
+    and every repository-selector variable is cleared.
+    """
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "0")
+    monkeypatch.setenv("GIT_TEMPLATE_DIR",
+                       os.path.join(os.sep, "semlf-no-template"))
+    for var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE",
+                "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
+                "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE",
+                "GIT_CEILING_DIRECTORIES", "GIT_CONFIG_PARAMETERS"):
+        monkeypatch.delenv(var, raising=False)
