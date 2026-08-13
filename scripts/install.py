@@ -409,8 +409,14 @@ def install_opencode(dry, force):
 
 
 def agents_block():
-    body = SNIPPET.read_text(encoding="utf-8").replace("<repo>", str(REPO))
+    body = SNIPPET.read_text(encoding="utf-8")
     return f"{SENTINEL_OPEN}\n{body.rstrip()}\n{SENTINEL_CLOSE}\n"
+
+
+def _semlf_note():
+    if shutil.which("semlf") is None:
+        print("note: semlf is not on PATH; the snippet's check command "
+              "needs it. run install.py --cli first.")
 
 
 def install_agentsmd(target, dry):
@@ -440,11 +446,13 @@ def install_agentsmd(target, dry):
             new = text.rstrip("\n") + "\n\n" + block
         if new == text:
             print(f"agentsmd: already up to date ({target})")
+            _semlf_note()
             return 0
     else:
         new = block
     atomic_write(target, new, dry)
     print(f"agentsmd: wrote the snippet block to {target}")
+    _semlf_note()
     return 0
 
 

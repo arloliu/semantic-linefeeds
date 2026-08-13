@@ -198,7 +198,8 @@ def test_agentsmd_creates_file_with_block(tmp_path):
     text = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert SENTINEL_OPEN in text and SENTINEL_CLOSE in text
     assert "Semantic linefeeds" in text
-    assert str(REPO) in text  # the <repo> placeholder is substituted
+    assert "semlf --file" in text  # portable: no <repo> placeholder, no absolute path
+    assert str(REPO) not in text
 
 
 def test_agentsmd_rerun_is_idempotent(tmp_path):
@@ -1035,3 +1036,22 @@ def test_status_reports_the_cli_states(tmp_path, monkeypatch, capsys):
     (tmp_path / ".local" / "bin" / "semlf").chmod(0o644)
     install_module.status()
     assert "not runnable" in capsys.readouterr().out
+
+
+def test_agents_block_carries_no_absolute_path():
+    block = install_module.agents_block()
+    assert "semlf --file" in block
+    assert "<repo>" not in block
+    assert str(install_module.REPO) not in block
+
+
+def test_agentsmd_warns_when_semlf_is_missing(tmp_path, monkeypatch, capsys):
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
+    monkeypatch.setenv("PATH", str(empty_bin))
+    target = tmp_path / "AGENTS.md"
+    assert install_module.install_agentsmd(target, False) == 0
+    assert "not on PATH" in capsys.readouterr().out
+    # The gap persists on the idempotent rerun, so the warning must too.
+    assert install_module.install_agentsmd(target, False) == 0
+    assert "not on PATH" in capsys.readouterr().out

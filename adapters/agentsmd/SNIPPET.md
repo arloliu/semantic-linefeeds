@@ -22,4 +22,7 @@ An agent never adds a suppression directive on its own authority: if you judge a
 
 Check your work with:
 
-    python3 <repo>/scripts/check_linefeeds.py --file <files you touched>
+    semlf --file <files you touched>
+
+(`semlf` is installed by `install.py --cli`;
+from a checkout, `python3 scripts/check_linefeeds.py --file` is equivalent.)
