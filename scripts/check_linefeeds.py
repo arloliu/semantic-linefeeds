@@ -26,6 +26,7 @@ Exits 64 on a usage error, such as bad or missing arguments.
 import argparse
 import collections
 import configparser
+import fnmatch
 import json
 import os
 import re
@@ -45,6 +46,8 @@ def active_long_limit(path=None):
     Precedence: --long-limit flag, then $SEMLF_LONG_LINE,
     then the project config discovered from path's directory, then 120.
     A malformed or negative env value falls back to the next leg.
+    Discovery starts at the nearest existing ancestor directory,
+    so a path whose directory vanished from the worktree keeps its policy.
     Discovery runs fresh on every call — no memo —
     because diagnose() and check() are called directly by tests and adapters,
     and a hidden cache a caller must know to reset would trade
@@ -61,15 +64,16 @@ def active_long_limit(path=None):
         except ValueError:
             pass
     if path is not None:
-        cfg = load_config(os.path.dirname(os.path.abspath(path)))
+        cfg = load_config(_existing_start(path))
         if "long_limit" in cfg:
             return cfg["long_limit"]
     return DEFAULT_LONG_LINE
 
 
-def load_config(start_dir):
-    """Project configuration discovered from start_dir upward.
+def _config_and_root(start_dir):
+    """(parsed config dict, real directory owning the config).
 
+    ({}, None) when no config was found or the file was unusable.
     The walk is physical: start_dir is resolved through symlinks once,
     then parents are taken lexically from the resolved path,
     so candidates, parents, and boundary checks share one representation.
@@ -78,21 +82,21 @@ def load_config(start_dir):
     because configuration must not leak across a repository boundary;
     in the directory holding both, the config wins,
     which is what permits a repository-root config.
-    A start_dir that is not an existing directory returns {} without walking.
-    Returns {"long_limit": int} for a valid file, else {} —
-    a config file can tune the checker but must never break it.
-    No section supplies the key through defaults inheritance:
-    only an explicit [semlf] section counts.
-    ConfigParser.defaults() inherits into every section from whichever section is configured as the default section,
-    and that section's name is still representable by hostile input.
-    UTF-8 decodes an embedded NUL,
-    so even the old sentinel name could be spelled out in a config file and inherit as before.
-    Naming the default section unrepresentably cannot close that gap.
-    Instead every default is stripped through the public API right after the file is read, before any section is consulted.
+    A start_dir that is not an existing directory returns ({}, None)
+    without walking.
+    No section supplies a key through defaults inheritance:
+    every parser default is stripped through the public API right after
+    the file is read, before any section is consulted,
+    because ConfigParser.defaults() would otherwise inherit into [semlf]
+    from a default section whose name hostile input can always spell.
+    File-level trouble — unreadable, undecodable, parser error —
+    drops the whole file;
+    an invalid value drops only its own key,
+    so one bad long-limit cannot silence a good exclude beside it.
     """
     cur = os.path.realpath(start_dir)
     if not os.path.isdir(cur):
-        return {}
+        return {}, None
     found = None
     while True:
         candidate = os.path.join(cur, CONFIG_FILENAME)
@@ -106,23 +110,136 @@ def load_config(start_dir):
             break
         cur = parent
     if found is None:
-        return {}
+        return {}, None
     parser = configparser.ConfigParser(interpolation=None)
     try:
         with open(found, encoding="utf-8") as fh:
             parser.read_file(fh)
         for option in list(parser.defaults()):
             parser.remove_option(configparser.DEFAULTSECT, option)
-        raw = parser.get("semlf", "long-limit", fallback=None)
+        raw_limit = parser.get("semlf", "long-limit", fallback=None)
+        raw_exclude = parser.get("semlf", "exclude", fallback=None)
     except (OSError, UnicodeDecodeError, configparser.Error):
-        return {}
-    if raw is None:
-        return {}
+        return {}, None
+    cfg = {}
+    if raw_limit is not None:
+        try:
+            value = int(raw_limit.strip())
+        except ValueError:
+            value = -1
+        if value >= 0:
+            cfg["long_limit"] = value
+    if raw_exclude is not None:
+        patterns = []
+        for line in raw_exclude.replace("\\", "/").splitlines():
+            pattern = line.strip().lstrip("/")
+            if pattern:
+                patterns.append(pattern)
+        if patterns:
+            cfg["exclude"] = patterns
+    return cfg, cur
+
+
+def load_config(start_dir):
+    """Project configuration discovered from start_dir upward.
+
+    The walk and its boundary rules live on _config_and_root;
+    this wrapper keeps the public shape every v0.6a caller uses.
+    Returns {"long_limit": int} and/or {"exclude": [str, ...]} for a
+    valid file, else {} — a config file can tune the checker but must
+    never break it, and an invalid value drops only its own key.
+    """
+    return _config_and_root(start_dir)[0]
+
+
+def _existing_start(path):
+    """The nearest existing ancestor directory of path.
+
+    The worktree-policy anchor: a staged file whose parent directory
+    was removed from the worktree is still governed by the configs
+    that do exist above it (ADR-0013's one-policy-source ruling).
+    load_config keeps its own contract — a nonexistent start_dir handed
+    to it directly returns {} without walking; the ascent lives here,
+    in the callers that own a path rather than a directory.
+    """
+    cur = os.path.dirname(os.path.abspath(path))
+    while cur and not os.path.isdir(cur):
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    return cur
+
+
+def _segments_match(parts, patterns):
+    """Segment-wise glob equality: same length, every segment matches its pattern."""
+    return (len(parts) == len(patterns)
+            and all(fnmatch.fnmatchcase(part, pattern)
+                    for part, pattern in zip(parts, patterns)))
+
+
+def _exclude_match(rel, patterns):
+    """Whether a /-normalized relative path matches any exclude pattern.
+
+    Grammar (ADR-0013), one load-bearing rule first:
+    separators are boundaries — * and ? never cross a slash,
+    so every comparison is per path segment, never whole-string
+    (raw fnmatch would let * roam across separators).
+    A trailing "/" names folders:
+    with an inner "/" the segment chain is anchored at the config
+    root and matches only what lives under it — never a plain file
+    whose own path spells the chain;
+    without one the folder name excludes at any depth.
+    A pattern without a trailing "/" is a glob:
+    with a "/" it must match the whole relative path segment-by-segment,
+    without one it may match any single path component.
+    fnmatchcase everywhere: a rule that changed meaning between
+    platforms would make the same commit clean on one machine
+    and flagged on another.
+    """
+    parts = rel.split("/")
+    for pattern in patterns:
+        if pattern.endswith("/"):
+            chain = pattern.rstrip("/").split("/")
+            if len(chain) > 1:
+                if len(parts) > len(chain) and _segments_match(parts[:len(chain)], chain):
+                    return True
+            elif any(fnmatch.fnmatchcase(part, chain[0]) for part in parts[:-1]):
+                return True
+        elif "/" in pattern:
+            if _segments_match(parts, pattern.split("/")):
+                return True
+        elif any(fnmatch.fnmatchcase(part, pattern) for part in parts):
+            return True
+    return False
+
+
+def excluded(path):
+    """Whether the project config excludes path from discovery.
+
+    Discovery-only: hook mode and the semlf git modes consult this
+    filter; an explicitly named --file path never does — naming a path
+    is the judgment call excludes exist to encode (ADR-0010's
+    principle), and overriding it silently would hide a finding the
+    user asked for.
+    Fails open like every config path: no config, a config the parser
+    rejects, or a path outside the config's tree excludes nothing.
+    A false exclusion is a missed finding — the acceptable direction;
+    a crash or a changed finding kind is not.
+    """
+    cfg, root = _config_and_root(_existing_start(path))
+    patterns = cfg.get("exclude")
+    if not patterns or root is None:
+        return False
     try:
-        value = int(raw.strip())
-    except ValueError:
-        return {}
-    return {"long_limit": value} if value >= 0 else {}
+        rel = os.path.relpath(os.path.realpath(path), root)
+    except (OSError, ValueError):
+        # ValueError is Windows' cross-drive relpath; both fail open.
+        return False
+    rel = rel.replace(os.sep, "/").replace("\\", "/")
+    if rel == "." or rel == ".." or rel.startswith("../"):
+        return False
+    return _exclude_match(rel, patterns)
 
 
 SKIP_DIRS = {"vendor", "node_modules", "testdata", "fixtures",

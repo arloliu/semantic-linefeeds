@@ -378,3 +378,193 @@ def test_valid_config_moves_only_the_long_threshold(tmp_path):
         assert without.returncode == 0 and with_cfg.returncode == 0
         assert kinds_in(without.stdout) == set()
         assert kinds_in(with_cfg.stdout) == {"long"}
+
+
+def test_exclude_patterns_are_parsed_multiline(tmp_path):
+    write(tmp_path / ".semlf.ini",
+          "[semlf]\nexclude =\n    vendor/\n    docs/generated/\n    *.gen.md\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {
+        "exclude": ["vendor/", "docs/generated/", "*.gen.md"]}
+
+
+def test_exclude_single_line_value_is_one_pattern(tmp_path):
+    write(tmp_path / ".semlf.ini", "[semlf]\nexclude = vendor/\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {"exclude": ["vendor/"]}
+
+
+def test_exclude_blank_lines_and_leading_slash_are_normalized(tmp_path):
+    write(tmp_path / ".semlf.ini",
+          "[semlf]\nexclude =\n\n    /docs/generated/\n\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {
+        "exclude": ["docs/generated/"]}
+
+
+def test_exclude_backslashes_normalize_to_slashes(tmp_path):
+    write(tmp_path / ".semlf.ini", "[semlf]\nexclude = docs\\generated\\\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {
+        "exclude": ["docs/generated/"]}
+
+
+def test_exclude_empty_value_yields_no_key(tmp_path):
+    write(tmp_path / ".semlf.ini", "[semlf]\nexclude =\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {}
+
+
+def test_bad_long_limit_no_longer_drops_a_good_exclude(tmp_path):
+    """Fail-open is per key: one bad value silences itself, not its neighbors."""
+    write(tmp_path / ".semlf.ini",
+          "[semlf]\nlong-limit = many\nexclude = vendor/\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {"exclude": ["vendor/"]}
+
+
+def test_both_keys_parse_together(tmp_path):
+    write(tmp_path / ".semlf.ini",
+          "[semlf]\nlong-limit = 80\nexclude = vendor/\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {
+        "long_limit": 80, "exclude": ["vendor/"]}
+
+
+def test_exclude_match_folder_name_at_any_depth():
+    assert check_linefeeds._exclude_match("vendor/doc.md", ["vendor/"])
+    assert check_linefeeds._exclude_match("a/vendor/doc.md", ["vendor/"])
+    assert not check_linefeeds._exclude_match("doc.md", ["vendor/"])
+    # The trailing slash names folders: a *file* named vendor is not one.
+    assert not check_linefeeds._exclude_match("vendor", ["vendor/"])
+
+
+def test_exclude_match_anchored_folder_chain():
+    patterns = ["docs/generated/"]
+    assert check_linefeeds._exclude_match("docs/generated/api.md", patterns)
+    assert check_linefeeds._exclude_match("docs/generated/deep/x.md", patterns)
+    assert not check_linefeeds._exclude_match("other/docs/generated/x.md", patterns)
+    assert not check_linefeeds._exclude_match("docs/handwritten/x.md", patterns)
+    # A folder pattern names what lives under the folder,
+    # never a plain file whose own path spells the chain.
+    assert not check_linefeeds._exclude_match("docs/generated", patterns)
+
+
+def test_exclude_match_component_glob():
+    assert check_linefeeds._exclude_match("notes/api.gen.md", ["*.gen.md"])
+    assert check_linefeeds._exclude_match("api.gen.md", ["*.gen.md"])
+    assert not check_linefeeds._exclude_match("api.md", ["*.gen.md"])
+    # A slash-free bare name may also match a folder component.
+    assert check_linefeeds._exclude_match("node_modules/x/doc.md", ["node_modules"])
+
+
+def test_exclude_match_separators_are_boundaries():
+    """The grammar's load-bearing rule: * and ? never cross a slash."""
+    assert check_linefeeds._exclude_match("docs/api.md", ["docs/*.md"])
+    assert not check_linefeeds._exclude_match("docs/deep/api.md", ["docs/*.md"])
+    assert check_linefeeds._exclude_match("docs/deep/api.md", ["docs/*/api.md"])
+    assert not check_linefeeds._exclude_match("docs/a/b/api.md", ["docs/*/api.md"])
+    assert not check_linefeeds._exclude_match("docs/deep/api.md", ["docs/*"])
+    assert not check_linefeeds._exclude_match("x/docs/api.md", ["docs/*.md"])
+    assert not check_linefeeds._exclude_match("docs/x", ["docs?x"])
+
+
+def test_exclude_match_is_case_sensitive_everywhere():
+    assert not check_linefeeds._exclude_match("Vendor/doc.md", ["vendor/"])
+    assert not check_linefeeds._exclude_match("API.GEN.MD", ["*.gen.md"])
+
+
+def test_excluded_reads_the_discovered_config(tmp_path):
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / ".semlf.ini", "[semlf]\nexclude = generated/\n")
+    inside = tmp_path / "generated" / "doc.md"
+    write(inside, "text\n")
+    outside = tmp_path / "docs" / "doc.md"
+    write(outside, "text\n")
+    assert check_linefeeds.excluded(str(inside))
+    assert not check_linefeeds.excluded(str(outside))
+
+
+def test_excluded_is_false_without_a_config(tmp_path):
+    (tmp_path / ".git").mkdir()
+    target = tmp_path / "vendor" / "doc.md"
+    write(target, "text\n")
+    assert not check_linefeeds.excluded(str(target))
+
+
+def test_excluded_is_false_for_a_path_outside_the_config_root(tmp_path):
+    """A config governs its own tree, never a sibling's."""
+    project = tmp_path / "project"
+    (project / ".git").mkdir(parents=True)
+    write(project / ".semlf.ini", "[semlf]\nexclude = *.md\n")
+    sibling = tmp_path / "sibling" / "doc.md"
+    write(sibling, "text\n")
+    # Discovery starts at the sibling and never reaches project's config,
+    # and even a directly handed config root refuses a path outside it.
+    assert not check_linefeeds.excluded(str(sibling))
+
+
+def test_policy_survives_a_vanished_directory(tmp_path):
+    """A ghost path is governed by the nearest existing ancestor's config.
+
+    This is the worktree-policy anchor for staged files whose parent
+    directory was removed from the worktree: policy must not lapse
+    just because the directory is index-only now.
+    """
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / ".semlf.ini", "[semlf]\nexclude = generated/\n")
+    ghost = tmp_path / "generated" / "gone" / "doc.md"  # never created
+    assert check_linefeeds.excluded(str(ghost))
+
+
+def test_long_limit_survives_a_vanished_directory(tmp_path, monkeypatch):
+    monkeypatch.delenv("SEMLF_LONG_LINE", raising=False)
+    monkeypatch.setattr(check_linefeeds, "CLI_LONG_LIMIT", None)
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / ".semlf.ini", "[semlf]\nlong-limit = 40\n")
+    ghost = tmp_path / "nested" / "doc.md"
+    assert check_linefeeds.active_long_limit(str(ghost)) == 40
+
+
+def test_excluded_is_false_for_an_escaping_symlink(tmp_path):
+    """The outside-root guard acts on the resolved path, not the spelling.
+
+    The catch-all pattern makes this mutation-sensitive:
+    without the ../-guard the component glob would match the resolved
+    path's basename and wrongly exclude it.
+    """
+    project = tmp_path / "project"
+    (project / ".git").mkdir(parents=True)
+    write(project / ".semlf.ini", "[semlf]\nexclude = *\n")
+    outside = tmp_path / "outside.md"
+    write(outside, "text\n")
+    link = project / "doc.md"
+    link.symlink_to(outside)
+    assert not check_linefeeds.excluded(str(link))
+
+
+def test_excluded_fails_open_when_relpath_cannot_form(tmp_path, monkeypatch):
+    """Windows raises ValueError for a cross-drive relpath; the guard eats it."""
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / ".semlf.ini", "[semlf]\nexclude = *\n")
+    target = tmp_path / "doc.md"
+    write(target, "text\n")
+
+    def cross_drive(path, start=None):
+        raise ValueError("path is on mount 'D:', start on mount 'C:'")
+
+    monkeypatch.setattr(check_linefeeds.os.path, "relpath", cross_drive)
+    assert not check_linefeeds.excluded(str(target))
+
+
+def test_excluded_fails_open_on_a_hostile_config(tmp_path):
+    (tmp_path / ".git").mkdir()
+    target = tmp_path / "vendor" / "doc.md"
+    write(target, "text\n")
+    (tmp_path / ".semlf.ini").write_bytes(b"[semlf]\nexclude = \xff\xfe\n")
+    assert not check_linefeeds.excluded(str(target))
+    write(tmp_path / ".semlf.ini", "not an ini [[[")
+    assert not check_linefeeds.excluded(str(target))
+
+
+def test_excluded_resolves_symlinked_paths_to_the_real_tree(tmp_path):
+    repo = tmp_path / "real"
+    (repo / ".git").mkdir(parents=True)
+    write(repo / ".semlf.ini", "[semlf]\nexclude = generated/\n")
+    write(repo / "generated" / "doc.md", "text\n")
+    link = tmp_path / "link"
+    link.symlink_to(repo)
+    assert check_linefeeds.excluded(str(link / "generated" / "doc.md"))
