@@ -144,6 +144,12 @@ and it replays a synthetic payload end to end rather than checking that files ex
 - **A numeric `confidence` field on diagnostics.**
   A deliberate absence carried forward from v0.5:
   no number ships until observed rates support one.
+- **Go template files (`.tmpl`).**
+  Invisible to the checker today, and reported from the field by go-secs.
+  Support means a new extraction state machine for `{{/* ... */}}` comments amid template markup,
+  which is exactly the precision risk the "more languages" non-goal prices.
+  Entry condition: further field reports,
+  or a labeled corpus showing the gap suppresses real findings.
 - **A prebuilt Go binary.**
   Deferred behind [ADR-0011](decisions/0011-go-port-gated-on-field-evidence.md)'s field-evidence gate:
   it opens only if a missing Python runtime proves to be a primary adoption blocker,
