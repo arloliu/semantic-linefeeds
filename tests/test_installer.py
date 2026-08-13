@@ -34,6 +34,22 @@ def isolated_env(tmp_path):
     }
 
 
+def auto_env(tmp_path, *stubs):
+    # PATH is built from scratch: only a controlled stub directory,
+    # so a developer machine that has codex or opencode installed cannot leak into the "not detected" assertions.
+    # run_install invokes the installer via sys.executable,
+    # so an empty-but-real PATH is safe.
+    env = isolated_env(tmp_path)
+    bindir = tmp_path / "bin"
+    bindir.mkdir(exist_ok=True)
+    for name in stubs:
+        stub = bindir / name
+        stub.write_text("#!/bin/sh\nexit 0\n")
+        stub.chmod(0o755)
+    env["PATH"] = str(bindir)
+    return env
+
+
 def codex_hooks_path(tmp_path):
     return tmp_path / "codex" / "hooks.json"
 
@@ -1815,3 +1831,37 @@ def test_force_overrides_an_unreadable_skill_file(tmp_path):
     r = run_install(["--uninstall", "--codex", "--force"], env)
     assert r.returncode == 0
     assert not skill.exists()
+
+
+def test_auto_detects_codex_by_binary_on_path(tmp_path):
+    r = run_install(["--auto", "--dry-run"], auto_env(tmp_path, "codex"))
+    assert r.returncode == 0
+    assert "codex" in r.stdout
+    assert "PATH" in r.stdout
+    assert "opencode: not detected" in r.stdout
+
+
+def test_auto_detects_opencode_by_config_dir(tmp_path):
+    env = auto_env(tmp_path)
+    (tmp_path / "xdg" / "opencode").mkdir(parents=True)
+    r = run_install(["--auto", "--dry-run"], env)
+    assert r.returncode == 0
+    assert "opencode" in r.stdout
+    assert "codex: not detected" in r.stdout
+
+
+def test_auto_always_installs_the_cli(tmp_path):
+    env = isolated_env(tmp_path)
+    r = run_install(["--auto"], env)
+    assert r.returncode == 0
+    assert (tmp_path / "home" / ".local" / "bin" / "semlf").exists()
+
+
+def test_auto_rejects_explicit_mode_flags(tmp_path):
+    r = run_install(["--auto", "--codex"], isolated_env(tmp_path))
+    assert r.returncode == 64
+
+
+def test_auto_rejects_uninstall(tmp_path):
+    r = run_install(["--auto", "--uninstall"], isolated_env(tmp_path))
+    assert r.returncode == 64

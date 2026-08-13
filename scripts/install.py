@@ -6,6 +6,7 @@ Modes:
   --opencode        copy the plugin and the checker side by side into $XDG_CONFIG_HOME/opencode/plugins (default ~/.config/...)
   --agentsmd PATH   manage a sentinel-marked snippet block in PATH (an explicit path is required)
   --cli             build the semlf zipapp and install it as ~/.local/bin/semlf
+  --auto            detect installed agents by evidence (binary on PATH or config dir) and install a matching mode for each, plus the cli unconditionally
   (no mode)         report install status and Claude Code guidance
 
 Claude Code is installed through its own plugin marketplace and is never touched by this script.
@@ -13,6 +14,7 @@ Options: --dry-run prints planned actions without writing.
 --force allows overwriting opencode, codex-skill, or cli files whose content has diverged.
 --uninstall removes an installed mode's artifacts instead of installing them.
 It requires at least one mode flag and honors --dry-run and --force the same way.
+--auto is mutually exclusive with every explicit mode flag and with --uninstall (64).
 Exit codes: 0 success or no-op, 1 refusal or error, 64 usage error.
 """
 import argparse
@@ -526,6 +528,29 @@ def install_opencode(dry, force):
     return rc
 
 
+def detect_agents():
+    """[(agent, evidence)] for every agent this machine shows signs of.
+
+    Detection is a presence probe, never an execution:
+    a binary on PATH or the agent's own directory existing is evidence enough to offer an install,
+    and printing the evidence keeps the decision inspectable.
+    """
+    found = []
+    if shutil.which("codex"):
+        found.append(("codex", "`codex` on PATH"))
+    else:
+        home = codex_home()
+        if home is not None and home.is_dir():
+            found.append(("codex", f"{home} exists"))
+    if shutil.which("opencode"):
+        found.append(("opencode", "`opencode` on PATH"))
+    else:
+        d = opencode_plugins_dir()
+        if d is not None and d.parent.is_dir():
+            found.append(("opencode", f"{d.parent} exists"))
+    return found
+
+
 def agents_block():
     body = SNIPPET.read_text(encoding="utf-8")
     return f"{SENTINEL_OPEN}\n{body.rstrip()}\n{SENTINEL_CLOSE}\n"
@@ -956,6 +981,9 @@ def main():
     ap.add_argument("--uninstall", action="store_true",
                     help="remove a previously installed artifact "
                          "(requires a mode flag)")
+    ap.add_argument("--auto", action="store_true",
+                    help="detect installed agents and install for each "
+                         "one found, plus the cli unconditionally")
     try:
         args = ap.parse_args()
     except SystemExit as e:
@@ -964,6 +992,11 @@ def main():
         print("install: --agentsmd requires an explicit path; "
               "refusing to default to ./AGENTS.md.", file=sys.stderr)
         sys.exit(64)
+    if args.auto and (args.codex or args.opencode or args.cli
+                       or args.agentsmd is not None or args.uninstall):
+        print("install: --auto cannot be combined with a mode flag or "
+              "--uninstall.", file=sys.stderr)
+        sys.exit(64)
     if args.uninstall:
         if not (args.codex or args.opencode or args.cli or args.agentsmd is not None):
             print("install: --uninstall requires a mode flag (--codex, "
@@ -971,6 +1004,22 @@ def main():
             sys.exit(64)
         sys.exit(uninstall(args))
     codes = []
+    if args.auto:
+        detected = dict(detect_agents())
+        for agent in ("codex", "opencode"):
+            if agent in detected:
+                print(f"{agent}: detected ({detected[agent]})")
+            else:
+                print(f"{agent}: not detected; skipped")
+        if "codex" in detected:
+            codes.append(install_codex(args.dry_run))
+            codes.append(install_codex_skill(args.dry_run, args.force))
+        if "opencode" in detected:
+            codes.append(install_opencode(args.dry_run, args.force))
+        codes.append(install_cli(args.dry_run, args.force))
+        if shutil.which("claude"):
+            print("claude: managed by Claude Code itself — install with the "
+                  "plugin marketplace (see install.py status output).")
     if args.codex:
         codes.append(install_codex(args.dry_run))
         codes.append(install_codex_skill(args.dry_run, args.force))
