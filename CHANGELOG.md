@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 The two extraction defects the third holdout measured, repaired now that it is spent.
-v0.5's architectural release: the span model, context-aware hooks, and suppression.
+v0.5's architectural release: the span model, context-aware hooks, suppression,
+and the judgment layer for every agent.
 
 ### Added
 
@@ -29,6 +30,26 @@ v0.5's architectural release: the span model, context-aware hooks, and suppressi
   locate the edit inside it, and report real line numbers,
   where the Codex hook previously reported positions relative to the patch.
   Either falls back to the payload-only snippet report when the edit cannot be mapped onto the file.
+- **A suggested replacement rides with a `!`/`?` fused finding** (ADR-0007).
+  The automatic class stays restricted to `!` and `?`.
+  A period boundary remains a suggestion only,
+  since an abbreviation can never be proven safe by an allowlist.
+  Hook feedback carries the exact two-line replacement for the agent's next edit,
+  and nothing is written for it automatically.
+- **A native Codex skill** (ADR-0006).
+  `scripts/install.py --codex` now also writes
+  `~/.agents/skills/semantic-linefeeds/SKILL.md`.
+  Status, idempotent upgrade, and a `--force` divergence rule match the opencode installer.
+- **The judgment layer reaches every agent** (ADR-0006).
+  `SNIPPET.md` gains the compound-object `and` test,
+  the clause-boundary definition, and the never-break list.
+  The skill and the snippet both gain a bounded disagreement rule:
+  judge a finding before rewriting,
+  and a believed false positive,
+  or a finding that survives one repair,
+  goes to the user instead of another rewrite.
+  Hook feedback carries the same rule,
+  and names the skill only when a usable copy is present at a location Codex resolves skills from.
 
 ### Fixed
 

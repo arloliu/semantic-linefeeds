@@ -23,3 +23,18 @@ though only the directory convention was verified locally, not the end-to-end lo
 - Hook feedback carries a **suggested diff** rather than only a description,
   since agents act on concrete replacements more reliably than on prose instructions.
   This shares its mechanism with the fix delivery in ADR-0007.
+
+## Amendment (2026-08-13)
+
+"The installer actually supplied one" is refined to a presence contract:
+hook feedback names the judgment layer when a usable skill is **present** at a location
+Codex resolves standalone skills from — a repository `.agents/skills` directory,
+or `$HOME/.agents/skills` — not when the installer's own provenance is tracked.
+The installer is the supported way to put a skill there,
+and remains the only place this repository writes one,
+but the hook itself checks presence, not provenance.
+Provenance tracking arrives with v0.6's installed-digest manifest;
+the hint can require it once that manifest exists.
+Native-skill removal is deferred the same way:
+v0.6's `uninstall` command owns skill removal for every installed adapter,
+so this release's Codex installer covers install, status, and idempotent upgrade only.

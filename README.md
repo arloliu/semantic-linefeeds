@@ -81,8 +81,15 @@ This kit backs the rule with three layers instead of trusting the model to remem
    Set `SEMLF_EXPERIMENTAL_WRAP=1` to see it anyway, as advice that never blocks.
 2. **Skill** —
    `semantic-linefeeds` carries the judgment calls the detector can't make on its own:
-   what counts as a clause boundary, the compound-object `and` test, the never-break list.
-   The hook's feedback tells the agent when to load it.
+   what counts as a clause boundary, the compound-object `and` test, the never-break list,
+   and the bounded disagreement rule —
+   judge a finding before rewriting, and a believed false positive
+   or a finding that survives one repair goes to the user instead of another rewrite.
+   Claude Code ships it as a plugin skill;
+   `scripts/install.py --codex` writes a native copy for Codex CLI;
+   other agents fall back to the AGENTS.md snippet.
+   Hook feedback names the skill only when a usable copy is present at a location
+   Codex resolves skills from.
 3. **Detector** —
    `scripts/check_linefeeds.py`, dependency-free Python 3.
    Three precision-tuned heuristics:
@@ -126,6 +133,21 @@ Suppression is user-directed.
 An agent never adds a `semlf-ignore` or `semlf-ignore-next` directive on its own authority:
 when it judges a finding to be a false positive,
 it leaves the text as written and raises the disagreement with you instead.
+
+## Suggested replacements
+
+A blocking `fused` report on `!` or `?` carries an exact two-line replacement
+when the split is unambiguous (ADR-0007):
+
+```
+Suggested replacement for line 12:
+    Stop now!
+    Go on.
+```
+
+The suggestion exists only for the `!`/`?` automatic class, never for a period boundary.
+It is never applied for you —
+apply it as your next edit, after judging the finding like any other.
 
 ## Quick Start
 

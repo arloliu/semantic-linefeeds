@@ -111,16 +111,6 @@ because widening what the hook can see without an escape hatch is what makes use
 - Suppression: `semlf-ignore` and `semlf-ignore-next` directives,
   on the stateless single-line contract in ADR-0010,
   shipped together with context-aware hooks.
-- The judgment layer for **every** agent, not only Claude:
-  native `SKILL.md` installation for Codex with status and idempotent upgrade,
-  `SNIPPET.md` carrying the judgment rules as the fallback for agents without a skill mechanism,
-  and hook feedback carrying suggested diffs, per ADR-0006.
-  Every judgment layer carries the same bounded disagreement path:
-  judge a finding before rewriting;
-  if the agent considers it a false positive,
-  or the same finding survives one repair attempt,
-  stop retrying and surface the disagreement to the user.
-  Correct prose is never rewritten merely to satisfy repeated hook feedback.
 
 ### v0.6 — Repository tooling and lifecycle
 
@@ -146,7 +136,8 @@ The packaged CLI lands before the first git mode, so no mode precedes the comman
 
 ### v0.7 — Fixes and team integration
 
-- Suggestions and the restricted automatic class from ADR-0007.
+- Hook-side mutation of the suggested replacement, gated by a content-hash check immediately before writing (ADR-0007);
+  wider automatic-fix classes beyond `!`/`?`.
 - GitHub Action, SARIF, and annotations as serializers over the diagnostic schema.
 - A real-agent regression corpus.
 
