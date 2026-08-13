@@ -150,6 +150,14 @@ and it replays a synthetic payload end to end rather than checking that files ex
   which is exactly the precision risk the "more languages" non-goal prices.
   Entry condition: further field reports,
   or a labeled corpus showing the gap suppresses real findings.
+- **User-scoped configuration.**
+  Repository policy lives in the repository's `.semlf.ini`,
+  and personal tuning already has env vars,
+  so a user-level file would add a precedence layer
+  and let two people see different findings in the same repo.
+  Entry condition: field reports asking for machine-wide settings
+  (for example a global scratch-directory exclude);
+  if added, it sits below the repo config in precedence.
 - **A prebuilt Go binary.**
   Deferred behind [ADR-0011](decisions/0011-go-port-gated-on-field-evidence.md)'s field-evidence gate:
   it opens only if a missing Python runtime proves to be a primary adoption blocker,
