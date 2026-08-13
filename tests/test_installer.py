@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 
@@ -12,12 +13,12 @@ from check_linefeeds import AGENT_SUPPRESSION_NOTE
 INSTALL = REPO / "scripts" / "install.py"
 
 
-def run_install(args, env_overrides, cwd=None):
+def run_install(args, env_overrides, cwd=None, timeout=20):
     env = os.environ.copy()
     env.update(env_overrides)
     return subprocess.run(
         [sys.executable, str(INSTALL)] + args,
-        capture_output=True, text=True, env=env, cwd=cwd,
+        capture_output=True, text=True, env=env, cwd=cwd, timeout=timeout,
     )
 
 
@@ -28,6 +29,7 @@ def isolated_env(tmp_path):
         "HOME": str(home),
         "CODEX_HOME": str(tmp_path / "codex"),
         "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+        "XDG_STATE_HOME": str(tmp_path / "state"),
     }
 
 
@@ -344,11 +346,25 @@ def make_source_repo(tmp_path):
     shutil.copytree(REPO / "scripts", src / "scripts")
     shutil.copytree(REPO / "adapters", src / "adapters")
     shutil.copytree(REPO / "skills", src / "skills")
+    shutil.copytree(REPO / "cli", src / "cli")
     git = ["git", "-C", str(src), "-c", "user.email=t@t", "-c", "user.name=t"]
     subprocess.run(git + ["init", "-q"], check=True)
     subprocess.run(git + ["add", "-A"], check=True)
     subprocess.run(git + ["commit", "-qm", "init"], check=True)
     return src
+
+
+def test_cloned_installer_imports_standalone(tmp_path):
+    # install.py now imports semlf.manifest via a sys.path insert relative to its own checkout;
+    # a clone missing cli/ cannot even start.
+    repo = make_source_repo(tmp_path)
+    r = subprocess.run(
+        [sys.executable, "-c",
+         "import importlib.util, sys; "
+         f"spec = importlib.util.spec_from_file_location('install', r'{repo}/scripts/install.py'); "
+         "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)"],
+        capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
 
 
 def run_install_sh(args, env_overrides, cwd=None):
@@ -441,6 +457,7 @@ def test_install_sh_home_flag_selects_the_checkout_with_an_isolated_home(tmp_pat
         "HOME": str(isolated_home),
         "CODEX_HOME": str(tmp_path / "codex"),
         "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+        "XDG_STATE_HOME": str(tmp_path / "state"),
     }
     r = subprocess.run(
         ["sh", str(INSTALL_SH), "--repo", str(src), "--home", str(home), "--codex"],
@@ -469,6 +486,7 @@ def test_install_sh_status_mode_is_safe_with_home_truly_unset(tmp_path):
         "PATH": os.environ.get("PATH", ""),
         "CODEX_HOME": str(tmp_path / "codex"),
         "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+        "XDG_STATE_HOME": str(tmp_path / "state"),
     }
     r = subprocess.run(
         ["sh", str(INSTALL_SH), "--repo", str(src), "--home", str(home)],
@@ -491,21 +509,41 @@ def test_install_sh_pinned_ref_rerun(tmp_path):
     assert r2.returncode == 0, r2.stderr
 
 
-def test_install_sh_self_checkout_honors_ref(tmp_path):
-    # A self-checkout run (install.sh executed from inside its own checkout, no --repo)
-    # must still honor an explicit --ref,
-    # instead of silently installing whatever HEAD happens to be checked out.
+def make_self_checkout_repo(tmp_path):
+    """A minimal git repo carrying install.sh itself, plus what install.py needs."""
     src = tmp_path / "source-repo"
     src.mkdir()
     shutil.copytree(REPO / "scripts", src / "scripts")
     shutil.copytree(REPO / "adapters", src / "adapters")
     shutil.copytree(REPO / "skills", src / "skills")
+    shutil.copytree(REPO / "cli", src / "cli")
     shutil.copy(INSTALL_SH, src / "install.sh")
     git = ["git", "-C", str(src), "-c", "user.email=t@t", "-c", "user.name=t"]
     subprocess.run(git + ["init", "-q"], check=True)
     subprocess.run(git + ["add", "-A"], check=True)
     subprocess.run(git + ["commit", "-qm", "init"], check=True)
     subprocess.run(git + ["tag", "v1"], check=True)
+    return src
+
+
+def test_cloned_self_checkout_imports_standalone(tmp_path):
+    # Same smoke test as the make_source_repo constructor above, run against the self-checkout fixture's independently-built copy list.
+    repo = make_self_checkout_repo(tmp_path)
+    r = subprocess.run(
+        [sys.executable, "-c",
+         "import importlib.util, sys; "
+         f"spec = importlib.util.spec_from_file_location('install', r'{repo}/scripts/install.py'); "
+         "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)"],
+        capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+
+
+def test_install_sh_self_checkout_honors_ref(tmp_path):
+    # A self-checkout run (install.sh executed from inside its own checkout, no --repo)
+    # must still honor an explicit --ref,
+    # instead of silently installing whatever HEAD happens to be checked out.
+    src = make_self_checkout_repo(tmp_path)
+    git = ["git", "-C", str(src), "-c", "user.email=t@t", "-c", "user.name=t"]
 
     marker = src / "scripts" / "check_linefeeds.py"
     with marker.open("a", encoding="utf-8") as f:
@@ -927,6 +965,7 @@ def test_pyz_runnable_rejects_each_broken_property(tmp_path):
 
 def test_install_cli_places_semlf_on_local_bin(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     rc = install_module.install_cli(False, False)
     out = capsys.readouterr().out
     dest = tmp_path / ".local" / "bin" / "semlf"
@@ -936,6 +975,7 @@ def test_install_cli_places_semlf_on_local_bin(tmp_path, monkeypatch, capsys):
 
 def test_install_cli_is_idempotent_and_still_notes_path(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     empty_bin = tmp_path / "empty-bin"
     empty_bin.mkdir()
     monkeypatch.setenv("PATH", str(empty_bin))
@@ -950,6 +990,7 @@ def test_install_cli_is_idempotent_and_still_notes_path(tmp_path, monkeypatch, c
 
 def test_install_cli_refuses_divergent_file_without_force(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     dest = tmp_path / ".local" / "bin" / "semlf"
     dest.parent.mkdir(parents=True)
     dest.write_text("something else", encoding="utf-8")
@@ -959,6 +1000,7 @@ def test_install_cli_refuses_divergent_file_without_force(tmp_path, monkeypatch,
 
 def test_install_cli_force_backs_up_the_old_file(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     dest = tmp_path / ".local" / "bin" / "semlf"
     dest.parent.mkdir(parents=True)
     dest.write_text("something else", encoding="utf-8")
@@ -970,6 +1012,7 @@ def test_install_cli_force_backs_up_the_old_file(tmp_path, monkeypatch, capsys):
 
 def test_install_cli_refuses_a_directory_destination(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     dest = tmp_path / ".local" / "bin" / "semlf"
     dest.mkdir(parents=True)
     assert install_module.install_cli(False, True) == 1
@@ -979,6 +1022,7 @@ def test_install_cli_refuses_a_directory_destination(tmp_path, monkeypatch, caps
 
 def test_install_cli_refuses_symlink_destinations_even_with_force(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     dest = tmp_path / ".local" / "bin" / "semlf"
     dest.parent.mkdir(parents=True)
     real = tmp_path / "real-file"
@@ -1005,6 +1049,7 @@ def test_publish_new_refuses_a_destination_that_appeared(tmp_path):
 
 def test_install_cli_dry_run_writes_nothing(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     assert install_module.install_cli(True, False) == 0
     assert "would install" in capsys.readouterr().out
     assert not (tmp_path / ".local").exists()
@@ -1028,6 +1073,7 @@ def test_status_reports_the_cli_states(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     monkeypatch.chdir(tmp_path)
     install_module.status()
     assert "cli: not installed" in capsys.readouterr().out
@@ -1196,3 +1242,268 @@ def test_a_failed_backup_fails_install_cli_cleanly(tmp_path, monkeypatch):
     assert not dest.with_name("semlf.bak").exists()
     leftovers = [p for p in dest.parent.iterdir() if p.name != "semlf"]
     assert leftovers == []
+
+
+# --- Provenance manifest and managed upgrade ---------------------------
+
+
+def entry_file(tmp_path, name):
+    return tmp_path / "state" / "semlf" / "artifacts" / (name + ".json")
+
+
+def read_entry(tmp_path, name):
+    return json.loads(entry_file(tmp_path, name).read_text(encoding="utf-8"))
+
+
+def test_cli_install_records_provenance(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    entry = read_entry(tmp_path, "cli")
+    assert entry["path"] == str(dest)
+    import hashlib
+    assert entry["sha256"] == hashlib.sha256(dest.read_bytes()).hexdigest()
+
+
+def test_managed_older_release_upgrades_without_force(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    older = b"#!/usr/bin/env python3\n# an older release's bytes\n"
+    dest.write_bytes(older)
+    import hashlib
+    entry = read_entry(tmp_path, "cli")
+    entry["sha256"] = hashlib.sha256(older).hexdigest()
+    entry["version"] = "0.5.0"
+    entry_file(tmp_path, "cli").write_text(json.dumps(entry), encoding="utf-8")
+    r = run_install(["--cli"], env)
+    assert r.returncode == 0
+    assert dest.read_bytes() != older
+    assert not dest.with_name("semlf.bak").exists()
+
+
+def test_managed_upgrade_ignores_an_occupied_backup_slot(tmp_path):
+    # The backup slot gates only the unmanaged --force path;
+    # a managed upgrade replaces a recorded release and never touches semlf.bak,
+    # so dry-run and real run must both succeed with the slot occupied.
+    dest, env = install_cli_once(tmp_path)
+    older = b"#!/usr/bin/env python3\n# an older release's bytes\n"
+    dest.write_bytes(older)
+    import hashlib
+    entry = read_entry(tmp_path, "cli")
+    entry["sha256"] = hashlib.sha256(older).hexdigest()
+    entry_file(tmp_path, "cli").write_text(json.dumps(entry), encoding="utf-8")
+    bak = dest.with_name("semlf.bak")
+    bak.write_bytes(b"occupied")
+    r = run_install(["--cli", "--dry-run"], env)
+    assert r.returncode == 0
+    assert "managed" in r.stdout
+    r = run_install(["--cli"], env)
+    assert r.returncode == 0
+    assert bak.read_bytes() == b"occupied"
+
+
+def test_hand_edited_copy_still_refuses_without_force(tmp_path):
+    # A byte-append lands in the pyz's zip-comment region and never registers as a divergence (patch_installed_cli's docstring explains why).
+    # patch_installed_cli is used here instead, since it reliably diverges pyz identity.
+    dest, env = install_cli_once(tmp_path)
+    patch_installed_cli(dest)
+    r = run_install(["--cli"], env)
+    assert r.returncode == 1
+    assert "--force" in r.stderr
+
+
+def test_corrupt_state_means_unrecorded_not_a_crash(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    patch_installed_cli(dest)  # see test_hand_edited_copy_still_refuses_without_force
+    entry_file(tmp_path, "cli").write_text("{broken", encoding="utf-8")
+    r = run_install(["--cli"], env)
+    assert r.returncode == 1
+    assert "--force" in r.stderr
+
+
+def test_codex_skill_install_records_provenance(tmp_path):
+    env = isolated_env(tmp_path)
+    r = run_install(["--codex"], env)
+    assert r.returncode == 0
+    entry = read_entry(tmp_path, "codex-skill")
+    import hashlib
+    dest = codex_skill_path(tmp_path)
+    assert entry["sha256"] == hashlib.sha256(dest.read_bytes()).hexdigest()
+
+
+def test_opencode_install_records_both_files(tmp_path):
+    env = isolated_env(tmp_path)
+    r = run_install(["--opencode"], env)
+    assert r.returncode == 0
+    import hashlib
+    d = opencode_dir(tmp_path)
+    plugin_entry = read_entry(tmp_path, "opencode-plugin")
+    assert plugin_entry["sha256"] == hashlib.sha256(
+        (d / "semantic-linefeeds.ts").read_bytes()).hexdigest()
+    checker_entry = read_entry(tmp_path, "opencode-checker")
+    assert checker_entry["sha256"] == hashlib.sha256(
+        (d / "check_linefeeds.py").read_bytes()).hexdigest()
+
+
+def test_dry_run_writes_no_state(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--cli", "--dry-run"], env)
+    assert not (tmp_path / "state").exists()
+
+
+def test_codex_dry_run_writes_no_state(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex", "--dry-run"], env)
+    assert not (tmp_path / "state").exists()
+
+
+def test_opencode_dry_run_writes_no_state(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--opencode", "--dry-run"], env)
+    assert not (tmp_path / "state").exists()
+
+
+def test_dry_run_over_an_already_current_cli_does_not_create_a_state_entry(tmp_path):
+    # The adoption guard:
+    # install_cli's dry-run branch must not call _adopt_current_cli, so a dry-run rerun over an install that is already current never (re)creates state.
+    dest, env = install_cli_once(tmp_path)
+    shutil.rmtree(tmp_path / "state")
+    r = run_install(["--cli", "--dry-run"], env)
+    assert r.returncode == 0
+    assert "already installed" in r.stdout
+    assert not (tmp_path / "state").exists()
+
+
+def test_adoption_never_rereads_the_destination(tmp_path, monkeypatch):
+    # Red-capable:
+    # every destination reader is booby-trapped, so any future re-read inside adoption fails this test immediately.
+    install = load_install_module()
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    assert install.install_cli(dry=False, force=False) == 0
+    dest = tmp_path / "home" / ".local" / "bin" / "semlf"
+    snapshot = install.guarded_pyz_state(dest)
+    def boom(*_args, **_kwargs):
+        raise AssertionError("adoption re-read the destination")
+    monkeypatch.setattr(install.manifest, "read_regular_bytes", boom)
+    monkeypatch.setattr(install.manifest, "classify", boom)
+    install._adopt_current_cli(dest, snapshot)
+    entry = json.loads(
+        (tmp_path / "state" / "semlf" / "artifacts" / "cli.json")
+        .read_text(encoding="utf-8"))
+    assert entry["sha256"] == install.manifest.sha256_bytes(snapshot[1])
+
+
+def single_file_destinations(tmp_path):
+    return {
+        "--codex": tmp_path / "home" / ".agents" / "skills"
+                   / "semantic-linefeeds" / "SKILL.md",
+        "--opencode": tmp_path / "xdg" / "opencode" / "plugins"
+                      / "semantic-linefeeds.ts",
+        "--cli": tmp_path / "home" / ".local" / "bin" / "semlf",
+    }
+
+
+@pytest.mark.parametrize("mode", ["--codex", "--opencode", "--cli"])
+@pytest.mark.parametrize("force", [[], ["--force"]])
+def test_a_directory_at_a_destination_refuses_install(tmp_path, mode, force):
+    env = isolated_env(tmp_path)
+    dest = single_file_destinations(tmp_path)[mode]
+    dest.mkdir(parents=True)
+    (dest / "keep").write_text("x", encoding="utf-8")
+    r = run_install([mode] + force, env)
+    assert r.returncode == 1
+    assert (dest / "keep").exists()
+
+
+@pytest.mark.parametrize("force", [[], ["--force"]])
+def test_a_directory_at_the_opencode_checker_destination_refuses_install(tmp_path, force):
+    env = isolated_env(tmp_path)
+    dest = tmp_path / "xdg" / "opencode" / "plugins" / "check_linefeeds.py"
+    dest.mkdir(parents=True)
+    (dest / "keep").write_text("x", encoding="utf-8")
+    r = run_install(["--opencode"] + force, env)
+    assert r.returncode == 1
+    assert (dest / "keep").exists()
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="platform has no mkfifo")
+@pytest.mark.parametrize("mode", ["--codex", "--opencode"])
+@pytest.mark.parametrize("force", [[], ["--force"]])
+def test_a_fifo_at_a_skill_or_opencode_destination_refuses_install(tmp_path, mode, force):
+    env = isolated_env(tmp_path)
+    dest = single_file_destinations(tmp_path)[mode]
+    dest.parent.mkdir(parents=True)
+    os.mkfifo(dest)
+    r = run_install([mode] + force, env, timeout=10)
+    assert r.returncode == 1
+    assert stat.S_ISFIFO(os.lstat(dest).st_mode)
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="platform has no mkfifo")
+def test_a_fifo_at_the_cli_destination_refuses_install_and_status_reports_not_runnable(tmp_path):
+    env = isolated_env(tmp_path)
+    dest = single_file_destinations(tmp_path)["--cli"]
+    dest.parent.mkdir(parents=True)
+    os.mkfifo(dest)
+    r = run_install(["--cli"], env, timeout=10)
+    assert r.returncode == 1
+    r = run_install([], env, timeout=10)
+    assert r.returncode == 0
+    assert "not runnable" in r.stdout
+    assert stat.S_ISFIFO(os.lstat(dest).st_mode)
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="platform has no mkfifo")
+def test_status_reports_unreadable_for_a_fifo_skill_destination(tmp_path):
+    env = isolated_env(tmp_path)
+    dest = single_file_destinations(tmp_path)["--codex"]
+    dest.parent.mkdir(parents=True)
+    os.mkfifo(dest)
+    r = run_install([], env, timeout=10)
+    assert r.returncode == 0
+    assert "codex skill: unreadable" in r.stdout
+
+
+@pytest.mark.parametrize("mode", ["--codex", "--opencode"])
+@pytest.mark.parametrize("dangling", [False, True])
+@pytest.mark.parametrize("force", [[], ["--force"]])
+def test_a_symlink_at_a_skill_or_opencode_destination_refuses_install(
+        tmp_path, mode, dangling, force):
+    env = isolated_env(tmp_path)
+    dest = single_file_destinations(tmp_path)[mode]
+    dest.parent.mkdir(parents=True)
+    if dangling:
+        target = tmp_path / "nowhere"
+    else:
+        target = tmp_path / "real-target"
+        target.write_text("x", encoding="utf-8")
+    dest.symlink_to(target)
+    r = run_install([mode] + force, env)
+    assert r.returncode == 1
+    assert dest.is_symlink()
+    if not dangling:
+        assert target.read_text(encoding="utf-8") == "x"
+
+
+def test_status_reports_unreadable_for_a_dangling_symlink_opencode_destination(tmp_path):
+    env = isolated_env(tmp_path)
+    dest = single_file_destinations(tmp_path)["--opencode"]
+    dest.parent.mkdir(parents=True)
+    dest.symlink_to(tmp_path / "nowhere")
+    r = run_install([], env)
+    assert r.returncode == 0
+    assert "opencode: unreadable" in r.stdout
+
+
+def test_codex_refuses_a_hooks_bak_symlink_without_following(tmp_path):
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    existing = {"hooks": {"PostToolUse": []}}
+    original_text = json.dumps(existing)
+    path.write_text(original_text, encoding="utf-8")
+    target = tmp_path / "elsewhere"
+    bak = path.with_name("hooks.json.bak")
+    bak.symlink_to(target)
+    r = run_install(["--codex"], isolated_env(tmp_path))
+    assert r.returncode == 1
+    assert not target.exists()
+    assert bak.is_symlink()
+    assert path.read_text(encoding="utf-8") == original_text

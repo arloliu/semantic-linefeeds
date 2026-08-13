@@ -15,6 +15,7 @@ Exit codes: 0 success or no-op, 1 refusal or error, 64 usage error.
 """
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
@@ -44,50 +45,54 @@ SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"
 TRUST_NOTE = ("note: Codex hashes unmanaged hooks; on your next interactive "
               "codex run it will ask you to trust this hook — accept it once.")
 
-
-def codex_home():
-    """$CODEX_HOME, or ~/.codex, or None when neither resolves.
-
-    Same guard as `codex_skill_dest`:
-    `Path.home()` raises when a home directory cannot be determined,
-    so the env var is checked first and `os.path.expanduser` stands in for the unguarded fallback.
-    """
-    if os.environ.get("CODEX_HOME"):
-        return Path(os.environ["CODEX_HOME"])
-    home = os.path.expanduser("~")
-    return None if home == "~" else Path(home) / ".codex"
+sys.path.insert(0, str(REPO / "cli"))
+from semlf import manifest  # noqa: E402 -- must follow the path insert above
+from semlf.manifest import (  # noqa: E402
+    codex_home, opencode_plugins_dir, codex_skill_dest, cli_bin_dest,
+)
 
 
-def opencode_plugins_dir():
-    """$XDG_CONFIG_HOME/opencode/plugins, or ~/.config/..., or None.
-
-    Same guard as `codex_home`.
-    """
-    if os.environ.get("XDG_CONFIG_HOME"):
-        base = Path(os.environ["XDG_CONFIG_HOME"])
-    else:
-        home = os.path.expanduser("~")
-        if home == "~":
-            return None
-        base = Path(home) / ".config"
-    return base / "opencode" / "plugins"
+def core_version():
+    """The repo core's version, read textually so nothing is imported."""
+    match = re.search(r'^__version__ = "([^"]+)"$',
+                      CHECKER.read_text(encoding="utf-8"), re.MULTILINE)
+    return match.group(1) if match else "unknown"
 
 
 def desired_codex_command():
     return f'python3 "{CHECKER}" --hook codex'
 
 
+class _BackupSlotRefused(Exception):
+    """atomic_write's backup slot is occupied by something not a regular file."""
+
+    def __init__(self, bak):
+        super().__init__(str(bak))
+        self.bak = bak
+
+
 def atomic_write(path, text, dry):
     """Write text to path via a same-directory temp file and os.replace.
 
     An existing file is first copied to <name>.bak so one bad run is always recoverable.
+    The backup slot itself is guarded:
+    anything already at <name>.bak that is not absent or a regular file — above all a symlink, which shutil.copy2 would follow and overwrite through — raises instead of being backed up over.
+    A regular .bak keeps its existing last-run-wins behavior:
+    unlike the cli's exclusive backup, atomic_write's callers back up a merged shared file the next run re-merges, never the only copy of anything.
     """
     if dry:
         print(f"[dry-run] would write {path}")
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
-        shutil.copy2(path, path.with_name(path.name + ".bak"))
+        bak = path.with_name(path.name + ".bak")
+        try:
+            bak_mode = os.lstat(bak).st_mode
+        except FileNotFoundError:
+            bak_mode = None
+        if bak_mode is not None and not stat.S_ISREG(bak_mode):
+            raise _BackupSlotRefused(bak)
+        shutil.copy2(path, bak)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -96,6 +101,17 @@ def atomic_write(path, text, dry):
     except BaseException:
         os.unlink(tmp)
         raise
+
+
+def _guarded_atomic_write(path, text, dry):
+    """atomic_write, turning a refused backup slot into a normal exit-1 diagnostic."""
+    try:
+        atomic_write(path, text, dry)
+    except _BackupSlotRefused as exc:
+        print(f"refusing to overwrite {exc.bak}: it exists and is not "
+              "a regular file; move it aside and re-run.", file=sys.stderr)
+        return 1
+    return None
 
 
 def install_codex(dry):
@@ -109,13 +125,19 @@ def install_codex(dry):
     entry = {"matcher": "apply_patch",
              "hooks": [{"type": "command", "command": command}]}
     if path.exists():
+        data = manifest.read_state_json(path)
+        if data is None:
+            print(f"refusing to touch {path}: cannot read or parse it.",
+                  file=sys.stderr)
+            print("merge the PostToolUse entry from adapters/codex/hooks.json "
+                  "by hand (see adapters/codex/INSTALL.md).", file=sys.stderr)
+            return 1
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
             hooks = data["hooks"] if "hooks" in data else data.setdefault("hooks", {})
             post = hooks.setdefault("PostToolUse", [])
             if not isinstance(data, dict) or not isinstance(post, list):
                 raise ValueError("unexpected structure")
-        except (json.JSONDecodeError, TypeError, AttributeError, ValueError) as e:
+        except (TypeError, AttributeError, ValueError) as e:
             print(f"refusing to touch {path}: cannot parse it ({e}).",
                   file=sys.stderr)
             print("merge the PostToolUse entry from adapters/codex/hooks.json "
@@ -123,23 +145,31 @@ def install_codex(dry):
             return 1
         ours = [h for block in post if isinstance(block, dict)
                 for h in block.get("hooks", [])
-                if isinstance(h, dict) and "check_linefeeds.py" in h.get("command", "")]
+                if isinstance(h, dict)
+                and manifest.parse_managed_codex_hook(
+                    block.get("matcher"), h) is not None]
         if ours:
             if all(h["command"] == command for h in ours):
                 print(f"codex: already installed ({path})")
                 return 0
             for h in ours:
                 h["command"] = command
-            atomic_write(path, json.dumps(data, indent=2) + "\n", dry)
+            rc = _guarded_atomic_write(path, json.dumps(data, indent=2) + "\n", dry)
+            if rc is not None:
+                return rc
             print(f"codex: updated the checker path in {path}")
             print(TRUST_NOTE)
             return 0
         post.append(entry)
-        atomic_write(path, json.dumps(data, indent=2) + "\n", dry)
+        rc = _guarded_atomic_write(path, json.dumps(data, indent=2) + "\n", dry)
+        if rc is not None:
+            return rc
         print(f"codex: appended the PostToolUse hook to {path}")
     else:
         data = {"hooks": {"PostToolUse": [entry]}}
-        atomic_write(path, json.dumps(data, indent=2) + "\n", dry)
+        rc = _guarded_atomic_write(path, json.dumps(data, indent=2) + "\n", dry)
+        if rc is not None:
+            return rc
         print(f"codex: created {path}")
     print(TRUST_NOTE)
     return 0
@@ -158,20 +188,6 @@ CODEX_SKILL_FALLBACK_LINE = (
     "`../../scripts/check_linefeeds.py` relative to this SKILL.md.)\n\n"
 )
 CODEX_SKILL_README_LINK_OLD = "../../README.md"
-
-
-def codex_skill_dest():
-    """Where the native skill installs, or None when no home resolves.
-
-    Uses `os.path.expanduser("~")` rather than `Path.home()`.
-    `expanduser` returns its input unchanged when it cannot resolve;
-    `Path.home()` would raise instead.
-    That mirrors `_judgment_layer_present` in `scripts/check_linefeeds.py`, the hook probe's own check.
-    """
-    home = os.path.expanduser("~")
-    if home == "~":
-        return None
-    return Path(home) / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
 
 
 def build_pyz(dest):
@@ -227,39 +243,58 @@ def pyz_state(path):
     return (digest.hexdigest(), owner_exec, first_line)
 
 
-def pyz_runnable(path):
-    """Whether the archive at path can actually run as the semlf command.
+def _snapshot_runnable(state, data):
+    """Whether a guarded_pyz_state snapshot describes a runnable archive.
 
-    The one validity seam install equality's neighbor status() reuses,
-    so "installed" and "current" can never drift apart:
-    not a symlink (install_cli refuses to manage one, so status must not bless one),
-    readable, executable, the expected interpreter, and every required member.
+    The one validity seam install equality's neighbor status() reuses, so "installed" and "current" can never drift apart:
+    executable, the expected interpreter, and every required member — checked entirely against the snapshot's own bytes (`io.BytesIO(data)`), never by reopening a destination pathname.
     """
-    path = Path(path)
-    if path.is_symlink():
-        return False
-    state = pyz_state(path)
     if state is None or not state[1]:
         return False
     if state[2] != b"#!" + PYZ_INTERPRETER.encode("utf-8"):
         return False
     try:
-        with zipfile.ZipFile(path) as archive:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
             names = set(archive.namelist())
     except (OSError, zipfile.BadZipFile):
         return False
     return PYZ_REQUIRED_MEMBERS <= names
 
 
-def cli_bin_dest():
-    """~/.local/bin/semlf, or None when no home resolves.
+def guarded_pyz_state(dest):
+    """(pyz identity, bytes) from one guarded snapshot of dest, or None.
 
-    Same guard as codex_skill_dest.
+    The lstat that decides the mode also supplies the owner-exec bit, the bytes come from the no-follow primitive, and the identity is computed on a private temp copy —
+    the destination pathname is never handed to open, stat, or ZipFile directly,
+    so a FIFO cannot hang us and a symlink is never followed.
     """
-    home = os.path.expanduser("~")
-    if home == "~":
+    try:
+        st = os.lstat(dest)
+    except OSError:
         return None
-    return Path(home) / ".local" / "bin" / "semlf"
+    if not stat.S_ISREG(st.st_mode):
+        return None
+    data = manifest.read_regular_bytes(dest, manifest.CLASSIFY_LIMIT)
+    if data is None:
+        return None
+    with tempfile.TemporaryDirectory() as td:
+        copy = Path(td) / "copy"
+        copy.write_bytes(data)
+        if st.st_mode & stat.S_IXUSR:
+            os.chmod(copy, 0o755)
+        return pyz_state(copy), data
+
+
+def pyz_runnable(path):
+    """Whether the archive at path can actually run as the semlf command.
+
+    Delegates to guarded_pyz_state so path is read exactly once, through the guard:
+    not a symlink (install_cli refuses to manage one, so status must not bless one), readable, executable, the expected interpreter, and every required member.
+    """
+    snapshot = guarded_pyz_state(path)
+    if snapshot is None:
+        return False
+    return _snapshot_runnable(*snapshot)
 
 
 def _path_note(dest):
@@ -303,13 +338,22 @@ def _exclusive_backup(src, bak):
         raise
 
 
+def _adopt_current_cli(dest, snapshot):
+    """Record provenance for an install proven current by its snapshot.
+
+    snapshot is guarded_pyz_state's (identity, bytes) pair — already verified equal to the fresh build by the caller — so adoption just records the digest of those same bytes.
+    Nothing is re-read: the identity match is the whole proof, and re-recording an already-managed install is an idempotent replace of one state file.
+    """
+    manifest.record("cli", dest, core_version(),
+                    manifest.sha256_bytes(snapshot[1]))
+
+
 def install_cli(dry, force):
     """Install the executable pyz as the semlf command.
 
-    Symlinks and non-regular destinations are refused outright;
-    a fresh install publishes exclusively
-    (a dest appearing after classification is refused, not replaced);
-    only a classified, backed-up divergence is replaced under --force.
+    Symlinks are refused outright.
+    Provenance from the manifest decides everything past that:
+    an exact-current copy is adopted or reported already installed, a copy this installer itself recorded upgrades without --force and without a backup (a recorded release is not the only copy of anything), and anything else needs --force and gets an exclusive backup before replacement.
     """
     dest = cli_bin_dest()
     if dest is None:
@@ -319,35 +363,42 @@ def install_cli(dry, force):
     if dest.is_symlink():
         print(f"refusing to touch {dest}: it is a symlink.", file=sys.stderr)
         return 1
-    if dest.exists() and not dest.is_file():
-        print(f"refusing to touch {dest}: it exists and is not a regular file.",
-              file=sys.stderr)
-        return 1
     with tempfile.TemporaryDirectory() as td:
         fresh = Path(td) / "semlf"
         build_pyz(fresh)
         divergent = False
-        if dest.is_file():
-            if pyz_state(dest) == pyz_state(fresh):
+        managed = False
+        if os.path.lexists(dest):
+            snapshot = guarded_pyz_state(dest)
+            if snapshot is None:
+                print(f"refusing to touch {dest}: it exists but is not "
+                      "a readable regular file.", file=sys.stderr)
+                return 1
+            if snapshot[0] == pyz_state(fresh):
                 print(f"cli: already installed ({dest})")
                 _path_note(dest)
+                if not dry:
+                    _adopt_current_cli(dest, snapshot)
                 return 0
-            if not force:
+            managed = manifest.classify("cli", dest) == "managed"
+            if not force and not managed:
                 print(f"refusing to overwrite {dest}: its content differs "
                       "from this build (hand-patched or older version). "
                       "re-run with --force to replace it.", file=sys.stderr)
                 return 1
             divergent = True
     if dry:
-        if divergent:
+        if not divergent:
+            print(f"would install {dest}")
+        elif managed:
+            print(f"would upgrade {dest} (managed install)")
+        else:
             bak = dest.with_name(dest.name + ".bak")
             if os.path.lexists(bak):
                 print(f"refusing to overwrite {bak}: a backup already "
                       "exists; move it aside and re-run.", file=sys.stderr)
                 return 1
             print(f"would back up and replace {dest}")
-        else:
-            print(f"would install {dest}")
         return 0
     dest.parent.mkdir(parents=True, exist_ok=True)
     fd, staged_name = tempfile.mkstemp(dir=str(dest.parent), prefix=dest.name)
@@ -355,7 +406,8 @@ def install_cli(dry, force):
     staged = Path(staged_name)
     try:
         build_pyz(staged)
-        if divergent:
+        digest = manifest.sha256_bytes(staged.read_bytes())
+        if divergent and not managed:
             bak = dest.with_name(dest.name + ".bak")
             try:
                 _exclusive_backup(dest, bak)
@@ -370,14 +422,18 @@ def install_cli(dry, force):
                       file=sys.stderr)
                 return 1
             os.replace(staged, dest)
+        elif divergent:
+            os.replace(staged, dest)
         elif not _publish_new(staged, dest):
             print(f"refusing to overwrite {dest}: it appeared after "
-                  "classification; re-run so it can be classified.", file=sys.stderr)
+                  "classification; re-run so it can be classified.",
+                  file=sys.stderr)
             return 1
     except BaseException:
         if staged.exists():
             os.unlink(staged)
         raise
+    manifest.record("cli", dest, core_version(), digest)
     print(f"cli: installed {dest}")
     _path_note(dest)
     return 0
@@ -399,12 +455,13 @@ def install_codex_skill(dry, force):
         return 1
     body = codex_skill_body()
     payload = body.encode("utf-8")
-    if dest.exists():
-        try:
-            same = dest.read_bytes() == payload
-        except OSError:
-            same = False
-        if same:
+    if os.path.lexists(dest):
+        current = manifest.read_regular_bytes(dest, manifest.CLASSIFY_LIMIT)
+        if current is None:
+            print(f"refusing to touch {dest}: it exists but is not a "
+                  "readable regular file.", file=sys.stderr)
+            return 1
+        if current == payload:
             print(f"codex skill: already installed ({dest})")
             return 0
         if not force:
@@ -412,7 +469,12 @@ def install_codex_skill(dry, force):
                   "from this repo's copy (hand-patched or older version). "
                   "re-run with --force to replace it.", file=sys.stderr)
             return 1
-    atomic_write(dest, body, dry)
+    rc = _guarded_atomic_write(dest, body, dry)
+    if rc is not None:
+        return rc
+    if not dry:
+        manifest.record("codex-skill", dest, core_version(),
+                        manifest.sha256_bytes(payload))
     print(f"codex skill: installed {dest}")
     return 0
 
@@ -425,11 +487,18 @@ def install_opencode(dry, force):
         return 1
     rc = 0
     copied = skipped = 0
-    for src in (OPENCODE_PLUGIN, CHECKER):
+    for src, name in ((OPENCODE_PLUGIN, "opencode-plugin"),
+                       (CHECKER, "opencode-checker")):
         dest = dest_dir / src.name
         payload = src.read_bytes()
-        if dest.exists():
-            if dest.read_bytes() == payload:
+        if os.path.lexists(dest):
+            current = manifest.read_regular_bytes(dest, manifest.CLASSIFY_LIMIT)
+            if current is None:
+                print(f"refusing to touch {dest}: it exists but is not a "
+                      "readable regular file.", file=sys.stderr)
+                rc = 1
+                continue
+            if current == payload:
                 skipped += 1
                 continue
             if not force:
@@ -438,7 +507,13 @@ def install_opencode(dry, force):
                       "re-run with --force to replace it.", file=sys.stderr)
                 rc = 1
                 continue
-        atomic_write(dest, payload.decode("utf-8"), dry)
+        write_rc = _guarded_atomic_write(dest, payload.decode("utf-8"), dry)
+        if write_rc is not None:
+            rc = write_rc
+            continue
+        if not dry:
+            manifest.record(name, dest, core_version(),
+                            manifest.sha256_bytes(payload))
         copied += 1
     if rc == 0 and copied == 0:
         print(f"opencode: already installed ({dest_dir})")
@@ -491,7 +566,9 @@ def install_agentsmd(target, dry):
             return 0
     else:
         new = block
-    atomic_write(target, new, dry)
+    rc = _guarded_atomic_write(target, new, dry)
+    if rc is not None:
+        return rc
     print(f"agentsmd: wrote the snippet block to {target}")
     _semlf_note()
     return 0
@@ -541,21 +618,25 @@ def status():
     cli_dest = cli_bin_dest()
     if cli_dest is None:
         print("cli: no home to check")
-    elif not cli_dest.exists() and not cli_dest.is_symlink():
+    elif not os.path.lexists(cli_dest):
         print(f"cli: not installed ({cli_dest})")
-    elif not pyz_runnable(cli_dest):
-        # Same validity seam as install equality: a foreign shebang,
-        # a stripped execute bit, or a missing member is never "installed".
-        print(f"cli: present but not runnable ({cli_dest})")
     else:
-        try:
-            with zipfile.ZipFile(cli_dest) as archive:
-                text = archive.read("check_linefeeds.py").decode("utf-8")
-            match = re.search(r'^__version__ = "([^"]+)"$', text, re.MULTILINE)
-            version = match.group(1) if match else "unknown"
-        except (OSError, KeyError, zipfile.BadZipFile, UnicodeDecodeError):
-            version = "unknown"
-        print(f"cli: installed (v{version}) ({cli_dest})")
+        snapshot = guarded_pyz_state(cli_dest)
+        if snapshot is None or not _snapshot_runnable(*snapshot):
+            # Same validity seam as install equality:
+            # a foreign shebang, a stripped execute bit, a missing member, or an unreadable/non-regular object is never "installed" —
+            # and a FIFO here must never hang this check.
+            print(f"cli: present but not runnable ({cli_dest})")
+        else:
+            state, data = snapshot
+            try:
+                with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                    text = archive.read("check_linefeeds.py").decode("utf-8")
+                match = re.search(r'^__version__ = "([^"]+)"$', text, re.MULTILINE)
+                version = match.group(1) if match else "unknown"
+            except (KeyError, zipfile.BadZipFile, UnicodeDecodeError):
+                version = "unknown"
+            print(f"cli: installed (v{version}) ({cli_dest})")
 
     home = codex_home()
     if home is None:
@@ -564,20 +645,26 @@ def status():
         hooks_path = home / "hooks.json"
         state = "not installed"
         if hooks_path.exists():
-            try:
-                data = json.loads(hooks_path.read_text(encoding="utf-8"))
-                cmds = [h.get("command", "")
-                        for block in data.get("hooks", {}).get("PostToolUse", [])
-                        if isinstance(block, dict)
-                        for h in block.get("hooks", [])
-                        if isinstance(h, dict)]
-            except (ValueError, AttributeError, OSError):
-                cmds = []
+            data = manifest.read_state_json(hooks_path)
+            if data is None:
                 state = "unreadable"
-            if any(c == desired_codex_command() for c in cmds):
-                state = "installed"
-            elif any("check_linefeeds.py" in c for c in cmds):
-                state = "installed (stale checker path; re-run --codex)"
+            else:
+                try:
+                    managed = [h.get("command", "")
+                               for block in data.get("hooks", {}).get("PostToolUse", [])
+                               if isinstance(block, dict)
+                               for h in block.get("hooks", [])
+                               if isinstance(h, dict)
+                               and manifest.parse_managed_codex_hook(
+                                   block.get("matcher"), h) is not None]
+                except AttributeError:
+                    managed = []
+                    state = "unreadable"
+                else:
+                    if any(c == desired_codex_command() for c in managed):
+                        state = "installed"
+                    elif managed:
+                        state = "installed (stale checker path; re-run --codex)"
         print(f"codex: {state} ({hooks_path})")
 
     skill_dest = codex_skill_dest()
@@ -585,10 +672,9 @@ def status():
         print("codex skill: no home to check")
     else:
         skill_state = "not installed"
-        if skill_dest.exists():
-            try:
-                raw = skill_dest.read_bytes()
-            except OSError:
+        if os.path.lexists(skill_dest):
+            raw = manifest.read_regular_bytes(skill_dest, manifest.CLASSIFY_LIMIT)
+            if raw is None:
                 skill_state = "unreadable"
             else:
                 try:
@@ -607,12 +693,23 @@ def status():
     if d is None:
         print("opencode: no home to check")
     else:
-        present = [s.name for s in (OPENCODE_PLUGIN, CHECKER)
-                   if (d / s.name).exists() and (d / s.name).read_bytes() == s.read_bytes()]
-        if len(present) == 2:
+        matched = []
+        unreadable = []
+        for s in (OPENCODE_PLUGIN, CHECKER):
+            dest = d / s.name
+            if not os.path.lexists(dest):
+                continue
+            raw = manifest.read_regular_bytes(dest, manifest.CLASSIFY_LIMIT)
+            if raw is None:
+                unreadable.append(s.name)
+            elif raw == s.read_bytes():
+                matched.append(s.name)
+        if unreadable:
+            print(f"opencode: unreadable — {', '.join(unreadable)} ({d})")
+        elif len(matched) == 2:
             print(f"opencode: installed ({d})")
-        elif present:
-            print(f"opencode: partial — only {present[0]} matches ({d})")
+        elif matched:
+            print(f"opencode: partial — only {matched[0]} matches ({d})")
         else:
             print(f"opencode: not installed ({d})")
 
