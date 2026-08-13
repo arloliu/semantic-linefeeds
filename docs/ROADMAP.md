@@ -94,23 +94,13 @@ but as **commit order inside a release** rather than as a separate tag.
 
 ### v0.5 — Changed spans, suppression, and the judgment layer
 
-The architectural release.
-Commit order matters here too:
-the span model lands before context-aware hooks,
-and suppression lands with them rather than after,
-because widening what the hook can see without an escape hatch is what makes users disable a guardrail.
-
-- `diagnose(text, path, spans)`, with anchor, evidence, and ownership ranges (ADR-0005),
-  while `check(text, path)` stays the tuple projection existing consumers keep.
-- Context-aware hooks: both hosts read a stable snapshot of the edited file
-  and pass real spans into `diagnose`,
-  falling back to snippet mode when the edit cannot be mapped onto it.
-- A versioned diagnostic schema, with text as one renderer over it.
-- Real Codex line numbers, with the approximate-position footer only on a degraded report.
-- No numeric `confidence` until observed rates support one.
-- Suppression: `semlf-ignore` and `semlf-ignore-next` directives,
-  on the stateless single-line contract in ADR-0010,
-  shipped together with context-aware hooks.
+The architectural release, now built and awaiting its release cut.
+Every planned pillar is merged and recorded in the changelog's unreleased section:
+the span model (ADR-0005), context-aware hooks with real line numbers,
+the versioned diagnostic schema, suppression (ADR-0010),
+and the judgment layer for every agent (ADR-0006).
+One deliberate absence carries forward:
+no numeric `confidence` until observed rates support one.
 
 ### v0.6 — Repository tooling and lifecycle
 
