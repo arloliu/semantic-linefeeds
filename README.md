@@ -231,6 +231,64 @@ Hook mode skips paths under the platform temp directory and any `tmp/` component
 so agent scratch files are never flagged.
 `--file` mode always checks exactly the paths you name.
 
+### Excluding paths
+
+The same `.semlf.ini` file also takes an `exclude` key, one pattern per line:
+
+```ini
+[semlf]
+exclude =
+    vendor/
+    docs/generated/
+    *.generated.md
+```
+
+A trailing `/` names a folder — a bare name like `vendor/` excludes it at any depth,
+while an inner `/` before the trailing one anchors a chain at the repository root,
+so `docs/generated/` excludes only that path, not `plugins/docs/generated/`.
+A pattern without a trailing `/` is a glob:
+with a `/` it must match the whole relative path, segment by segment;
+without one, like `*.generated.md`, it matches any single path component at any depth.
+Matching is case-sensitive everywhere.
+
+Excludes filter **discovery only** — hook mode and the three git modes below.
+A path you name explicitly on `--file` or `check` is always checked,
+exclude or no exclude, because naming a path is the judgment call excludes exist to encode.
+An agent never adds an `exclude` line on its own authority (ADR-0010's principle);
+it raises the disagreement with you instead.
+
+## Checking git snapshots
+
+Three more modes check a git snapshot instead of files you name:
+
+- `semlf --staged` checks the index — what `git commit` would record —
+  reading each staged blob by its own object id.
+- `semlf --diff` checks the worktree copy of every unstaged change against the index.
+- `semlf --changed` checks the worktree copy of everything different from `HEAD`,
+  staged and unstaged together.
+
+All three accept `--json` and `--long-limit N`, the same as `--file`.
+Only tracked changes are enumerated;
+an untracked file needs `git add` before any mode can see it.
+Symlinks are never checked, in any mode.
+
+Policy — `.semlf.ini`, including `exclude` — is always read from the working tree,
+even for `--staged`: its content is the index, but its policy is the checkout it runs in.
+A config that is staged but not yet on disk does not yet govern `--staged` (ADR-0013).
+
+### Pre-commit
+
+```yaml
+repos:
+  - repo: https://github.com/arloliu/semantic-linefeeds
+    rev: <tag>
+    hooks:
+      - id: semlf
+```
+
+Install the CLI first (the `--cli` flag from Quick Start above) —
+pre-commit's `language: system` entry expects `semlf` already on `PATH`.
+
 ## Supported Languages
 
 | Languages | Extensions |

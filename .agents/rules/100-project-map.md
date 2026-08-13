@@ -7,6 +7,7 @@ Apply before changing any code.
 ```
 scripts/check_linefeeds.py        # the core: language table, extractor, checker, CLI, payload parsers
 cli/semlf/                        # repository CLI (ADR-0004); delegates all analysis to the core
+cli/semlf/providers.py             # git snapshot providers (the only place git runs)
 hooks/hooks.json                  # Claude Code adapter (PostToolUse → --hook claude)
 skills/semantic-linefeeds/        # the skill agents load to fix findings
 adapters/codex/                   # Codex CLI adapter (hooks.json template + INSTALL.md)
@@ -59,6 +60,9 @@ run it under Python 3.9, and reject any import outside the stdlib allowlist.
   when the file can't be read or the edit can't be located in it.
 - `--file` mode checks whole files,
   and `long` findings never affect the exit code in either mode.
+- **Excludes filter discovery only.**
+  The `.semlf.ini` `exclude` key governs hook mode and the git modes (ADR-0013);
+  a path named explicitly on `--file` is always checked.
 - **Exit codes are a contract.**
   `--file`: 0 clean, 1 violations or unreadable input.
   `--hook`: 2 for a `fused` finding, with the report on stderr;

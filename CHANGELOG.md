@@ -11,6 +11,8 @@ v0.6a: the CLI exists.
 A repository can now tune the checker once, and run it as a standalone command,
 instead of every adapter carrying its own copy of the checker's defaults.
 
+v0.6b: `semlf` checks git snapshots directly, and a repository can exclude paths from discovery.
+
 ### Added
 
 - **Project configuration** (ADR-0012): `.semlf.ini` at the repository root, section `[semlf]`,
@@ -31,6 +33,13 @@ instead of every adapter carrying its own copy of the checker's defaults.
   instead of pointing at a checkout-relative script path that only makes sense inside this repository.
 - **`SEMLF_CHECKER`** replaces the opencode adapter's previous environment variable name for pointing the plugin at an out-of-tree copy of the checker script.
   The old name still works as a deprecated alias; `SEMLF_CHECKER` wins when both are set.
+- **Git snapshot modes** (ADR-0013): `semlf --staged`/`--diff`/`--changed` check a git snapshot instead of files you name —
+  the index, the unstaged worktree diff, and everything changed since `HEAD`.
+  Policy (`.semlf.ini`) is always read from the working tree, even for `--staged`.
+- **The `exclude` key** (`.semlf.ini`, ADR-0013): filters discovery in hook mode and every git mode by folder, anchored folder chain, or path/component glob, matched case-sensitively per path segment.
+  A path named explicitly on `--file` is never affected.
+- **A `.pre-commit-hooks.yaml` hook definition**: `id: semlf` runs `semlf --staged` with `pass_filenames: false`,
+  so pre-commit's own file list plays no role and the mode owns discovery.
 
 ### Changed
 
@@ -39,6 +48,9 @@ instead of every adapter carrying its own copy of the checker's defaults.
   instead of silently defaulting to `./AGENTS.md` in the caller's working directory —
   a bare flag was a likely mistake, not a considered choice of target file,
   once the flag started shipping in a packaged CLI invoked from arbitrary directories.
+- **An invalid `.semlf.ini` value now drops only its own key** (amends ADR-0012 via ADR-0013):
+  one bad `long-limit` no longer silences a good `exclude` in the same file.
+  File-level trouble — missing, unreadable, undecodable, or unparsable as INI — still drops the whole file.
 
 ## [0.5.0] - 2026-08-13
 

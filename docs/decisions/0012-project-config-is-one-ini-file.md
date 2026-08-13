@@ -2,6 +2,11 @@
 
 **Status:** accepted
 **Date:** 2026-08-13
+**Amended:** 2026-08-13 —
+[ADR-0013](0013-git-modes-read-snapshots-through-providers.md) adds the `exclude` key
+and rules that an invalid **value** for one key now drops only that key, not the whole file;
+the whole-file-drop rule below stays accurate for file-level trouble only —
+a missing, unreadable, undecodable, or unparsable-as-INI file.
 
 ## Decision
 
