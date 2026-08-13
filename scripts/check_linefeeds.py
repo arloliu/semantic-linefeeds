@@ -25,6 +25,7 @@ Exits 64 on a usage error, such as bad or missing arguments.
 
 import argparse
 import collections
+import configparser
 import json
 import os
 import re
@@ -35,13 +36,19 @@ __version__ = "0.5.0"
 
 DEFAULT_LONG_LINE = 120
 CLI_LONG_LIMIT = None  # set by --long-limit in main()
+CONFIG_FILENAME = ".semlf.ini"
 
 
-def active_long_limit():
+def active_long_limit(path=None):
     """Resolve the long-line advisory threshold; 0 disables it.
 
-    Precedence: --long-limit flag, then $SEMLF_LONG_LINE, then 120.
-    A malformed or negative env value falls back to the default.
+    Precedence: --long-limit flag, then $SEMLF_LONG_LINE,
+    then the project config discovered from path's directory, then 120.
+    A malformed or negative env value falls back to the next leg.
+    Discovery runs fresh on every call — no memo —
+    because diagnose() and check() are called directly by tests and adapters,
+    and a hidden cache a caller must know to reset would trade
+    a few stat calls for a correctness trap.
     """
     if CLI_LONG_LIMIT is not None:
         return CLI_LONG_LIMIT
@@ -53,7 +60,69 @@ def active_long_limit():
                 return value
         except ValueError:
             pass
+    if path is not None:
+        cfg = load_config(os.path.dirname(os.path.abspath(path)))
+        if "long_limit" in cfg:
+            return cfg["long_limit"]
     return DEFAULT_LONG_LINE
+
+
+def load_config(start_dir):
+    """Project configuration discovered from start_dir upward.
+
+    The walk is physical: start_dir is resolved through symlinks once,
+    then parents are taken lexically from the resolved path,
+    so candidates, parents, and boundary checks share one representation.
+    It stops at the first directory holding .semlf.ini or a .git entry
+    (file or directory — worktrees use a file),
+    because configuration must not leak across a repository boundary;
+    in the directory holding both, the config wins,
+    which is what permits a repository-root config.
+    A start_dir that is not an existing directory returns {} without walking.
+    Returns {"long_limit": int} for a valid file, else {} —
+    a config file can tune the checker but must never break it.
+    No section supplies the key through defaults inheritance:
+    only an explicit [semlf] section counts.
+    ConfigParser.defaults() inherits into every section from whichever section is configured as the default section,
+    and that section's name is still representable by hostile input.
+    UTF-8 decodes an embedded NUL,
+    so even the old sentinel name could be spelled out in a config file and inherit as before.
+    Naming the default section unrepresentably cannot close that gap.
+    Instead every default is stripped through the public API right after the file is read, before any section is consulted.
+    """
+    cur = os.path.realpath(start_dir)
+    if not os.path.isdir(cur):
+        return {}
+    found = None
+    while True:
+        candidate = os.path.join(cur, CONFIG_FILENAME)
+        if os.path.isfile(candidate):
+            found = candidate
+            break
+        if os.path.exists(os.path.join(cur, ".git")):
+            break
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    if found is None:
+        return {}
+    parser = configparser.ConfigParser(interpolation=None)
+    try:
+        with open(found, encoding="utf-8") as fh:
+            parser.read_file(fh)
+        for option in list(parser.defaults()):
+            parser.remove_option(configparser.DEFAULTSECT, option)
+        raw = parser.get("semlf", "long-limit", fallback=None)
+    except (OSError, UnicodeDecodeError, configparser.Error):
+        return {}
+    if raw is None:
+        return {}
+    try:
+        value = int(raw.strip())
+    except ValueError:
+        return {}
+    return {"long_limit": value} if value >= 0 else {}
 
 
 SKIP_DIRS = {"vendor", "node_modules", "testdata", "fixtures",
@@ -999,7 +1068,7 @@ def diagnose(text, path, spans=None):
 
     offsets = line_offsets(text)
     findings = []
-    limit = active_long_limit()
+    limit = active_long_limit(path)
     prev = None  # (lineno, prose) of previous prose line in the same paragraph
     for lineno, raw, prose in lines:
         if prose is None:
@@ -1154,7 +1223,7 @@ def format_findings(findings, path, snippet, skill_hint=True):
         if len(excerpt) > 60:
             excerpt = excerpt[:57] + "..."
         lines.append(f'  [{kind}] {label}: {msg}\n         > {excerpt}')
-    limit = active_long_limit() or DEFAULT_LONG_LINE
+    limit = active_long_limit(path) or DEFAULT_LONG_LINE
     if blocking_kinds(findings):
         blocking = [
             f"Fix these in the block you just wrote: one sentence per line; "
