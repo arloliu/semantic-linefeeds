@@ -2,6 +2,11 @@
 
 **Status:** accepted
 **Date:** 2026-08-12
+**Amended:** 2026-08-12 —
+carrier identification and recognition are two steps:
+the extractor marks a candidate by yielding it in the prose stream,
+and what it suppresses is read only after the licence cut,
+so a candidate inside a removed paragraph is never read as a directive.
 
 ## Decision
 
@@ -53,7 +58,7 @@ surfacing them through a doctor-style command is recorded below as a non-decisio
 
 ### Where a directive is recognized
 
-Recognition happens while the extractor walks the file,
+A carrier is identified while the extractor walks the file,
 on the lines it reads as prose or comment surface,
 in exactly two carrier forms:
 
@@ -95,9 +100,14 @@ paragraphs removed by the licence cut,
 and files skipped by their generated marker where the core applies one.
 A closing fence, a licence footer, or generated output can therefore never reach past its own context,
 and none of them can suppress real prose after it.
-The directive-only HTML comment is the one markup line read before it is skipped:
-the extractor recognizes it as a carrier at the moment it walks the line,
-then drops the line from the stream as it would any markup.
+The directive-only HTML comment is the one markup line the stream keeps:
+the extractor yields it as a candidate instead of dropping it,
+and what it suppresses is read only after the licence cut has filtered the stream.
+Identification and recognition are therefore two steps, in that order,
+and a candidate inside a removed paragraph is never read as a directive at all.
+The candidate row sits in its paragraph for that cut,
+so a licence marker can silence a slightly wider paragraph than it would have —
+a stated missed-finding trade, never a false positive.
 
 ### What a suppression matches
 
