@@ -4,6 +4,7 @@ import shutil
 import stat
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -1507,3 +1508,310 @@ def test_codex_refuses_a_hooks_bak_symlink_without_following(tmp_path):
     assert not target.exists()
     assert bak.is_symlink()
     assert path.read_text(encoding="utf-8") == original_text
+
+
+# --- Uninstall -----------------------------------------------------------
+
+
+def test_uninstall_requires_a_mode_flag(tmp_path):
+    r = run_install(["--uninstall"], isolated_env(tmp_path))
+    assert r.returncode == 64
+
+
+def test_uninstall_codex_removes_only_our_entries(tmp_path):
+    env = isolated_env(tmp_path)
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"hooks": {"PostToolUse": [
+        {"matcher": "shell", "hooks": [{"type": "command", "command": "echo hi"}]}
+    ]}}), encoding="utf-8")
+    run_install(["--codex"], env)
+    r = run_install(["--uninstall", "--codex"], env)
+    assert r.returncode == 0
+    data = read_hooks(tmp_path)
+    commands = [h["hooks"][0]["command"] for h in data["hooks"]["PostToolUse"]]
+    assert commands == ["echo hi"]
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    assert not skill.exists()
+    assert not entry_file(tmp_path, "codex-skill").exists()
+
+
+def test_uninstall_codex_when_absent_is_a_noop(tmp_path):
+    r = run_install(["--uninstall", "--codex"], isolated_env(tmp_path))
+    assert r.returncode == 0
+    assert "not installed" in r.stdout
+
+
+def test_an_edited_skill_refuses_the_whole_codex_request(tmp_path):
+    # Preflight atomicity: the hook entry and the manifest must survive untouched when the skill leg refuses — never a partial uninstall.
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    skill.write_text(skill.read_text(encoding="utf-8") + "\nlocal note\n",
+                     encoding="utf-8")
+    hooks_before = codex_hooks_path(tmp_path).read_bytes()
+    state_before = entry_file(tmp_path, "codex-skill").read_bytes()
+    r = run_install(["--uninstall", "--codex"], env)
+    assert r.returncode == 1
+    assert skill.exists()
+    assert codex_hooks_path(tmp_path).read_bytes() == hooks_before
+    assert entry_file(tmp_path, "codex-skill").read_bytes() == state_before
+    r = run_install(["--uninstall", "--codex", "--force"], env)
+    assert r.returncode == 0
+    assert not skill.exists()
+
+
+def test_one_edited_opencode_file_refuses_both(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--opencode"], env)
+    d = tmp_path / "xdg" / "opencode" / "plugins"
+    plugin = d / "semantic-linefeeds.ts"
+    plugin.write_text(plugin.read_text(encoding="utf-8") + "\n// local\n",
+                      encoding="utf-8")
+    r = run_install(["--uninstall", "--opencode"], env)
+    assert r.returncode == 1
+    assert plugin.exists()
+    assert (d / "check_linefeeds.py").exists()
+
+
+def test_uninstall_preserves_a_lookalike_foreign_hook(tmp_path):
+    # Structural ownership: a foreign command that merely mentions the checker's filename is not ours and must survive byte-for-byte.
+    env = isolated_env(tmp_path)
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"hooks": {"PostToolUse": [
+        {"matcher": "shell",
+         "hooks": [{"type": "command", "command": "echo check_linefeeds.py"}]},
+        {"matcher": "apply_patch", "hooks": [{"type": "command", "command": 7}]},
+    ]}}), encoding="utf-8")
+    run_install(["--codex"], env)
+    r = run_install(["--uninstall", "--codex", "--force"], env)
+    assert r.returncode == 0
+    data = read_hooks(tmp_path)
+    commands = [h["hooks"][0]["command"]
+                for h in data["hooks"]["PostToolUse"]]
+    assert "echo check_linefeeds.py" in commands
+    assert 7 in commands
+
+
+@pytest.mark.parametrize("mode", ["--codex", "--opencode", "--cli"])
+@pytest.mark.parametrize("force", [[], ["--force"]])
+def test_a_directory_at_any_single_file_target_refuses_uninstall(tmp_path, mode, force):
+    # Directories are refusal-only under every flag: removing a tree is never this verb's one-file unlink.
+    # single_file_destinations is the same helper the install-side directory matrix uses.
+    env = isolated_env(tmp_path)
+    run_install([mode], env)
+    dest = single_file_destinations(tmp_path)[mode]
+    dest.unlink()
+    dest.mkdir()
+    (dest / "keep").write_text("x", encoding="utf-8")
+    r = run_install(["--uninstall", mode] + force, env)
+    assert r.returncode == 1
+    assert (dest / "keep").exists()
+
+
+def test_uninstall_refuses_a_symlinked_skill_without_force(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    real = tmp_path / "moved-skill.md"
+    real.write_bytes(skill.read_bytes())
+    skill.unlink()
+    skill.symlink_to(real)
+    r = run_install(["--uninstall", "--codex"], env)
+    assert r.returncode == 1
+    assert skill.is_symlink()
+    r = run_install(["--uninstall", "--codex", "--force"], env)
+    assert r.returncode == 0
+    assert not skill.is_symlink()
+    assert real.exists()  # --force unlinks the link itself, never the target
+
+
+def test_uninstall_opencode_removes_matching_files(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--opencode"], env)
+    r = run_install(["--uninstall", "--opencode"], env)
+    assert r.returncode == 0
+    d = tmp_path / "xdg" / "opencode" / "plugins"
+    assert not (d / "semantic-linefeeds.ts").exists()
+    assert not (d / "check_linefeeds.py").exists()
+
+
+def test_uninstall_cli_removes_a_managed_install(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    r = run_install(["--uninstall", "--cli"], env)
+    assert r.returncode == 0
+    assert not dest.exists()
+    assert not entry_file(tmp_path, "cli").exists()
+
+
+def test_uninstall_cli_refuses_an_edited_copy_without_force(tmp_path):
+    dest, env = install_cli_once(tmp_path)
+    dest.write_bytes(dest.read_bytes() + b"#patched\n")
+    r = run_install(["--uninstall", "--cli"], env)
+    assert r.returncode == 1
+    assert dest.exists()
+
+
+def test_uninstall_agentsmd_removes_only_the_block(tmp_path):
+    env = isolated_env(tmp_path)
+    target = tmp_path / "AGENTS.md"
+    target.write_text("# Mine\n\nkeep this\n", encoding="utf-8")
+    run_install(["--agentsmd", str(target)], env)
+    r = run_install(["--uninstall", "--agentsmd", str(target)], env)
+    assert r.returncode == 0
+    text = target.read_text(encoding="utf-8")
+    assert "semantic-linefeeds" not in text
+    assert "keep this" in text
+
+
+def test_uninstall_refuses_a_symlinked_hooks_json(tmp_path):
+    # Shared files are refusal-only: no flag unlinks hooks.json, and a symlink standing in for it refuses even under --force.
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    hooks = codex_hooks_path(tmp_path)
+    real = tmp_path / "moved-hooks.json"
+    real.write_bytes(hooks.read_bytes())
+    hooks.unlink()
+    hooks.symlink_to(real)
+    for args in (["--uninstall", "--codex"], ["--uninstall", "--codex", "--force"]):
+        r = run_install(args, env)
+        assert r.returncode == 1
+        assert hooks.is_symlink()
+        assert real.exists()
+
+
+def test_uninstall_with_no_home_refuses(monkeypatch):
+    # POSIX expanduser falls back to the pwd database.
+    # So "no home" is only reachable by making expanduser return its input unchanged — the exact condition the destination helpers guard on.
+    install = load_install_module()
+    monkeypatch.setattr(install.manifest.os.path, "expanduser", lambda p: p)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    install_args = type("Args", (), {
+        "codex": False, "opencode": False, "agentsmd": None, "cli": True,
+        "force": False, "dry_run": False})()
+    assert install.uninstall(install_args) == 1
+
+
+def test_a_refusing_mode_blocks_the_other_selected_modes(tmp_path):
+    # Request-wide preflight: an admissible --cli must not be removed
+    # when the co-selected --codex leg refuses.
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    dest, _ = install_cli_once(tmp_path)
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    skill.write_text(skill.read_text(encoding="utf-8") + "\nlocal note\n",
+                     encoding="utf-8")
+    r = run_install(["--uninstall", "--codex", "--cli"], env)
+    assert r.returncode == 1
+    assert dest.exists()
+    assert entry_file(tmp_path, "cli").exists()
+
+
+def test_plan_cli_never_hands_the_destination_to_pyz_state(tmp_path, monkeypatch):
+    # Red-capable: pyz_state asserts it never receives the live destination.
+    # So restoring the old pyz_state(dest) comparison in _plan_cli's exact-current branch turns this test red, while the fresh temporary build (and guarded_pyz_state's private copy) still pass through freely.
+    # load_install_module is Task 1's helper in this same file.
+    install = load_install_module()
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    assert install.install_cli(dry=False, force=False) == 0
+    dest = (tmp_path / "home" / ".local" / "bin" / "semlf").resolve()
+    real_pyz_state = install.pyz_state
+    def guarded(path):
+        assert Path(path).resolve() != dest, \
+            "pyz_state received the live destination"
+        return real_pyz_state(path)
+    monkeypatch.setattr(install, "pyz_state", guarded)
+    actions, refusals = [], []
+    install._plan_cli(actions, refusals, force=False)
+    assert refusals == []
+    assert actions  # the exact-current branch admitted via the snapshot
+
+
+def test_uninstall_dry_run_mutates_nothing_at_all(tmp_path):
+    # The dry-run boundary covers the manifest too: a dry-run that forgot provenance would break the artifact's next managed upgrade.
+    dest, env = install_cli_once(tmp_path)
+    state_before = entry_file(tmp_path, "cli").read_bytes()
+    r = run_install(["--uninstall", "--cli", "--dry-run"], env)
+    assert r.returncode == 0
+    assert "would remove" in r.stdout
+    assert dest.exists()
+    assert entry_file(tmp_path, "cli").read_bytes() == state_before
+
+
+# --- Uninstall fix-report follow-ups --------------------------------------
+
+
+@pytest.mark.parametrize("payload", [
+    ["not", "an", "object"],
+    {"hooks": "not-a-dict"},
+    {"hooks": {"PostToolUse": "not-a-list"}},
+])
+def test_uninstall_codex_refuses_a_malformed_hooks_shape(tmp_path, payload):
+    # Parity with install_codex's own guard: a hooks.json that parses as JSON but has a shape too strange to locate PostToolUse in is a refusal, never silently nothing-to-do.
+    env = isolated_env(tmp_path)
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    original = path.read_bytes()
+    r = run_install(["--uninstall", "--codex"], env)
+    assert r.returncode == 1
+    assert path.read_bytes() == original
+
+
+def test_uninstall_codex_treats_an_absent_posttooluse_list_as_a_noop(tmp_path):
+    # A "hooks" or "PostToolUse" key that is simply absent from an otherwise-sane dict is empty, not strange, and must stay a no-op.
+    env = isolated_env(tmp_path)
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"hooks": {}}), encoding="utf-8")
+    original = path.read_bytes()
+    r = run_install(["--uninstall", "--codex"], env)
+    assert r.returncode == 0
+    assert path.read_bytes() == original
+
+
+def test_uninstall_codex_preserves_a_pre_existing_empty_foreign_block(tmp_path):
+    # A foreign block that was already empty before we ever looked at it must never be treated as something our own filtering emptied.
+    env = isolated_env(tmp_path)
+    path = codex_hooks_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"hooks": {"PostToolUse": [
+        {"matcher": "shell", "hooks": []}
+    ]}}), encoding="utf-8")
+    original = path.read_bytes()
+    r = run_install(["--uninstall", "--codex"], env)
+    assert r.returncode == 0
+    assert path.read_bytes() == original
+
+
+def test_forget_failure_after_a_successful_unlink_is_reported_accurately(tmp_path):
+    # os.unlink(dest) and manifest.forget(name) are two separate filesystem operations bundled into one planned action.
+    # A forget failure after a successful unlink must not misreport dest as never having been removed.
+    dest, env = install_cli_once(tmp_path)
+    state = entry_file(tmp_path, "cli")
+    state.unlink()
+    state.mkdir()
+    (state / "keep").write_text("x", encoding="utf-8")
+    r = run_install(["--uninstall", "--cli"], env)
+    assert r.returncode == 1
+    assert not dest.exists()
+    # Pin that forget actually failed (not silently succeeded): the directory planted in its place must still be there.
+    assert (state / "keep").exists()
+    assert str(dest) in r.stderr
+    assert "provenance" in r.stderr
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores file permissions")
+def test_force_overrides_an_unreadable_skill_file(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    skill.chmod(0o000)
+    r = run_install(["--uninstall", "--codex"], env)
+    assert r.returncode == 1
+    assert skill.exists()
+    r = run_install(["--uninstall", "--codex", "--force"], env)
+    assert r.returncode == 0
+    assert not skill.exists()

@@ -11,6 +11,8 @@ Modes:
 Claude Code is installed through its own plugin marketplace and is never touched by this script.
 Options: --dry-run prints planned actions without writing.
 --force allows overwriting opencode, codex-skill, or cli files whose content has diverged.
+--uninstall removes an installed mode's artifacts instead of installing them.
+It requires at least one mode flag and honors --dry-run and --force the same way.
 Exit codes: 0 success or no-op, 1 refusal or error, 64 usage error.
 """
 import argparse
@@ -574,6 +576,366 @@ def install_agentsmd(target, dry):
     return 0
 
 
+# --- Uninstall -------------------------------------------------------------
+#
+# One entry point, two phases.
+# Preflight (the _plan_* helpers) is read-only: it classifies every selected target and appends either a (label, apply_callable) pair to `actions` or a human-readable string to `refusals`.
+# A `None` apply_callable marks a no-op note — printed as information, never treated as a mutation.
+# `uninstall` refuses the whole request the moment any target is inadmissible, before `_apply` runs.
+
+
+def _write_shared(path, text):
+    """atomic_write for a shared-file uninstall edit (hooks.json, AGENTS.md).
+
+    Folds a refused backup slot into a plain OSError so _apply's one except clause handles every planned action's failure the same way.
+    """
+    try:
+        atomic_write(path, text, False)
+    except _BackupSlotRefused as exc:
+        raise OSError(f"backup slot {exc.bak} exists and is not a regular "
+                      "file; move it aside and re-run") from exc
+
+
+def _bak_sibling_ok(path):
+    """Whether path's .bak sibling is absent or a plain regular file.
+
+    The rewrite's own backup copy would otherwise write through a symlink
+    or other special file left in that slot, so preflight must see it too.
+    """
+    bak = path.with_name(path.name + ".bak")
+    try:
+        return not os.path.lexists(bak) or stat.S_ISREG(os.lstat(bak).st_mode)
+    except OSError:
+        return False
+
+
+def _plan_codex_hook(actions, refusals):
+    home = codex_home()
+    if home is None:
+        refusals.append("refusing to uninstall the codex hook: cannot "
+                        "determine a home directory to uninstall it from.")
+        return
+    path = home / "hooks.json"
+    if not os.path.lexists(path):
+        actions.append((f"codex: not installed ({path})", None))
+        return
+    data = manifest.read_state_json(path)
+    # Same parity as install_codex's own guard: a shape too strange to locate PostToolUse in — a non-dict top level, a "hooks" value that isn't a dict, or a "PostToolUse" value that isn't a list — is a refusal, not silently nothing-to-do.
+    # A "hooks" or "PostToolUse" key that is simply *absent* from an otherwise-sane dict is not strange; it is empty, and empty is a legitimate no-op.
+    hooks = data.get("hooks", {}) if isinstance(data, dict) else None
+    post = hooks.get("PostToolUse", []) if isinstance(hooks, dict) else None
+    if not isinstance(data, dict) or not isinstance(hooks, dict) or not isinstance(post, list):
+        refusals.append(f"refusing to touch {path}: cannot read or parse "
+                        "it; repair or remove it by hand.")
+        return
+    if not _bak_sibling_ok(path):
+        bak = path.with_name(path.name + ".bak")
+        refusals.append(f"refusing to touch {path}: its backup slot {bak} "
+                        "exists and is not a regular file; move it aside "
+                        "and re-run.")
+        return
+    changed = False
+    new_post = []
+    for block in post:
+        if isinstance(block, dict) and isinstance(block.get("hooks"), list):
+            original = block["hooks"]
+            kept = [h for h in original
+                    if not (isinstance(h, dict)
+                            and manifest.parse_managed_codex_hook(
+                                block.get("matcher"), h) is not None)]
+            if len(kept) == len(original):
+                # Nothing of ours was in this block: preserve it exactly, including a foreign block that was already empty before we ever looked at it.
+                new_post.append(block)
+                continue
+            changed = True
+            if kept:
+                block = dict(block)
+                block["hooks"] = kept
+                new_post.append(block)
+            # else: our own filtering emptied this block; drop it.
+        else:
+            new_post.append(block)
+    hooks["PostToolUse"] = new_post
+    if not changed:
+        actions.append((f"codex: no managed hook entry found in {path}", None))
+        return
+    text = json.dumps(data, indent=2) + "\n"
+    def _do(path=path, text=text):
+        _write_shared(path, text)
+    actions.append((f"the managed hook entry from {path}", _do))
+
+
+def _prune_empty_parent(dest):
+    parent = dest.parent
+    try:
+        if not any(parent.iterdir()):
+            parent.rmdir()
+    except OSError:
+        pass
+
+
+def _forget_note(dest, name):
+    """Unlink already succeeded.
+
+    Forget provenance without letting its own failure masquerade as dest never having been removed.
+    Returns None on a clean forget.
+    On a raised OSError it returns an accurate stderr line instead — the caller still counts dest as removed either way.
+    """
+    try:
+        manifest.forget(name)
+    except OSError as exc:
+        return (f"removed {dest}, but could not clear its provenance "
+               f"record: {exc}")
+    return None
+
+
+def _plan_file(label, dest, reference_bytes, name, force, actions, refusals,
+               prune_parent=False):
+    """Plan removal of one installer-owned file, or a refusal.
+
+    Shared by the codex skill and both opencode files.
+    `_plan_cli` layers one extra admission rule (pyz identity) on top of the same shape.
+    """
+    if dest is None:
+        refusals.append(f"refusing to uninstall the {label}: cannot "
+                        "determine a home directory to uninstall it from.")
+        return
+    dest = Path(dest)
+    try:
+        st = os.lstat(dest)
+    except OSError:
+        actions.append((f"{label}: not installed ({dest})", None))
+        return
+    if stat.S_ISDIR(st.st_mode):
+        refusals.append(f"refusing to remove {dest}: it is a directory; "
+                        "removing a tree is not this verb's one-file unlink.")
+        return
+    admit = False
+    reason = None
+    if not stat.S_ISREG(st.st_mode):
+        reason = (f"refusing to remove {dest}: it is not a regular file "
+                  "(symlink or special file).")
+    else:
+        current = manifest.read_regular_bytes(dest, manifest.CLASSIFY_LIMIT)
+        if current is None:
+            reason = (f"refusing to remove {dest}: it exists but is not a "
+                      "readable regular file.")
+        elif current == reference_bytes or manifest.classify(name, dest) == "managed":
+            admit = True
+        else:
+            reason = (f"refusing to remove {dest}: its content differs from "
+                      "what this kit installed (hand-patched or older "
+                      "version).")
+    if not (admit or force):
+        refusals.append(reason + " re-run with --force to remove it anyway.")
+        return
+    def _do(dest=dest, name=name, prune_parent=prune_parent):
+        os.unlink(dest)
+        note = _forget_note(dest, name)
+        if prune_parent:
+            _prune_empty_parent(dest)
+        return note
+    actions.append((str(dest), _do))
+
+
+def _plan_opencode(actions, refusals, force):
+    dest_dir = opencode_plugins_dir()
+    if dest_dir is None:
+        refusals.append("refusing to uninstall opencode: cannot determine "
+                        "a home directory to uninstall it from.")
+        return
+    _plan_file("opencode plugin", dest_dir / OPENCODE_PLUGIN.name,
+              OPENCODE_PLUGIN.read_bytes(), "opencode-plugin", force,
+              actions, refusals)
+    _plan_file("opencode checker", dest_dir / CHECKER.name,
+              CHECKER.read_bytes(), "opencode-checker", force,
+              actions, refusals)
+
+
+def _plan_cli(actions, refusals, force):
+    """_plan_file's rules plus one admit: pyz identity against a fresh build.
+
+    The live destination is never handed to pyz_state directly — only guarded_pyz_state's private temp copy, and a fresh temporary build, may use it.
+    So a FIFO at dest cannot hang this check, and a symlink is never followed into.
+    """
+    dest = cli_bin_dest()
+    if dest is None:
+        refusals.append("refusing to uninstall the cli: cannot determine a "
+                        "home directory to uninstall it from.")
+        return
+    dest = Path(dest)
+    try:
+        st = os.lstat(dest)
+    except OSError:
+        actions.append((f"cli: not installed ({dest})", None))
+        _plan_cli_bak_note(dest, actions)
+        return
+    if stat.S_ISDIR(st.st_mode):
+        refusals.append(f"refusing to remove {dest}: it is a directory; "
+                        "removing a tree is not this verb's one-file unlink.")
+        return
+    admit = False
+    reason = None
+    if not stat.S_ISREG(st.st_mode):
+        reason = (f"refusing to remove {dest}: it is not a regular file "
+                  "(symlink or special file).")
+    else:
+        snapshot = guarded_pyz_state(dest)
+        if snapshot is None:
+            reason = (f"refusing to remove {dest}: it exists but is not a "
+                      "readable regular file.")
+        else:
+            with tempfile.TemporaryDirectory() as td:
+                fresh = Path(td) / "semlf"
+                build_pyz(fresh)
+                identity_match = snapshot[0] == pyz_state(fresh)
+            classification = manifest.classify("cli", dest)
+            # A manifest that proves divergence ("edited") outranks the coarser pyz snapshot.
+            # The snapshot only substitutes for a *missing* provenance record ("unrecorded"); it never overrides a provenance record that says otherwise.
+            if classification == "managed" or (
+                    classification != "edited" and identity_match):
+                admit = True
+            else:
+                reason = (f"refusing to remove {dest}: its content differs "
+                          "from this build (hand-patched or older version).")
+    if admit or force:
+        def _do(dest=dest):
+            os.unlink(dest)
+            return _forget_note(dest, "cli")
+        actions.append((str(dest), _do))
+    else:
+        refusals.append(reason + " re-run with --force to remove it anyway.")
+    _plan_cli_bak_note(dest, actions)
+
+
+def _plan_cli_bak_note(dest, actions):
+    bak = dest.with_name(dest.name + ".bak")
+    if os.path.lexists(bak):
+        actions.append((f"note: {bak} is your own backup; it is never "
+                        "touched by uninstall.", None))
+
+
+def _plan_agentsmd(target, actions, refusals):
+    """Plan splicing the sentinel block out of target, or a refusal.
+
+    target is user-owned, so --force never overrides a refusal here —
+    unlike the installer-owned single-file artifacts above.
+    """
+    try:
+        st = os.lstat(target)
+    except OSError:
+        actions.append((f"agentsmd: not installed ({target})", None))
+        return
+    if not stat.S_ISREG(st.st_mode):
+        refusals.append(f"refusing to touch {target}: it is not a regular "
+                        "file; repair it by hand.")
+        return
+    if not _bak_sibling_ok(target):
+        bak = target.with_name(target.name + ".bak")
+        refusals.append(f"refusing to touch {target}: its backup slot {bak} "
+                        "exists and is not a regular file; move it aside "
+                        "and re-run.")
+        return
+    data = manifest.read_regular_bytes(target, manifest.CLASSIFY_LIMIT)
+    if data is None:
+        refusals.append(f"refusing to touch {target}: cannot read it; "
+                        "repair or remove it by hand.")
+        return
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        refusals.append(f"refusing to touch {target}: cannot decode it as "
+                        "UTF-8; repair it by hand.")
+        return
+    has_open = SENTINEL_OPEN in text
+    has_close = SENTINEL_CLOSE in text
+    if has_open != has_close:
+        refusals.append(f"refusing to touch {target}: found one sentinel "
+                        "marker without its pair; repair the block by hand.")
+        return
+    if has_open and (text.count(SENTINEL_OPEN) != 1
+                      or text.count(SENTINEL_CLOSE) != 1
+                      or text.index(SENTINEL_OPEN) > text.index(SENTINEL_CLOSE)):
+        refusals.append(f"refusing to touch {target}: sentinel markers are "
+                        "out of order or repeated; repair the block by hand.")
+        return
+    if not has_open:
+        actions.append((f"agentsmd: no block found in {target}", None))
+        return
+    def _do(target=target, text=text):
+        pre = text.split(SENTINEL_OPEN)[0]
+        post = text.split(SENTINEL_CLOSE, 1)[1].lstrip("\n")
+        new = pre.rstrip("\n")
+        if new and post:
+            new = new + "\n\n" + post
+        elif post:
+            new = post
+        elif new:
+            new = new + "\n"
+        _write_shared(target, new)
+    actions.append((f"the semantic-linefeeds block from {target}", _do))
+
+
+def _apply(actions, dry_run):
+    """Execute every planned action, or report the dry-run plan.
+
+    Runs what preflight admitted without revalidating it — a target mutated between the two phases is same-user concurrency, out of scope by ADR-0014's stated boundary.
+    Stops at the first unexpected OSError and reports what was and was not removed.
+    """
+    if dry_run:
+        for label, fn in actions:
+            if fn is None:
+                print(label)
+            else:
+                print(f"[dry-run] would remove {label}")
+        return 0
+    removed = []
+    had_error = False
+    for i, (label, fn) in enumerate(actions):
+        if fn is None:
+            print(label)
+            continue
+        try:
+            note = fn()
+        except OSError as exc:
+            remaining = [l for l, f in actions[i + 1:] if f is not None]
+            print(f"error while removing {label}: {exc}", file=sys.stderr)
+            print("removed so far: "
+                  + (", ".join(removed) if removed else "(nothing)"),
+                  file=sys.stderr)
+            print("not removed: " + ", ".join([label] + remaining),
+                  file=sys.stderr)
+            return 1
+        # A non-None return is a partial-failure note (e.g. the unlink succeeded but manifest.forget could not run): the removal still counts as done, but the request as a whole still failed.
+        if note:
+            print(note, file=sys.stderr)
+            had_error = True
+        else:
+            print(f"removed {label}")
+        removed.append(label)
+    return 1 if had_error else 0
+
+
+def uninstall(args):
+    """Preflight every selected target, then apply only if all admit."""
+    actions, refusals = [], []
+    if args.codex:
+        _plan_codex_hook(actions, refusals)
+        _plan_file("codex skill", codex_skill_dest(), codex_skill_body().encode("utf-8"),
+                  "codex-skill", args.force, actions, refusals, prune_parent=True)
+    if args.opencode:
+        _plan_opencode(actions, refusals, args.force)
+    if args.cli:
+        _plan_cli(actions, refusals, args.force)
+    if args.agentsmd is not None:
+        _plan_agentsmd(Path(args.agentsmd), actions, refusals)
+    for refusal in refusals:
+        print(refusal, file=sys.stderr)
+    if refusals:
+        return 1
+    return _apply(actions, args.dry_run)
+
+
 def main():
     ap = argparse.ArgumentParser(prog="install", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -591,6 +953,9 @@ def main():
                     help="print planned actions without writing anything")
     ap.add_argument("--force", action="store_true",
                     help="overwrite opencode, codex-skill, or cli files whose content has diverged")
+    ap.add_argument("--uninstall", action="store_true",
+                    help="remove a previously installed artifact "
+                         "(requires a mode flag)")
     try:
         args = ap.parse_args()
     except SystemExit as e:
@@ -599,6 +964,12 @@ def main():
         print("install: --agentsmd requires an explicit path; "
               "refusing to default to ./AGENTS.md.", file=sys.stderr)
         sys.exit(64)
+    if args.uninstall:
+        if not (args.codex or args.opencode or args.cli or args.agentsmd is not None):
+            print("install: --uninstall requires a mode flag (--codex, "
+                  "--opencode, --cli, --agentsmd PATH).", file=sys.stderr)
+            sys.exit(64)
+        sys.exit(uninstall(args))
     codes = []
     if args.codex:
         codes.append(install_codex(args.dry_run))
