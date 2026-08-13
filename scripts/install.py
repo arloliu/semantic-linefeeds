@@ -4,7 +4,7 @@
 Modes:
   --codex           merge the PostToolUse hook into $CODEX_HOME/hooks.json (default ~/.codex/hooks.json), append-never-overwrite; also installs the native semantic-linefeeds skill under ~/.agents/skills
   --opencode        copy the plugin and the checker side by side into $XDG_CONFIG_HOME/opencode/plugins (default ~/.config/...)
-  --agentsmd [PATH] manage a sentinel-marked snippet block in AGENTS.md (default ./AGENTS.md)
+  --agentsmd PATH   manage a sentinel-marked snippet block in PATH (an explicit path is required)
   --cli             build the semlf zipapp and install it as ~/.local/bin/semlf
   (no mode)         report install status and Claude Code guidance
 
@@ -455,9 +455,10 @@ def main():
                     help="install the Codex CLI hook and the native semantic-linefeeds skill")
     ap.add_argument("--opencode", action="store_true",
                     help="install the opencode plugin and checker")
-    ap.add_argument("--agentsmd", nargs="?", const="AGENTS.md", default=None,
+    ap.add_argument("--agentsmd", nargs="?", const="", default=None,
                     metavar="PATH",
-                    help="write the snippet block into PATH (default ./AGENTS.md)")
+                    help="write the snippet block into PATH "
+                         "(an explicit path is required)")
     ap.add_argument("--cli", action="store_true",
                     help="build the semlf zipapp and install it as ~/.local/bin/semlf")
     ap.add_argument("--dry-run", action="store_true",
@@ -468,6 +469,10 @@ def main():
         args = ap.parse_args()
     except SystemExit as e:
         sys.exit(0 if e.code == 0 else 64)
+    if args.agentsmd is not None and not args.agentsmd:
+        print("install: --agentsmd requires an explicit path; "
+              "refusing to default to ./AGENTS.md.", file=sys.stderr)
+        sys.exit(64)
     codes = []
     if args.codex:
         codes.append(install_codex(args.dry_run))
@@ -562,7 +567,7 @@ def status():
         else:
             print(f"opencode: not installed ({d})")
 
-    agents = Path("AGENTS.md")
+    agents = Path("AGENTS.md").resolve()
     mark = "absent"
     if agents.exists():
         try:
@@ -570,7 +575,7 @@ def status():
                 mark = "present"
         except (ValueError, OSError):
             mark = "absent (unreadable)"
-    print(f"agentsmd: block {mark} in ./{agents}")
+    print(f"agentsmd: block {mark} in {agents}")
 
     print("claude: managed by Claude Code itself — install with:")
     print("  claude plugin marketplace add /path/to/semantic-linefeeds  # or a private git remote")

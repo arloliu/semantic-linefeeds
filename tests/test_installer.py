@@ -193,7 +193,7 @@ SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"
 
 
 def test_agentsmd_creates_file_with_block(tmp_path):
-    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    r = run_install(["--agentsmd", str(tmp_path / "AGENTS.md")], isolated_env(tmp_path), cwd=tmp_path)
     assert r.returncode == 0
     text = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert SENTINEL_OPEN in text and SENTINEL_CLOSE in text
@@ -203,11 +203,12 @@ def test_agentsmd_creates_file_with_block(tmp_path):
 
 def test_agentsmd_rerun_is_idempotent(tmp_path):
     env = isolated_env(tmp_path)
-    run_install(["--agentsmd"], env, cwd=tmp_path)
-    before = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
-    r = run_install(["--agentsmd"], env, cwd=tmp_path)
+    target = tmp_path / "AGENTS.md"
+    run_install(["--agentsmd", str(target)], env, cwd=tmp_path)
+    before = target.read_text(encoding="utf-8")
+    r = run_install(["--agentsmd", str(target)], env, cwd=tmp_path)
     assert r.returncode == 0
-    assert (tmp_path / "AGENTS.md").read_text(encoding="utf-8") == before
+    assert target.read_text(encoding="utf-8") == before
 
 
 def test_agentsmd_replaces_block_and_keeps_user_text(tmp_path):
@@ -216,7 +217,7 @@ def test_agentsmd_replaces_block_and_keeps_user_text(tmp_path):
         "# My rules\n\nkeep me\n\n"
         f"{SENTINEL_OPEN}\nstale old block\n{SENTINEL_CLOSE}\n\ntail kept too\n",
         encoding="utf-8")
-    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    r = run_install(["--agentsmd", str(target)], isolated_env(tmp_path), cwd=tmp_path)
     assert r.returncode == 0
     text = target.read_text(encoding="utf-8")
     assert "keep me" in text and "tail kept too" in text
@@ -227,7 +228,7 @@ def test_agentsmd_replaces_block_and_keeps_user_text(tmp_path):
 def test_agentsmd_appends_to_existing_file_without_block(tmp_path):
     target = tmp_path / "AGENTS.md"
     target.write_text("# My rules\n", encoding="utf-8")
-    run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    run_install(["--agentsmd", str(target)], isolated_env(tmp_path), cwd=tmp_path)
     text = target.read_text(encoding="utf-8")
     assert text.startswith("# My rules\n")
     assert SENTINEL_OPEN in text
@@ -236,7 +237,7 @@ def test_agentsmd_appends_to_existing_file_without_block(tmp_path):
 def test_agentsmd_unbalanced_sentinels_refused(tmp_path):
     target = tmp_path / "AGENTS.md"
     target.write_text(f"{SENTINEL_OPEN}\nno close marker\n", encoding="utf-8")
-    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    r = run_install(["--agentsmd", str(target)], isolated_env(tmp_path), cwd=tmp_path)
     assert r.returncode == 1
     assert target.read_text(encoding="utf-8") == f"{SENTINEL_OPEN}\nno close marker\n"
 
@@ -245,7 +246,7 @@ def test_agentsmd_close_before_open_refused(tmp_path):
     target = tmp_path / "AGENTS.md"
     original = f"stray text\n{SENTINEL_CLOSE}\nmore text\n{SENTINEL_OPEN}\ntail\n"
     target.write_text(original, encoding="utf-8")
-    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    r = run_install(["--agentsmd", str(target)], isolated_env(tmp_path), cwd=tmp_path)
     assert r.returncode == 1
     assert target.read_text(encoding="utf-8") == original
 
@@ -257,9 +258,31 @@ def test_agentsmd_two_blocks_refused(tmp_path):
         f"{SENTINEL_OPEN}\nsecond block\n{SENTINEL_CLOSE}\n"
     )
     target.write_text(original, encoding="utf-8")
-    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=tmp_path)
+    r = run_install(["--agentsmd", str(target)], isolated_env(tmp_path), cwd=tmp_path)
     assert r.returncode == 1
     assert target.read_text(encoding="utf-8") == original
+
+
+def test_agentsmd_without_path_refuses(tmp_path):
+    r = run_install(["--agentsmd"], isolated_env(tmp_path), cwd=str(tmp_path))
+    assert r.returncode == 64
+    assert "explicit path" in r.stderr
+    assert not (tmp_path / "AGENTS.md").exists()
+
+
+def test_bare_agentsmd_with_codex_writes_nothing(tmp_path):
+    r = run_install(["--codex", "--agentsmd"], isolated_env(tmp_path), cwd=str(tmp_path))
+    assert r.returncode == 64
+    # Prevalidation must fire before the codex mode acts.
+    assert not codex_hooks_path(tmp_path).exists()
+    assert not (tmp_path / "AGENTS.md").exists()
+
+
+def test_status_reports_agentsmd_against_a_resolved_path(tmp_path):
+    r = run_install([], isolated_env(tmp_path), cwd=str(tmp_path))
+    assert r.returncode == 0
+    assert str(tmp_path / "AGENTS.md") in r.stdout
+    assert "./AGENTS.md" not in r.stdout
 
 
 def test_status_handles_undecodable_hooks_json(tmp_path):
@@ -300,7 +323,8 @@ def test_status_reports_all_targets_and_claude_guidance(tmp_path):
 
 def test_status_sees_installed_targets(tmp_path):
     env = isolated_env(tmp_path)
-    run_install(["--codex", "--opencode", "--agentsmd"], env, cwd=tmp_path)
+    run_install(["--codex", "--opencode", "--agentsmd", str(tmp_path / "AGENTS.md")],
+                env, cwd=tmp_path)
     out = run_install([], env, cwd=tmp_path).stdout
     assert "codex: installed" in out
     assert "opencode: installed" in out
