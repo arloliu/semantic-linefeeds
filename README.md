@@ -152,19 +152,21 @@ One command clones (or updates) a checkout under `${XDG_DATA_HOME:-~/.local/shar
 and hands the remaining arguments to `scripts/install.py`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/arloliu/semantic-linefeeds/main/install.sh | sh -s -- --codex
+curl -fsSL https://raw.githubusercontent.com/arloliu/semantic-linefeeds/main/install.sh | sh -s -- --codex --cli
 ```
 
 Pass the flag for your agent to the one-liner above, or to `python3 scripts/install.py` inside a checkout.
 Passing no flag prints a status report of what's installed where.
 Every path bottoms out in the same detector script.
+Add `--cli` to build the `semlf` zipapp and install it as `~/.local/bin/semlf`,
+the standalone `semlf --file`/`semlf check` command the Configuration and snippet sections below assume.
 
 | Agent | Installer flag | Guide |
 |---|---|---|
 | Claude Code | none | [marketplace commands below](#claude-code-marketplace) |
 | Codex CLI | `--codex` | [adapters/codex/INSTALL.md](adapters/codex/INSTALL.md) |
 | opencode | `--opencode` | [adapters/opencode/INSTALL.md](adapters/opencode/INSTALL.md) |
-| Anything else | `--agentsmd [PATH]` | [adapters/agentsmd/SNIPPET.md](adapters/agentsmd/SNIPPET.md) |
+| Anything else | `--agentsmd PATH` | [adapters/agentsmd/SNIPPET.md](adapters/agentsmd/SNIPPET.md) |
 
 ### Claude Code (Marketplace)
 
@@ -206,6 +208,20 @@ Set it per run with `--long-limit N` (0 disables the advisory),
 or per environment with `SEMLF_LONG_LINE=N` — the flag wins over the environment variable.
 Fused and wrap findings are never affected;
 only the advisory threshold moves.
+
+A project can set the same threshold once, in a `.semlf.ini` file at the repository root:
+
+```ini
+[semlf]
+long-limit = 100
+```
+
+The flag and the environment variable still win over the file (ADR-0012).
+The core discovers `.semlf.ini` by walking upward from the checked path
+and stops at the first directory holding either the file or a `.git` entry,
+so a config never leaks across a repository boundary.
+A missing, malformed, or unparseable file is inert —
+the checker falls back to the next precedence leg rather than failing the run.
 
 `SEMLF_EXPERIMENTAL_WRAP=1` puts `wrap` back in hook feedback,
 where it arrives as advice at exit 0 and never blocks an edit.

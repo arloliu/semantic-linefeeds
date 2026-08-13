@@ -5,6 +5,41 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+v0.6a: the CLI exists.
+A repository can now tune the checker once, and run it as a standalone command,
+instead of every adapter carrying its own copy of the checker's defaults.
+
+### Added
+
+- **Project configuration** (ADR-0012): `.semlf.ini` at the repository root, section `[semlf]`,
+  key `long-limit`.
+  The core discovers it with `load_config`,
+  walking upward from the checked path and stopping at the first directory holding either the file or a `.git` entry, file or directory.
+  Precedence is `--long-limit` flag, then `$SEMLF_LONG_LINE`, then the discovered config, then the built-in default of 120.
+  A missing, unreadable, or malformed file is inert and falls through to the next precedence leg,
+  rather than breaking the run.
+- **The `semlf` repository CLI** (`cli/semlf/`, ADR-0004): a thin subcommand router —
+  `semlf check PATH...` (alias for `--file`), `--hook [claude|codex]`, `--json`, `--long-limit N` —
+  that delegates every diagnostic to the portable core and touches nothing else.
+- **`install.py --cli`** builds `semlf` as an executable zipapp and installs it at
+  `~/.local/bin/semlf`, alongside the existing `--codex`, `--opencode`, and `--agentsmd` installers.
+  Re-running is idempotent; `--force` allows overwriting a copy whose content has diverged.
+- **A portable AGENTS.md snippet** now tells any agent with no hook surface to run
+  `semlf --file <files you touched>` directly,
+  instead of pointing at a checkout-relative script path that only makes sense inside this repository.
+- **`SEMLF_CHECKER`** replaces the opencode adapter's previous environment variable name for pointing the plugin at an out-of-tree copy of the checker script.
+  The old name still works as a deprecated alias; `SEMLF_CHECKER` wins when both are set.
+
+### Changed
+
+- **`--agentsmd` requires an explicit path.**
+  `scripts/install.py --agentsmd` with no value now refuses and exits with an error,
+  instead of silently defaulting to `./AGENTS.md` in the caller's working directory —
+  a bare flag was a likely mistake, not a considered choice of target file,
+  once the flag started shipping in a packaged CLI invoked from arbitrary directories.
+
 ## [0.5.0] - 2026-08-13
 
 The two extraction defects the third holdout measured, repaired now that it is spent.

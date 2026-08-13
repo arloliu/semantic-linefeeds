@@ -6,6 +6,7 @@ Apply before changing any code.
 
 ```
 scripts/check_linefeeds.py        # the core: language table, extractor, checker, CLI, payload parsers
+cli/semlf/                        # repository CLI (ADR-0004); delegates all analysis to the core
 hooks/hooks.json                  # Claude Code adapter (PostToolUse → --hook claude)
 skills/semantic-linefeeds/        # the skill agents load to fix findings
 adapters/codex/                   # Codex CLI adapter (hooks.json template + INSTALL.md)
@@ -17,7 +18,7 @@ tests/                            # pytest harness; see 300-testing.md
 ## The Core Stays One File
 
 `scripts/check_linefeeds.py` is Python 3.9+ with stdlib imports only
-(`argparse collections json os re sys tempfile`).
+(`argparse collections configparser json os re sys tempfile`).
 Every adapter depends on the "copy one file, runs on bare python3" property;
 adding a dependency or splitting the file breaks every install story at once.
 
@@ -26,7 +27,8 @@ The old "split at ~1000 lines" threshold is withdrawn.
 The boundary is drawn by what a thing needs, not by how long the file has become:
 
 - The **core** keeps extraction, the predicates, suppression semantics, span filtering,
-  diagnostic construction, hook configuration discovery, and the hook entry points.
+  diagnostic construction, hook configuration discovery, project config discovery (`load_config`),
+  and the hook entry points.
   Every adapter invokes the core without any CLI,
   so policy discovery living outside it would let hooks and CI disagree.
 - A **repository CLI** would own git snapshot selection, subcommand routing,
