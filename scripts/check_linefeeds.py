@@ -915,6 +915,68 @@ def _line_range(text, offsets, lineno):
     return {"start": start, "end": start + len(content)}
 
 
+# The repeatable line leaders a suggestion's prefix may be built from:
+# whitespace, then zero or more of #, //, ;, or a blockquote >, each
+# optionally followed by more whitespace.
+# A list marker, a docstring's opening quotes, and a block comment's
+# opening /* all fail this whitelist on purpose.
+# * is deliberately absent even though it is also a legitimate
+# block-comment continuation marker: the Markdown extractor also treats
+# a leading * as a list bullet and strips it from prose while keeping
+# it in raw, so admitting it here would duplicate that bullet and split
+# one list item into two.
+# Losing the suggestion on a real block-comment continuation is the
+# accepted missed-suggestion cost of closing that hole.
+_SUGGESTION_PREFIX_RE = re.compile(r"^[ \t]*(?:(?:#|//|;|>)[ \t]*)*$")
+
+# The suggestion's tail may carry only trailing whitespace; nothing may
+# move across the break.
+_SUGGESTION_TAIL_RE = re.compile(r"^[ \t]*$")
+
+
+def _fused_suggestion(prose, raw, match):
+    """A two-line suggested replacement for an automatic-class fused finding, or None.
+
+    Maximally conservative rather than a real protected-span engine: no
+    suggestion unless FUSED_RE matches exactly once, the terminator sits
+    with nothing between it and a single ASCII space, `prose` has no
+    backtick/`<`/`>` anywhere on the line, `raw` contains `prose`
+    exactly once, and the prefix/tail around `prose` in `raw` both pass
+    the structural whitelist above.
+    Any closing quote, bracket, paren, or emphasis mark between the
+    terminator and the space withholds the suggestion instead of trying
+    to reattach it.
+    `raw` cannot carry an embedded `\\r` on any current entry path
+    (every extractor reaches it through `str.splitlines()`), so that
+    check is a belt over an already-fastened suspender, kept for a
+    future entry path that might skip it.
+    """
+    if "\r" in raw:
+        return None
+    if len(list(FUSED_RE.finditer(prose))) != 1:
+        return None
+    if "`" in prose or "<" in prose or ">" in prose:
+        return None
+    if raw.count(prose) != 1:
+        return None
+    text = match.group(0)
+    ws = re.search(r"\s+", text)
+    if ws.group(0) != " ":
+        return None
+    terminator = text[ws.start() - 1]
+    if terminator not in "!?":
+        return None
+    idx = raw.find(prose)
+    prefix = raw[:idx]
+    tail_text = raw[idx + len(prose):]
+    if not _SUGGESTION_PREFIX_RE.match(prefix) or not _SUGGESTION_TAIL_RE.match(tail_text):
+        return None
+    cut = match.start() + ws.start()
+    p1 = prose[:cut]
+    p2 = prose[cut:].lstrip(" ")
+    return {"lines": [prefix + p1, prefix + p2 + tail_text]}
+
+
 def diagnose(text, path, spans=None):
     """Return a list of diagnostic dicts, sorted by line.
 
@@ -958,6 +1020,7 @@ def diagnose(text, path, spans=None):
             suppressions.setdefault(lineno + offset, set()).update(kinds)
             prev = None
             continue
+        carrier_stripped = False
         tail = trailing_carrier(raw, is_md, lang)
         if tail:
             (offset, kinds), judged_raw, carrier = tail
@@ -966,6 +1029,7 @@ def diagnose(text, path, spans=None):
                 suppressions.setdefault(lineno + offset, set()).update(kinds)
                 raw = judged_raw
                 prose = trimmed_prose[:-len(carrier)].rstrip(" \t")
+                carrier_stripped = True
                 if not prose:
                     prev = None
                     continue
@@ -982,13 +1046,18 @@ def diagnose(text, path, spans=None):
                 ownership, basis = {"start": located["start"], "end": end}, "token"
             else:
                 ownership, basis = None, "degraded"
-            findings.append({
+            finding = {
                 "kind": "fused", "line": lineno,
                 "message": "two sentences on one line — one sentence per line",
                 "excerpt": prose,
                 "anchor": anchor, "evidence": dict(anchor),
                 "ownership": ownership, "ownership_basis": basis,
-            })
+            }
+            if not carrier_stripped:
+                suggestion = _fused_suggestion(prose, raw, match)
+                if suggestion is not None:
+                    finding["suggestion"] = suggestion
+            findings.append(finding)
 
         if prev is not None:
             prev_no, prev_prose = prev

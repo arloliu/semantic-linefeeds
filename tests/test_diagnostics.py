@@ -260,3 +260,184 @@ def test_a_degraded_mapping_span_still_filters_by_ownership():
 def test_a_malformed_span_raises_even_for_a_non_target_path():
     with pytest.raises(ValueError):
         check_linefeeds.diagnose("plain\n", "photo.png", [{"bogus": 1}])
+
+
+def test_fused_question_gets_a_two_line_suggestion_with_indentation():
+    text = "   Is this right? Yes it is.\n"
+    (d,) = diags(text)
+    assert d["suggestion"] == {
+        "lines": ["   Is this right?", "   Yes it is."]}
+
+
+def test_fused_bang_in_a_python_comment_keeps_the_marker_on_both_lines():
+    text = "# Stop now! Go later.\n"
+    (d,) = diags(text, path="x.py")
+    assert d["suggestion"] == {
+        "lines": ["# Stop now!", "# Go later."]}
+
+
+def test_fused_bang_in_a_blockquote_keeps_the_quote_marker():
+    text = "> Stop now! Go later.\n"
+    (d,) = diags(text)
+    assert d["suggestion"] == {
+        "lines": ["> Stop now!", "> Go later."]}
+
+
+def test_a_period_fused_line_gets_no_suggestion():
+    text = "One sentence here. Another sentence follows.\n"
+    (d,) = diags(text)
+    assert "suggestion" not in d
+
+
+def test_a_two_boundary_line_gets_no_suggestion():
+    text = "Go now? Come here! Stay put.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_fused_suggestion_byte_identity_holds_with_a_duplicated_prefix():
+    # The suggestion replaces the single inter-sentence ASCII space with
+    # a line break followed by the repeated line leader; outside that
+    # one insertion the bytes are identical to raw.
+    # Compute the prefix exactly as the helper does: raw up to where the excerpt starts.
+    cases = [
+        ("   Is this right? Yes it is.\n", "doc.md"),  # indented
+        ("# Stop now! Go later.\n", "x.py"),  # comment leader
+        ("> Stop now! Go later.\n", "doc.md"),  # blockquote
+    ]
+    for text, path in cases:
+        (d,) = diags(text, path=path)
+        raw = text.rstrip("\n")
+        idx = raw.find(d["excerpt"])
+        prefix = raw[:idx]
+        line1, line2 = d["suggestion"]["lines"]
+        assert line1 + " " + line2[len(prefix):] == raw
+
+
+def test_a_code_span_anywhere_on_the_line_gets_no_suggestion():
+    text = "Use `stop! Go` as code.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_terminator_before_a_closing_quote_gets_no_suggestion():
+    text = 'He said "Stop now!" Go on.\n'
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_terminator_before_a_closing_paren_gets_no_suggestion():
+    text = "(Stop now!) Go on.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_terminator_before_a_closing_bracket_gets_no_suggestion():
+    text = "[Stop now!] Go on.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_terminator_before_closing_emphasis_gets_no_suggestion():
+    text = "*Stop now!* Go on.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_carrier_stripped_line_gets_no_suggestion():
+    # The trailing carrier suppresses "long" only, so the fused finding
+    # survives; the carrier strip still withholds the suggestion (design
+    # condition 8), since the two-line shape has nowhere to put the
+    # carrier text back.
+    text = "Stop now? Go on. <!-- semlf-ignore long -->\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_inline_html_markup_gets_no_suggestion():
+    # FUSED_RE still matches inside the quoted attribute value, and the
+    # line does not start with "<" so the Markdown extractor still reads
+    # it as ordinary prose (design condition 4).
+    text = 'Use <span title="stop! Go">x</span>.\n'
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_list_item_gets_no_suggestion():
+    # The list marker is stripped from prose but stays in raw, so the
+    # prefix "- " fails the repeatable-leader whitelist (design
+    # condition 6).
+    text = "- Stop now? Go on.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_an_ordered_list_item_gets_no_suggestion():
+    text = "1. Stop now? Go on.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_an_asterisk_list_item_gets_no_suggestion():
+    # `*` is a list bullet to the Markdown extractor (stripped from
+    # prose, kept in raw) exactly like "-"; it is deliberately absent
+    # from the prefix whitelist for that reason (design condition 6),
+    # even though it would otherwise also read as a valid block-comment
+    # continuation marker.
+    text = "* Stop now? Go on.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_one_line_python_docstring_gets_no_suggestion():
+    # The prefix carries the opening triple quote and the tail carries
+    # the closing one; both the prefix and tail gates reject this shape
+    # (design conditions 6 and 7).
+    text = 'def f():\n    """Stop now? Go on."""\n'
+    (d,) = diags(text, path="x.py")
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_one_line_block_comment_gets_no_suggestion():
+    text = "/* Stop now? Go on. */\n"
+    (d,) = diags(text, path="x.c")
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_tab_separator_gets_no_suggestion():
+    text = "Stop now?\tGo on.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_double_space_separator_gets_no_suggestion():
+    text = "Stop now?  Go on.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
+
+
+def test_a_non_breaking_space_separator_gets_no_suggestion():
+    # FUSED_RE's `\s+` matches a non-breaking space under Python's
+    # default Unicode mode, so this still fuses; the exact-one-space
+    # gate (design condition 3) is what withholds it.
+    # A literal non-breaking space is visually indistinguishable from an
+    # ASCII one, so the escape below is deliberate.
+    text = "Stop now?" + " " + "Go on.\n"
+    (d,) = diags(text)
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
