@@ -144,6 +144,11 @@ and it replays a synthetic payload end to end rather than checking that files ex
 - **A numeric `confidence` field on diagnostics.**
   A deliberate absence carried forward from v0.5:
   no number ships until observed rates support one.
+- **A prebuilt Go binary.**
+  Deferred behind [ADR-0011](decisions/0011-go-port-gated-on-field-evidence.md)'s field-evidence gate:
+  it opens only if a missing Python runtime proves to be a primary adoption blocker,
+  is reviewed at the v0.6→v0.7 boundary, and is settled before v1.0.
+  v0.6 keeps the CLI contract implementation-agnostic so the option stays cheap to exercise.
 - **Protected-span masking.**
   Masking URLs, inline code, links, and directives instead of skipping the whole line is a real improvement.
   It is a recall feature, so it follows the precision work, and it fits the v0.5 redesign.
