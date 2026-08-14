@@ -558,13 +558,19 @@ def claude_code_trailer():
     print("  claude plugin install semantic-linefeeds@semantic-linefeeds")
 
 
-def shim_warning():
-    """Warn when `semlf` on PATH is not the artifact that ran this."""
+def shim_warning(expected=None):
+    """Warn when `semlf` on PATH is not the artifact that ran this.
+
+    expected overrides the comparison target.
+    A caller that manages its own separate destination — the checkout door's `cli_bin_dest()` — passes it here, so a PATH `semlf` resolving to that destination reads as "this artifact" even though `sys.argv[0]` is a different launcher (install.py, not the pyz it built).
+    The default None keeps today's behavior: compare against `sys.argv[0]`, which is correct for the package door, where argv[0] IS the running artifact.
+    """
     resolved = shutil.which("semlf")
     if resolved is None:
         return
+    target = str(expected) if expected is not None else sys.argv[0]
     try:
-        if os.path.realpath(resolved) != os.path.realpath(sys.argv[0]):
+        if os.path.realpath(resolved) != os.path.realpath(target):
             print(f"warning: `semlf` on PATH resolves to {resolved}, "
                   "not this artifact; a pre-redesign zipapp or a second "
                   "channel may be shadowing it. remove it with the "
@@ -723,7 +729,13 @@ def snippet_state(target):
     return "present"
 
 
-def status_command(argv):
+def status_command(argv, shim_expected=None):
+    """The `semlf status` body, shared by both doors.
+
+    shim_expected is passed straight through to shim_warning.
+    The package door leaves it None, comparing against sys.argv[0], the running artifact itself.
+    The checkout door passes its own cli_bin_dest(), so a PATH `semlf` that resolves to the checkout's own managed cli does not read as a foreign shim.
+    """
     if argv[:1] == ["agentsmd"]:
         if len(argv) != 2:
             print("semlf status: agentsmd requires an explicit path.",
@@ -812,7 +824,7 @@ def status_command(argv):
         listed = ", ".join(str(p) for p in leftover_paths)
         print(f"payloads: no remaining consumer; remove {listed} "
               "by hand if unwanted.")
-    shim_warning()
+    shim_warning(shim_expected)
     return _finish(0)
 
 

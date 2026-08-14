@@ -27,6 +27,7 @@ def isolated_env(tmp_path):
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
     return {
+        "XDG_DATA_HOME": str(tmp_path / "data"),
         "HOME": str(home),
         "CODEX_HOME": str(tmp_path / "codex"),
         "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
@@ -69,6 +70,12 @@ def test_codex_fresh_install_creates_hooks_json(tmp_path):
     assert "check_linefeeds.py" in command
     assert "--hook codex" in command
     assert "trust" in r.stdout.lower()
+    data_root = tmp_path / "data" / "semlf"
+    assert str(data_root / "check_linefeeds.py") in command
+    assert (data_root / "check_linefeeds.py").read_bytes() == (
+        REPO / "scripts" / "check_linefeeds.py").read_bytes()
+    assert (data_root / "README.md").read_bytes() == (
+        REPO / "README.md").read_bytes()
 
 
 def test_codex_rerun_is_a_noop(tmp_path):
@@ -77,7 +84,7 @@ def test_codex_rerun_is_a_noop(tmp_path):
     before = codex_hooks_path(tmp_path).read_text(encoding="utf-8")
     r = run_install(["--codex"], env)
     assert r.returncode == 0
-    assert "already" in r.stdout.lower()
+    assert "up to date" in r.stdout.lower()
     assert codex_hooks_path(tmp_path).read_text(encoding="utf-8") == before
 
 
@@ -114,7 +121,8 @@ def test_codex_stale_path_is_updated_in_place(tmp_path):
     entries = read_hooks(tmp_path)["hooks"]["PostToolUse"]
     assert len(entries) == 1
     assert "/old/clone/" not in entries[0]["hooks"][0]["command"]
-    assert str(REPO) in entries[0]["hooks"][0]["command"]
+    data_root = tmp_path / "data" / "semlf"
+    assert str(data_root / "check_linefeeds.py") in entries[0]["hooks"][0]["command"]
 
 
 def test_codex_unparseable_json_is_refused(tmp_path):
@@ -176,7 +184,7 @@ def test_opencode_rerun_is_a_noop(tmp_path):
     run_install(["--opencode"], env)
     r = run_install(["--opencode"], env)
     assert r.returncode == 0
-    assert "already" in r.stdout.lower()
+    assert "up to date" in r.stdout.lower()
 
 
 def test_opencode_changed_file_requires_force(tmp_path):
@@ -300,13 +308,6 @@ def test_bare_agentsmd_with_codex_writes_nothing(tmp_path):
     assert not (tmp_path / "AGENTS.md").exists()
 
 
-def test_status_reports_agentsmd_against_a_resolved_path(tmp_path):
-    r = run_install([], isolated_env(tmp_path), cwd=str(tmp_path))
-    assert r.returncode == 0
-    assert str(tmp_path / "AGENTS.md") in r.stdout
-    assert "./AGENTS.md" not in r.stdout
-
-
 def test_status_handles_undecodable_hooks_json(tmp_path):
     env = isolated_env(tmp_path)
     path = codex_hooks_path(tmp_path)
@@ -319,8 +320,8 @@ def test_status_handles_undecodable_hooks_json(tmp_path):
 
 
 @pytest.mark.parametrize("payload,label", [
-    ({"hooks": []}, "unreadable"),
-    ([1, 2, 3], "unreadable"),
+    ({"hooks": []}, "not installed"),
+    ([1, 2, 3], "not installed"),
     ({"hooks": {"PostToolUse": [
         {"matcher": "apply_patch", "hooks": 5}]}}, "not installed"),
     ({"hooks": {"PostToolUse": ["a", "b"]}}, "not installed"),
@@ -328,7 +329,7 @@ def test_status_handles_undecodable_hooks_json(tmp_path):
 def test_status_handles_a_malformed_hooks_shape_without_crashing(tmp_path, payload, label):
     # Wrong-shaped-but-parseable JSON must never raise TypeError out of the comprehension:
     # every level is isinstance-guarded before it is indexed or iterated,
-    # mirroring _plan_codex_hook and doctor's own walk.
+    # mirroring plan_codex_hook and doctor's own walk.
     env = isolated_env(tmp_path)
     path = codex_hooks_path(tmp_path)
     path.parent.mkdir(parents=True)
@@ -336,15 +337,7 @@ def test_status_handles_a_malformed_hooks_shape_without_crashing(tmp_path, paylo
     r = run_install([], env, cwd=tmp_path)
     assert r.returncode == 0
     assert r.stderr == ""
-    assert f"codex: {label}" in r.stdout
-
-
-def test_status_handles_undecodable_agentsmd(tmp_path):
-    target = tmp_path / "AGENTS.md"
-    target.write_bytes(b"\xff\xfe{")
-    r = run_install([], isolated_env(tmp_path), cwd=tmp_path)
-    assert r.returncode == 0
-    assert r.stderr == ""
+    assert f"codex hook: {label}" in r.stdout
 
 
 def test_agentsmd_explicit_path(tmp_path):
@@ -355,12 +348,15 @@ def test_agentsmd_explicit_path(tmp_path):
 
 
 def test_status_reports_all_targets_and_claude_guidance(tmp_path):
-    r = run_install([], isolated_env(tmp_path), cwd=tmp_path)
+    env = isolated_env(tmp_path)
+    (Path(env["HOME"]) / ".claude").mkdir()
+    r = run_install([], env, cwd=tmp_path)
     assert r.returncode == 0
     out = r.stdout
-    assert "codex: not installed" in out
-    assert "opencode: not installed" in out
-    assert "agentsmd" in out and "absent" in out
+    assert "codex hook: not installed" in out
+    assert "codex skill: not installed" in out
+    assert "opencode plugin: not installed" in out
+    assert "agentsmd:" not in out
     assert "claude plugin" in out
 
 
@@ -369,9 +365,10 @@ def test_status_sees_installed_targets(tmp_path):
     run_install(["--codex", "--opencode", "--agentsmd", str(tmp_path / "AGENTS.md")],
                 env, cwd=tmp_path)
     out = run_install([], env, cwd=tmp_path).stdout
-    assert "codex: installed" in out
-    assert "opencode: installed" in out
-    assert "present" in out
+    assert "codex hook: installed" in out
+    assert "codex skill: exact" in out
+    assert "opencode plugin: exact" in out
+    assert "agentsmd:" not in out
 
 
 INSTALL_SH = REPO / "install.sh"
@@ -385,6 +382,7 @@ def make_source_repo(tmp_path):
     shutil.copytree(REPO / "adapters", src / "adapters")
     shutil.copytree(REPO / "skills", src / "skills")
     shutil.copytree(REPO / "cli", src / "cli")
+    shutil.copy(REPO / "README.md", src / "README.md")
     git = ["git", "-C", str(src), "-c", "user.email=t@t", "-c", "user.name=t"]
     subprocess.run(git + ["init", "-q"], check=True)
     subprocess.run(git + ["add", "-A"], check=True)
@@ -442,7 +440,7 @@ def test_install_sh_rerun_pulls_and_is_idempotent(tmp_path):
     run_install_sh(["--repo", str(src), "--home", str(home), "--codex"], env)
     r = run_install_sh(["--repo", str(src), "--home", str(home), "--codex"], env)
     assert r.returncode == 0, r.stderr
-    assert "already" in r.stdout.lower()
+    assert "up to date" in r.stdout.lower()
 
 
 def test_install_sh_env_repo_and_dry_run(tmp_path):
@@ -463,7 +461,7 @@ def test_install_sh_uses_own_checkout_without_repo(tmp_path):
     env["SEMLF_HOME"] = str(never)
     r = run_install_sh([], env)
     assert r.returncode == 0, r.stderr
-    assert "codex:" in r.stdout
+    assert "codex hook:" in r.stdout
     assert not never.exists()
 
 
@@ -555,6 +553,7 @@ def make_self_checkout_repo(tmp_path):
     shutil.copytree(REPO / "adapters", src / "adapters")
     shutil.copytree(REPO / "skills", src / "skills")
     shutil.copytree(REPO / "cli", src / "cli")
+    shutil.copy(REPO / "README.md", src / "README.md")
     shutil.copy(INSTALL_SH, src / "install.sh")
     git = ["git", "-C", str(src), "-c", "user.email=t@t", "-c", "user.name=t"]
     subprocess.run(git + ["init", "-q"], check=True)
@@ -562,6 +561,17 @@ def make_self_checkout_repo(tmp_path):
     subprocess.run(git + ["commit", "-qm", "init"], check=True)
     subprocess.run(git + ["tag", "v1"], check=True)
     return src
+
+
+def test_generated_checkout_fixtures_carry_every_registry_source(
+        tmp_path):
+    from semlf import registry
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    for src in (make_source_repo(tmp_path / "a"),
+                make_self_checkout_repo(tmp_path / "b")):
+        for row in registry.ROWS:
+            assert (src / row.source).is_file(), (src, row.source)
 
 
 def test_cloned_self_checkout_imports_standalone(tmp_path):
@@ -617,7 +627,8 @@ def test_codex_install_writes_the_native_skill(tmp_path):
     skill = codex_skill_path(tmp_path)
     assert skill.exists()
     text = skill.read_text(encoding="utf-8")
-    assert f'python3 "{REPO}/scripts/check_linefeeds.py" --file <files>' in text
+    data_root = tmp_path / "data" / "semlf"
+    assert f'python3 "{data_root}/check_linefeeds.py" --file <files>' in text
     assert "CLAUDE_PLUGIN_ROOT" not in text
 
 
@@ -627,7 +638,7 @@ def test_codex_skill_rerun_is_a_noop(tmp_path):
     before = codex_skill_path(tmp_path).read_text(encoding="utf-8")
     r = run_install(["--codex"], env)
     assert r.returncode == 0
-    assert "codex skill: already installed" in r.stdout
+    assert "codex-skill: up to date" in r.stdout
     assert codex_skill_path(tmp_path).read_text(encoding="utf-8") == before
 
 
@@ -649,7 +660,8 @@ def test_codex_skill_force_overwrites_and_backs_up(tmp_path):
     skill.write_text("# hand-patched\n", encoding="utf-8")
     r = run_install(["--codex", "--force"], env)
     assert r.returncode == 0
-    assert (f'python3 "{REPO}/scripts/check_linefeeds.py" --file <files>'
+    data_root = tmp_path / "data" / "semlf"
+    assert (f'python3 "{data_root}/check_linefeeds.py" --file <files>'
             in skill.read_text(encoding="utf-8"))
     backup = skill.with_name(skill.name + ".bak")
     assert backup.read_text(encoding="utf-8") == "# hand-patched\n"
@@ -661,19 +673,36 @@ def test_codex_skill_dry_run_writes_nothing(tmp_path):
     assert not codex_skill_path(tmp_path).exists()
 
 
+def test_dry_run_reports_a_diverged_skill_at_exit_zero(tmp_path):
+    env = isolated_env(tmp_path)
+    r = run_install(["--codex"], env)
+    assert r.returncode == 0
+    skill = (tmp_path / "home" / ".agents" / "skills" /
+             "semantic-linefeeds" / "SKILL.md")
+    skill.write_text("hand-patched", encoding="utf-8")
+    (tmp_path / "state" / "semlf" / "artifacts" /
+     "codex-skill.json").unlink()
+    r = run_install(["--codex", "--dry-run"], env)
+    assert r.returncode == 0
+    assert "would refuse" in r.stdout
+    assert skill.read_text(encoding="utf-8") == "hand-patched"
+
+
 def test_status_reports_codex_skill_states(tmp_path):
     env = isolated_env(tmp_path)
     r = run_install([], env, cwd=tmp_path)
     assert "codex skill: not installed" in r.stdout
     run_install(["--codex"], env)
     r = run_install([], env, cwd=tmp_path)
-    assert "codex skill: installed" in r.stdout
+    assert "codex skill: exact" in r.stdout
     codex_skill_path(tmp_path).write_text("# hand-patched\n", encoding="utf-8")
     r = run_install([], env, cwd=tmp_path)
-    assert "codex skill: diverged" in r.stdout
-    codex_skill_path(tmp_path).write_bytes(b"\xff\xfe\x00")
+    assert "codex skill: edited" in r.stdout
+    # A recordless hand-made copy is unrecorded, not diverged/edited --
+    # the classifier only calls a mismatch "edited" when a provenance record proves this kit once installed a different set of bytes there.
+    entry_file(tmp_path, "codex-skill").unlink()
     r = run_install([], env, cwd=tmp_path)
-    assert "codex skill: unreadable" in r.stdout
+    assert "codex skill: unrecorded" in r.stdout
 
 
 def test_status_and_rerun_detect_a_crlf_converted_skill(tmp_path):
@@ -686,7 +715,7 @@ def test_status_and_rerun_detect_a_crlf_converted_skill(tmp_path):
     skill.write_bytes(skill.read_text(encoding="utf-8").replace("\n", "\r\n").encode("utf-8"))
 
     r = run_install([], env, cwd=tmp_path)
-    assert "codex skill: diverged" in r.stdout
+    assert "codex skill: edited" in r.stdout
 
     r = run_install(["--codex"], env)
     assert r.returncode == 1
@@ -702,6 +731,7 @@ def test_help_mentions_the_skill_and_the_widened_force_scope(tmp_path):
 
 
 import install as install_module  # noqa: E402 -- unit-style access to the module itself
+from semlf import lifecycle  # noqa: E402 -- cli/ is on sys.path once install_module is imported
 
 
 def test_codex_skill_dest_is_none_when_home_is_unresolvable(monkeypatch):
@@ -713,19 +743,22 @@ def test_codex_skill_dest_is_none_when_home_is_unresolvable(monkeypatch):
     assert install_module.codex_skill_dest() is None
 
 
-def test_install_codex_skill_refuses_without_a_resolvable_home(monkeypatch, capsys):
+def test_install_codex_skill_refuses_without_a_resolvable_home(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
-    rc = install_module.install_codex_skill(False, False)
-    assert rc == 1
-    assert "home" in capsys.readouterr().err.lower()
+    planned, refusals = lifecycle.plan_install(["codex"], None, False)
+    assert planned == []
+    assert any("home" in r.lower() for r in refusals)
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_status_reports_no_home_to_check(monkeypatch, capsys, tmp_path):
     monkeypatch.chdir(tmp_path)
-    # Bypass the two other Path.home() call sites (codex_home, opencode_plugins_dir)
-    # so only the skill-destination guard is exercised.
+    # Bypass the other env-resolvable roots (codex_home, opencode_plugins_dir, semlf_data_dir)
+    # so only the skill-destination guard, which has no env-var override, is exercised.
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
     install_module.status()
     assert "codex skill: no home to check" in capsys.readouterr().out
@@ -741,8 +774,8 @@ def test_status_reports_no_home_on_every_path_without_env_overrides(monkeypatch,
     rc = install_module.status()
     out = capsys.readouterr().out
     assert rc == 0
-    assert "codex: no home to check" in out
-    assert "opencode: no home to check" in out
+    assert "codex hook: no home to check" in out
+    assert "opencode plugin: no home to check" in out
     assert "codex skill: no home to check" in out
     assert "cli: no home to check" in out
 
@@ -751,9 +784,9 @@ def test_install_codex_refuses_without_a_resolvable_home(monkeypatch, capsys, tm
     monkeypatch.delenv("CODEX_HOME", raising=False)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
-    rc = install_module.install_codex(False)
-    assert rc == 1
-    assert "home" in capsys.readouterr().err.lower()
+    planned, refusals = lifecycle.plan_install(["codex"], None, False)
+    assert planned == []
+    assert any("home" in r.lower() for r in refusals)
     assert list(tmp_path.iterdir()) == []
 
 
@@ -761,9 +794,9 @@ def test_install_opencode_refuses_without_a_resolvable_home(monkeypatch, capsys,
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
-    rc = install_module.install_opencode(False, False)
-    assert rc == 1
-    assert "home" in capsys.readouterr().err.lower()
+    planned, refusals = lifecycle.plan_install(["opencode"], None, False)
+    assert planned == []
+    assert any("home" in r.lower() for r in refusals)
     assert list(tmp_path.iterdir()) == []
 
 
@@ -1101,6 +1134,18 @@ def test_install_cli_places_semlf_on_local_bin(tmp_path, monkeypatch, capsys):
     dest = tmp_path / ".local" / "bin" / "semlf"
     assert rc == 0 and dest.exists() and os.access(dest, os.X_OK)
     assert "installed" in out
+    assert "would install" not in out
+
+
+def test_cli_adopt_recreates_a_deleted_record(tmp_path):
+    env = isolated_env(tmp_path)
+    r = run_install(["--cli"], env)
+    assert r.returncode == 0
+    shutil.rmtree(tmp_path / "state" / "semlf")
+    r = run_install(["--cli"], env)
+    assert r.returncode == 0
+    record = (tmp_path / "state" / "semlf" / "artifacts" / "cli.json")
+    assert record.is_file()
 
 
 def test_install_cli_is_idempotent_and_still_notes_path(tmp_path, monkeypatch, capsys):
@@ -1216,23 +1261,54 @@ def test_status_reports_the_cli_states(tmp_path, monkeypatch, capsys):
     assert "not runnable" in capsys.readouterr().out
 
 
+def test_status_is_silent_about_the_shim_when_path_semlf_is_its_own_cli(tmp_path):
+    # shim_warning compares against sys.argv[0] by default, which on the checkout door is install.py itself, not the pyz.
+    # A bare comparison would falsely warn about the very cli status just reported installed.
+    # status() must pass its own cli_bin_dest() as the expected target instead.
+    env = isolated_env(tmp_path)
+    r = run_install(["--cli"], env)
+    assert r.returncode == 0
+    env["PATH"] = str(tmp_path / "home" / ".local" / "bin")
+    r = run_install([], env, cwd=tmp_path)
+    assert r.returncode == 0
+    assert "on PATH resolves to" not in r.stdout
+
+
+def test_status_warns_about_a_foreign_semlf_shadowing_the_installed_cli(tmp_path):
+    env = isolated_env(tmp_path)
+    r = run_install(["--cli"], env)
+    assert r.returncode == 0
+    foreign_dir = tmp_path / "foreign-bin"
+    foreign_dir.mkdir()
+    foreign = foreign_dir / "semlf"
+    foreign.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    foreign.chmod(0o755)
+    env["PATH"] = str(foreign_dir)
+    r = run_install([], env, cwd=tmp_path)
+    assert r.returncode == 0
+    assert "on PATH resolves to" in r.stdout
+
+
 def test_agents_block_carries_no_absolute_path():
-    block = install_module.agents_block()
+    block = lifecycle.agents_block()
     assert "semlf --file" in block
     assert "<repo>" not in block
     assert str(install_module.REPO) not in block
 
 
-def test_agentsmd_warns_when_semlf_is_missing(tmp_path, monkeypatch, capsys):
+def test_agentsmd_warns_when_semlf_is_missing(tmp_path):
     empty_bin = tmp_path / "empty-bin"
     empty_bin.mkdir()
-    monkeypatch.setenv("PATH", str(empty_bin))
+    env = isolated_env(tmp_path)
+    env["PATH"] = str(empty_bin)
     target = tmp_path / "AGENTS.md"
-    assert install_module.install_agentsmd(target, False) == 0
-    assert "not on PATH" in capsys.readouterr().out
+    r = run_install(["--agentsmd", str(target)], env)
+    assert r.returncode == 0
+    assert "not on PATH" in r.stdout
     # The gap persists on the idempotent rerun, so the warning must too.
-    assert install_module.install_agentsmd(target, False) == 0
-    assert "not on PATH" in capsys.readouterr().out
+    r = run_install(["--agentsmd", str(target)], env)
+    assert r.returncode == 0
+    assert "not on PATH" in r.stdout
 
 
 @pytest.mark.skipif(not HAS_GIT, reason="git is required")
@@ -1312,12 +1388,15 @@ def test_force_with_a_free_backup_slot_still_replaces(tmp_path):
 
 
 def test_dry_run_force_reports_an_occupied_backup_slot(tmp_path):
+    # Dry-run dominates the cli leg too:
+    # an occupied slot is a would-refuse line at exit 0, not a real refusal.
     dest, env = install_cli_once(tmp_path)
     patch_installed_cli(dest)
     dest.with_name("semlf.bak").write_bytes(b"occupied")
     r = run_install(["--cli", "--force", "--dry-run"], env)
-    assert r.returncode == 1
-    assert "semlf.bak" in r.stderr
+    assert r.returncode == 0
+    assert "semlf.bak" in r.stdout
+    assert "would refuse" in r.stdout
 
 
 def test_dry_run_force_with_a_free_slot_reports_and_writes_nothing(tmp_path):
@@ -1500,6 +1579,76 @@ def test_opencode_install_records_both_files(tmp_path):
         (d / "check_linefeeds.py").read_bytes()).hexdigest()
 
 
+def test_managed_older_skill_upgrades_without_force(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    skill = codex_skill_path(tmp_path)
+    older = b"# an older skill body\n"
+    skill.write_bytes(older)
+    import hashlib
+    entry = read_entry(tmp_path, "codex-skill")
+    entry["sha256"] = hashlib.sha256(older).hexdigest()
+    entry["version"] = "0.5.0"
+    entry_file(tmp_path, "codex-skill").write_text(
+        json.dumps(entry), encoding="utf-8")
+    r = run_install(["--codex"], env)
+    assert r.returncode == 0
+    assert skill.read_bytes() != older
+    assert not skill.with_name(skill.name + ".bak").exists()
+
+
+def test_managed_older_opencode_plugin_upgrades_without_force(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--opencode"], env)
+    plugin = opencode_dir(tmp_path) / "semantic-linefeeds.ts"
+    older = b"// an older plugin body\n"
+    plugin.write_bytes(older)
+    import hashlib
+    entry = read_entry(tmp_path, "opencode-plugin")
+    entry["sha256"] = hashlib.sha256(older).hexdigest()
+    entry["version"] = "0.5.0"
+    entry_file(tmp_path, "opencode-plugin").write_text(
+        json.dumps(entry), encoding="utf-8")
+    r = run_install(["--opencode"], env)
+    assert r.returncode == 0
+    assert plugin.read_bytes() != older
+    assert not plugin.with_name(plugin.name + ".bak").exists()
+
+
+def test_occupied_backup_slot_refuses_the_skill_uniformly(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--codex"], env)
+    skill = codex_skill_path(tmp_path)
+    skill.write_text("# hand-patched\n", encoding="utf-8")
+    bak = skill.with_name(skill.name + ".bak")
+    bak.write_bytes(b"occupied")
+    r = run_install(["--codex"], env)
+    assert r.returncode == 1
+    assert "--force" in r.stderr
+    r = run_install(["--codex", "--force"], env)
+    assert r.returncode == 1
+    assert str(bak) in r.stderr
+    assert bak.read_bytes() == b"occupied"
+    assert skill.read_text(encoding="utf-8") == "# hand-patched\n"
+
+
+def test_occupied_backup_slot_refuses_the_opencode_plugin_uniformly(tmp_path):
+    env = isolated_env(tmp_path)
+    run_install(["--opencode"], env)
+    plugin = opencode_dir(tmp_path) / "semantic-linefeeds.ts"
+    plugin.write_text("// hand-patched\n", encoding="utf-8")
+    bak = plugin.with_name(plugin.name + ".bak")
+    bak.write_bytes(b"occupied")
+    r = run_install(["--opencode"], env)
+    assert r.returncode == 1
+    assert "--force" in r.stderr
+    r = run_install(["--opencode", "--force"], env)
+    assert r.returncode == 1
+    assert str(bak) in r.stderr
+    assert bak.read_bytes() == b"occupied"
+    assert plugin.read_text(encoding="utf-8") == "// hand-patched\n"
+
+
 def test_dry_run_writes_no_state(tmp_path):
     env = isolated_env(tmp_path)
     run_install(["--cli", "--dry-run"], env)
@@ -1617,7 +1766,7 @@ def test_status_reports_unreadable_for_a_fifo_skill_destination(tmp_path):
     os.mkfifo(dest)
     r = run_install([], env, timeout=10)
     assert r.returncode == 0
-    assert "codex skill: unreadable" in r.stdout
+    assert "codex skill: special" in r.stdout
 
 
 @pytest.mark.parametrize("mode", ["--codex", "--opencode"])
@@ -1648,7 +1797,7 @@ def test_status_reports_unreadable_for_a_dangling_symlink_opencode_destination(t
     dest.symlink_to(tmp_path / "nowhere")
     r = run_install([], env)
     assert r.returncode == 0
-    assert "opencode: unreadable" in r.stdout
+    assert "opencode plugin: symlink" in r.stdout
 
 
 @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="platform has no mkfifo")
@@ -1710,34 +1859,6 @@ def test_undecodable_bytes_at_the_agentsmd_target_refuse_install(tmp_path):
     assert "Traceback" not in r.stderr
 
 
-@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="platform has no mkfifo")
-def test_status_handles_a_fifo_agentsmd_target_without_hanging(tmp_path):
-    # cwd is the tmp dir status probes as ./AGENTS.md;
-    # a FIFO there must neither hang the read nor be followed.
-    target = tmp_path / "AGENTS.md"
-    os.mkfifo(target)
-    r = run_install([], isolated_env(tmp_path), cwd=tmp_path, timeout=10)
-    assert r.returncode == 0
-    assert "absent (unreadable)" in r.stdout
-
-
-def test_status_handles_a_symlink_cycle_at_agentsmd_without_a_traceback(tmp_path):
-    # A self-referential symlink at ./AGENTS.md makes Path.resolve() raise
-    # (RuntimeError/OSError depending on version) because it follows the
-    # link to build a display path before the guarded classification runs.
-    # status must build that display path lexically instead
-    # (fix-report P0-1), so the guarded reader is still the only thing
-    # that ever touches the target, and a cyclic link degrades to the
-    # same honest "absent (unreadable)" label as any other unreadable
-    # AGENTS.md — never a crash.
-    target = tmp_path / "AGENTS.md"
-    target.symlink_to(target)
-    r = run_install([], isolated_env(tmp_path), cwd=tmp_path, timeout=10)
-    assert r.returncode == 0
-    assert "Traceback" not in r.stderr
-    assert "absent (unreadable)" in r.stdout
-
-
 def test_codex_refuses_a_hooks_bak_symlink_without_following(tmp_path):
     path = codex_hooks_path(tmp_path)
     path.parent.mkdir(parents=True)
@@ -1752,6 +1873,62 @@ def test_codex_refuses_a_hooks_bak_symlink_without_following(tmp_path):
     assert not target.exists()
     assert bak.is_symlink()
     assert path.read_text(encoding="utf-8") == original_text
+
+
+# --- The composed request: every selected leg preflights as one plan -----
+
+
+def test_a_refusing_codex_leg_aborts_the_cli_leg_too(tmp_path):
+    env = isolated_env(tmp_path)
+    root = tmp_path / "data" / "semlf"
+    root.mkdir(parents=True)
+    (root / "check_linefeeds.py").write_text("diverged",
+                                             encoding="utf-8")
+    r = run_install(["--codex", "--cli"], env)
+    assert r.returncode == 1
+    assert not (tmp_path / "home" / ".local" / "bin" / "semlf").exists()
+    assert not (tmp_path / "codex" / "hooks.json").exists()
+
+
+def test_a_refusing_cli_leg_aborts_the_codex_leg_too(tmp_path):
+    env = isolated_env(tmp_path)
+    bin_dir = tmp_path / "home" / ".local" / "bin"
+    bin_dir.mkdir(parents=True)
+    (bin_dir / "semlf").symlink_to(bin_dir / "elsewhere")
+    r = run_install(["--codex", "--cli"], env)
+    assert r.returncode == 1
+    assert not (tmp_path / "codex" / "hooks.json").exists()
+    assert not (tmp_path / "data").exists()
+
+
+def test_both_doors_render_identical_artifacts(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    env_a = isolated_env(tmp_path / "a")
+    r = run_install(["--codex"], env_a)
+    assert r.returncode == 0, r.stderr
+    # The package door runs from a built zipapp, not the checkout.
+    import importlib
+    install_module_ = importlib.import_module("install")
+    pyz = tmp_path / "semlf.pyz"
+    install_module_.build_pyz(pyz)
+    env_b = isolated_env(tmp_path / "b")
+    full_env = os.environ.copy()
+    full_env.update(env_b)
+    r = subprocess.run([sys.executable, str(pyz), "install", "codex"],
+                       capture_output=True, text=True, env=full_env,
+                       timeout=60)
+    assert r.returncode == 0, r.stderr
+    root_a = str(tmp_path / "a" / "data").encode()
+    root_b = str(tmp_path / "b" / "data").encode()
+    for rel in (("data", "semlf", "check_linefeeds.py"),
+                ("data", "semlf", "README.md"),
+                ("home", ".agents", "skills", "semantic-linefeeds",
+                 "SKILL.md"),
+                ("codex", "hooks.json")):
+        a = Path(tmp_path, "a", *rel).read_bytes()
+        b = Path(tmp_path, "b", *rel).read_bytes()
+        assert a.replace(root_a, b"ROOT") == b.replace(root_b, b"ROOT"), rel
 
 
 # --- Uninstall -----------------------------------------------------------
