@@ -24,5 +24,6 @@ Check your work with:
 
     semlf --file <files you touched>
 
-(`semlf` is installed by `install.py --cli`;
-from a checkout, `python3 scripts/check_linefeeds.py --file` is equivalent.)
+(If `semlf` is not installed:
+`pipx install git+https://github.com/arloliu/semantic-linefeeds`,
+or the equivalent `uv tool install`.)

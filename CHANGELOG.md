@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **The AGENTS.md snippet's install hint now works outside this repository.**
+  It said `semlf` comes from `install.py --cli` — a file only this repository has —
+  so a repository that received the snippet told its users to run a command
+  nobody said how to obtain.
+  It now gives the `pipx install` command from the git URL, which works anywhere.
+
 ## [0.6.0] - 2026-08-14
 
 The checker now works as repository tooling, not only as editor hooks:
