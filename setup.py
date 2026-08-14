@@ -4,6 +4,7 @@ setuptools reads pyproject.toml for everything declarative;
 this file exists only to run the shared staging step after build_py,
 so the wheel embeds every semlf/payloads/<id> member without a packaging copy ever being committed to the repository.
 """
+
 import sys
 from pathlib import Path
 
@@ -18,6 +19,7 @@ class build_py_with_payloads(build_py):
     def run(self):
         super().run()
         from semlf import registry
+
         registry.stage_payloads(Path(self.build_lib), repo=REPO)
 
 
