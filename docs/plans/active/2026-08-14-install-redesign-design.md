@@ -1,6 +1,6 @@
 # Install UX Redesign — Design
 
-**Status:** fourth revision, awaiting review
+**Status:** reviewed; ready for implementation planning
 **Date:** 2026-08-14
 
 ## Problem
@@ -162,7 +162,9 @@ for every registry row that is a single-file artifact
 - **Object state** — absent; readable regular file; unreadable regular file;
   symlink; directory; other special file.
 - **Provenance state** (for a readable regular file) —
-  exact current rendering; manifest-managed different release; edited; unrecorded.
+  exact current rendering;
+  manifest-managed different rendering (older, newer, equal-version, or unorderable);
+  edited; unrecorded.
 - **Execution mode** — normal; `--force`; `--dry-run` (orthogonal to the other two).
 
 | Object × provenance | Normal | With `--force` |
@@ -404,7 +406,8 @@ amendment headers, the decisions index, and the project rule all restate the old
   the package channel gains PyPI as its primary source
   (git-URL retained for mirrors),
   and the collision story records the moved surface;
-  its evidence list and rejected collision alternative are updated with it.
+  the new record's own evidence and rejected-alternatives sections cover ADR-0015's old claims,
+  which are never edited in place.
   The maintainer-act publishing boundary and the no-fork mapping rule stand.
 - **ADR-0004** — the amendment header, the decision parenthetical,
   and the lifecycle-verb sentence are superseded together,
