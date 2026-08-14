@@ -37,7 +37,11 @@ HOLDOUT = CORPUS / "holdout"
 
 def plaintext(round_dir):
     """Everything that carries this round's prose in the clear."""
-    return [round_dir / "sample.json", round_dir / "adjudications.json", round_dir / "labels"]
+    return [
+        round_dir / "sample.json",
+        round_dir / "adjudications.json",
+        round_dir / "labels",
+    ]
 
 
 def payload(round_dir):
@@ -48,9 +52,12 @@ def payload(round_dir):
     so recording it here would seal the answer in with the question.
     """
     sample = json.loads((round_dir / "sample.json").read_text(encoding="utf-8"))
-    decided = {(entry["id"], entry["kind"]): entry
-               for entry in json.loads(
-                   (round_dir / "adjudications.json").read_text(encoding="utf-8"))}
+    decided = {
+        (entry["id"], entry["kind"]): entry
+        for entry in json.loads(
+            (round_dir / "adjudications.json").read_text(encoding="utf-8")
+        )
+    }
 
     passes, families = {}, set()
     for out in sorted((round_dir / "labels").glob("*.out")):
@@ -64,13 +71,18 @@ def payload(round_dir):
     # Resolving it anyway would read as unanimity wherever the two happened to agree,
     # so a short unit stops the seal until somebody records why it is short.
     drawn = [unit for unit in sample["units"] if not defect(unit)]
-    short = sorted(unit["id"] for unit in drawn
-                   if set(passes.get((unit["id"], KINDS[0]), {})) != families)
+    short = sorted(
+        unit["id"]
+        for unit in drawn
+        if set(passes.get((unit["id"], KINDS[0]), {})) != families
+    )
     if short:
-        sys.exit("these units were not judged by every labeling pass:\n  "
-                 + "\n  ".join(short)
-                 + "\nrerun the batch, or mark the unit in sample.json with a labeling_defect "
-                   "naming what failed; nothing was written")
+        sys.exit(
+            "these units were not judged by every labeling pass:\n  "
+            + "\n  ".join(short)
+            + "\nrerun the batch, or mark the unit in sample.json with a labeling_defect "
+            "naming what failed; nothing was written"
+        )
 
     records = []
     for unit in drawn:
@@ -99,9 +111,13 @@ def payload(round_dir):
                 record["reason"] = reason
             records.append(record)
     return {
-        "drawn_by": {"seed": sample["seed"], "base": sample["base"],
-                     "per_level": sample["per_level"], "quotas": sample["quotas"],
-                     "population": sample["population"]},
+        "drawn_by": {
+            "seed": sample["seed"],
+            "base": sample["base"],
+            "per_level": sample["per_level"],
+            "quotas": sample["quotas"],
+            "population": sample["population"],
+        },
         "units": records,
     }
 
@@ -112,21 +128,29 @@ def main(number):
     text = json.dumps(body, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
 
     manifest = json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))
-    holdout = Holdout(round_dir / "bundle.json", CORPUS / "freeze.jsonl",
-                      TESTS.parent / "scripts" / "check_linefeeds.py", CORPUS / "manifest.json")
+    holdout = Holdout(
+        round_dir / "bundle.json",
+        CORPUS / "freeze.jsonl",
+        TESTS.parent / "scripts" / "check_linefeeds.py",
+        CORPUS / "manifest.json",
+    )
 
     if not sys.stdin.isatty():
-        sys.exit("run this from a terminal.\n"
-                 "Without one the passphrase would arrive on a pipe, "
-                 "which is a file, a history entry, or a transcript.\n"
-                 "Nothing was written.")
+        sys.exit(
+            "run this from a terminal.\n"
+            "Without one the passphrase would arrive on a pipe, "
+            "which is a file, a history entry, or a transcript.\n"
+            "Nothing was written."
+        )
 
     # The floors are a prediction, so they are stated before the bundle they will judge exists.
     # Sealing without them would let the number be chosen once the labels were in hand.
     floors = manifest["reporting"]["recall_floors"]["holdout"].get(str(number))
     if not floors:
-        sys.exit(f"the manifest states no floors for round {number}; "
-                 "state them before sealing, or they are chosen after the fact")
+        sys.exit(
+            f"the manifest states no floors for round {number}; "
+            "state them before sealing, or they are chosen after the fact"
+        )
 
     passphrase = getpass.getpass("passphrase (never stored, never recoverable): ")
     if passphrase != getpass.getpass("again: "):
@@ -135,15 +159,25 @@ def main(number):
         sys.exit("an empty passphrase seals nothing; nothing was written")
 
     holdout.seal(text, passphrase)
-    holdout.freeze({
-        **{name: manifest["reporting"][name]
-           for name in ("interval", "min_true_violations",
-                        "max_interval_half_width", "max_ambiguous_fraction")},
-        "recall_floors": floors,
-    })
+    holdout.freeze(
+        {
+            **{
+                name: manifest["reporting"][name]
+                for name in (
+                    "interval",
+                    "min_true_violations",
+                    "max_interval_half_width",
+                    "max_ambiguous_fraction",
+                )
+            },
+            "recall_floors": floors,
+        }
+    )
 
     if holdout.open(passphrase) != text:
-        sys.exit("the bundle did not reproduce what was sealed; the plaintext is untouched")
+        sys.exit(
+            "the bundle did not reproduce what was sealed; the plaintext is untouched"
+        )
 
     removed = plaintext(round_dir)
     for path in removed:
@@ -151,9 +185,12 @@ def main(number):
 
     counts = {}
     for record in body["units"]:
-        counts[(record["question"], record["label"])] = \
+        counts[(record["question"], record["label"])] = (
             counts.get((record["question"], record["label"]), 0) + 1
-    print(f"sealed {len(body['units'])} records from {len(body['units']) // len(KINDS)} boundaries")
+        )
+    print(
+        f"sealed {len(body['units'])} records from {len(body['units']) // len(KINDS)} boundaries"
+    )
     for key in sorted(counts):
         print(f"  {key[0]:6} {key[1]:10} {counts[key]}")
     print("frozen against the predicate and the calibration manifest as they stand now")

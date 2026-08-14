@@ -12,10 +12,12 @@ so rendering and exit codes still come from the one shared loop.
 Help and usage are the one exception:
 they must present the semlf surface, not the core's internal name.
 """
+
 import argparse
 import sys
 
 import check_linefeeds as core
+
 from semlf import providers
 
 USAGE = """usage: semlf [--version] [--help] <mode>
@@ -41,8 +43,7 @@ GIT_MODE_FLAGS = ("--staged", "--diff", "--changed")
 
 def _git_mode(argv):
     """One git snapshot, checked through the core's shared runner."""
-    ap = argparse.ArgumentParser(prog="semlf", add_help=False,
-                                 allow_abbrev=False)
+    ap = argparse.ArgumentParser(prog="semlf", add_help=False, allow_abbrev=False)
     mode = ap.add_mutually_exclusive_group(required=True)
     for flag in GIT_MODE_FLAGS:
         mode.add_argument(flag, action="store_true")
@@ -55,9 +56,13 @@ def _git_mode(argv):
     if args.long_limit is not None and args.long_limit < 0:
         print("semlf: --long-limit must be >= 0", file=sys.stderr)
         return 64
-    provider = (providers.staged_sources if args.staged
-                else providers.diff_sources if args.diff
-                else providers.changed_sources)
+    provider = (
+        providers.staged_sources
+        if args.staged
+        else providers.diff_sources
+        if args.diff
+        else providers.changed_sources
+    )
     saved_limit = core.CLI_LONG_LIMIT
     if args.long_limit is not None:
         core.CLI_LONG_LIMIT = args.long_limit
@@ -76,7 +81,10 @@ def main(argv=None):
     if argv == ["--version"]:
         print(f"semlf {core.__version__}")
         return 0
-    if argv[:1] in (["--help"], ["-h"]) or argv[:2] in (["check", "--help"], ["check", "-h"]):
+    if argv[:1] in (["--help"], ["-h"]) or argv[:2] in (
+        ["check", "--help"],
+        ["check", "-h"],
+    ):
         print(USAGE, end="")
         return 0
     if argv == ["check"]:
@@ -87,12 +95,14 @@ def main(argv=None):
         argv = ["--file"] + argv[1:]
     if argv[:1] == ["doctor"]:
         from semlf import doctor
+
         return doctor.run(argv[1:])
     if argv[:1] and argv[0] in ("install", "status", "uninstall"):
         if argv[1:2] and argv[1] in ("--help", "-h"):
             print(USAGE, end="")
             return 0
         from semlf import lifecycle
+
         return lifecycle.run(argv[0], argv[1:])
     head = argv[: argv.index("--")] if "--" in argv else argv
     if any(flag in head for flag in GIT_MODE_FLAGS):

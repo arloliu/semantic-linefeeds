@@ -28,7 +28,7 @@ version = {attr = "check_linefeeds.__version__"}
 [tool.ruff]
 target-version = "py39"
 line-length = 88
-extend-exclude = ["tests/fixtures", "tests/extractor"]
+extend-exclude = ["tests/fixtures", "tests/extractor", "*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "C4", "UP"]
@@ -36,6 +36,7 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["E402"]
+"scripts/install.py" = ["E402"]
 
 [dependency-groups]
 dev = [

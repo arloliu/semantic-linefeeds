@@ -1,11 +1,11 @@
 """tests/test_git_modes.py — git snapshot providers and their matrix."""
+
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
-
 from conftest import HAS_GIT, git, git_out, isolate_git_env
 
 REPO = Path(__file__).resolve().parent.parent
@@ -21,6 +21,7 @@ pytestmark = pytest.mark.skipif(not HAS_GIT, reason="git is required")
 @pytest.fixture(autouse=True)
 def _isolated_git(monkeypatch):
     isolate_git_env(monkeypatch)
+
 
 FUSED = "One sentence. Another fused on the same line.\n"
 CLEAN = "One sentence per line.\n"
@@ -172,10 +173,21 @@ def test_unmerged_paths_are_a_loud_stop(tmp_path):
     commit_file(root, "doc.md", "One line.\n", message="one")
     git("checkout", "-q", "-b", "two", "HEAD~1", cwd=root)
     commit_file(root, "doc.md", "Two line.\n", message="two")
-    merge = subprocess.run(["git", "-c", "user.name=t",
-                            "-c", "user.email=t@example.com",
-                            "-c", "commit.gpgsign=false", "merge", "one"],
-                           cwd=str(root), capture_output=True)
+    merge = subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.com",
+            "-c",
+            "commit.gpgsign=false",
+            "merge",
+            "one",
+        ],
+        cwd=str(root),
+        capture_output=True,
+    )
     assert merge.returncode == 1  # a conflict, not a git refusal
     assert git_out("ls-files", "-u", cwd=root)  # the unmerged index is the fixture
     with pytest.raises(providers.SourceError):
@@ -199,8 +211,7 @@ def test_gitlinks_are_non_checkable(tmp_path):
     root = repo(tmp_path)
     commit_file(root, "doc.md", CLEAN)
     head = git_out("rev-parse", "HEAD", cwd=root)
-    git("update-index", "--add", "--cacheinfo", f"160000,{head},linked.md",
-        cwd=root)
+    git("update-index", "--add", "--cacheinfo", f"160000,{head},linked.md", cwd=root)
     assert providers.staged_sources(str(root)) == []
 
 
@@ -209,8 +220,7 @@ def test_a_colon_named_file_reads_its_own_bytes(tmp_path):
     root = repo(tmp_path)
     stage_file(root, "doc.md", CLEAN)
     stage_file(root, "0:doc.md", FUSED)
-    texts = {os.path.basename(p): t
-             for p, t in providers.staged_sources(str(root))}
+    texts = {os.path.basename(p): t for p, t in providers.staged_sources(str(root))}
     assert texts["0:doc.md"] == FUSED
     assert texts["doc.md"] == CLEAN
 
@@ -263,20 +273,21 @@ def test_symlink_recorded_type_gates_even_without_os_symlinks(tmp_path):
     (root / "linktext").write_text("../outside", encoding="utf-8")
     blob = git_out("hash-object", "-w", "linktext", cwd=root)
     (root / "linktext").unlink()
-    git("update-index", "--add", "--cacheinfo", f"120000,{blob},link.md",
-        cwd=root)
+    git("update-index", "--add", "--cacheinfo", f"120000,{blob},link.md", cwd=root)
     (root / "link.md").write_text("../outside\n", encoding="utf-8")
     assert providers.staged_sources(str(root)) == []
     assert providers.changed_sources(str(root)) == []
 
 
 def test_parse_raw_accepts_each_supported_record():
-    raw = (b":000000 100644 0000000000000000000000000000000000000000 "
-           b"1111111111111111111111111111111111111111 A\0a.md\0"
-           b":100644 100644 2222222222222222222222222222222222222222 "
-           b"3333333333333333333333333333333333333333 M\0dir/b sp.md\0"
-           b":100644 120000 4444444444444444444444444444444444444444 "
-           b"5555555555555555555555555555555555555555 T\0link.md\0")
+    raw = (
+        b":000000 100644 0000000000000000000000000000000000000000 "
+        b"1111111111111111111111111111111111111111 A\0a.md\0"
+        b":100644 100644 2222222222222222222222222222222222222222 "
+        b"3333333333333333333333333333333333333333 M\0dir/b sp.md\0"
+        b":100644 120000 4444444444444444444444444444444444444444 "
+        b"5555555555555555555555555555555555555555 T\0link.md\0"
+    )
     assert providers._parse_raw(raw) == [
         ("a.md", "100644", "1111111111111111111111111111111111111111"),
         ("dir/b sp.md", "100644", "3333333333333333333333333333333333333333"),
@@ -285,38 +296,42 @@ def test_parse_raw_accepts_each_supported_record():
 
 
 def test_parse_raw_is_loud_for_unmerged_unknown_and_malformed():
-    meta = (b":100644 100644 2222222222222222222222222222222222222222 "
-            b"3333333333333333333333333333333333333333 ")
+    meta = (
+        b":100644 100644 2222222222222222222222222222222222222222 "
+        b"3333333333333333333333333333333333333333 "
+    )
     good = meta + b"M\0ok.md\0"
     oid2, oid3 = b"2" * 40, b"3" * 40
-    for stream in (meta + b"U\0conflicted.md\0",
-                   meta + b"X\0strange.md\0",
-                   meta + b"R087\0old.md\0new.md\0",  # impossible under --no-renames
-                   meta + b"C100\0src.md\0copy.md\0",
-                   meta + b"D\0gone.md\0",
-                   meta + b"A100\0scored.md\0",       # a scored status is never valid here
-                   b"garbage\0a.md\0",
-                   meta + b"M\0",
-                   # Each syntax guard falls independently —
-                   # one wrong dimension per row, the rest valid.
-                   # Post-image mode: octal but short.
-                   b":100644 10064 " + oid2 + b" " + oid3 + b" M\0a.md\0",
-                   # Post-image mode: right length, non-octal.
-                   b":100644 10z644 " + oid2 + b" " + oid3 + b" M\0a.md\0",
-                   # Object ids: hex and equal-width, but a width git never emits —
-                   # only the allowed-width guard can reject this row.
-                   b":100644 100644 2222 3333 M\0a.md\0",
-                   # Post-image oid: right length, non-hex.
-                   b":100644 100644 " + oid2 + b" " + b"g" * 40 + b" M\0a.md\0",
-                   # Pre-image mode malformed.
-                   b":1z0644 100644 " + oid2 + b" " + oid3 + b" M\0a.md\0",
-                   # Pre-image oid malformed.
-                   b":100644 100644 " + b"g" * 40 + b" " + oid3 + b" M\0a.md\0",
-                   # Mismatched id widths inside one record.
-                   b":100644 100644 " + oid2 + b" " + b"3" * 64 + b" M\0a.md\0",
-                   good + b"\0" + good,               # interior empty token
-                   good + b"garbage",                 # trailing garbage after a valid prefix
-                   good[:-1]):                        # missing the terminal NUL
+    for stream in (
+        meta + b"U\0conflicted.md\0",
+        meta + b"X\0strange.md\0",
+        meta + b"R087\0old.md\0new.md\0",  # impossible under --no-renames
+        meta + b"C100\0src.md\0copy.md\0",
+        meta + b"D\0gone.md\0",
+        meta + b"A100\0scored.md\0",  # a scored status is never valid here
+        b"garbage\0a.md\0",
+        meta + b"M\0",
+        # Each syntax guard falls independently —
+        # one wrong dimension per row, the rest valid.
+        # Post-image mode: octal but short.
+        b":100644 10064 " + oid2 + b" " + oid3 + b" M\0a.md\0",
+        # Post-image mode: right length, non-octal.
+        b":100644 10z644 " + oid2 + b" " + oid3 + b" M\0a.md\0",
+        # Object ids: hex and equal-width, but a width git never emits —
+        # only the allowed-width guard can reject this row.
+        b":100644 100644 2222 3333 M\0a.md\0",
+        # Post-image oid: right length, non-hex.
+        b":100644 100644 " + oid2 + b" " + b"g" * 40 + b" M\0a.md\0",
+        # Pre-image mode malformed.
+        b":1z0644 100644 " + oid2 + b" " + oid3 + b" M\0a.md\0",
+        # Pre-image oid malformed.
+        b":100644 100644 " + b"g" * 40 + b" " + oid3 + b" M\0a.md\0",
+        # Mismatched id widths inside one record.
+        b":100644 100644 " + oid2 + b" " + b"3" * 64 + b" M\0a.md\0",
+        good + b"\0" + good,  # interior empty token
+        good + b"garbage",  # trailing garbage after a valid prefix
+        good[:-1],
+    ):  # missing the terminal NUL
         with pytest.raises(providers.SourceError):
             providers._parse_raw(stream)
 
@@ -324,25 +339,29 @@ def test_parse_raw_is_loud_for_unmerged_unknown_and_malformed():
 def test_parse_raw_accepts_only_a_cleanly_terminated_stream():
     """Empty output is the one zero-record form; a valid stream ends in one NUL."""
     assert providers._parse_raw(b"") == []
-    meta = (b":100644 100644 2222222222222222222222222222222222222222 "
-            b"3333333333333333333333333333333333333333 ")
+    meta = (
+        b":100644 100644 2222222222222222222222222222222222222222 "
+        b"3333333333333333333333333333333333333333 "
+    )
     assert providers._parse_raw(meta + b"M\0ok.md\0") == [
-        ("ok.md", "100644", "3333333333333333333333333333333333333333")]
+        ("ok.md", "100644", "3333333333333333333333333333333333333333")
+    ]
 
 
 def test_parse_raw_accepts_the_sha256_width():
     """64-hex ids are the other repository width; support must be causal."""
-    record = (b":100644 100644 " + b"2" * 64 + b" " + b"3" * 64
-              + b" M\0sha256.md\0")
+    record = b":100644 100644 " + b"2" * 64 + b" " + b"3" * 64 + b" M\0sha256.md\0"
     assert providers._parse_raw(record) == [("sha256.md", "100644", "3" * 64)]
 
 
 def test_parse_raw_keeps_hostile_path_bytes_verbatim():
-    raw = (b":000000 100644 0000000000000000000000000000000000000000 "
-           b"1111111111111111111111111111111111111111 A\0evil\tname\nwith.md\0")
+    raw = (
+        b":000000 100644 0000000000000000000000000000000000000000 "
+        b"1111111111111111111111111111111111111111 A\0evil\tname\nwith.md\0"
+    )
     assert providers._parse_raw(raw) == [
-        ("evil\tname\nwith.md", "100644",
-         "1111111111111111111111111111111111111111")]
+        ("evil\tname\nwith.md", "100644", "1111111111111111111111111111111111111111")
+    ]
 
 
 def test_undecodable_staged_bytes_are_replaced_not_dropped(tmp_path):
@@ -380,7 +399,8 @@ def test_raw_records_carry_full_object_ids_despite_abbrev_config(tmp_path):
 
 
 def test_staged_reads_the_enumerated_object_across_an_index_update(
-        tmp_path, monkeypatch):
+    tmp_path, monkeypatch
+):
     """The record's oid is the identity read — a later restage cannot swap it."""
     root = repo(tmp_path)
     stage_file(root, "doc.md", FUSED)
@@ -395,14 +415,18 @@ def test_staged_reads_the_enumerated_object_across_an_index_update(
     assert [t for _, t in providers.staged_sources(str(root))] == [FUSED]
 
 
-@pytest.mark.parametrize("outcome,unborn", [
-    ((1, b"", b""), True),
-    ((1, b"", b"warning: ignoring broken ref refs/heads/main\n"), False),
-    ((0, b"deadbeef\n", b""), False),
-    ((2, b"", b"fatal: broken\n"), False),
-])
+@pytest.mark.parametrize(
+    "outcome,unborn",
+    [
+        ((1, b"", b""), True),
+        ((1, b"", b"warning: ignoring broken ref refs/heads/main\n"), False),
+        ((0, b"deadbeef\n", b""), False),
+        ((2, b"", b"fatal: broken\n"), False),
+    ],
+)
 def test_head_probe_accepts_only_silent_absence(monkeypatch, outcome, unborn):
     """Absence is exit 1 with empty stderr; every other probe result stays loud."""
+
     def fake_git(root, *args, input_bytes=None):
         if args[0] == "rev-parse" and args[-1] == "HEAD":
             raise providers.SourceError("semlf: no head")
@@ -439,7 +463,9 @@ def test_worktree_read_never_follows_a_link_shaped_path(tmp_path):
     (root / "doc.md").symlink_to(outside)
     records = [("doc.md", "100644", "0" * 40)]
     assert providers._worktree_sources(str(root), records) == []
-    assert outside.read_text(encoding="utf-8") == FUSED  # never opened for write, never followed
+    assert (
+        outside.read_text(encoding="utf-8") == FUSED
+    )  # never opened for write, never followed
 
 
 def test_typechange_to_regular_file_is_checked(tmp_path):
@@ -527,7 +553,8 @@ def test_matrix_rename_with_edits_reports_the_new_name(tmp_path, monkeypatch, ca
 
 
 def test_matrix_subdirectory_invocation_reports_cwd_relative_paths(
-        tmp_path, monkeypatch, capsys):
+    tmp_path, monkeypatch, capsys
+):
     root = repo(tmp_path)
     commit_file(root, "docs/guide.md", CLEAN)
     (root / "sub").mkdir()
@@ -539,12 +566,15 @@ def test_matrix_subdirectory_invocation_reports_cwd_relative_paths(
 
 
 def test_matrix_config_governs_staged_content_from_a_subdirectory(
-        tmp_path, monkeypatch, capsys):
+    tmp_path, monkeypatch, capsys
+):
     """Config discovery keys off the checked path, not the invoking directory."""
     root = repo(tmp_path)
     commit_file(root, ".semlf.ini", "[semlf]\nlong-limit = 40\n")
-    line = ("The exporter batches metrics in memory, "
-            "and it retries failed uploads until the queue drains.\n")
+    line = (
+        "The exporter batches metrics in memory, "
+        "and it retries failed uploads until the queue drains.\n"
+    )
     (root / "sub").mkdir()
     stage_file(root, "doc.md", line)
     monkeypatch.chdir(root / "sub")
@@ -555,7 +585,8 @@ def test_matrix_config_governs_staged_content_from_a_subdirectory(
 
 
 def test_matrix_policy_is_the_worktrees_even_for_staged_content(
-        tmp_path, monkeypatch, capsys):
+    tmp_path, monkeypatch, capsys
+):
     """ADR-0013's ruling: one policy source — the working tree — in every mode.
 
     Direction one: an exclude that exists only in the worktree governs --staged.
@@ -563,8 +594,9 @@ def test_matrix_policy_is_the_worktrees_even_for_staged_content(
     root = repo(tmp_path)
     commit_file(root, "doc.md", CLEAN)
     stage_file(root, "generated/api.md", FUSED)
-    (root / ".semlf.ini").write_text("[semlf]\nexclude = generated/\n",
-                                     encoding="utf-8")
+    (root / ".semlf.ini").write_text(
+        "[semlf]\nexclude = generated/\n", encoding="utf-8"
+    )
     monkeypatch.chdir(root)
     assert semlf_cli.main(["--staged"]) == 0
     capsys.readouterr()
@@ -581,12 +613,13 @@ def test_matrix_a_staged_only_exclude_does_not_govern(tmp_path, monkeypatch, cap
     assert "fused" in capsys.readouterr().out
 
 
-def test_matrix_a_staged_only_long_limit_does_not_govern(
-        tmp_path, monkeypatch, capsys):
+def test_matrix_a_staged_only_long_limit_does_not_govern(tmp_path, monkeypatch, capsys):
     """The same divergence pin for the long-limit leg of the policy."""
     root = repo(tmp_path)
-    line = ("The exporter batches metrics in memory, "
-            "and it retries failed uploads until the queue drains.\n")
+    line = (
+        "The exporter batches metrics in memory, "
+        "and it retries failed uploads until the queue drains.\n"
+    )
     stage_file(root, ".semlf.ini", "[semlf]\nlong-limit = 40\n")
     stage_file(root, "doc.md", line)
     (root / ".semlf.ini").unlink()
@@ -623,43 +656,71 @@ def test_matrix_crlf_content_fires_in_worktree_modes(tmp_path, monkeypatch, caps
 
 def test_matrix_crlf_hook_payload_still_blocks(tmp_path):
     import json
+
     (tmp_path / ".git").mkdir()
     text = "// One sentence. Another fused here.\r\n"
     (tmp_path / "doc.go").write_bytes(text.encode("utf-8"))
-    payload = {"tool_name": "Edit",
-               "tool_input": {"file_path": "doc.go", "new_string": text}}
+    payload = {
+        "tool_name": "Edit",
+        "tool_input": {"file_path": "doc.go", "new_string": text},
+    }
     r = subprocess.run(
-        [sys.executable, str(REPO / "scripts" / "check_linefeeds.py"),
-         "--hook", "claude"],
-        input=json.dumps(payload), capture_output=True, text=True,
-        cwd=str(tmp_path))
+        [
+            sys.executable,
+            str(REPO / "scripts" / "check_linefeeds.py"),
+            "--hook",
+            "claude",
+        ],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        cwd=str(tmp_path),
+    )
     assert r.returncode == 2
     assert "fused" in r.stderr
 
 
 def test_matrix_crlf_codex_hook_payload_still_blocks(tmp_path):
     import json
+
     (tmp_path / ".git").mkdir()
     text = "// One sentence. Another fused here.\r\n"
     (tmp_path / "doc.go").write_bytes(text.encode("utf-8"))
-    patch = ("*** Begin Patch\n*** Update File: doc.go\n@@\n+"
-             + "// One sentence. Another fused here." + "\n*** End Patch")
-    payload = {"session_id": "s1", "turn_id": "t1", "transcript_path": "/tmp/t",
-               "cwd": ".", "hook_event_name": "PostToolUse", "model": "m",
-               "permission_mode": "default", "tool_name": "apply_patch",
-               "tool_input": {"command": patch},
-               "tool_response": {"output": "Done"}, "tool_use_id": "call_1"}
+    patch = (
+        "*** Begin Patch\n*** Update File: doc.go\n@@\n+"
+        + "// One sentence. Another fused here."
+        + "\n*** End Patch"
+    )
+    payload = {
+        "session_id": "s1",
+        "turn_id": "t1",
+        "transcript_path": "/tmp/t",
+        "cwd": ".",
+        "hook_event_name": "PostToolUse",
+        "model": "m",
+        "permission_mode": "default",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": patch},
+        "tool_response": {"output": "Done"},
+        "tool_use_id": "call_1",
+    }
     r = subprocess.run(
-        [sys.executable, str(REPO / "scripts" / "check_linefeeds.py"),
-         "--hook", "codex"],
-        input=json.dumps(payload), capture_output=True, text=True,
-        cwd=str(tmp_path))
+        [
+            sys.executable,
+            str(REPO / "scripts" / "check_linefeeds.py"),
+            "--hook",
+            "codex",
+        ],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        cwd=str(tmp_path),
+    )
     assert r.returncode == 2
     assert "fused" in r.stderr
 
 
-def test_matrix_staged_nested_path_keeps_worktree_policy(
-        tmp_path, monkeypatch, capsys):
+def test_matrix_staged_nested_path_keeps_worktree_policy(tmp_path, monkeypatch, capsys):
     """A vanished worktree parent must not cost the file its policy.
 
     Both halves of the ruling: the root worktree exclude still
@@ -670,10 +731,10 @@ def test_matrix_staged_nested_path_keeps_worktree_policy(
     commit_file(root, "doc.md", CLEAN)
     stage_file(root, "nested/doc.md", FUSED)
     import shutil
+
     shutil.rmtree(root / "nested")
     monkeypatch.chdir(root)
-    (root / ".semlf.ini").write_text("[semlf]\nexclude = nested/\n",
-                                     encoding="utf-8")
+    (root / ".semlf.ini").write_text("[semlf]\nexclude = nested/\n", encoding="utf-8")
     assert semlf_cli.main(["--staged"]) == 0
     capsys.readouterr()
     (root / ".semlf.ini").unlink()
@@ -682,17 +743,20 @@ def test_matrix_staged_nested_path_keeps_worktree_policy(
 
 
 def test_matrix_staged_nested_path_keeps_worktree_long_limit(
-        tmp_path, monkeypatch, capsys):
+    tmp_path, monkeypatch, capsys
+):
     root = repo(tmp_path)
     commit_file(root, "doc.md", CLEAN)
-    line = ("The exporter batches metrics in memory, "
-            "and it retries failed uploads until the queue drains.\n")
+    line = (
+        "The exporter batches metrics in memory, "
+        "and it retries failed uploads until the queue drains.\n"
+    )
     stage_file(root, "nested/doc.md", line)
     import shutil
+
     shutil.rmtree(root / "nested")
     monkeypatch.chdir(root)
-    (root / ".semlf.ini").write_text("[semlf]\nlong-limit = 40\n",
-                                     encoding="utf-8")
+    (root / ".semlf.ini").write_text("[semlf]\nlong-limit = 40\n", encoding="utf-8")
     rc = semlf_cli.main(["--staged"])
     out = capsys.readouterr().out
     assert rc == 0
@@ -710,7 +774,8 @@ def test_matcher_survives_windows_shaped_relative_paths():
 def test_excluded_normalizes_backslash_config_patterns(tmp_path):
     (tmp_path / ".git").mkdir()
     (tmp_path / ".semlf.ini").write_text(
-        "[semlf]\nexclude = docs\\generated\\\n", encoding="utf-8")
+        "[semlf]\nexclude = docs\\generated\\\n", encoding="utf-8"
+    )
     target = tmp_path / "docs" / "generated" / "api.md"
     target.parent.mkdir(parents=True)
     target.write_text("text\n", encoding="utf-8")

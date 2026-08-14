@@ -31,9 +31,11 @@ def reported_dimensions(sample):
     and a marginal is worth reading either way.
     """
     if "quotas" in sample:
-        return [(name, spec["bands"])
-                for name, spec in sorted(sample["quotas"].items())]
+        return [
+            (name, spec["bands"]) for name, spec in sorted(sample["quotas"].items())
+        ]
     return [(sample["stratum"], sample["bands"])]
+
 
 ARRAY_RE = re.compile(r"\[\s*\{.*}\s*]", re.DOTALL)
 
@@ -68,29 +70,49 @@ def main(corpus, labels):
     decisions = {}
     decided = corpus / "adjudications.json"
     if decided.exists():
-        decisions = {(entry["id"], entry["kind"]): entry["label"]
-                     for entry in json.loads(decided.read_text(encoding="utf-8"))
-                     if entry["label"]}
+        decisions = {
+            (entry["id"], entry["kind"]): entry["label"]
+            for entry in json.loads(decided.read_text(encoding="utf-8"))
+            if entry["label"]
+        }
 
     for kind in ("wrap", "fused"):
-        settled = {uid: resolution(sorted(passes[uid][name][kind] for name in labelers))
-                   for uid in complete}
+        settled = {
+            uid: resolution(sorted(passes[uid][name][kind] for name in labelers))
+            for uid in complete
+        }
         # A maintainer's decision replaces the referral.
         # A rate counts settled labels, not the fact that something was once unsettled.
-        settled = {uid: decisions.get((uid, kind), label) if label == "adjudicated" else label
-                   for uid, label in settled.items()}
+        settled = {
+            uid: decisions.get((uid, kind), label) if label == "adjudicated" else label
+            for uid, label in settled.items()
+        }
         counts = collections.Counter(settled.values())
         rated = len(complete) - counts["ambiguous"]
         prevalence = counts["true"] / rated if rated else 0.0
-        print(f"\n[{kind}]  " + "  ".join(f"{k}={counts[k]}" for k in
-                                          ("true", "false", "ambiguous", "adjudicated")))
-        print(f"  ambiguous fraction {counts['ambiguous'] / len(complete):.0%} "
-              f"(a level over {REPORTING['max_ambiguous_fraction']:.0%} reports no rate)")
+        print(
+            f"\n[{kind}]  "
+            + "  ".join(
+                f"{k}={counts[k]}"
+                for k in ("true", "false", "ambiguous", "adjudicated")
+            )
+        )
+        print(
+            f"  ambiguous fraction {counts['ambiguous'] / len(complete):.0%} "
+            f"(a level over {REPORTING['max_ambiguous_fraction']:.0%} reports no rate)"
+        )
         if rated:
-            need = math.ceil(REPORTING["min_true_violations"] / prevalence) if prevalence else None
-            print(f"  prevalence among rated units {counts['true']}/{rated} = {prevalence:.0%}"
-                  f"  ->  ceil(M/p) = {need} units per level" if need else
-                  f"  prevalence 0/{rated}: no sample size follows from this pilot")
+            need = (
+                math.ceil(REPORTING["min_true_violations"] / prevalence)
+                if prevalence
+                else None
+            )
+            print(
+                f"  prevalence among rated units {counts['true']}/{rated} = {prevalence:.0%}"
+                f"  ->  ceil(M/p) = {need} units per level"
+                if need
+                else f"  prevalence 0/{rated}: no sample size follows from this pilot"
+            )
         for dimension, bands in dimensions:
             per_level = collections.defaultdict(collections.Counter)
             for uid, label in settled.items():
@@ -98,8 +120,10 @@ def main(corpus, labels):
             print(f"  {dimension}")
             for level in sorted(per_level):
                 row = per_level[level]
-                print(f"    {level:<10} true={row['true']:<4} false={row['false']:<4} "
-                      f"ambiguous={row['ambiguous']:<3} adjudicated={row['adjudicated']}")
+                print(
+                    f"    {level:<10} true={row['true']:<4} false={row['false']:<4} "
+                    f"ambiguous={row['ambiguous']:<3} adjudicated={row['adjudicated']}"
+                )
 
 
 if __name__ == "__main__":

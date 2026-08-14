@@ -11,6 +11,7 @@ The classifier fails closed:
 a recorded version that does not parse as dot-separated integers is unorderable,
 refused rather than guessed at.
 """
+
 import os
 import stat
 from collections import namedtuple
@@ -59,14 +60,20 @@ def classify_artifact(entry, dest, rendered, version, force):
     if state == "absent":
         return Verdict("absent", "write", None)
     if state != "regular":
-        return Verdict(state, "refuse",
-                       f"{dest} is a {state}; move it aside and re-run "
-                       "(--force never overrides this)")
+        return Verdict(
+            state,
+            "refuse",
+            f"{dest} is a {state}; move it aside and re-run "
+            "(--force never overrides this)",
+        )
     current = manifest.read_regular_bytes(dest, manifest.CLASSIFY_LIMIT)
     if current is None:
-        return Verdict("unreadable", "refuse",
-                       f"{dest} exists but is not a readable regular "
-                       "file (--force never overrides this)")
+        return Verdict(
+            "unreadable",
+            "refuse",
+            f"{dest} exists but is not a readable regular "
+            "file (--force never overrides this)",
+        )
     if current == rendered:
         return Verdict("exact", "adopt", None, current)
     prov = manifest.classify_entry(entry, dest)
@@ -75,31 +82,42 @@ def classify_artifact(entry, dest, rendered, version, force):
         running = parse_version(version)
         if recorded is None or running is None:
             if force:
-                return Verdict("managed-unorderable", "replace", None,
-                               current)
-            return Verdict("managed-unorderable", "refuse",
-                           f"{dest}: cannot order the recorded version "
-                           f"({entry['version']}) against this "
-                           f"artifact's ({version}); rerun with --force "
-                           "to replace it")
+                return Verdict("managed-unorderable", "replace", None, current)
+            return Verdict(
+                "managed-unorderable",
+                "refuse",
+                f"{dest}: cannot order the recorded version "
+                f"({entry['version']}) against this "
+                f"artifact's ({version}); rerun with --force "
+                "to replace it",
+            )
         if recorded > running:
             if force:
                 return Verdict("managed-newer", "replace", None, current)
-            return Verdict("managed-newer", "refuse",
-                           f"{dest}: published is newer than this "
-                           "artifact — rerun with `--force` to "
-                           "downgrade")
+            return Verdict(
+                "managed-newer",
+                "refuse",
+                f"{dest}: published is newer than this "
+                "artifact — rerun with `--force` to "
+                "downgrade",
+            )
         state = "managed-older" if recorded < running else "managed-equal"
         return Verdict(state, "replace", None, current)
     # prov is "edited" or "unrecorded"
     if not force:
-        return Verdict(prov, "refuse",
-                       f"{dest}: its content differs from what this kit "
-                       f"installed ({prov}); rerun with --force to back "
-                       "it up and replace it")
+        return Verdict(
+            prov,
+            "refuse",
+            f"{dest}: its content differs from what this kit "
+            f"installed ({prov}); rerun with --force to back "
+            "it up and replace it",
+        )
     bak = dest.with_name(dest.name + ".bak")
     if os.path.lexists(bak):
-        return Verdict(prov, "refuse",
-                       f"refusing to overwrite {bak}: a backup already "
-                       "exists; move it aside and re-run")
+        return Verdict(
+            prov,
+            "refuse",
+            f"refusing to overwrite {bak}: a backup already "
+            "exists; move it aside and re-run",
+        )
     return Verdict(prov, "backup-replace", None, current)

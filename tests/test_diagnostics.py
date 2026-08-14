@@ -1,7 +1,7 @@
 """tests/test_diagnostics.py — the ranges every diagnostic carries."""
-import pytest
 
 import check_linefeeds
+import pytest
 
 
 def diags(text, path="doc.md", spans=None):
@@ -12,7 +12,7 @@ def test_a_fused_diagnostic_owns_its_match_through_the_opening_token():
     text = "One sentence here. Another sentence follows.\n"
     (d,) = diags(text)
     assert d["kind"] == "fused"
-    assert text[d["ownership"]["start"]:d["ownership"]["end"]] == "here. Another"
+    assert text[d["ownership"]["start"] : d["ownership"]["end"]] == "here. Another"
     assert d["ownership_basis"] == "token"
 
 
@@ -20,27 +20,31 @@ def test_fused_ownership_stops_at_any_whitespace():
     text = "One sentence here. Another\tword follows and then more\n"
     (d,) = diags(text)
     assert d["kind"] == "fused"
-    assert text[d["ownership"]["start"]:d["ownership"]["end"]] == "here. Another"
+    assert text[d["ownership"]["start"] : d["ownership"]["end"]] == "here. Another"
     assert text[d["ownership"]["end"]] == "\t"
 
 
 def test_a_wrap_diagnostic_owns_the_boundary_tokens():
-    text = ("the compiler will assume all functions provide an `ABIInternal`\n"
-            "implementation.\n")
+    text = (
+        "the compiler will assume all functions provide an `ABIInternal`\n"
+        "implementation.\n"
+    )
     (d,) = diags(text)
     assert d["kind"] == "wrap"
-    owned = text[d["ownership"]["start"]:d["ownership"]["end"]]
+    owned = text[d["ownership"]["start"] : d["ownership"]["end"]]
     assert owned == "an `ABIInternal`\nimplementation"
     assert d["ownership_basis"] == "token"
 
 
 def test_wrap_evidence_spans_both_lines_and_anchor_spans_one():
-    text = ("the compiler will assume all functions provide an `ABIInternal`\n"
-            "implementation.\n")
+    text = (
+        "the compiler will assume all functions provide an `ABIInternal`\n"
+        "implementation.\n"
+    )
     (d,) = diags(text)
-    anchor = text[d["anchor"]["start"]:d["anchor"]["end"]]
+    anchor = text[d["anchor"]["start"] : d["anchor"]["end"]]
     assert "\n" not in anchor
-    evidence = text[d["evidence"]["start"]:d["evidence"]["end"]]
+    evidence = text[d["evidence"]["start"] : d["evidence"]["end"]]
     assert "\n" in evidence
     assert evidence.endswith("implementation.")
 
@@ -49,7 +53,7 @@ def test_a_comment_marker_degrades_nothing_when_prose_is_verbatim():
     text = "# One sentence here. Another sentence follows.\n"
     (d,) = diags(text, path="script.py")
     assert d["ownership_basis"] == "token"
-    assert text[d["ownership"]["start"]:d["ownership"]["end"]] == "here. Another"
+    assert text[d["ownership"]["start"] : d["ownership"]["end"]] == "here. Another"
 
 
 def test_an_ambiguous_match_carries_no_ownership():
@@ -60,33 +64,35 @@ def test_an_ambiguous_match_carries_no_ownership():
     assert d["ownership_basis"] == "degraded"
 
 
-LONG_PROSE = ("This advisory line keeps going with a possible clause boundary, "
-              "and it continues well past the configured limit so the checker "
-              "flags it as long today.")
+LONG_PROSE = (
+    "This advisory line keeps going with a possible clause boundary, "
+    "and it continues well past the configured limit so the checker "
+    "flags it as long today."
+)
 
 
 def test_long_ownership_is_the_prose_not_the_markers():
     text = "> " + LONG_PROSE + "\n"
     (d,) = diags(text)
     assert d["kind"] == "long"
-    assert text[d["ownership"]["start"]:d["ownership"]["end"]] == d["excerpt"]
-    assert text[:d["ownership"]["start"]] == "> "
+    assert text[d["ownership"]["start"] : d["ownership"]["end"]] == d["excerpt"]
+    assert text[: d["ownership"]["start"]] == "> "
 
 
 def test_long_ownership_excludes_the_list_marker():
     text = "- " + LONG_PROSE + "\n"
     (d,) = diags(text)
     assert d["kind"] == "long"
-    assert text[d["ownership"]["start"]:d["ownership"]["end"]] == LONG_PROSE
-    assert text[:d["ownership"]["start"]] == "- "
+    assert text[d["ownership"]["start"] : d["ownership"]["end"]] == LONG_PROSE
+    assert text[: d["ownership"]["start"]] == "- "
 
 
 def test_long_ownership_excludes_the_comment_marker():
     text = "// " + LONG_PROSE + "\n"
     (d,) = diags(text, path="main.go")
     assert d["kind"] == "long"
-    assert text[d["ownership"]["start"]:d["ownership"]["end"]] == LONG_PROSE
-    assert text[:d["ownership"]["start"]] == "// "
+    assert text[d["ownership"]["start"] : d["ownership"]["end"]] == LONG_PROSE
+    assert text[: d["ownership"]["start"]] == "// "
 
 
 def test_a_wrap_with_a_repeated_boundary_token_carries_no_ownership():
@@ -110,7 +116,7 @@ def test_a_finding_after_a_non_lf_separator_still_carries_ranges():
         text = "plain" + sep + "One sentence here. Another sentence follows.\n"
         (d,) = diags(text)
         assert d["line"] == 2
-        assert text[d["ownership"]["start"]:d["ownership"]["end"]] == "here. Another"
+        assert text[d["ownership"]["start"] : d["ownership"]["end"]] == "here. Another"
         for key in ("anchor", "evidence", "ownership"):
             rng = d[key]
             assert 0 <= rng["start"] <= rng["end"] <= len(text)
@@ -119,7 +125,7 @@ def test_a_finding_after_a_non_lf_separator_still_carries_ranges():
 def test_anchor_and_evidence_exclude_the_line_terminator():
     text = "One sentence here. Another sentence follows.\r\n"
     (d,) = diags(text)
-    anchor = text[d["anchor"]["start"]:d["anchor"]["end"]]
+    anchor = text[d["anchor"]["start"] : d["anchor"]["end"]]
     assert anchor == "One sentence here. Another sentence follows."
     assert d["evidence"] == d["anchor"]
 
@@ -133,9 +139,11 @@ def test_ranges_stay_inside_text_without_a_trailing_newline():
 
 
 def test_same_line_diagnostics_keep_the_frozen_kind_order():
-    text = ("One sentence here. Another sentence follows, and this fused line also runs "
-            "long enough that the advisory logic wants to flag it as well, which makes two kinds\n"
-            "on\n")
+    text = (
+        "One sentence here. Another sentence follows, and this fused line also runs "
+        "long enough that the advisory logic wants to flag it as well, which makes two kinds\n"
+        "on\n"
+    )
     assert [d["kind"] for d in diags(text)] == ["fused", "long", "wrap"]
 
 
@@ -143,7 +151,8 @@ def test_check_is_a_projection_of_diagnose():
     text = "One sentence here. Another sentence follows.\n"
     assert check_linefeeds.check(text, "doc.md") == [
         (d["line"], d["kind"], d["message"], d["excerpt"])
-        for d in check_linefeeds.diagnose(text, "doc.md")]
+        for d in check_linefeeds.diagnose(text, "doc.md")
+    ]
 
 
 def test_none_spans_report_everything_and_empty_spans_nothing():
@@ -173,8 +182,10 @@ def test_a_span_ending_or_starting_at_the_ownership_edge_reports_nothing():
 
 
 def test_a_zero_width_boundary_on_the_newline_owns_a_wrap():
-    text = ("the compiler will assume all functions provide an `ABIInternal`\n"
-            "implementation.\n")
+    text = (
+        "the compiler will assume all functions provide an `ABIInternal`\n"
+        "implementation.\n"
+    )
     newline_at = text.index("\n")
     assert len(diags(text, spans=[{"at": newline_at}])) == 1
 
@@ -185,8 +196,10 @@ def test_an_unchanged_boundary_is_not_reported_for_changed_evidence():
     The edit lands inside the lower line's tail, far from the boundary tokens,
     so the wrap whose evidence includes that line is still not owned by it.
     """
-    text = ("the compiler will assume all functions provide an `ABIInternal`\n"
-            "implementation of every method named in the manifest below.\n")
+    text = (
+        "the compiler will assume all functions provide an `ABIInternal`\n"
+        "implementation of every method named in the manifest below.\n"
+    )
     tail = text.rindex("manifest")
     assert diags(text, spans=[{"start": tail, "end": tail + 8}]) == []
 
@@ -228,7 +241,10 @@ def test_editing_only_the_list_or_comment_marker_reports_nothing():
     assert diags(commented, "main.go", spans=[{"start": 0, "end": 3}]) == []
     (d,) = diags(commented, "main.go")
     inside = d["ownership"]["start"] + 5
-    assert len(diags(commented, "main.go", spans=[{"start": inside, "end": inside + 1}])) == 1
+    assert (
+        len(diags(commented, "main.go", spans=[{"start": inside, "end": inside + 1}]))
+        == 1
+    )
 
 
 def test_a_span_in_the_tab_separated_tail_reports_nothing():
@@ -265,22 +281,19 @@ def test_a_malformed_span_raises_even_for_a_non_target_path():
 def test_fused_question_gets_a_two_line_suggestion_with_indentation():
     text = "   Is this right? Yes it is.\n"
     (d,) = diags(text)
-    assert d["suggestion"] == {
-        "lines": ["   Is this right?", "   Yes it is."]}
+    assert d["suggestion"] == {"lines": ["   Is this right?", "   Yes it is."]}
 
 
 def test_fused_bang_in_a_python_comment_keeps_the_marker_on_both_lines():
     text = "# Stop now! Go later.\n"
     (d,) = diags(text, path="x.py")
-    assert d["suggestion"] == {
-        "lines": ["# Stop now!", "# Go later."]}
+    assert d["suggestion"] == {"lines": ["# Stop now!", "# Go later."]}
 
 
 def test_fused_bang_in_a_blockquote_keeps_the_quote_marker():
     text = "> Stop now! Go later.\n"
     (d,) = diags(text)
-    assert d["suggestion"] == {
-        "lines": ["> Stop now!", "> Go later."]}
+    assert d["suggestion"] == {"lines": ["> Stop now!", "> Go later."]}
 
 
 def test_a_period_fused_line_gets_no_suggestion():
@@ -312,7 +325,7 @@ def test_fused_suggestion_byte_identity_holds_with_a_duplicated_prefix():
         idx = raw.find(d["excerpt"])
         prefix = raw[:idx]
         line1, line2 = d["suggestion"]["lines"]
-        assert line1 + " " + line2[len(prefix):] == raw
+        assert line1 + " " + line2[len(prefix) :] == raw
 
 
 def test_a_code_span_anywhere_on_the_line_gets_no_suggestion():

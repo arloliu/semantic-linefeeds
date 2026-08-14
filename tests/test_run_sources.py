@@ -1,4 +1,5 @@
 """tests/test_run_sources.py — the shared source runner behind every mode."""
+
 import json
 import sys
 from pathlib import Path
@@ -39,8 +40,7 @@ def test_long_findings_are_advisory_only(capsys, monkeypatch):
 
 
 def test_json_mode_emits_a_report_list(capsys):
-    rc = check_linefeeds.run_sources([("a.md", FUSED), ("b.md", CLEAN)],
-                                     as_json=True)
+    rc = check_linefeeds.run_sources([("a.md", FUSED), ("b.md", CLEAN)], as_json=True)
     reports = json.loads(capsys.readouterr().out)
     assert rc == 1
     assert [r["path"] for r in reports] == ["a.md"]

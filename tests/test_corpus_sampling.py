@@ -17,34 +17,51 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from corpus_harness import (  # noqa: E402
-    COVARIATES, Boundary, ProseLine, band_of, boundaries, covariates, draw,
-    draw_corpus, replay_kinds,
-    labeling_batches)
+    COVARIATES,
+    Boundary,
+    ProseLine,
+    band_of,
+    boundaries,
+    covariates,
+    draw,
+    draw_corpus,
+    labeling_batches,
+    replay_kinds,
+)
 
 
 def unit(upper_raw, lower_raw, path="x.go", strip="// ", rest=()):
     """A boundary built straight from two lines, for covariates that need no file."""
+
     def line(n, raw):
-        return ProseLine(n, raw, raw.strip()[len(strip.strip()):].strip() if strip else raw.strip())
+        return ProseLine(
+            n, raw, raw.strip()[len(strip.strip()) :].strip() if strip else raw.strip()
+        )
+
     paragraph = [line(1, upper_raw), line(2, lower_raw)]
     paragraph += [line(3 + i, extra) for i, extra in enumerate(rest)]
     return Boundary(path, paragraph[0], paragraph[1], paragraph)
 
-GO = ("package x\n"
-      "\n"
-      "// One sentence here.\n"
-      "// Another follows it.\n"
-      "//\n"
-      "// After the break.\n"
-      "func f() {}\n")
 
-MARKDOWN = ("# Title\n"
-            "\n"
-            "One sentence here.\n"
-            "Another follows it.\n"
-            "\n"
-            "- a list item that runs on\n"
-            "  and continues here\n")
+GO = (
+    "package x\n"
+    "\n"
+    "// One sentence here.\n"
+    "// Another follows it.\n"
+    "//\n"
+    "// After the break.\n"
+    "func f() {}\n"
+)
+
+MARKDOWN = (
+    "# Title\n"
+    "\n"
+    "One sentence here.\n"
+    "Another follows it.\n"
+    "\n"
+    "- a list item that runs on\n"
+    "  and continues here\n"
+)
 
 
 def positions(units):
@@ -81,15 +98,17 @@ def test_a_list_item_and_its_continuation_are_one_paragraph_today():
     assert positions(boundaries(MARKDOWN, "x.md")) == [(3, 4), (6, 7)]
 
 
-LICENSED = ("// Copyright 2018-2022 The NATS Authors\n"
-            "// Licensed under the Apache License, Version 2.0 (the \"License\");\n"
-            "// you may not use this file except in compliance with the License.\n"
-            "\n"
-            "package x\n"
-            "\n"
-            "// One sentence here.\n"
-            "// Another follows it.\n"
-            "func f() {}\n")
+LICENSED = (
+    "// Copyright 2018-2022 The NATS Authors\n"
+    '// Licensed under the Apache License, Version 2.0 (the "License");\n'
+    "// you may not use this file except in compliance with the License.\n"
+    "\n"
+    "package x\n"
+    "\n"
+    "// One sentence here.\n"
+    "// Another follows it.\n"
+    "func f() {}\n"
+)
 
 
 def test_a_licence_header_yields_no_units():
@@ -105,10 +124,11 @@ def test_a_licence_header_yields_no_units():
 TWICE_LICENSED = LICENSED + (
     "\n"
     "// Copyright 2018-2022 The NATS Authors\n"
-    "// Licensed under the Apache License, Version 2.0 (the \"License\");\n"
+    '// Licensed under the Apache License, Version 2.0 (the "License");\n'
     "// you may not use this file except in compliance with the License.\n"
     "\n"
-    "func g() {}\n")
+    "func g() {}\n"
+)
 
 
 def test_a_second_licence_block_yields_no_units_either():
@@ -152,7 +172,9 @@ def test_the_language_is_recorded_as_a_name():
 
 def test_the_end_column_is_where_the_raw_line_actually_ends():
     """The wrapping column is a property of the raw line, not of the extracted prose."""
-    assert covariates(unit("// One sentence here.", "// Another."))["raw_end_column"] == 21
+    assert (
+        covariates(unit("// One sentence here.", "// Another."))["raw_end_column"] == 21
+    )
 
 
 def test_indentation_is_measured_in_columns_with_tabs_expanded():
@@ -162,14 +184,22 @@ def test_indentation_is_measured_in_columns_with_tabs_expanded():
 
 def test_prose_width_is_the_widest_raw_line_in_the_paragraph():
     """One line says where it ended; the paragraph says where the author was wrapping."""
-    found = unit("// Short.", "// Also short.", rest=("// A rather longer line than those.",))
+    found = unit(
+        "// Short.", "// Also short.", rest=("// A rather longer line than those.",)
+    )
     assert covariates(found)["prose_width"] == 35
 
 
 def test_trailing_inline_markup_is_read_off_the_upper_line():
     """Markup after the terminal punctuation is the case the detector cannot see past."""
-    assert covariates(unit("// Ends in emphasis.*", "// Next."))["trailing_inline_markup"] is True
-    assert covariates(unit("// Ends plainly.", "// Next."))["trailing_inline_markup"] is False
+    assert (
+        covariates(unit("// Ends in emphasis.*", "// Next."))["trailing_inline_markup"]
+        is True
+    )
+    assert (
+        covariates(unit("// Ends plainly.", "// Next."))["trailing_inline_markup"]
+        is False
+    )
 
 
 def test_list_item_adjacency_is_read_off_the_lower_line():
@@ -206,8 +236,9 @@ def test_a_stored_unit_reproduces_the_verdict_it_was_frozen_with():
 
     A status nobody can recheck offline is a claim about the detector, not a test of it.
     """
-    unit = replayable(["// The layout of structs on 64-bit systems",
-                       "// will not change."], 0, "x.go")
+    unit = replayable(
+        ["// The layout of structs on 64-bit systems", "// will not change."], 0, "x.go"
+    )
     assert replay_kinds(unit) == {"wrap"}
 
 
@@ -219,8 +250,9 @@ def test_a_stored_unit_can_come_back_clean():
 
 def test_a_stored_markdown_unit_replays_as_markdown():
     """Extraction differs by language, so the replay has to carry the language with it."""
-    unit = replayable(["The layout of structs on 64-bit systems",
-                       "will not change."], 0, "x.md")
+    unit = replayable(
+        ["The layout of structs on 64-bit systems", "will not change."], 0, "x.md"
+    )
     assert replay_kinds(unit) == {"wrap"}
 
 
@@ -230,8 +262,14 @@ def test_a_stored_comment_block_is_not_mistaken_for_a_licence_header():
     The checker cuts that region, so a replay without a guard would report nothing at all
     and quietly turn every detected unit into an accepted miss.
     """
-    unit = replayable(["// Copyright is not what this is about, and the layout of structs",
-                       "// will not change."], 0, "x.go")
+    unit = replayable(
+        [
+            "// Copyright is not what this is about, and the layout of structs",
+            "// will not change.",
+        ],
+        0,
+        "x.go",
+    )
     assert replay_kinds(unit) == {"wrap"}
 
 
@@ -244,8 +282,12 @@ def candidate(n, column):
 
 
 def population():
-    return [candidate(n, column)
-            for n, column in enumerate([60] * 5 + [68] * 30 + [75] * 30 + [82] * 30 + [92] * 2)]
+    return [
+        candidate(n, column)
+        for n, column in enumerate(
+            [60] * 5 + [68] * 30 + [75] * 30 + [82] * 30 + [92] * 2
+        )
+    ]
 
 
 def test_a_level_is_the_band_a_value_falls_in():
@@ -285,8 +327,10 @@ def test_a_level_thinner_than_its_quota_contributes_all_it_has():
 
 
 def rare(n, nesting, markup):
-    return {"id": f"r-{n:04d}",
-            "covariates": {"markdown_nesting": nesting, "trailing_inline_markup": markup}}
+    return {
+        "id": f"r-{n:04d}",
+        "covariates": {"markdown_nesting": nesting, "trailing_inline_markup": markup},
+    }
 
 
 def rare_population():
@@ -336,8 +380,12 @@ def test_the_same_seed_draws_the_same_corpus():
 def test_each_labeler_sees_its_own_order():
     """Order is randomized per labeler so fatigue and drift do not line up across passes."""
     sample = draw(population(), "raw_end_column", BANDS, per_level=8, seed="pilot-1")
-    mine = [u["id"] for batch in labeling_batches(sample, "claude", size=5) for u in batch]
-    theirs = [u["id"] for batch in labeling_batches(sample, "codex", size=5) for u in batch]
+    mine = [
+        u["id"] for batch in labeling_batches(sample, "claude", size=5) for u in batch
+    ]
+    theirs = [
+        u["id"] for batch in labeling_batches(sample, "codex", size=5) for u in batch
+    ]
     assert sorted(mine) == sorted(theirs)
     assert mine != theirs
 

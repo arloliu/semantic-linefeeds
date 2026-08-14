@@ -1,5 +1,5 @@
 """tests/test_config.py — project config discovery (.semlf.ini)."""
-import os
+
 import sys
 from pathlib import Path
 
@@ -93,8 +93,9 @@ def test_malformed_file_is_ignored(tmp_path):
 
 
 def test_duplicate_sections_are_ignored(tmp_path):
-    write(tmp_path / ".semlf.ini",
-          "[semlf]\nlong-limit = 100\n[semlf]\nlong-limit = 90\n")
+    write(
+        tmp_path / ".semlf.ini", "[semlf]\nlong-limit = 100\n[semlf]\nlong-limit = 90\n"
+    )
     assert check_linefeeds.load_config(str(tmp_path)) == {}
 
 
@@ -154,8 +155,10 @@ def test_no_representable_section_name_can_act_as_defaults_source(tmp_path):
 
 
 def test_semlf_key_still_works_beside_default_section(tmp_path):
-    write(tmp_path / ".semlf.ini",
-          "[DEFAULT]\nlong-limit = 40\n[semlf]\nlong-limit = 90\n")
+    write(
+        tmp_path / ".semlf.ini",
+        "[DEFAULT]\nlong-limit = 40\n[semlf]\nlong-limit = 90\n",
+    )
     assert check_linefeeds.load_config(str(tmp_path)) == {"long_limit": 90}
 
 
@@ -208,8 +211,12 @@ def test_config_reaches_diagnose(tmp_path, monkeypatch):
     write(tmp_path / ".semlf.ini", "[semlf]\nlong-limit = 40\n")
     target = tmp_path / "doc.md"
     write(target, LONG_WITH_BOUNDARY + "\n")
-    kinds = [d["kind"] for d in
-             check_linefeeds.diagnose(target.read_text(encoding="utf-8"), str(target))]
+    kinds = [
+        d["kind"]
+        for d in check_linefeeds.diagnose(
+            target.read_text(encoding="utf-8"), str(target)
+        )
+    ]
     assert kinds == ["long"]
 
 
@@ -248,7 +255,10 @@ from conftest import SCRIPT
 def run_hook(payload, cwd, agent="claude"):
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--hook", agent],
-        input=json.dumps(payload), capture_output=True, text=True, cwd=str(cwd),
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        cwd=str(cwd),
     )
 
 
@@ -258,24 +268,38 @@ def kinds_in(text):
 
 # Fused (". A second"), over 40 chars, and boundary-hinted (", and"):
 # a wrongly applied low threshold would add "long" and change the kind set.
-FUSED_LINE = ("// The exporter batches metrics in memory, "
-              "and it retries uploads. A second sentence follows.")
+FUSED_LINE = (
+    "// The exporter batches metrics in memory, "
+    "and it retries uploads. A second sentence follows."
+)
 
 
 def claude_payload(name, text):
-    return {"tool_name": "Edit",
-            "tool_input": {"file_path": name, "new_string": text}}
+    return {"tool_name": "Edit", "tool_input": {"file_path": name, "new_string": text}}
 
 
 def codex_payload(name, text):
     # Mirrors tests/payloads/codex_apply_patch_bad.json's schema.
-    patch = ("*** Begin Patch\n*** Update File: " + name + "\n@@\n+" + text +
-             "\n*** End Patch")
-    return {"session_id": "s1", "turn_id": "t1", "transcript_path": "/tmp/t",
-            "cwd": ".", "hook_event_name": "PostToolUse", "model": "m",
-            "permission_mode": "default", "tool_name": "apply_patch",
-            "tool_input": {"command": patch},
-            "tool_response": {"output": "Done"}, "tool_use_id": "call_1"}
+    patch = (
+        "*** Begin Patch\n*** Update File: "
+        + name
+        + "\n@@\n+"
+        + text
+        + "\n*** End Patch"
+    )
+    return {
+        "session_id": "s1",
+        "turn_id": "t1",
+        "transcript_path": "/tmp/t",
+        "cwd": ".",
+        "hook_event_name": "PostToolUse",
+        "model": "m",
+        "permission_mode": "default",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": patch},
+        "tool_response": {"output": "Done"},
+        "tool_use_id": "call_1",
+    }
 
 
 HOSTILE_CONFIGS = [
@@ -297,7 +321,9 @@ def hostile_variants(tmp_path):
     yield
     cfg = tmp_path / ".semlf.ini"
     cfg.write_text("[semlf]\nlong-limit = 40\n", encoding="utf-8")
-    cfg.chmod(0)  # unreadable; meaningless when running as root, like every permission test
+    cfg.chmod(
+        0
+    )  # unreadable; meaningless when running as root, like every permission test
     try:
         yield
     finally:
@@ -330,7 +356,9 @@ def test_hostile_configs_never_change_codex_hook_kinds(tmp_path):
         assert kinds_in(r.stderr) == {"fused"}
 
 
-def test_injected_config_read_error_is_inert_in_both_hooks(tmp_path, monkeypatch, capsys):
+def test_injected_config_read_error_is_inert_in_both_hooks(
+    tmp_path, monkeypatch, capsys
+):
     """A config the OS refuses to read must not change hook behavior.
 
     chmod tricks are meaningless under root,
@@ -340,6 +368,7 @@ def test_injected_config_read_error_is_inert_in_both_hooks(tmp_path, monkeypatch
     the hooks' own snapshot reads keep working.
     """
     import io
+
     monkeypatch.chdir(tmp_path)
     (tmp_path / ".git").mkdir()
     (tmp_path / "doc.go").write_text(FUSED_LINE + "\n", encoding="utf-8")
@@ -365,15 +394,20 @@ def test_injected_config_read_error_is_inert_in_both_hooks(tmp_path, monkeypatch
 
 def test_valid_config_moves_only_the_long_threshold(tmp_path):
     (tmp_path / ".git").mkdir()
-    line = ("The exporter batches metrics in memory, "
-            "and it retries failed uploads until the queue drains.")
+    line = (
+        "The exporter batches metrics in memory, "
+        "and it retries failed uploads until the queue drains."
+    )
     (tmp_path / "doc.md").write_text(line + "\n", encoding="utf-8")
-    for agent, payload in (("claude", claude_payload("doc.md", line)),
-                           ("codex", codex_payload("doc.md", line))):
+    for agent, payload in (
+        ("claude", claude_payload("doc.md", line)),
+        ("codex", codex_payload("doc.md", line)),
+    ):
         (tmp_path / ".semlf.ini").unlink(missing_ok=True)
         without = run_hook(payload, tmp_path, agent=agent)
-        (tmp_path / ".semlf.ini").write_text("[semlf]\nlong-limit = 40\n",
-                                             encoding="utf-8")
+        (tmp_path / ".semlf.ini").write_text(
+            "[semlf]\nlong-limit = 40\n", encoding="utf-8"
+        )
         with_cfg = run_hook(payload, tmp_path, agent=agent)
         assert without.returncode == 0 and with_cfg.returncode == 0
         assert kinds_in(without.stdout) == set()
@@ -381,10 +415,13 @@ def test_valid_config_moves_only_the_long_threshold(tmp_path):
 
 
 def test_exclude_patterns_are_parsed_multiline(tmp_path):
-    write(tmp_path / ".semlf.ini",
-          "[semlf]\nexclude =\n    vendor/\n    docs/generated/\n    *.gen.md\n")
+    write(
+        tmp_path / ".semlf.ini",
+        "[semlf]\nexclude =\n    vendor/\n    docs/generated/\n    *.gen.md\n",
+    )
     assert check_linefeeds.load_config(str(tmp_path)) == {
-        "exclude": ["vendor/", "docs/generated/", "*.gen.md"]}
+        "exclude": ["vendor/", "docs/generated/", "*.gen.md"]
+    }
 
 
 def test_exclude_single_line_value_is_one_pattern(tmp_path):
@@ -393,16 +430,17 @@ def test_exclude_single_line_value_is_one_pattern(tmp_path):
 
 
 def test_exclude_blank_lines_and_leading_slash_are_normalized(tmp_path):
-    write(tmp_path / ".semlf.ini",
-          "[semlf]\nexclude =\n\n    /docs/generated/\n\n")
+    write(tmp_path / ".semlf.ini", "[semlf]\nexclude =\n\n    /docs/generated/\n\n")
     assert check_linefeeds.load_config(str(tmp_path)) == {
-        "exclude": ["docs/generated/"]}
+        "exclude": ["docs/generated/"]
+    }
 
 
 def test_exclude_backslashes_normalize_to_slashes(tmp_path):
     write(tmp_path / ".semlf.ini", "[semlf]\nexclude = docs\\generated\\\n")
     assert check_linefeeds.load_config(str(tmp_path)) == {
-        "exclude": ["docs/generated/"]}
+        "exclude": ["docs/generated/"]
+    }
 
 
 def test_exclude_empty_value_yields_no_key(tmp_path):
@@ -412,16 +450,16 @@ def test_exclude_empty_value_yields_no_key(tmp_path):
 
 def test_bad_long_limit_no_longer_drops_a_good_exclude(tmp_path):
     """Fail-open is per key: one bad value silences itself, not its neighbors."""
-    write(tmp_path / ".semlf.ini",
-          "[semlf]\nlong-limit = many\nexclude = vendor/\n")
+    write(tmp_path / ".semlf.ini", "[semlf]\nlong-limit = many\nexclude = vendor/\n")
     assert check_linefeeds.load_config(str(tmp_path)) == {"exclude": ["vendor/"]}
 
 
 def test_both_keys_parse_together(tmp_path):
-    write(tmp_path / ".semlf.ini",
-          "[semlf]\nlong-limit = 80\nexclude = vendor/\n")
+    write(tmp_path / ".semlf.ini", "[semlf]\nlong-limit = 80\nexclude = vendor/\n")
     assert check_linefeeds.load_config(str(tmp_path)) == {
-        "long_limit": 80, "exclude": ["vendor/"]}
+        "long_limit": 80,
+        "exclude": ["vendor/"],
+    }
 
 
 def test_exclude_match_folder_name_at_any_depth():
@@ -593,10 +631,13 @@ def test_excluded_file_never_hides_its_patch_neighbors(tmp_path):
     write(tmp_path / ".semlf.ini", EXCLUDING_CONFIG)
     write(tmp_path / "generated" / "a.go", FUSED_LINE + "\n")
     write(tmp_path / "b.go", FUSED_LINE + "\n")
-    patch = ("*** Begin Patch\n*** Update File: generated/a.go\n@@\n+"
-             + FUSED_LINE +
-             "\n*** End Patch\n*** Begin Patch\n*** Update File: b.go\n@@\n+"
-             + FUSED_LINE + "\n*** End Patch")
+    patch = (
+        "*** Begin Patch\n*** Update File: generated/a.go\n@@\n+"
+        + FUSED_LINE
+        + "\n*** End Patch\n*** Begin Patch\n*** Update File: b.go\n@@\n+"
+        + FUSED_LINE
+        + "\n*** End Patch"
+    )
     payload = codex_payload("b.go", FUSED_LINE)
     payload["tool_input"] = {"command": patch}
     r = run_hook(payload, tmp_path, agent="codex")
@@ -609,11 +650,16 @@ def test_explicit_file_mode_ignores_excludes(tmp_path):
     """Naming a path beats the discovery filter — always."""
     (tmp_path / ".git").mkdir()
     write(tmp_path / ".semlf.ini", EXCLUDING_CONFIG)
-    write(tmp_path / "generated" / "doc.md",
-          "One sentence. Another fused on the same line.\n")
+    write(
+        tmp_path / "generated" / "doc.md",
+        "One sentence. Another fused on the same line.\n",
+    )
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--file", "generated/doc.md"],
-        capture_output=True, text=True, cwd=str(tmp_path))
+        capture_output=True,
+        text=True,
+        cwd=str(tmp_path),
+    )
     assert r.returncode == 1
     assert "fused" in r.stdout
 
@@ -639,6 +685,7 @@ def test_hostile_exclude_configs_never_change_hook_kinds(tmp_path):
 # --- experimental-wrap ini key / experimental_wrap cfg dict key:
 # env > ini > default(off) (ADR-0017) ---
 
+
 def test_experimental_wrap_true_parses(tmp_path):
     write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
     assert check_linefeeds.load_config(str(tmp_path)) == {"experimental_wrap": True}
@@ -650,12 +697,18 @@ def test_experimental_wrap_false_parses(tmp_path):
 
 
 def test_experimental_wrap_accepts_numeric_and_word_spellings(tmp_path):
-    for spelling, expected in (("1", True), ("yes", True), ("on", True),
-                               ("0", False), ("no", False), ("off", False)):
-        write(tmp_path / ".semlf.ini",
-              f"[semlf]\nexperimental-wrap = {spelling}\n")
+    for spelling, expected in (
+        ("1", True),
+        ("yes", True),
+        ("on", True),
+        ("0", False),
+        ("no", False),
+        ("off", False),
+    ):
+        write(tmp_path / ".semlf.ini", f"[semlf]\nexperimental-wrap = {spelling}\n")
         assert check_linefeeds.load_config(str(tmp_path)) == {
-            "experimental_wrap": expected}, spelling
+            "experimental_wrap": expected
+        }, spelling
 
 
 def test_experimental_wrap_is_case_insensitive(tmp_path):
@@ -669,15 +722,19 @@ def test_experimental_wrap_invalid_value_drops_the_key(tmp_path):
 
 
 def test_experimental_wrap_combines_with_other_keys(tmp_path):
-    write(tmp_path / ".semlf.ini",
-          "[semlf]\nlong-limit = 80\nexperimental-wrap = true\n")
+    write(
+        tmp_path / ".semlf.ini", "[semlf]\nlong-limit = 80\nexperimental-wrap = true\n"
+    )
     assert check_linefeeds.load_config(str(tmp_path)) == {
-        "long_limit": 80, "experimental_wrap": True}
+        "long_limit": 80,
+        "experimental_wrap": True,
+    }
 
 
 def test_bad_experimental_wrap_does_not_drop_a_good_long_limit(tmp_path):
-    write(tmp_path / ".semlf.ini",
-          "[semlf]\nlong-limit = 80\nexperimental-wrap = maybe\n")
+    write(
+        tmp_path / ".semlf.ini", "[semlf]\nlong-limit = 80\nexperimental-wrap = maybe\n"
+    )
     assert check_linefeeds.load_config(str(tmp_path)) == {"long_limit": 80}
 
 
@@ -734,7 +791,9 @@ def test_opted_into_withheld_kind_no_path_falls_back_to_env_only(monkeypatch):
     assert check_linefeeds.opted_into_withheld_kind() is False
 
 
-def test_opted_into_withheld_kind_empty_env_string_falls_through_to_ini(tmp_path, monkeypatch):
+def test_opted_into_withheld_kind_empty_env_string_falls_through_to_ini(
+    tmp_path, monkeypatch
+):
     """Set-but-empty is "unset" for this leg, same as opted_into_withheld_kind always read it.
 
     Pins the exact `if raw:` check against a change to `if raw.strip():`,
@@ -745,7 +804,9 @@ def test_opted_into_withheld_kind_empty_env_string_falls_through_to_ini(tmp_path
     assert check_linefeeds.opted_into_withheld_kind(str(tmp_path / "x.md")) is True
 
 
-def test_opted_into_withheld_kind_whitespace_env_string_wins_as_disabled(tmp_path, monkeypatch):
+def test_opted_into_withheld_kind_whitespace_env_string_wins_as_disabled(
+    tmp_path, monkeypatch
+):
     """Whitespace is non-empty, so the env leg decides outright and strips to "off".
 
     A change from `if raw:` to `if raw.strip():` would fall through to the ini's `true` here,
@@ -766,22 +827,35 @@ def codex_multiline_payload(name, text):
     codex_payload's single leading "+" would lose every line but the first.
     """
     body = "".join("+" + line + "\n" for line in text.splitlines())
-    patch = ("*** Begin Patch\n*** Update File: " + name + "\n@@\n" + body +
-             "*** End Patch")
-    return {"session_id": "s1", "turn_id": "t1", "transcript_path": "/tmp/t",
-            "cwd": ".", "hook_event_name": "PostToolUse", "model": "m",
-            "permission_mode": "default", "tool_name": "apply_patch",
-            "tool_input": {"command": patch},
-            "tool_response": {"output": "Done"}, "tool_use_id": "call_1"}
+    patch = (
+        "*** Begin Patch\n*** Update File: " + name + "\n@@\n" + body + "*** End Patch"
+    )
+    return {
+        "session_id": "s1",
+        "turn_id": "t1",
+        "transcript_path": "/tmp/t",
+        "cwd": ".",
+        "hook_event_name": "PostToolUse",
+        "model": "m",
+        "permission_mode": "default",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": patch},
+        "tool_response": {"output": "Done"},
+        "tool_use_id": "call_1",
+    }
 
 
-def test_experimental_wrap_ini_true_enables_wrap_in_hook_feedback(tmp_path, monkeypatch):
+def test_experimental_wrap_ini_true_enables_wrap_in_hook_feedback(
+    tmp_path, monkeypatch
+):
     monkeypatch.delenv("SEMLF_EXPERIMENTAL_WRAP", raising=False)
     (tmp_path / ".git").mkdir()
     write(tmp_path / "doc.md", WRAP_ONLY)
     write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
-    for agent, payload in (("claude", claude_payload("doc.md", WRAP_ONLY)),
-                           ("codex", codex_multiline_payload("doc.md", WRAP_ONLY))):
+    for agent, payload in (
+        ("claude", claude_payload("doc.md", WRAP_ONLY)),
+        ("codex", codex_multiline_payload("doc.md", WRAP_ONLY)),
+    ):
         r = run_hook(payload, tmp_path, agent=agent)
         assert r.returncode == 0, agent
         assert kinds_in(r.stdout) == {"wrap"}, agent
@@ -793,8 +867,10 @@ def test_experimental_wrap_ini_false_env_true_env_wins(tmp_path, monkeypatch):
     (tmp_path / ".git").mkdir()
     write(tmp_path / "doc.md", WRAP_ONLY)
     write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = false\n")
-    for agent, payload in (("claude", claude_payload("doc.md", WRAP_ONLY)),
-                           ("codex", codex_multiline_payload("doc.md", WRAP_ONLY))):
+    for agent, payload in (
+        ("claude", claude_payload("doc.md", WRAP_ONLY)),
+        ("codex", codex_multiline_payload("doc.md", WRAP_ONLY)),
+    ):
         r = run_hook(payload, tmp_path, agent=agent)
         assert r.returncode == 0, agent
         assert kinds_in(r.stdout) == {"wrap"}, agent
@@ -805,8 +881,10 @@ def test_experimental_wrap_ini_true_env_zero_env_wins_disabled(tmp_path, monkeyp
     (tmp_path / ".git").mkdir()
     write(tmp_path / "doc.md", WRAP_ONLY)
     write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
-    for agent, payload in (("claude", claude_payload("doc.md", WRAP_ONLY)),
-                           ("codex", codex_multiline_payload("doc.md", WRAP_ONLY))):
+    for agent, payload in (
+        ("claude", claude_payload("doc.md", WRAP_ONLY)),
+        ("codex", codex_multiline_payload("doc.md", WRAP_ONLY)),
+    ):
         r = run_hook(payload, tmp_path, agent=agent)
         assert r.returncode == 0, agent
         assert r.stdout == "", agent

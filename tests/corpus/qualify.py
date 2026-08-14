@@ -49,8 +49,12 @@ FENCES = ("```", "~~~")
 
 def files(root, kind):
     """The files the source's own selection command names."""
-    return subprocess.run(["git", "-C", str(root), "ls-files"] + SELECTION[kind],
-                          capture_output=True, text=True, check=True).stdout.split()
+    return subprocess.run(
+        ["git", "-C", str(root), "ls-files"] + SELECTION[kind],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
 
 
 def is_go_comment(raw):
@@ -82,8 +86,11 @@ def runs(text, kind):
         if kind == "markdown" and raw.strip().startswith(FENCES):
             fenced = not fenced
             raw = ""
-        wanted = (is_go_comment(raw) if kind == "go"
-                  else not fenced and is_markdown_prose(raw))
+        wanted = (
+            is_go_comment(raw)
+            if kind == "go"
+            else not fenced and is_markdown_prose(raw)
+        )
         if wanted:
             run.append(len(raw.rstrip()))
             continue
@@ -119,19 +126,21 @@ def shape(measured):
     return {
         "wrapping_column": mode,
         "lines": total,
-        "within_two": sum(n for length, n in counts.items() if abs(length - mode) <= 2) / total,
-        "beyond_six": sum(n for length, n in counts.items() if length > mode + 6) / total,
+        "within_two": sum(n for length, n in counts.items() if abs(length - mode) <= 2)
+        / total,
+        "beyond_six": sum(n for length, n in counts.items() if length > mode + 6)
+        / total,
     }
 
 
 def qualification(kind, shaped):
     """The sentence the manifest records, built from the measurement rather than typed beside it."""
     what = "Go `//` comment" if kind == "go" else "Markdown paragraph"
-    return ("mode of raw %s line lengths is column %d, over %d lines, "
-            "with %d%% within two columns of the mode and %d%% beyond six past it; "
-            "measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
-            % (what, shaped["wrapping_column"], shaped["lines"],
-               round(shaped["within_two"] * 100), round(shaped["beyond_six"] * 100)))
+    return (
+        f"mode of raw {what} line lengths is column {shaped['wrapping_column']}, over {shaped['lines']} lines, "
+        f"with {round(shaped['within_two'] * 100)}% within two columns of the mode and {round(shaped['beyond_six'] * 100)}% beyond six past it; "
+        "measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
+    )
 
 
 def main(root, kind):

@@ -48,46 +48,57 @@ def pending(corpus, round_dir):
             if resolution(sorted(cast.values())) != "adjudicated":
                 continue
             unit = units[uid]
-            out.append({
-                "id": uid,
-                "kind": kind,
-                "path": unit["path"],
-                "lines": unit["lines"],
-                "upper": unit["upper"],
-                "lower": unit["lower"],
-                "context": unit["context"],
-                "passes": cast,
-                "label": None,
-                "reason": "",
-            })
+            out.append(
+                {
+                    "id": uid,
+                    "kind": kind,
+                    "path": unit["path"],
+                    "lines": unit["lines"],
+                    "upper": unit["upper"],
+                    "lower": unit["lower"],
+                    "context": unit["context"],
+                    "passes": cast,
+                    "label": None,
+                    "reason": "",
+                }
+            )
     return out
 
 
 def worksheet(corpus, round_dir, out):
     entries = pending(corpus, round_dir)
     if out.exists():
-        decided = {(e["id"], e["kind"]): e for e in json.loads(out.read_text(encoding="utf-8"))}
+        decided = {
+            (e["id"], e["kind"]): e for e in json.loads(out.read_text(encoding="utf-8"))
+        }
         for entry in entries:
             was = decided.get((entry["id"], entry["kind"]))
             if was:
                 entry["label"], entry["reason"] = was["label"], was["reason"]
-    out.write_text(json.dumps(entries, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(entries, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     blank = sum(1 for e in entries if not e["reason"])
     print(f"{len(entries)} to decide, {blank} still blank -> {out}")
 
 
 def check(corpus, round_dir, out):
-    entries = {(e["id"], e["kind"]): e
-               for e in json.loads(out.read_text(encoding="utf-8"))}
+    entries = {
+        (e["id"], e["kind"]): e for e in json.loads(out.read_text(encoding="utf-8"))
+    }
     problems = []
     for entry in pending(corpus, round_dir):
         key = entry["id"], entry["kind"]
         decided = entries.get(key)
         if decided is None:
-            problems.append(f"{key[0]} [{key[1]}]: the passes could not settle this and nobody did")
+            problems.append(
+                f"{key[0]} [{key[1]}]: the passes could not settle this and nobody did"
+            )
             continue
         if decided["label"] not in LABELS:
-            problems.append(f"{key[0]} [{key[1]}]: label {decided['label']!r} is not one of {LABELS}")
+            problems.append(
+                f"{key[0]} [{key[1]}]: label {decided['label']!r} is not one of {LABELS}"
+            )
         if not decided["reason"].strip():
             problems.append(f"{key[0]} [{key[1]}]: decided with no reason recorded")
     for line in problems:
@@ -97,7 +108,14 @@ def check(corpus, round_dir, out):
 
 
 if __name__ == "__main__":
-    mode, corpus, labels = sys.argv[1], pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3])
+    mode, corpus, labels = (
+        sys.argv[1],
+        pathlib.Path(sys.argv[2]),
+        pathlib.Path(sys.argv[3]),
+    )
     out = corpus / "adjudications.json"
-    sys.exit(worksheet(corpus, labels, out) or 0 if mode == "worksheet"
-             else check(corpus, labels, out))
+    sys.exit(
+        worksheet(corpus, labels, out) or 0
+        if mode == "worksheet"
+        else check(corpus, labels, out)
+    )

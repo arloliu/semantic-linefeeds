@@ -18,6 +18,7 @@ It requires at least one mode flag and honors --dry-run and --force the same way
 --auto is mutually exclusive with every explicit mode flag and with --uninstall (64).
 Exit codes: 0 success or no-op, 1 refusal or error, 64 usage error.
 """
+
 import argparse
 import hashlib
 import io
@@ -38,31 +39,47 @@ PYZ_INTERPRETER = "/usr/bin/env python3"
 MAIN_STUB = "from semlf.cli import main\nraise SystemExit(main())\n"
 
 sys.path.insert(0, str(REPO / "cli"))
-from semlf import lifecycle  # noqa: E402 -- must follow the path insert above
-from semlf import manifest  # noqa: E402
-from semlf import registry  # noqa: E402
-from semlf.lifecycle import (  # noqa: E402
-    exclusive_backup as _exclusive_backup,
-    publish_exclusive as _publish_new,
+from semlf import (
+    lifecycle,  # noqa: E402 -- must follow the path insert above
+    manifest,  # noqa: E402
+    registry,  # noqa: E402
+)
+from semlf.lifecycle import (
     _forget_note,
 )
+from semlf.lifecycle import (  # noqa: E402
+    exclusive_backup as _exclusive_backup,
+)
+from semlf.lifecycle import (
+    publish_exclusive as _publish_new,
+)
 from semlf.manifest import (  # noqa: E402
-    codex_skill_dest, cli_bin_dest,
+    cli_bin_dest,
+    codex_skill_dest,  # noqa: F401 -- re-exported for install_module.codex_skill_dest() in tests
 )
 
 PYZ_REQUIRED_MEMBERS = frozenset(
-    {"__main__.py", "check_linefeeds.py",
-     "semlf/__init__.py", "semlf/cli.py",
-     "semlf/providers.py", "semlf/doctor.py",
-     "semlf/manifest.py", "semlf/registry.py",
-     "semlf/classify.py", "semlf/lifecycle.py"}
-    | {row.member for row in registry.ROWS})
+    {
+        "__main__.py",
+        "check_linefeeds.py",
+        "semlf/__init__.py",
+        "semlf/cli.py",
+        "semlf/providers.py",
+        "semlf/doctor.py",
+        "semlf/manifest.py",
+        "semlf/registry.py",
+        "semlf/classify.py",
+        "semlf/lifecycle.py",
+    }
+    | {row.member for row in registry.ROWS}
+)
 
 
 def core_version():
     """The repo core's version, read textually so nothing is imported."""
-    match = re.search(r'^__version__ = "([^"]+)"$',
-                      CHECKER.read_text(encoding="utf-8"), re.MULTILINE)
+    match = re.search(
+        r'^__version__ = "([^"]+)"$', CHECKER.read_text(encoding="utf-8"), re.MULTILINE
+    )
     return match.group(1) if match else "unknown"
 
 
@@ -195,8 +212,7 @@ def _adopt_current_cli(dest, snapshot):
     snapshot is guarded_pyz_state's (identity, bytes) pair — already verified equal to the fresh build by the caller — so adoption just records the digest of those same bytes.
     Nothing is re-read: the identity match is the whole proof, and re-recording an already-managed install is an idempotent replace of one state file.
     """
-    manifest.record("cli", dest, core_version(),
-                    manifest.sha256_bytes(snapshot[1]))
+    manifest.record("cli", dest, core_version(), manifest.sha256_bytes(snapshot[1]))
 
 
 def _plan_cli_install(planned, refusals, force):
@@ -217,8 +233,10 @@ def _plan_cli_install(planned, refusals, force):
     """
     dest = cli_bin_dest()
     if dest is None:
-        refusals.append("refusing to install the cli: cannot determine a "
-                        "home directory to install it under.")
+        refusals.append(
+            "refusing to install the cli: cannot determine a "
+            "home directory to install it under."
+        )
         return
     if dest.is_symlink():
         refusals.append(f"refusing to touch {dest}: it is a symlink.")
@@ -233,25 +251,32 @@ def _plan_cli_install(planned, refusals, force):
         if os.path.lexists(dest):
             snapshot = guarded_pyz_state(dest)
             if snapshot is None:
-                refusals.append(f"refusing to touch {dest}: it exists but "
-                                "is not a readable regular file.")
+                refusals.append(
+                    f"refusing to touch {dest}: it exists but "
+                    "is not a readable regular file."
+                )
                 return
             if snapshot[0] == fresh_state:
+
                 def _do(dest=dest, snapshot=snapshot):
                     _path_note(dest)
                     _adopt_current_cli(dest, snapshot)
                     return None
 
-                planned.append(lifecycle.Planned(
-                    f"cli: already installed ({dest})", "cli", dest,
-                    None, _do))
+                planned.append(
+                    lifecycle.Planned(
+                        f"cli: already installed ({dest})", "cli", dest, None, _do
+                    )
+                )
                 return
             managed = manifest.classify("cli", dest) == "managed"
             if not force and not managed:
-                refusals.append(f"refusing to overwrite {dest}: its "
-                                "content differs from this build "
-                                "(hand-patched or older version). "
-                                "re-run with --force to replace it.")
+                refusals.append(
+                    f"refusing to overwrite {dest}: its "
+                    "content differs from this build "
+                    "(hand-patched or older version). "
+                    "re-run with --force to replace it."
+                )
                 return
             divergent = True
 
@@ -262,16 +287,16 @@ def _plan_cli_install(planned, refusals, force):
     else:
         bak = dest.with_name(dest.name + ".bak")
         if os.path.lexists(bak):
-            refusals.append(f"refusing to overwrite {bak}: a backup "
-                            "already exists; move it aside and re-run.")
+            refusals.append(
+                f"refusing to overwrite {bak}: a backup "
+                "already exists; move it aside and re-run."
+            )
             return
         label = f"would back up and replace {dest}"
 
-    def _do(dest=dest, divergent=divergent, managed=managed,
-           snapshot=snapshot):
+    def _do(dest=dest, divergent=divergent, managed=managed, snapshot=snapshot):
         dest.parent.mkdir(parents=True, exist_ok=True)
-        fd, staged_name = tempfile.mkstemp(dir=str(dest.parent),
-                                           prefix=dest.name)
+        fd, staged_name = tempfile.mkstemp(dir=str(dest.parent), prefix=dest.name)
         os.close(fd)
         staged = Path(staged_name)
         try:
@@ -283,8 +308,10 @@ def _plan_cli_install(planned, refusals, force):
                     _exclusive_backup(dest, bak, snapshot[1])
                 except FileExistsError:
                     os.unlink(staged)
-                    return (f"refusing to overwrite {bak}: a backup "
-                            "already exists; move it aside and re-run.")
+                    return (
+                        f"refusing to overwrite {bak}: a backup "
+                        "already exists; move it aside and re-run."
+                    )
                 except OSError as exc:
                     os.unlink(staged)
                     return f"cannot back up {dest} to {bak}: {exc}"
@@ -292,9 +319,11 @@ def _plan_cli_install(planned, refusals, force):
             elif divergent:
                 os.replace(staged, dest)
             elif not _publish_new(staged, dest):
-                return (f"refusing to overwrite {dest}: it appeared "
-                        "after classification; re-run so it can be "
-                        "classified.")
+                return (
+                    f"refusing to overwrite {dest}: it appeared "
+                    "after classification; re-run so it can be "
+                    "classified."
+                )
         except BaseException:
             if staged.exists():
                 os.unlink(staged)
@@ -303,8 +332,11 @@ def _plan_cli_install(planned, refusals, force):
         _path_note(dest)
         return None
 
-    planned.append(lifecycle.Planned(label, "cli", dest, None, _do,
-                                     done=f"cli: installed ({dest})"))
+    planned.append(
+        lifecycle.Planned(
+            label, "cli", dest, None, _do, done=f"cli: installed ({dest})"
+        )
+    )
 
 
 def install_cli(dry, force):
@@ -316,8 +348,7 @@ def install_cli(dry, force):
     planned, refusals = [], []
     _plan_cli_install(planned, refusals, force)
     if dry:
-        lifecycle.describe_plan(planned, refusals,
-                                prefix="[dry-run] ")
+        lifecycle.describe_plan(planned, refusals, prefix="[dry-run] ")
         return 0
     if refusals:
         for refusal in refusals:
@@ -338,9 +369,15 @@ def install_cli(dry, force):
 def _plan_cli_bak_note(dest, planned):
     bak = dest.with_name(dest.name + ".bak")
     if os.path.lexists(bak):
-        planned.append(lifecycle.Planned(
-            f"note: {bak} is your own backup; it is never touched by "
-            "uninstall.", "cli", dest, None, None))
+        planned.append(
+            lifecycle.Planned(
+                f"note: {bak} is your own backup; it is never touched by uninstall.",
+                "cli",
+                dest,
+                None,
+                None,
+            )
+        )
 
 
 def _plan_cli(planned, refusals, force):
@@ -351,35 +388,43 @@ def _plan_cli(planned, refusals, force):
     """
     dest = cli_bin_dest()
     if dest is None:
-        refusals.append("refusing to uninstall the cli: cannot determine a "
-                        "home directory to uninstall it from.")
+        refusals.append(
+            "refusing to uninstall the cli: cannot determine a "
+            "home directory to uninstall it from."
+        )
         return
     dest = Path(dest)
     try:
         st = os.lstat(dest)
     except FileNotFoundError:
-        planned.append(lifecycle.Planned(f"cli: not installed ({dest})",
-                                         "cli", dest, None, None))
+        planned.append(
+            lifecycle.Planned(f"cli: not installed ({dest})", "cli", dest, None, None)
+        )
         _plan_cli_bak_note(dest, planned)
         return
     except OSError as exc:
-        refusals.append(f"refusing to uninstall the cli: cannot inspect "
-                        f"{dest}: {exc}.")
+        refusals.append(f"refusing to uninstall the cli: cannot inspect {dest}: {exc}.")
         return
     if stat.S_ISDIR(st.st_mode):
-        refusals.append(f"refusing to remove {dest}: it is a directory; "
-                        "removing a tree is not this verb's one-file unlink.")
+        refusals.append(
+            f"refusing to remove {dest}: it is a directory; "
+            "removing a tree is not this verb's one-file unlink."
+        )
         return
     admit = False
     reason = None
     if not stat.S_ISREG(st.st_mode):
-        reason = (f"refusing to remove {dest}: it is not a regular file "
-                  "(symlink or special file).")
+        reason = (
+            f"refusing to remove {dest}: it is not a regular file "
+            "(symlink or special file)."
+        )
     else:
         snapshot = guarded_pyz_state(dest)
         if snapshot is None:
-            reason = (f"refusing to remove {dest}: it exists but is not a "
-                      "readable regular file.")
+            reason = (
+                f"refusing to remove {dest}: it exists but is not a "
+                "readable regular file."
+            )
         else:
             with tempfile.TemporaryDirectory() as td:
                 fresh = Path(td) / "semlf"
@@ -389,18 +434,23 @@ def _plan_cli(planned, refusals, force):
             # A manifest that proves divergence ("edited") outranks the coarser pyz snapshot.
             # The snapshot only substitutes for a *missing* provenance record ("unrecorded"); it never overrides a provenance record that says otherwise.
             if classification == "managed" or (
-                    classification != "edited" and identity_match):
+                classification != "edited" and identity_match
+            ):
                 admit = True
             else:
-                reason = (f"refusing to remove {dest}: its content differs "
-                          "from this build (hand-patched or older version).")
+                reason = (
+                    f"refusing to remove {dest}: its content differs "
+                    "from this build (hand-patched or older version)."
+                )
     if admit or force:
+
         def _do(dest=dest):
             os.unlink(dest)
             return _forget_note(dest, "cli")
 
-        planned.append(lifecycle.Planned(str(dest), "cli", dest, None, _do,
-                                         done=f"removed {dest}"))
+        planned.append(
+            lifecycle.Planned(str(dest), "cli", dest, None, _do, done=f"removed {dest}")
+        )
     else:
         refusals.append(reason + " re-run with --force to remove it anyway.")
     _plan_cli_bak_note(dest, planned)
@@ -412,18 +462,32 @@ def uninstall(args):
     destinations = lifecycle.payload_destinations()
     if args.codex:
         lifecycle.plan_remove_codex_hook(planned, refusals)
-        lifecycle.plan_remove_file("codex skill", destinations["codex-skill"],
-                                   "codex-skill", args.force, planned,
-                                   refusals, prune_parent=True)
+        lifecycle.plan_remove_file(
+            "codex skill",
+            destinations["codex-skill"],
+            "codex-skill",
+            args.force,
+            planned,
+            refusals,
+            prune_parent=True,
+        )
     if args.opencode:
-        lifecycle.plan_remove_file("opencode plugin",
-                                   destinations["opencode-plugin"],
-                                   "opencode-plugin", args.force, planned,
-                                   refusals)
-        lifecycle.plan_remove_file("opencode checker",
-                                   destinations["opencode-checker"],
-                                   "opencode-checker", args.force, planned,
-                                   refusals)
+        lifecycle.plan_remove_file(
+            "opencode plugin",
+            destinations["opencode-plugin"],
+            "opencode-plugin",
+            args.force,
+            planned,
+            refusals,
+        )
+        lifecycle.plan_remove_file(
+            "opencode checker",
+            destinations["opencode-checker"],
+            "opencode-checker",
+            args.force,
+            planned,
+            refusals,
+        )
     if args.cli:
         _plan_cli(planned, refusals, args.force)
     if args.agentsmd is not None:
@@ -433,8 +497,11 @@ def uninstall(args):
         # it reports the would-be refusals instead of taking them, and exits 0.
         # This is the same fixed precedence lifecycle.uninstall_command uses on the package door.
         for item in planned:
-            print(item.label if item.do is None
-                  else f"[dry-run] would remove {item.label}")
+            print(
+                item.label
+                if item.do is None
+                else f"[dry-run] would remove {item.label}"
+            )
         for refusal in refusals:
             print(f"[dry-run] would refuse: {refusal}")
         return 0
@@ -451,8 +518,7 @@ def _run_request(targets, agentsmd_path, cli, dry, force):
     A checkout flag is an explicit action, so it is consent:
     no prompt, exactly like naming a target on the package door.
     """
-    planned, refusals = lifecycle.plan_install(targets, agentsmd_path,
-                                               force)
+    planned, refusals = lifecycle.plan_install(targets, agentsmd_path, force)
     if cli:
         _plan_cli_install(planned, refusals, force)
     if dry:
@@ -467,47 +533,87 @@ def _run_request(targets, agentsmd_path, cli, dry, force):
 
 
 def main():
-    ap = argparse.ArgumentParser(prog="install", description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--codex", action="store_true",
-                    help="install the Codex CLI hook and the native "
-                         "semantic-linefeeds skill; also publishes the "
-                         "checker and README under the neutral data root")
-    ap.add_argument("--opencode", action="store_true",
-                    help="install the opencode plugin and checker")
-    ap.add_argument("--agentsmd", nargs="?", const="", default=None,
-                    metavar="PATH",
-                    help="write the snippet block into PATH "
-                         "(an explicit path is required)")
-    ap.add_argument("--cli", action="store_true",
-                    help="build the semlf zipapp and install it as ~/.local/bin/semlf")
-    ap.add_argument("--dry-run", action="store_true",
-                    help="print planned actions without writing anything")
-    ap.add_argument("--force", action="store_true",
-                    help="overwrite opencode, codex-skill, or cli files whose content has diverged")
-    ap.add_argument("--uninstall", action="store_true",
-                    help="remove a previously installed artifact "
-                         "(requires a mode flag)")
-    ap.add_argument("--auto", action="store_true",
-                    help="detect installed agents and install for each "
-                         "one found, plus the cli unconditionally")
+    ap = argparse.ArgumentParser(
+        prog="install",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ap.add_argument(
+        "--codex",
+        action="store_true",
+        help="install the Codex CLI hook and the native "
+        "semantic-linefeeds skill; also publishes the "
+        "checker and README under the neutral data root",
+    )
+    ap.add_argument(
+        "--opencode",
+        action="store_true",
+        help="install the opencode plugin and checker",
+    )
+    ap.add_argument(
+        "--agentsmd",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="PATH",
+        help="write the snippet block into PATH (an explicit path is required)",
+    )
+    ap.add_argument(
+        "--cli",
+        action="store_true",
+        help="build the semlf zipapp and install it as ~/.local/bin/semlf",
+    )
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print planned actions without writing anything",
+    )
+    ap.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite opencode, codex-skill, or cli files whose content has diverged",
+    )
+    ap.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="remove a previously installed artifact (requires a mode flag)",
+    )
+    ap.add_argument(
+        "--auto",
+        action="store_true",
+        help="detect installed agents and install for each "
+        "one found, plus the cli unconditionally",
+    )
     try:
         args = ap.parse_args()
     except SystemExit as e:
         sys.exit(0 if e.code == 0 else 64)
     if args.agentsmd is not None and not args.agentsmd:
-        print("install: --agentsmd requires an explicit path; "
-              "refusing to default to ./AGENTS.md.", file=sys.stderr)
+        print(
+            "install: --agentsmd requires an explicit path; "
+            "refusing to default to ./AGENTS.md.",
+            file=sys.stderr,
+        )
         sys.exit(64)
-    if args.auto and (args.codex or args.opencode or args.cli
-                       or args.agentsmd is not None or args.uninstall):
-        print("install: --auto cannot be combined with a mode flag or "
-              "--uninstall.", file=sys.stderr)
+    if args.auto and (
+        args.codex
+        or args.opencode
+        or args.cli
+        or args.agentsmd is not None
+        or args.uninstall
+    ):
+        print(
+            "install: --auto cannot be combined with a mode flag or --uninstall.",
+            file=sys.stderr,
+        )
         sys.exit(64)
     if args.uninstall:
         if not (args.codex or args.opencode or args.cli or args.agentsmd is not None):
-            print("install: --uninstall requires a mode flag (--codex, "
-                  "--opencode, --cli, --agentsmd PATH).", file=sys.stderr)
+            print(
+                "install: --uninstall requires a mode flag (--codex, "
+                "--opencode, --cli, --agentsmd PATH).",
+                file=sys.stderr,
+            )
             sys.exit(64)
         sys.exit(uninstall(args))
     codes = []
@@ -519,18 +625,21 @@ def main():
             else:
                 print(f"{agent}: not detected; skipped")
         targets = [a for a in ("codex", "opencode") if a in detected]
-        codes.append(_run_request(targets, None, cli=True,
-                                  dry=args.dry_run, force=args.force))
+        codes.append(
+            _run_request(targets, None, cli=True, dry=args.dry_run, force=args.force)
+        )
         lifecycle.claude_code_trailer()
     else:
-        targets = [a for a, on in (("codex", args.codex),
-                                   ("opencode", args.opencode)) if on]
-        agentsmd = (Path(args.agentsmd)
-                    if args.agentsmd is not None else None)
+        targets = [
+            a for a, on in (("codex", args.codex), ("opencode", args.opencode)) if on
+        ]
+        agentsmd = Path(args.agentsmd) if args.agentsmd is not None else None
         if targets or agentsmd is not None or args.cli:
-            codes.append(_run_request(targets, agentsmd, cli=args.cli,
-                                      dry=args.dry_run,
-                                      force=args.force))
+            codes.append(
+                _run_request(
+                    targets, agentsmd, cli=args.cli, dry=args.dry_run, force=args.force
+                )
+            )
     if not codes:
         codes.append(status())
     sys.exit(max(codes))

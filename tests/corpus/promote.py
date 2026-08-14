@@ -37,9 +37,12 @@ def detected_in(root, source, path):
 
 def main(corpus, labels, root):
     sample = json.loads((corpus / "sample.json").read_text(encoding="utf-8"))
-    decided = {(entry["id"], entry["kind"]): entry
-               for entry in json.loads(
-                   (corpus / "adjudications.json").read_text(encoding="utf-8"))}
+    decided = {
+        (entry["id"], entry["kind"]): entry
+        for entry in json.loads(
+            (corpus / "adjudications.json").read_text(encoding="utf-8")
+        )
+    }
 
     votes = {}
     for path in sorted(labels.glob("*.out")):
@@ -80,20 +83,29 @@ def main(corpus, labels, root):
                 record["label"] = entry["label"]
                 record["adjudication"] = entry["reason"]
             if record["label"] == "true":
-                record["expected"] = ("detected"
-                                      if (unit["lines"][0], kind) in findings[key]
-                                      else "accepted_miss")
+                record["expected"] = (
+                    "detected"
+                    if (unit["lines"][0], kind) in findings[key]
+                    else "accepted_miss"
+                )
             units.append(record)
 
     doc = json.loads(MANIFEST.read_text(encoding="utf-8"))
     doc["units"] = units
-    MANIFEST.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    MANIFEST.write_text(
+        json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
     missed = sum(1 for u in units if u.get("expected") == "accepted_miss")
-    print(f"{len(units)} records from {len(units) // len(KINDS)} boundaries; "
-          f"{missed} true violations the detector does not report")
+    print(
+        f"{len(units)} records from {len(units) // len(KINDS)} boundaries; "
+        f"{missed} true violations the detector does not report"
+    )
 
 
 if __name__ == "__main__":
-    main(pathlib.Path(sys.argv[1]).resolve(), pathlib.Path(sys.argv[2]).resolve(),
-         pathlib.Path(sys.argv[3]).resolve())
+    main(
+        pathlib.Path(sys.argv[1]).resolve(),
+        pathlib.Path(sys.argv[2]).resolve(),
+        pathlib.Path(sys.argv[3]).resolve(),
+    )

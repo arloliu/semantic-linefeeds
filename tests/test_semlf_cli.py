@@ -1,4 +1,5 @@
 """tests/test_semlf_cli.py — the semlf CLI delegates everything to the core."""
+
 import io
 import json
 import os
@@ -11,8 +12,8 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 sys.path.insert(0, str(REPO / "cli"))
 import check_linefeeds
-from semlf import cli as semlf_cli
 from conftest import HAS_GIT, git, isolate_git_env
+from semlf import cli as semlf_cli
 
 
 def test_version_names_semlf_with_the_core_version(capsys):
@@ -79,8 +80,13 @@ def test_unreadable_input_exits_one(tmp_path, capsys):
 
 
 def test_every_usage_error_names_semlf(capsys):
-    for argv in ([], ["--file"], ["check", "--json"], ["--bogus"],
-                 ["--file", "x.md", "--long-limit", "-1"]):
+    for argv in (
+        [],
+        ["--file"],
+        ["check", "--json"],
+        ["--bogus"],
+        ["--file", "x.md", "--long-limit", "-1"],
+    ):
         rc = semlf_cli.main(argv)
         err = capsys.readouterr().err
         assert rc == 64
@@ -94,8 +100,10 @@ def test_hook_passthrough_keeps_exit_two(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)
     text = "// One sentence. Another fused here.\n"
     (tmp_path / "doc.go").write_text(text, encoding="utf-8")
-    payload = {"tool_name": "Edit",
-               "tool_input": {"file_path": "doc.go", "new_string": text}}
+    payload = {
+        "tool_name": "Edit",
+        "tool_input": {"file_path": "doc.go", "new_string": text},
+    }
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     rc = semlf_cli.main(["--hook", "claude"])
     capsys.readouterr()
@@ -120,8 +128,10 @@ def test_long_limit_does_not_leak_between_calls(tmp_path, capsys):
     so a hintless sentence would never fire and the test would prove nothing.
     """
     doc = tmp_path / "doc.md"
-    line = ("The exporter batches metrics in memory, "
-            "and it retries failed uploads until the queue drains.")
+    line = (
+        "The exporter batches metrics in memory, "
+        "and it retries failed uploads until the queue drains."
+    )
     doc.write_text(line + "\n", encoding="utf-8")
     semlf_cli.main(["--file", str(doc), "--long-limit", "40"])
     first = capsys.readouterr().out
@@ -223,8 +233,10 @@ def test_git_mode_json_emits_the_schema_list(tmp_path, monkeypatch, capsys):
 @needs_git
 def test_git_mode_long_limit_is_forwarded_and_restored(tmp_path, monkeypatch, capsys):
     root = make_repo(tmp_path, monkeypatch)
-    line = ("The exporter batches metrics in memory, "
-            "and it retries failed uploads until the queue drains.\n")
+    line = (
+        "The exporter batches metrics in memory, "
+        "and it retries failed uploads until the queue drains.\n"
+    )
     (root / "doc.md").write_text(line, encoding="utf-8")
     git("add", "doc.md", cwd=root)
     before = check_linefeeds.CLI_LONG_LIMIT
@@ -235,11 +247,13 @@ def test_git_mode_long_limit_is_forwarded_and_restored(tmp_path, monkeypatch, ca
 
 
 def test_git_mode_usage_errors_exit_64(tmp_path, monkeypatch, capsys):
-    for argv in (["--staged", "--diff"],
-                 ["--staged", "extra.md"],
-                 ["--staged", "--file", "x.md"],
-                 ["check", "--staged"],
-                 ["--changed", "--bogus"]):
+    for argv in (
+        ["--staged", "--diff"],
+        ["--staged", "extra.md"],
+        ["--staged", "--file", "x.md"],
+        ["check", "--staged"],
+        ["--changed", "--bogus"],
+    ):
         rc = semlf_cli.main(argv)
         err = capsys.readouterr().err
         assert rc == 64, argv
@@ -269,10 +283,13 @@ def test_git_mode_without_a_mode_flag_is_a_usage_error(capsys):
     # keeps the provider ternary from silently defaulting if a future
     # caller arrives without one.
     from semlf.cli import _git_mode
+
     assert _git_mode(["--json"]) == 64
 
 
-def test_option_terminator_escapes_mode_looking_filenames(tmp_path, monkeypatch, capsys):
+def test_option_terminator_escapes_mode_looking_filenames(
+    tmp_path, monkeypatch, capsys
+):
     """`--` still means: everything after is a path, even one spelled --staged.
 
     Hijacked routing would reject --file as git-mode usage and exit 64;

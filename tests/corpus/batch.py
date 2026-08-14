@@ -55,7 +55,11 @@ def render(unit):
         if not seen_upper and line == upper:
             lines.append(f"  UPPER  | {line}")
             seen_upper = True
-        elif seen_upper and line == lower and not any(m.startswith("  LOWER") for m in lines):
+        elif (
+            seen_upper
+            and line == lower
+            and not any(m.startswith("  LOWER") for m in lines)
+        ):
             lines.append(f"  LOWER  | {line}")
         else:
             lines.append(f"         | {line}")
@@ -66,11 +70,15 @@ def main(sample_path, labeler, index):
     sample = json.loads(sample_path.read_text(encoding="utf-8"))
     batches = labeling_batches(sample["units"], labeler, SIZE)
     units = batches[index]
-    print(HEADER.format(
-        rule=(REPO / "skills" / "semantic-linefeeds" / "SKILL.md").read_text(encoding="utf-8"),
-        procedure=(TESTS / "corpus" / "LABELING.md").read_text(encoding="utf-8"),
-        units="\n\n".join(render(unit) for unit in units),
-    ))
+    print(
+        HEADER.format(
+            rule=(REPO / "skills" / "semantic-linefeeds" / "SKILL.md").read_text(
+                encoding="utf-8"
+            ),
+            procedure=(TESTS / "corpus" / "LABELING.md").read_text(encoding="utf-8"),
+            units="\n\n".join(render(unit) for unit in units),
+        )
+    )
 
 
 if __name__ == "__main__":

@@ -10,10 +10,10 @@ stderr is a text channel with no shape to parse,
 and both hosts already show it to the model.
 """
 
-from conftest import run_cli
 import json
 
 import pytest
+from conftest import run_cli
 
 # One text per row of the delivery matrix.
 # Each is verified against check() by test_case_texts_produce_the_intended_kinds.
@@ -35,22 +35,25 @@ OPT_IN = {"SEMLF_EXPERIMENTAL_WRAP": "1"}
 
 
 def claude_payload(text):
-    return json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "Write",
-        "tool_input": {"file_path": "/x/doc.md", "content": text},
-    })
+    return json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": "/x/doc.md", "content": text},
+        }
+    )
 
 
 def codex_payload(text):
     body = "".join("+" + line + "\n" for line in text.splitlines())
-    patch = ("*** Begin Patch\n*** Update File: doc.md\n@@\n"
-             + body + "*** End Patch")
-    return json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "apply_patch",
-        "tool_input": {"command": patch},
-    })
+    patch = "*** Begin Patch\n*** Update File: doc.md\n@@\n" + body + "*** End Patch"
+    return json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": patch},
+        }
+    )
 
 
 PAYLOAD_FOR = {"claude": claude_payload, "codex": codex_payload}
@@ -187,12 +190,18 @@ def test_a_file_audit_still_reports_wrap(tmp_path):
 # Valid JSON that is not the payload shape either host documents.
 # A hook that crashes on one of these fails closed,
 # which is the failure mode a post-edit hook is least allowed to have.
-MALFORMED = ['[1, 2]', '"a string"', '42', 'null', 'true',
-             '{"tool_input": "not an object"}',
-             '{"tool_input": {"file_path": 7}}',
-             '{"tool_input": {"file_path": "a.md", "content": 7}}',
-             '{"tool_name": "apply_patch", "tool_input": [1, 2]}',
-             '{"tool_name": "apply_patch", "tool_input": {"command": 42}}']
+MALFORMED = [
+    "[1, 2]",
+    '"a string"',
+    "42",
+    "null",
+    "true",
+    '{"tool_input": "not an object"}',
+    '{"tool_input": {"file_path": 7}}',
+    '{"tool_input": {"file_path": "a.md", "content": 7}}',
+    '{"tool_name": "apply_patch", "tool_input": [1, 2]}',
+    '{"tool_name": "apply_patch", "tool_input": {"command": 42}}',
+]
 
 
 @pytest.mark.parametrize("agent", AGENTS)
@@ -225,14 +234,25 @@ def test_codex_multifile_advisory_arrives_as_one_object():
     Concatenated objects are not parseable JSON,
     so the host would drop the whole payload rather than render both.
     """
-    patch = ("*** Begin Patch\n"
-             "*** Update File: a.md\n@@\n" + "+" + LONG_ONLY
-             + "*** Update File: b.md\n@@\n" + "+" + LONG_ONLY
-             + "*** End Patch")
-    r = run_cli(["--hook", "codex"], json.dumps({
-        "tool_name": "apply_patch",
-        "tool_input": {"command": patch},
-    }))
+    patch = (
+        "*** Begin Patch\n"
+        "*** Update File: a.md\n@@\n"
+        + "+"
+        + LONG_ONLY
+        + "*** Update File: b.md\n@@\n"
+        + "+"
+        + LONG_ONLY
+        + "*** End Patch"
+    )
+    r = run_cli(
+        ["--hook", "codex"],
+        json.dumps(
+            {
+                "tool_name": "apply_patch",
+                "tool_input": {"command": patch},
+            }
+        ),
+    )
     assert r.returncode == 0
     context = advisory(r)
     assert "a.md" in context
@@ -245,14 +265,25 @@ def test_codex_mixed_files_block_and_carry_the_advisory():
     The status is blocking, so everything travels on the blocking path;
     splitting the report across two streams would hide half of it.
     """
-    patch = ("*** Begin Patch\n"
-             "*** Update File: a.md\n@@\n" + "+" + FUSED_ONLY
-             + "*** Update File: b.md\n@@\n" + "+" + LONG_ONLY
-             + "*** End Patch")
-    r = run_cli(["--hook", "codex"], json.dumps({
-        "tool_name": "apply_patch",
-        "tool_input": {"command": patch},
-    }))
+    patch = (
+        "*** Begin Patch\n"
+        "*** Update File: a.md\n@@\n"
+        + "+"
+        + FUSED_ONLY
+        + "*** Update File: b.md\n@@\n"
+        + "+"
+        + LONG_ONLY
+        + "*** End Patch"
+    )
+    r = run_cli(
+        ["--hook", "codex"],
+        json.dumps(
+            {
+                "tool_name": "apply_patch",
+                "tool_input": {"command": patch},
+            }
+        ),
+    )
     assert r.returncode == 2
     assert r.stdout == ""
     assert "[fused]" in r.stderr
@@ -325,7 +356,9 @@ def test_claude_advisory_always_names_the_skill(tmp_path):
     assert "load the semantic-linefeeds skill" in advisory(r)
 
 
-def test_codex_advisory_omits_the_skill_hint_without_an_installed_skill(tmp_path, monkeypatch):
+def test_codex_advisory_omits_the_skill_hint_without_an_installed_skill(
+    tmp_path, monkeypatch
+):
     # The probe also checks a cwd-relative candidate; chdir into the
     # empty tmp_path so that branch cannot accidentally see this repo's
     # own working tree instead of the fixture being tested.
@@ -342,7 +375,8 @@ def test_codex_advisory_names_the_skill_when_one_is_installed(tmp_path, monkeypa
     skill.parent.mkdir(parents=True)
     skill.write_text(
         "---\nname: semantic-linefeeds\ndescription: test fixture\n---\n\nBody.\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     # Run from a skill-free directory so this positive result comes from
     # the HOME probe, not from an incidental cwd-relative match.
     elsewhere = tmp_path / "elsewhere"
@@ -357,7 +391,9 @@ def test_the_suggestion_block_precedes_the_judgment_note():
     assert r.returncode == 2
     body = r.stderr
     assert "Suggested replacement for line 1:" in body
-    assert body.index("Suggested replacement for line 1:") < body.index(AGENT_JUDGMENT_NOTE)
+    assert body.index("Suggested replacement for line 1:") < body.index(
+        AGENT_JUDGMENT_NOTE
+    )
     assert body.index(AGENT_JUDGMENT_NOTE) < body.index(AGENT_SUPPRESSION_NOTE)
 
 

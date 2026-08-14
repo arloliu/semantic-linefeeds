@@ -5,12 +5,15 @@ import shutil
 import uuid
 
 import pytest
-
-from conftest import REPO, run_cli
 from check_linefeeds import (
-    AGENT_SUPPRESSION_NOTE, skip_path, _locate_unique, _read_snapshot,
-    _judgment_layer_present, _looks_like_the_skill,
+    AGENT_SUPPRESSION_NOTE,
+    _judgment_layer_present,
+    _locate_unique,
+    _looks_like_the_skill,
+    _read_snapshot,
+    skip_path,
 )
+from conftest import REPO, run_cli
 
 FUSED = "One sentence here. Another sentence follows."
 
@@ -32,19 +35,23 @@ def claude_edit(path, new_string, replace_all=False):
     tool_input = {"file_path": str(path), "new_string": new_string}
     if replace_all:
         tool_input["replace_all"] = True
-    return json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "Edit",
-        "tool_input": tool_input,
-    })
+    return json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Edit",
+            "tool_input": tool_input,
+        }
+    )
 
 
 def claude_write(path, content):
-    return json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "Write",
-        "tool_input": {"file_path": str(path), "content": content},
-    })
+    return json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(path), "content": content},
+        }
+    )
 
 
 def test_an_edit_reports_real_file_line_numbers(hook_dir):
@@ -147,7 +154,7 @@ def test_a_suppressed_finding_never_reaches_the_write_span_path(hook_dir):
 
 
 def test_locate_unique_rejects_empty_missing_and_ambiguous():
-    from check_linefeeds import _locate_unique
+
     assert _locate_unique("abc", "") is None
     assert _locate_unique("abc", "zzz") is None
     assert _locate_unique("aaaa", "aaa") is None  # overlap counts as ambiguous
@@ -157,8 +164,13 @@ def test_locate_unique_rejects_empty_missing_and_ambiguous():
 
 def _shifted(stat, **changes):
     import types
-    fields = {"st_dev": stat.st_dev, "st_ino": stat.st_ino,
-              "st_size": stat.st_size, "st_mtime_ns": stat.st_mtime_ns}
+
+    fields = {
+        "st_dev": stat.st_dev,
+        "st_ino": stat.st_ino,
+        "st_size": stat.st_size,
+        "st_mtime_ns": stat.st_mtime_ns,
+    }
     fields.update(changes)
     return types.SimpleNamespace(**fields)
 
@@ -166,7 +178,7 @@ def _shifted(stat, **changes):
 def test_read_snapshot_degrades_when_the_file_changes_mid_read(hook_dir, monkeypatch):
     # The second fstat sees a moved mtime: an in-place write raced the read.
     import check_linefeeds
-    from check_linefeeds import _read_snapshot
+
     doc = hook_dir / "doc.md"
     doc.write_text("stable text\n")
     real_fstat = check_linefeeds.os.fstat
@@ -185,7 +197,7 @@ def test_read_snapshot_degrades_on_an_atomic_replacement(hook_dir, monkeypatch):
     # The final path stat names a different inode: the file was swapped
     # with one of identical size and restored mtime.
     import check_linefeeds
-    from check_linefeeds import _read_snapshot
+
     doc = hook_dir / "doc.md"
     doc.write_text("stable text\n")
     real_stat = check_linefeeds.os.stat
@@ -210,11 +222,13 @@ def codex_patch(*entries):
         body += f"*** Update File: {path}\n@@\n"
         body += "".join("+" + line + "\n" for line in added.splitlines())
     body += "*** End Patch"
-    return json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "apply_patch",
-        "tool_input": {"command": body},
-    })
+    return json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": body},
+        }
+    )
 
 
 NOTE_MARK = "approximate positions"
@@ -235,17 +249,21 @@ def test_a_move_to_rename_reports_the_destination_path(hook_dir):
     old_doc = hook_dir / "orig.md"
     new_doc = hook_dir / "renamed.md"
     new_doc.write_text("filler\n" * 10 + FUSED + "\n")
-    patch = ("*** Begin Patch\n"
-             f"*** Update File: {old_doc}\n"
-             f"*** Move to: {new_doc}\n"
-             "@@\n"
-             f"+{FUSED}\n"
-             "*** End Patch")
-    payload = json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "apply_patch",
-        "tool_input": {"command": patch},
-    })
+    patch = (
+        "*** Begin Patch\n"
+        f"*** Update File: {old_doc}\n"
+        f"*** Move to: {new_doc}\n"
+        "@@\n"
+        f"+{FUSED}\n"
+        "*** End Patch"
+    )
+    payload = json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": patch},
+        }
+    )
     result = run_cli(["--hook", "codex"], payload)
     assert result.returncode == 2
     assert str(new_doc) in result.stderr
@@ -259,17 +277,21 @@ def test_context_lines_disambiguate_a_repeated_addition(hook_dir):
     # hunk context makes the mapping unique where a bare addition run could not.
     doc = hook_dir / "doc.md"
     doc.write_text(FUSED + "\n\nunique anchor prose\n" + FUSED + "\n")
-    patch = ("*** Begin Patch\n"
-             f"*** Update File: {doc}\n"
-             "@@\n"
-             " unique anchor prose\n"
-             f"+{FUSED}\n"
-             "*** End Patch")
-    payload = json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "apply_patch",
-        "tool_input": {"command": patch},
-    })
+    patch = (
+        "*** Begin Patch\n"
+        f"*** Update File: {doc}\n"
+        "@@\n"
+        " unique anchor prose\n"
+        f"+{FUSED}\n"
+        "*** End Patch"
+    )
+    payload = json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": patch},
+        }
+    )
     result = run_cli(["--hook", "codex"], payload)
     assert result.returncode == 2
     assert "line 4" in result.stderr
@@ -288,8 +310,10 @@ def test_an_ambiguous_hunk_falls_back_with_the_note(hook_dir):
 def test_mixed_files_carry_the_note_once(hook_dir):
     real = hook_dir / "real.md"
     real.write_text("filler\n" * 5 + FUSED + "\n")
-    result = run_cli(["--hook", "codex"], codex_patch(
-        (str(real), FUSED), (str(hook_dir / "gone.md"), FUSED)))
+    result = run_cli(
+        ["--hook", "codex"],
+        codex_patch((str(real), FUSED), (str(hook_dir / "gone.md"), FUSED)),
+    )
     assert result.returncode == 2
     assert "line 6" in result.stderr
     assert result.stderr.count(NOTE_MARK) == 1
@@ -300,8 +324,12 @@ def test_a_clean_degraded_file_does_not_resurrect_the_note(hook_dir):
     # so no snippet report survives filtering and the note must stay out.
     real = hook_dir / "real.md"
     real.write_text("filler\n" * 5 + FUSED + "\n")
-    result = run_cli(["--hook", "codex"], codex_patch(
-        (str(real), FUSED), (str(hook_dir / "gone.md"), "clean prose line")))
+    result = run_cli(
+        ["--hook", "codex"],
+        codex_patch(
+            (str(real), FUSED), (str(hook_dir / "gone.md"), "clean prose line")
+        ),
+    )
     assert result.returncode == 2
     assert "line 6" in result.stderr
     assert NOTE_MARK not in result.stderr
@@ -310,17 +338,24 @@ def test_a_clean_degraded_file_does_not_resurrect_the_note(hook_dir):
 def test_a_blank_only_addition_terminates_and_stays_silent(hook_dir):
     doc = hook_dir / "doc.md"
     doc.write_text("existing prose\n")
-    payload = json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "apply_patch",
-        "tool_input": {"command": (
-            "*** Begin Patch\n"
-            f"*** Update File: {doc}\n"
-            "@@\n+\n*** End Patch")},
-    })
+    payload = json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "apply_patch",
+            "tool_input": {
+                "command": (
+                    f"*** Begin Patch\n*** Update File: {doc}\n@@\n+\n*** End Patch"
+                )
+            },
+        }
+    )
     completed = subprocess.run(
         [sys.executable, str(SCRIPT), "--hook", "codex"],
-        input=payload, capture_output=True, text=True, timeout=60)
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
     assert completed.returncode == 0
 
 
@@ -354,11 +389,13 @@ def test_a_line_bounded_hit_beside_an_interior_one_still_maps_exactly(hook_dir):
 
 
 def _codex_payload(patch):
-    return json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "apply_patch",
-        "tool_input": {"command": patch},
-    })
+    return json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": patch},
+        }
+    )
 
 
 def test_a_deleted_blank_line_owns_the_wrap_it_creates(hook_dir):
@@ -367,17 +404,19 @@ def test_a_deleted_blank_line_owns_the_wrap_it_creates(hook_dir):
     # and it is advisory,
     # so the report is the JSON envelope on stdout.
     doc = hook_dir / "doc.md"
-    doc.write_text("a line that ends mid-clause because it was\n"
-                   "wrapped at a column.\n")
-    patch = ("*** Begin Patch\n"
-             f"*** Update File: {doc}\n"
-             "@@\n"
-             " a line that ends mid-clause because it was\n"
-             "-\n"
-             " wrapped at a column.\n"
-             "*** End Patch")
-    result = run_cli(["--hook", "codex"], _codex_payload(patch),
-                     env={"SEMLF_EXPERIMENTAL_WRAP": "1"})
+    doc.write_text("a line that ends mid-clause because it was\nwrapped at a column.\n")
+    patch = (
+        "*** Begin Patch\n"
+        f"*** Update File: {doc}\n"
+        "@@\n"
+        " a line that ends mid-clause because it was\n"
+        "-\n"
+        " wrapped at a column.\n"
+        "*** End Patch"
+    )
+    result = run_cli(
+        ["--hook", "codex"], _codex_payload(patch), env={"SEMLF_EXPERIMENTAL_WRAP": "1"}
+    )
     assert result.returncode == 0
     body = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
     assert "[wrap] line 1" in body
@@ -394,14 +433,17 @@ def test_a_deletion_after_a_retained_finding_does_not_own_it(hook_dir):
     # — three behaviors, one assertion set.
     doc = hook_dir / "doc.md"
     doc.write_text("One sentence here. Ok\nfollowing prose line\n")
-    patch = ("*** Begin Patch\n"
-             f"*** Update File: {doc}\n"
-             "@@\n"
-             " One sentence here. Ok\n"
-             "-\n"
-             "*** End Patch")
-    result = run_cli(["--hook", "codex"], _codex_payload(patch),
-                     env={"SEMLF_EXPERIMENTAL_WRAP": "1"})
+    patch = (
+        "*** Begin Patch\n"
+        f"*** Update File: {doc}\n"
+        "@@\n"
+        " One sentence here. Ok\n"
+        "-\n"
+        "*** End Patch"
+    )
+    result = run_cli(
+        ["--hook", "codex"], _codex_payload(patch), env={"SEMLF_EXPERIMENTAL_WRAP": "1"}
+    )
     assert result.returncode == 0
     body = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
     assert "[wrap] line 1" in body
@@ -411,12 +453,14 @@ def test_a_deletion_after_a_retained_finding_does_not_own_it(hook_dir):
 def test_a_deletion_closing_a_hunk_at_eof_terminates_cleanly(hook_dir):
     doc = hook_dir / "doc.md"
     doc.write_bytes(b"closing prose line stands alone")  # no trailing newline
-    patch = ("*** Begin Patch\n"
-             f"*** Update File: {doc}\n"
-             "@@\n"
-             " closing prose line stands alone\n"
-             "-\n"
-             "*** End Patch")
+    patch = (
+        "*** Begin Patch\n"
+        f"*** Update File: {doc}\n"
+        "@@\n"
+        " closing prose line stands alone\n"
+        "-\n"
+        "*** End Patch"
+    )
     result = run_cli(["--hook", "codex"], _codex_payload(patch))
     assert result.returncode == 0
     assert result.stdout.strip() == ""
@@ -435,17 +479,21 @@ def test_a_true_eof_deletion_collapses_to_the_located_end(hook_dir, monkeypatch)
     doc = hook_dir / "doc.md"
     snapshot_text = "closing prose line stands alone"  # no trailing newline
     doc.write_bytes(snapshot_text.encode())
-    patch = ("*** Begin Patch\n"
-             f"*** Update File: {doc}\n"
-             "@@\n"
-             " closing prose line stands alone\n"
-             "-\n"
-             "*** End Patch")
-    payload = json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "apply_patch",
-        "tool_input": {"command": patch},
-    })
+    patch = (
+        "*** Begin Patch\n"
+        f"*** Update File: {doc}\n"
+        "@@\n"
+        " closing prose line stands alone\n"
+        "-\n"
+        "*** End Patch"
+    )
+    payload = json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": patch},
+        }
+    )
 
     real_diagnose = check_linefeeds.diagnose
     captured = []
@@ -468,18 +516,21 @@ def test_disjoint_runs_in_a_fallback_hunk_do_not_merge(hook_dir):
     # Run-granularity joining keeps the two runs as separate paragraphs, so neither line's ending is judged against the other's start.
     # Joining the whole hunk with a bare "\n" instead would glue them into one paragraph and fabricate a wrap finding neither run has alone.
     doc = hook_dir / "gone.md"
-    patch = ("*** Begin Patch\n"
-             f"*** Update File: {doc}\n"
-             "@@\n"
-             " unrelated context one\n"
-             "+This line ends without punctuation\n"
-             " unrelated context two\n"
-             "+continues awkwardly here.\n"
-             "*** End Patch")
+    patch = (
+        "*** Begin Patch\n"
+        f"*** Update File: {doc}\n"
+        "@@\n"
+        " unrelated context one\n"
+        "+This line ends without punctuation\n"
+        " unrelated context two\n"
+        "+continues awkwardly here.\n"
+        "*** End Patch"
+    )
     # wrap is withheld by default;
     # opt in so a fabricated wrap would actually surface instead of being silently filtered either way.
-    result = run_cli(["--hook", "codex"], _codex_payload(patch),
-                     env={"SEMLF_EXPERIMENTAL_WRAP": "1"})
+    result = run_cli(
+        ["--hook", "codex"], _codex_payload(patch), env={"SEMLF_EXPERIMENTAL_WRAP": "1"}
+    )
     assert result.returncode == 0
     assert result.stdout.strip() == ""
 
@@ -545,8 +596,9 @@ def test_a_two_file_patch_names_the_file_in_each_suggestion_label(hook_dir):
     fused = "Stop now? Go on."
     doc_a.write_text(fused + "\n")
     doc_b.write_text(fused + "\n")
-    result = run_cli(["--hook", "codex"],
-                     codex_patch((str(doc_a), fused), (str(doc_b), fused)))
+    result = run_cli(
+        ["--hook", "codex"], codex_patch((str(doc_a), fused), (str(doc_b), fused))
+    )
     assert result.returncode == 2
     assert f"Suggested replacement for line 1 of {doc_a}:" in result.stderr
     assert f"Suggested replacement for line 1 of {doc_b}:" in result.stderr
@@ -554,26 +606,34 @@ def test_a_two_file_patch_names_the_file_in_each_suggestion_label(hook_dir):
 
 def _write_skill_frontmatter(path, name="semantic-linefeeds"):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f"---\nname: {name}\ndescription: test fixture\n---\n\nBody.\n",
-                     encoding="utf-8")
+    path.write_text(
+        f"---\nname: {name}\ndescription: test fixture\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
 
 
 def test_judgment_layer_present_true_for_a_valid_home_skill(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.chdir(tmp_path)
-    _write_skill_frontmatter(tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md")
+    _write_skill_frontmatter(
+        tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
     assert _judgment_layer_present("codex") is True
 
 
 def test_judgment_layer_present_false_for_a_wrong_name_file(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.chdir(tmp_path)
-    _write_skill_frontmatter(tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md",
-                              name="something-else")
+    _write_skill_frontmatter(
+        tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md",
+        name="something-else",
+    )
     assert _judgment_layer_present("codex") is False
 
 
-def test_judgment_layer_present_false_for_a_name_line_with_no_frontmatter(tmp_path, monkeypatch):
+def test_judgment_layer_present_false_for_a_name_line_with_no_frontmatter(
+    tmp_path, monkeypatch
+):
     # The exact name line is present in the file's body, but the file
     # carries no frontmatter block at all -- a bare substring search
     # would wrongly accept this file.
@@ -583,7 +643,8 @@ def test_judgment_layer_present_false_for_a_name_line_with_no_frontmatter(tmp_pa
     skill.parent.mkdir(parents=True)
     skill.write_text(
         "This file mentions the skill name inline.\nname: semantic-linefeeds\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     assert _judgment_layer_present("codex") is False
 
 
@@ -596,7 +657,9 @@ def test_judgment_layer_present_false_for_an_undecodable_file(tmp_path, monkeypa
     assert _judgment_layer_present("codex") is False
 
 
-def test_judgment_layer_present_false_when_the_candidate_path_is_a_directory(tmp_path, monkeypatch):
+def test_judgment_layer_present_false_when_the_candidate_path_is_a_directory(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.chdir(tmp_path)
     skill_as_dir = tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
@@ -607,7 +670,9 @@ def test_judgment_layer_present_false_when_the_candidate_path_is_a_directory(tmp
 def test_judgment_layer_present_true_for_a_repo_local_skill(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path / "unused-home"))
     monkeypatch.chdir(tmp_path)
-    _write_skill_frontmatter(tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md")
+    _write_skill_frontmatter(
+        tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
     assert _judgment_layer_present("codex") is True
 
 
@@ -618,13 +683,15 @@ def test_judgment_layer_present_false_with_no_skill_anywhere(tmp_path, monkeypat
 
 
 def test_judgment_layer_present_skips_the_home_probe_when_expanduser_is_unresolved(
-        tmp_path, monkeypatch):
+    tmp_path, monkeypatch
+):
     # `os.path.expanduser("~")` returns its input unchanged when it cannot
     # resolve a home directory (no $HOME and no usable pwd entry); simulate
     # that directly rather than trying to reproduce it via the environment,
     # since an unset $HOME still resolves through the passwd database on
     # most systems this suite runs on.
     import check_linefeeds
+
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(check_linefeeds.os.path, "expanduser", lambda p: p)
     assert _judgment_layer_present("codex") is False

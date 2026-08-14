@@ -1,5 +1,6 @@
 """tests/test_lifecycle.py — preflight admits everything or nothing;
 apply converges under any interruption."""
+
 import os
 import sys
 from pathlib import Path
@@ -29,13 +30,13 @@ def plan_names(targets, force=False):
     snapshot = manifest.load()
     destinations = lifecycle.payload_destinations()
     for name in targets:
-        lifecycle.plan_file(name, force, snapshot, destinations,
-                            planned, refusals)
+        lifecycle.plan_file(name, force, snapshot, destinations, planned, refusals)
     return planned, refusals
 
 
 def test_artifact_version_matches_the_core(home):
     import check_linefeeds
+
     assert lifecycle.artifact_version() == check_linefeeds.__version__
 
 
@@ -44,8 +45,9 @@ def test_fresh_apply_publishes_and_records(home, capsys):
     assert refusals == []
     assert lifecycle.apply_plan(planned) == 0
     data_dir = manifest.semlf_data_dir()
-    assert ((data_dir / "check_linefeeds.py").read_bytes()
-            == registry.payload_bytes("checker"))
+    assert (data_dir / "check_linefeeds.py").read_bytes() == registry.payload_bytes(
+        "checker"
+    )
     assert (data_dir / "README.md").read_bytes() == registry.payload_bytes("readme")
     assert manifest.classify("checker", data_dir / "check_linefeeds.py") == "managed"
     assert manifest.classify("readme", data_dir / "README.md") == "managed"
@@ -84,7 +86,8 @@ def test_record_side_preflight_refuses_before_any_write(home, capsys):
 
 
 def test_half_state_is_reported_by_name_and_a_rerun_converges(
-        home, capsys, monkeypatch):
+    home, capsys, monkeypatch
+):
     planned, _ = plan_names(["checker"])
     real_record = manifest.record
 
@@ -113,21 +116,26 @@ def test_crossed_interleavings_fail_closed(home):
     checker = dest / "check_linefeeds.py"
     # (a) destination replaced, record stale.
     checker.write_bytes(b"new bytes the record does not describe\n")
-    manifest.record("checker", checker, "0.6.0",
-                    manifest.sha256_bytes(b"what an old run staged\n"))
-    v = classify.classify_artifact(manifest.load()["checker"], checker,
-                                   b"rendered\n", "0.7.0", False)
+    manifest.record(
+        "checker", checker, "0.6.0", manifest.sha256_bytes(b"what an old run staged\n")
+    )
+    v = classify.classify_artifact(
+        manifest.load()["checker"], checker, b"rendered\n", "0.7.0", False
+    )
     assert (v.state, v.action) == ("edited", "refuse")
     # (b) record refreshed, destination old.
-    manifest.record("checker", checker, "0.7.0",
-                    manifest.sha256_bytes(b"rendered\n"))
-    v = classify.classify_artifact(manifest.load()["checker"], checker,
-                                   b"rendered but dest still old\n", "0.7.0", False)
+    manifest.record("checker", checker, "0.7.0", manifest.sha256_bytes(b"rendered\n"))
+    v = classify.classify_artifact(
+        manifest.load()["checker"],
+        checker,
+        b"rendered but dest still old\n",
+        "0.7.0",
+        False,
+    )
     assert (v.state, v.action) == ("edited", "refuse")
 
 
-def test_forced_replace_of_an_edited_file_takes_an_exclusive_backup(
-        home, capsys):
+def test_forced_replace_of_an_edited_file_takes_an_exclusive_backup(home, capsys):
     dest_dir = manifest.semlf_data_dir()
     dest_dir.mkdir(parents=True)
     checker = dest_dir / "check_linefeeds.py"
@@ -140,7 +148,8 @@ def test_forced_replace_of_an_edited_file_takes_an_exclusive_backup(
 
 
 def test_a_failed_publication_after_backup_keeps_the_rerun_convergent(
-        home, capsys, monkeypatch):
+    home, capsys, monkeypatch
+):
     """A forced backup-replace whose publication fails must not leave an occupied backup slot behind:
     the rerun would refuse forever."""
     dest_dir = manifest.semlf_data_dir()
@@ -163,12 +172,10 @@ def test_a_failed_publication_after_backup_keeps_the_rerun_convergent(
     assert refusals == []
     assert lifecycle.apply_plan(planned) == 0
     assert checker.read_bytes() == registry.payload_bytes("checker")
-    assert (dest_dir / "check_linefeeds.py.bak").read_bytes() == \
-        b"hand-patched\n"
+    assert (dest_dir / "check_linefeeds.py.bak").read_bytes() == b"hand-patched\n"
 
 
-def test_adoption_record_failure_reports_the_half_state(
-        home, capsys, monkeypatch):
+def test_adoption_record_failure_reports_the_half_state(home, capsys, monkeypatch):
     """Exact rendering with a failing record write is the published-but-not-recorded half-state, not a generic error."""
     planned, _ = plan_names(["checker"])
     lifecycle.apply_plan(planned)
@@ -192,8 +199,9 @@ def test_managed_replace_skips_the_backup(home, capsys):
     dest = manifest.semlf_data_dir() / "check_linefeeds.py"
     # Simulate an older managed release at the destination.
     dest.write_bytes(b"an older managed rendering\n")
-    manifest.record("checker", dest, "0.0.1",
-                    manifest.sha256_bytes(b"an older managed rendering\n"))
+    manifest.record(
+        "checker", dest, "0.0.1", manifest.sha256_bytes(b"an older managed rendering\n")
+    )
     planned, refusals = plan_names(["checker"])
     assert refusals == []
     assert lifecycle.apply_plan(planned) == 0
@@ -201,8 +209,7 @@ def test_managed_replace_skips_the_backup(home, capsys):
     assert not (manifest.semlf_data_dir() / "check_linefeeds.py.bak").exists()
 
 
-def test_adopt_rerecords_the_running_version_on_identical_bytes(
-        home, capsys):
+def test_adopt_rerecords_the_running_version_on_identical_bytes(home, capsys):
     """Adoption deliberately overwrites even a newer recorded version.
 
     Exact-byte content is checked before the managed-version guard,
@@ -216,8 +223,7 @@ def test_adopt_rerecords_the_running_version_on_identical_bytes(
     assert lifecycle.apply_plan(planned) == 0
     dest = manifest.semlf_data_dir() / "README.md"
     on_disk = dest.read_bytes()
-    manifest.record("readme", dest, "99.0.0",
-                    manifest.sha256_bytes(on_disk))
+    manifest.record("readme", dest, "99.0.0", manifest.sha256_bytes(on_disk))
     planned, refusals = plan_names(["readme"])
     assert refusals == []
     assert planned[0].verdict.state == "exact"
@@ -241,6 +247,7 @@ def test_hook_plan_creates_a_fresh_hooks_json(home, capsys):
     assert refusals == []
     assert lifecycle.apply_plan(planned) == 0
     import json
+
     data = json.loads(hook_path().read_text(encoding="utf-8"))
     owned = manifest.owned_codex_hooks(data)
     assert len(owned) == 1
@@ -248,24 +255,40 @@ def test_hook_plan_creates_a_fresh_hooks_json(home, capsys):
     assert owned[0][1] == checker
 
 
-def test_hook_plan_updates_a_stale_path_and_preserves_foreign_entries(
-        home, capsys):
+def test_hook_plan_updates_a_stale_path_and_preserves_foreign_entries(home, capsys):
     import json
+
     hook_path().parent.mkdir(parents=True)
-    hook_path().write_text(json.dumps({"hooks": {"PostToolUse": [
-        {"matcher": "shell",
-         "hooks": [{"type": "command", "command": "echo hi"}]},
-        {"matcher": "apply_patch", "hooks": [
-            {"type": "command",
-             "command": 'python3 "/old/clone/scripts/check_linefeeds.py"'
-                        ' --hook codex'}]},
-    ]}}), encoding="utf-8")
+    hook_path().write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "PostToolUse": [
+                        {
+                            "matcher": "shell",
+                            "hooks": [{"type": "command", "command": "echo hi"}],
+                        },
+                        {
+                            "matcher": "apply_patch",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": 'python3 "/old/clone/scripts/check_linefeeds.py"'
+                                    " --hook codex",
+                                }
+                            ],
+                        },
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
     planned, refusals = plan_hook()
     assert refusals == []
     lifecycle.apply_plan(planned)
     data = json.loads(hook_path().read_text(encoding="utf-8"))
-    commands = [h["hooks"][0]["command"]
-                for h in data["hooks"]["PostToolUse"]]
+    commands = [h["hooks"][0]["command"] for h in data["hooks"]["PostToolUse"]]
     assert commands[0] == "echo hi"
     assert "/old/clone/" not in commands[1]
     assert str(manifest.semlf_data_dir()) in commands[1]
@@ -293,9 +316,11 @@ def test_hook_plan_is_total_over_hostile_parseable_shapes(home, capsys):
     """{"hooks": 7} and a non-dict block must be planned around and preserved exactly,
     never raise TypeError mid-preflight."""
     import json
+
     hook_path().parent.mkdir(parents=True)
-    hostile = {"hooks": {"PostToolUse": [
-        None, {"hooks": 7}, {"matcher": "apply_patch"}]}}
+    hostile = {
+        "hooks": {"PostToolUse": [None, {"hooks": 7}, {"matcher": "apply_patch"}]}
+    }
     hook_path().write_text(json.dumps(hostile), encoding="utf-8")
     planned, refusals = plan_hook()
     assert refusals == []
@@ -320,9 +345,11 @@ def test_an_up_to_date_hook_ignores_a_hostile_backup_slot(home, capsys):
     assert all(item.do is None for item in planned)
     # A stale hook with the same hostile slot still refuses.
     import json
+
     data = json.loads(hook_path().read_text(encoding="utf-8"))
     data["hooks"]["PostToolUse"][0]["hooks"][0]["command"] = (
-        'python3 "/old/check_linefeeds.py" --hook codex')
+        'python3 "/old/check_linefeeds.py" --hook codex'
+    )
     hook_path().write_text(json.dumps(data), encoding="utf-8")
     planned, refusals = plan_hook()
     assert refusals and ".bak" in refusals[0]
@@ -332,11 +359,23 @@ def test_hook_merge_backs_up_the_shared_file(home, capsys):
     """Shared merged files keep their .bak —
     the skip-backups rule is for provenance-managed single files only."""
     import json
+
     hook_path().parent.mkdir(parents=True)
-    hook_path().write_text(json.dumps({"hooks": {"PostToolUse": [
-        {"matcher": "shell",
-         "hooks": [{"type": "command", "command": "echo hi"}]}]}}),
-        encoding="utf-8")
+    hook_path().write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "PostToolUse": [
+                        {
+                            "matcher": "shell",
+                            "hooks": [{"type": "command", "command": "echo hi"}],
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
     before = hook_path().read_bytes()
     planned, _ = plan_hook()
     lifecycle.apply_plan(planned)
@@ -360,15 +399,15 @@ def test_agentsmd_plan_writes_and_reruns_clean(home, tmp_path, capsys):
 
 def test_agentsmd_plan_refuses_a_broken_sentinel_pair(home, tmp_path):
     target = tmp_path / "AGENTS.md"
-    target.write_text(lifecycle.SENTINEL_OPEN + "\nno close",
-                      encoding="utf-8")
+    target.write_text(lifecycle.SENTINEL_OPEN + "\nno close", encoding="utf-8")
     planned, refusals = [], []
     lifecycle.plan_agentsmd(target, planned, refusals)
     assert refusals and "sentinel" in refusals[0]
 
 
 def test_agentsmd_up_to_date_note_prints_at_plan_time(
-        home, tmp_path, capsys, monkeypatch):
+    home, tmp_path, capsys, monkeypatch
+):
     """The up-to-date leg has no `do` closure for apply_plan to print through,
     so plan_agentsmd prints its advisory note immediately —
     a deliberate plan-time disclosure,
@@ -387,8 +426,7 @@ def test_agentsmd_up_to_date_note_prints_at_plan_time(
     assert refusals == []
     assert len(planned) == 1 and planned[0].do is None
 
-    monkeypatch.setattr(lifecycle.shutil, "which",
-                        lambda name: "/usr/bin/semlf")
+    monkeypatch.setattr(lifecycle.shutil, "which", lambda name: "/usr/bin/semlf")
     planned, refusals = [], []
     lifecycle.plan_agentsmd(target, planned, refusals)
     out = capsys.readouterr().out
@@ -396,9 +434,9 @@ def test_agentsmd_up_to_date_note_prints_at_plan_time(
     assert len(planned) == 1 and planned[0].do is None
 
 
-@pytest.mark.parametrize("name", ["checker", "readme", "codex-skill",
-                                  "opencode-plugin",
-                                  "opencode-checker"])
+@pytest.mark.parametrize(
+    "name", ["checker", "readme", "codex-skill", "opencode-plugin", "opencode-checker"]
+)
 def test_every_registry_row_reaches_the_classifier(home, name, capsys):
     """Each recorded row classifies through its own registry destination and rendering —
     edited refuses, managed-older replaces, exact adopts —
@@ -412,8 +450,7 @@ def test_every_registry_row_reaches_the_classifier(home, name, capsys):
     manifest.forget(name)
     planned, refusals = lifecycle.plan_install(targets, None, False)
     assert any(str(dest) in r for r in refusals)
-    manifest.record(name, dest, "0.0.1",
-                    manifest.sha256_bytes(b"hand-patched\n"))
+    manifest.record(name, dest, "0.0.1", manifest.sha256_bytes(b"hand-patched\n"))
     planned, refusals = lifecycle.plan_install(targets, None, False)
     assert refusals == []
     assert lifecycle.apply_plan(planned) == 0
@@ -449,10 +486,10 @@ def test_tty_prompt_y_applies(home, capsys, monkeypatch):
     assert (manifest.semlf_data_dir() / "check_linefeeds.py").exists()
 
 
-def test_a_transform_error_during_rendering_becomes_a_refusal(
-        home, monkeypatch):
+def test_a_transform_error_during_rendering_becomes_a_refusal(home, monkeypatch):
     """A canonical-source edit that breaks a rewrite must refuse the plan cleanly,
     never escape planning as a raw traceback."""
+
     def boom(data_dir):
         raise registry.TransformError("boom")
 
@@ -463,7 +500,8 @@ def test_a_transform_error_during_rendering_becomes_a_refusal(
 
 
 def test_dry_run_reports_a_transform_error_as_a_would_be_refusal(
-        home, monkeypatch, capsys):
+    home, monkeypatch, capsys
+):
     def boom(data_dir):
         raise registry.TransformError("boom")
 
@@ -474,8 +512,7 @@ def test_dry_run_reports_a_transform_error_as_a_would_be_refusal(
     assert "would refuse" in out
 
 
-def test_uninstall_transform_error_during_removal_becomes_a_refusal(
-        home, monkeypatch):
+def test_uninstall_transform_error_during_removal_becomes_a_refusal(home, monkeypatch):
     """A canonical-source edit that breaks a rewrite must refuse the removal plan cleanly, never escape planning as a raw traceback.
 
     The removal-side mirror of test_a_transform_error_during_rendering_becomes_a_refusal.
@@ -489,17 +526,16 @@ def test_uninstall_transform_error_during_removal_becomes_a_refusal(
 
     monkeypatch.setattr(registry, "render_codex_skill", boom)
     planned, refusals = [], []
-    lifecycle.plan_remove_file("codex skill", dest, "codex-skill", False,
-                               planned, refusals)
+    lifecycle.plan_remove_file(
+        "codex skill", dest, "codex-skill", False, planned, refusals
+    )
     assert any("codex-skill" in r and "boom" in r for r in refusals)
     assert not planned
 
 
-@pytest.mark.parametrize("name", ["checker", "readme",
-                                  "opencode-checker"])
+@pytest.mark.parametrize("name", ["checker", "readme", "opencode-checker"])
 def test_payload_identity_states_per_payload(home, name, capsys):
-    planned, refusals = lifecycle.plan_install(["codex", "opencode"],
-                                               None, False)
+    planned, refusals = lifecycle.plan_install(["codex", "opencode"], None, False)
     assert refusals == []
     lifecycle.apply_plan(planned)
     dest = lifecycle.payload_destinations()[name]
@@ -515,22 +551,21 @@ def test_payload_identity_states_per_payload(home, name, capsys):
 
     def managed(version_str, data=b"managed bytes\n"):
         dest.write_bytes(data)
-        manifest.record(name, dest, version_str,
-                        manifest.sha256_bytes(data))
+        manifest.record(name, dest, version_str, manifest.sha256_bytes(data))
 
     managed("0.0.1")
     assert lifecycle.payload_identity(name)[0] == "lagging"
     managed("999.0")
     assert lifecycle.payload_identity(name)[0] == "ahead"
     managed(version)
-    assert (lifecycle.payload_identity(name)[0]
-            == "same-version-different-bytes")
+    assert lifecycle.payload_identity(name)[0] == "same-version-different-bytes"
     managed("not-a-version")
     assert lifecycle.payload_identity(name)[0] == "unorderable"
 
 
 def test_status_reports_a_transform_error_without_a_traceback(
-        home, monkeypatch, capsys):
+    home, monkeypatch, capsys
+):
     """A broken canonical rewrite must not crash the read-only status command;
     it reports the artifact as unrenderable and continues, exactly as plan_install already does for the write path."""
     planned, refusals = lifecycle.plan_install(["codex"], None, False)
