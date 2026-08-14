@@ -1,6 +1,6 @@
 # Install UX Redesign — Design
 
-**Status:** revised draft, awaiting review
+**Status:** third revision, awaiting review
 **Date:** 2026-08-14
 
 ## Problem
@@ -53,23 +53,26 @@ Claude Code stays on its plugin marketplace pair and is never touched by `semlf`
 
 ### The neutral payload root
 
-Every installed hook and skill references the checker at one channel-neutral path:
+Installed codex hooks and skills reference the checker at one channel-neutral path:
 
 ```
 ${XDG_DATA_HOME:-~/.local/share}/semlf/check_linefeeds.py
 ```
 
-`semlf install` publishes the checker there as a provenance-managed artifact,
+Installing the codex integration publishes the checker there as a provenance-managed artifact,
 whatever channel `semlf` itself arrived by —
-wheel, zipapp, or checkout.
-`README.md` is published beside it,
+wheel, zipapp, or checkout —
+and publishes `README.md` beside it,
 so the installed skill's suppression-rules link resolves to a local file
 and keeps working on air-gapped machines.
+The opencode integration is the stated exception to the single target:
+its plugin resolves the checker beside itself,
+so its install publishes a second, colocated checker copy under the same provenance rules.
 
-The zipapp channel forces this shape anyway:
+The zipapp channel forces the neutral-root shape anyway:
 a hook cannot point into a `.pyz` archive,
 so the checker must be published to a real path,
-and when that path is the single target for every channel,
+and when that path is the single hook target for every channel,
 a hook survives a channel switch, a venv rebuild, or a CLI uninstall untouched.
 The alternative — routing hooks through the `semlf` command itself —
 was analyzed and rejected:
@@ -81,38 +84,119 @@ against ADR-0004's rule that adapters invoke the core without the CLI.
 
 One residual risk is accepted and mitigated:
 after `uv tool upgrade semlf`,
-the published checker lags until `semlf install` runs again.
-`semlf status` and `semlf doctor` compare the published checker's version against the artifact's own and say so;
-the documented upgrade command is the pair
+the published payloads lag until `semlf install` runs again.
+`semlf status` reports the lag and `semlf doctor` fails on it
+(the identity check below),
+and the documented upgrade command is the pair
 `uv tool upgrade semlf && semlf install`.
+Teaching the checker itself to warn about lag at hook time was considered and rejected:
+the core stays free of lifecycle knowledge,
+and hook output belongs to findings, not to installer state.
 
-### The payload table
+The published payloads are deliberately left in place
+when the last consuming integration is uninstalled:
+their independence from any one integration is the point of the neutral root.
+When `semlf status` sees published payloads with no consumer,
+it says so in one line and names the directory for manual removal.
 
-One declarative table drives the wheel build, the zipapp build, and the installer,
-so the three can never disagree about what a payload is:
+### The payload registry
 
-| Payload | Canonical source | Installed destination | Rendering |
-|---|---|---|---|
-| checker | `scripts/check_linefeeds.py` | `<data root>/semlf/check_linefeeds.py` | byte copy |
-| readme | `README.md` | `<data root>/semlf/README.md` | byte copy |
-| codex hook | `adapters/codex/hooks.json` | merged into `$CODEX_HOME/hooks.json` | placeholder → neutral checker path |
-| codex skill | `skills/semantic-linefeeds/SKILL.md` | `~/.agents/skills/semantic-linefeeds/SKILL.md` | three rewrites → neutral checker path and local README |
-| opencode plugin | `adapters/opencode/semantic-linefeeds.ts` | opencode plugins dir, checker copied beside it | byte copy, both files |
-| agentsmd snippet | `adapters/agentsmd/SNIPPET.md` | sentinel block in the path the user names | byte splice |
+One declarative registry drives the wheel build, the zipapp build, the installer,
+and the identity checks,
+so no consumer invents a second mapping.
+Each row carries:
+a logical id (which is also its provenance record name where one exists),
+the canonical repository path,
+the embedded member path (`semlf/payloads/<id>` in both wheel and zipapp),
+the installed destination or destinations,
+the transform with its required match count,
+and the owning install target.
 
-Two rows are transforms, not copies,
-and the design owns that fact:
-the installed codex hook entry is rendered from the canonical `hooks.json` template
-(the installer stops constructing it programmatically,
-so the canonical file and the installed entry cannot drift),
-and the installed skill body is the existing three-rewrite transform with the neutral paths substituted.
-The opencode plugin keeps its current side-by-side contract —
-the plugin resolves the checker beside itself —
-so its install copies both files, exactly as today.
+| Id | Canonical source | Installed destination | Transform | Owner |
+|---|---|---|---|---|
+| `checker` | `scripts/check_linefeeds.py` | `<data root>/semlf/check_linefeeds.py` | byte copy | codex |
+| `readme` | `README.md` | `<data root>/semlf/README.md` | byte copy | codex |
+| codex hook (structural, no record) | `adapters/codex/hooks.json` | merged entry in `$CODEX_HOME/hooks.json` | `__CHECKER__` → neutral checker path | codex |
+| `codex-skill` | `skills/semantic-linefeeds/SKILL.md` | `~/.agents/skills/semantic-linefeeds/SKILL.md` | three rewrites, each must match exactly once | codex |
+| `opencode-plugin` | `adapters/opencode/semantic-linefeeds.ts` | opencode plugins dir | byte copy | opencode |
+| `opencode-checker` | `scripts/check_linefeeds.py` | checker beside the plugin | byte copy | opencode |
+| agentsmd snippet (sentinel, no record) | `adapters/agentsmd/SNIPPET.md` | sentinel block in the path the user names | byte splice | agentsmd |
 
+`manifest.KNOWN` grows the `checker` and `readme` names;
+the codex hook keeps structural admission
+(`parse_managed_codex_hook` over the shared `hooks.json`, never per-file bytes),
+and the agentsmd snippet keeps sentinel-block admission in a user-owned file.
+The canonical hook template's placeholder becomes `__CHECKER__`
+and carries the full checker path,
+because substituting a directory into today's `__REPO__/scripts/...` shape bakes a stray `/scripts/` segment into the command.
+Every transform fails loud when its match count is wrong,
+so a canonical-source edit can never silently disable a rewrite.
 The installed hook command keeps the shape
 `python3 <path ending in check_linefeeds.py> --hook codex`,
-so `parse_managed_codex_hook`'s structural ownership rule holds unchanged.
+so the structural ownership rule holds unchanged.
+`PYZ_REQUIRED_MEMBERS` grows by the registry's embedded member paths,
+and the packaging tests inspect the finished wheel and zipapp against the registry.
+
+### The artifact classifier
+
+Admission is decided on three independent axes,
+for every registry row that is a single-file artifact
+(`checker`, `readme`, `codex-skill`, `opencode-plugin`, `opencode-checker`):
+
+- **Object state** — absent; readable regular file; unreadable regular file;
+  symlink; directory; other special file.
+- **Provenance state** (for a readable regular file) —
+  exact current rendering; manifest-managed different release; edited; unrecorded.
+- **Execution mode** — normal; `--force`; `--dry-run` (orthogonal to the other two).
+
+| Object × provenance | Normal | With `--force` |
+|---|---|---|
+| absent | write, record provenance | same |
+| exact current rendering | no-op; adopt or refresh a missing or stale record | same |
+| managed older release | replace, refresh record, no backup | same |
+| managed newer release (downgrade) | refuse: "published is newer than this artifact" | replace, refresh record, no backup |
+| edited or unrecorded | refuse, name the finding | exclusive `O_EXCL` backup, then replace and record |
+| backup slot occupied or non-regular | refuse | still refuse |
+| symlink, directory, special, unreadable | refuse | still refuse — force never overrides an object-state refusal |
+
+Adoption in the exact-rendering row is deliberate:
+publication and record are separate files,
+so a correct copy with a missing record must converge to `managed` on the next run,
+not stay `unrecorded` forever.
+Downgrade refusal is the default
+because an old zipapp or checkout run must not silently drag every hook's checker backwards;
+`--force` states the intent.
+Managed replacements in either direction skip the backup —
+ADR-0014's rationale stands: a recorded release is not the only copy of anything.
+`--dry-run` never prompts, never writes a destination, never mutates a record,
+prints each artifact's classification and the action normal mode would take
+(including any refusal it would hit),
+and exits 0.
+That last point is a deliberate behavioral change for the checkout door,
+whose dry-run today exits nonzero on a diverged skill or plugin file.
+
+### Request-wide preflight, apply order, and concurrency
+
+`semlf install` classifies every artifact of the whole request read-only first;
+any refusal aborts the run before the first write,
+reporting every artifact's verdict.
+Apply order follows the registry's dependencies:
+the neutral `checker` and `readme` first,
+then each integration's own files.
+If the filesystem fails mid-apply anyway,
+the run reports, per artifact, applied or not-applied,
+and a rerun converges:
+every completed artifact classifies as exact rendering and no-ops,
+every incomplete one is attempted again.
+Rollback is deliberately not offered.
+
+Concurrent lifecycle commands stay out of scope,
+carrying ADR-0014's boundary forward unchanged.
+What the design does require is atomic complete-file publication
+(the existing same-directory temp file and `os.replace`),
+provenance recorded immediately after each artifact's publication,
+and a test pinning that every crossed destination-and-record interleaving fails closed as `edited` or `unrecorded` —
+degraded classification, never a silent overwrite.
 
 ### Command surface
 
@@ -122,16 +206,25 @@ so `parse_managed_codex_hook`'s structural ownership rule holds unchanged.
 | `semlf install codex opencode` | naming a target is consent: apply directly, no prompt, TTY or not |
 | `semlf install agentsmd PATH` | first-class; the path is required, never defaulted, never auto-detected |
 | `semlf install --yes` | apply without prompting, any mode |
-| `semlf install --dry-run` | print the plan, write nothing, exit 0 |
-| `semlf status` | report every artifact's state (today's no-flag `install.py` report) |
+| `semlf install --dry-run` | print every artifact's classification and planned action, write nothing, exit 0 |
+| `semlf status` | report every artifact's state, including published-payload lag and no-consumer leftovers |
 | `semlf uninstall codex` | preflight-then-apply removal, ADR-0014 semantics unchanged |
+| `semlf uninstall agentsmd PATH` | removes the sentinel block from the named file; path required, mirroring install |
 | `semlf uninstall` (no target) | usage error, exit 64 |
-| `semlf doctor` | unchanged |
+| `semlf doctor` | today's replay, plus the published-payload identity check below |
 
-Auto-detection covers codex and opencode only.
-The agentsmd snippet is never auto-installed (its target cannot be detected),
+Precedence is fixed:
+`--dry-run` dominates everything —
+it never prompts and exits 0 whatever the TTY state,
+consent flags, or would-be refusals, which it reports instead of taking.
+Consent (`--yes` or a named target) affects only a non-dry apply.
+A TTY prompt answered `n`, closed by EOF, or interrupted declines the run: exit 1.
+Detection that finds zero targets is an explicit no-op:
+it says so and exits 0.
+`--help` states plainly that naming a target applies it immediately.
+Auto-detection covers codex and opencode only;
+the agentsmd snippet is never auto-installed,
 and the zipapp never is (next section).
-`--force` keeps its meaning under the upgrade state machine below.
 Exit codes stay 0 success or no-op, 1 refusal or error, 64 usage —
 the non-TTY unconfirmed plan exits 1
 because a provisioning script that forgot `--yes` must fail loud,
@@ -143,6 +236,22 @@ visually set off as the last block
 so multi-agent install output cannot scroll it away,
 and a user cannot mistake Claude Code for something `semlf` configured.
 
+### Staleness is a digest question, and doctor fails on it
+
+`semlf status` and `semlf doctor` compare every published payload —
+both checker copies and the readme —
+against the payload set embedded in the running artifact,
+by guarded bytes, never by version string alone:
+two builds can differ under one version,
+and on a downgrade the published copy is ahead, not behind.
+The version string is the human-facing label in the report,
+with distinct wordings for missing, edited,
+managed-but-lagging, managed-but-ahead,
+and same-version-different-bytes.
+`semlf status` reports; `semlf doctor` counts any mismatch as a failed check and exits 1.
+The doctor row in the command table above is this addition;
+doctor's existing replay contract is otherwise untouched.
+
 ### The zipapp stays behind the checkout door
 
 The package door has no `cli` target:
@@ -151,28 +260,9 @@ and a package-installed `semlf uninstall cli --force` could unlink the very shim
 Building and removing the zipapp remains exclusive to the checkout door
 (`install.py --cli`, as today).
 A zipapp left over from before this redesign is a migration case:
-`semlf status` and `semlf doctor` report it,
-name which file `PATH` actually resolves to,
-and point at the checkout-door removal.
-
-### One upgrade state machine for every recorded artifact
-
-Today only the cli artifact honors ADR-0014's managed-upgrade rule;
-the codex skill and opencode installs compare bytes and demand `--force` for any recorded older release.
-The redesign extends the manifest-managed admission rule to every installer-owned file,
-one classifier for all of them:
-
-| Existing destination state | Action |
-|---|---|
-| bytes identical to the new rendering | no-op |
-| manifest-managed older release | replace, no backup |
-| edited or unrecorded | refuse; name the finding |
-| edited plus `--force` | replace after the exclusive `O_EXCL` backup |
-| any state under `--dry-run` | print intent, write nothing |
-
-Without this,
-every `uv tool upgrade semlf && semlf install` would refuse on the skill and plugin
-and turn routine upgrades into a forced-overwrite ritual.
+`semlf install` itself performs the `PATH` check at the end of its run
+and warns immediately when `semlf` on `PATH` is not the running artifact's shim,
+and `semlf status` and `semlf doctor` repeat the report with the checkout-door removal pointer.
 
 ### One implementation, two doors
 
@@ -182,10 +272,18 @@ keeping its entire current flag vocabulary —
 `--codex`, `--opencode`, `--agentsmd PATH`, `--cli`, `--auto`,
 `--uninstall`, `--dry-run`, `--force`, and no-flag status —
 as a thin parser over the same shared operations,
-so `install.sh` keeps working with zero changes
-and every documented checkout invocation means what it meant before.
-`--auto` on the checkout door keeps installing the zipapp unconditionally;
+so `install.sh` keeps working with zero changes.
+`--codex` and `--auto` publish the neutral checker and readme through the same shared operation the package door uses;
+an `install.py --codex` run and a `semlf install codex` run produce byte-identical artifacts everywhere.
+`--auto` is itself consent (it is an explicit action),
+prints the same plan while applying,
+and keeps installing the zipapp unconditionally;
 the package door's `semlf install` never does.
+
+The flag surface is unchanged;
+two behaviors under it change deliberately and are documented:
+the installed hook's target path moves from the checkout to the neutral root,
+and `--dry-run` on a diverged file prints the would-be refusal at exit 0 instead of exiting nonzero.
 
 ### Channels after the change
 
@@ -199,7 +297,7 @@ the package door's `semlf install` never does.
 One channel per machine stays the rule.
 The collision surface moves with the redesign —
 uv shim versus pipx shim versus a leftover pre-redesign zipapp —
-and the quickstart's channel note plus the status/doctor migration report above are what surface it.
+and the install-time `PATH` warning plus the status/doctor migration report above are what surface it.
 
 ### PyPI
 
@@ -237,24 +335,28 @@ one channel per machine, and `semlf doctor` names a collision when it sees one.
 
 ### ADR impact
 
-- **ADR-0014** — amended in both its decision and its rejected-alternatives list:
-  payload embedding removes the "no payload to copy from" premise
-  that justified rejecting the verb move,
+The amendment task is a full textual consistency sweep,
+not a list of single sentences:
+decision text, evidence lists, rejected-alternative entries, amendment headers,
+and the decisions index all carry restatements of the old verb split
+and the old packaging shape.
+
+- **ADR-0014** — decision, evidence, and rejected-alternatives text:
+  payload embedding removes the "no payload to copy from" premise,
   and install, uninstall, and status move behind `semlf`.
   Preflight-then-apply, the provenance manifest,
   structural hook ownership, and doctor's contract carry over;
-  the managed-upgrade rule is extended, not weakened,
-  by the state machine above.
-- **ADR-0015** — amended in three places:
-  wheel and zipapp contents gain the payload table's rows,
+  the managed-upgrade rule is extended by the classifier above, not weakened.
+- **ADR-0015** — wheel and zipapp contents gain the registry's rows,
   the package channel gains PyPI as its primary source
-  (with the git-URL install retained for mirrors),
-  and the collision story records the moved surface.
+  (git-URL retained for mirrors),
+  and the collision story records the moved surface;
+  its evidence list and rejected collision alternative are updated with it.
   The maintainer-act publishing boundary and the no-fork mapping rule stand.
-- **ADR-0004** — its decision text assigns the lifecycle verbs to `scripts/install.py`;
-  that sentence is rewritten, not merely re-referenced.
-- **`.agents/rules/100-project-map.md`** — repeats the verb assignment
-  and is amended in the same commit as the ADRs.
+- **ADR-0004** — the amendment header, the decision parenthetical,
+  and the lifecycle-verb sentence are rewritten together.
+- **`.agents/rules/100-project-map.md`** and **`docs/decisions/README.md`** —
+  their verb-assignment and distribution summaries are amended in the same commit as the ADRs.
 
 ## Non-goals
 
@@ -264,21 +366,32 @@ one channel per machine, and `semlf doctor` names a collision when it sees one.
   so at most the README mentions it as a skill-only supplement with that caveat stated.
 - No change to the Claude Code install.
 - No change to detector behavior, hook wire formats, or the one-file core rule.
+- No rollback machinery and no lifecycle-command locking;
+  the preflight, idempotent-rerun, and fail-closed rules above are the whole contract.
 - `semlf update` (headroom-style, channel-detecting self-update) is a possible follow-up,
   not part of this slice.
 
 ## Testing
 
 - Byte-identity: embedded payloads match their canonical sources,
-  and the wheel's payload set matches the zipapp's, member for member.
-- Rendering: the installed codex hook entry and skill body are asserted against the payload table's transforms,
+  and the wheel's payload set matches the zipapp's, member for member,
+  both inspected against the registry.
+- Rendering: the installed codex hook entry and skill body are asserted against the registry's transforms,
+  including the exactly-once match counts,
   from a wheel install and a zipapp install, not only the checkout.
+- Classifier: every object-state × provenance-state × mode cell above is tested per artifact,
+  including adoption, downgrade refusal and forced downgrade,
+  the occupied backup slot, and the force-never-overrides object-state rows.
+- Preflight: a request with one refusing artifact mutates nothing;
+  a mid-apply failure leaves a state a rerun converges from;
+  crossed destination-and-record interleavings classify as `edited` or `unrecorded`.
 - Migration: tests begin from current checkout-rendered artifacts
   and existing provenance records,
   then exercise package-door install, status, doctor, dry-run, force, and uninstall over them —
-  including the leftover-zipapp report.
-- The upgrade state machine is tested per artifact, all five rows.
-- `tests/test_packaging.py` extends to pin the payload data files.
+  including the leftover-zipapp `PATH` warning.
+- Identity: status and doctor distinguish missing, edited, lagging, ahead,
+  and same-version-different-bytes for both checker copies and the readme.
+- `tests/test_packaging.py` extends to pin the payload members.
 
 ## Sequencing
 
