@@ -52,6 +52,8 @@ from semlf import registry  # noqa: E402
 from semlf.lifecycle import (  # noqa: E402
     exclusive_backup as _exclusive_backup,
     publish_exclusive as _publish_new,
+    _forget_note,
+    _prune_empty_parent,
 )
 from semlf.manifest import (  # noqa: E402
     codex_home, opencode_plugins_dir, codex_skill_dest, cli_bin_dest,
@@ -689,30 +691,6 @@ def _plan_codex_hook(actions, refusals):
     def _do(path=path, text=text):
         _write_shared(path, text)
     actions.append((f"the managed hook entry from {path}", _do))
-
-
-def _prune_empty_parent(dest):
-    parent = dest.parent
-    try:
-        if not any(parent.iterdir()):
-            parent.rmdir()
-    except OSError:
-        pass
-
-
-def _forget_note(dest, name):
-    """Unlink already succeeded.
-
-    Forget provenance without letting its own failure masquerade as dest never having been removed.
-    Returns None on a clean forget.
-    On a raised OSError it returns an accurate stderr line instead — the caller still counts dest as removed either way.
-    """
-    try:
-        manifest.forget(name)
-    except OSError as exc:
-        return (f"removed {dest}, but could not clear its provenance "
-               f"record: {exc}")
-    return None
 
 
 def _plan_file(label, dest, reference_bytes, name, force, actions, refusals,

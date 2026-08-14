@@ -474,6 +474,27 @@ def test_dry_run_reports_a_transform_error_as_a_would_be_refusal(
     assert "would refuse" in out
 
 
+def test_uninstall_transform_error_during_removal_becomes_a_refusal(
+        home, monkeypatch):
+    """A canonical-source edit that breaks a rewrite must refuse the removal plan cleanly, never escape planning as a raw traceback.
+
+    The removal-side mirror of test_a_transform_error_during_rendering_becomes_a_refusal.
+    """
+    dest = lifecycle.payload_destinations()["codex-skill"]
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(b"anything")
+
+    def boom(data_dir):
+        raise registry.TransformError("boom")
+
+    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    planned, refusals = [], []
+    lifecycle.plan_remove_file("codex skill", dest, "codex-skill", False,
+                               planned, refusals)
+    assert any("codex-skill" in r and "boom" in r for r in refusals)
+    assert not planned
+
+
 @pytest.mark.parametrize("name", ["checker", "readme",
                                   "opencode-checker"])
 def test_payload_identity_states_per_payload(home, name, capsys):

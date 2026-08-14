@@ -816,9 +816,286 @@ def status_command(argv):
     return _finish(0)
 
 
+def _prune_empty_parent(dest):
+    parent = dest.parent
+    try:
+        if not any(parent.iterdir()):
+            parent.rmdir()
+    except OSError:
+        pass
+
+
+def _forget_note(dest, name):
+    """Unlink already succeeded.
+
+    Forget provenance without letting its own failure masquerade as dest never having been removed.
+    Returns None on a clean forget.
+    On a raised OSError it returns an accurate stderr line instead —
+    the caller still counts dest as removed either way.
+    """
+    try:
+        manifest.forget(name)
+    except OSError as exc:
+        return (f"removed {dest}, but could not clear its provenance "
+               f"record: {exc}")
+    return None
+
+
+def plan_remove_file(label, dest, name, force, planned, refusals,
+                     prune_parent=False):
+    """Plan removal of one installer-owned file, or a refusal.
+
+    Shared by the codex skill and both opencode files.
+    """
+    if dest is None:
+        refusals.append(f"refusing to uninstall the {label}: cannot "
+                        "determine a home directory to uninstall it from.")
+        return
+    dest = Path(dest)
+    try:
+        st = os.lstat(dest)
+    except FileNotFoundError:
+        planned.append(Planned(f"{label}: not installed ({dest})",
+                               name, dest, None, None))
+        return
+    except OSError as exc:
+        refusals.append(f"refusing to uninstall the {label}: cannot "
+                        f"inspect {dest}: {exc}.")
+        return
+    if stat.S_ISDIR(st.st_mode):
+        refusals.append(f"refusing to remove {dest}: it is a directory; "
+                        "removing a tree is not this verb's one-file unlink.")
+        return
+    admit = False
+    reason = None
+    if not stat.S_ISREG(st.st_mode):
+        reason = (f"refusing to remove {dest}: it is not a regular file "
+                  "(symlink or special file).")
+    else:
+        current = manifest.read_regular_bytes(dest, manifest.CLASSIFY_LIMIT)
+        if current is None:
+            reason = (f"refusing to remove {dest}: it exists but is not a "
+                      "readable regular file.")
+        else:
+            try:
+                rendered = rendered_bytes(name)
+            except registry.TransformError as exc:
+                refusals.append(f"refusing to remove {name}: cannot "
+                                f"render this artifact's payload ({exc}).")
+                return
+            if (current == rendered
+                    or manifest.classify(name, dest) == "managed"):
+                admit = True
+            else:
+                reason = (f"refusing to remove {dest}: its content differs "
+                          "from what this kit installed (hand-patched or "
+                          "older version).")
+    if not (admit or force):
+        refusals.append(reason + " re-run with --force to remove it anyway.")
+        return
+
+    def _do(dest=dest, name=name, prune_parent=prune_parent):
+        os.unlink(dest)
+        note = _forget_note(dest, name)
+        if prune_parent:
+            _prune_empty_parent(dest)
+        return note
+
+    planned.append(Planned(str(dest), name, dest, None, _do,
+                           done=f"removed {dest}"))
+
+
+def plan_remove_codex_hook(planned, refusals):
+    import json
+    home = manifest.codex_home()
+    if home is None:
+        refusals.append("refusing to uninstall the codex hook: cannot "
+                        "determine a home directory to uninstall it from.")
+        return
+    path = home / "hooks.json"
+    try:
+        os.lstat(path)
+    except FileNotFoundError:
+        planned.append(Planned(f"codex: not installed ({path})",
+                               "codex-hook", path, None, None))
+        return
+    except OSError as exc:
+        refusals.append(f"refusing to uninstall the codex hook: cannot "
+                        f"inspect {path}: {exc}.")
+        return
+    data = manifest.read_state_json(path)
+    # Same parity as plan_codex_hook's own guard: a shape too strange to locate PostToolUse in — a non-dict top level, a "hooks" value that isn't a dict, or a "PostToolUse" value that isn't a list — is a refusal, not silently nothing-to-do.
+    # A "hooks" or "PostToolUse" key that is simply *absent* from an otherwise-sane dict is not strange; it is empty, and empty is a legitimate no-op.
+    hooks = data.get("hooks", {}) if isinstance(data, dict) else None
+    post = hooks.get("PostToolUse", []) if isinstance(hooks, dict) else None
+    if (not isinstance(data, dict) or not isinstance(hooks, dict)
+            or not isinstance(post, list)):
+        refusals.append(f"refusing to touch {path}: cannot read or parse "
+                        "it; repair or remove it by hand.")
+        return
+    if not bak_sibling_ok(path):
+        bak = path.with_name(path.name + ".bak")
+        refusals.append(f"refusing to touch {path}: its backup slot {bak} "
+                        "exists and is not a regular file; move it aside "
+                        "and re-run.")
+        return
+    changed = False
+    new_post = []
+    for block in post:
+        if isinstance(block, dict) and isinstance(block.get("hooks"), list):
+            original = block["hooks"]
+            kept = [h for h in original
+                    if not (isinstance(h, dict)
+                            and manifest.parse_managed_codex_hook(
+                                block.get("matcher"), h) is not None)]
+            if len(kept) == len(original):
+                # Nothing of ours was in this block: preserve it exactly, including a foreign block that was already empty before we ever looked at it.
+                new_post.append(block)
+                continue
+            changed = True
+            if kept:
+                block = dict(block)
+                block["hooks"] = kept
+                new_post.append(block)
+            # else: our own filtering emptied this block; drop it.
+        else:
+            new_post.append(block)
+    hooks["PostToolUse"] = new_post
+    if not changed:
+        planned.append(Planned(
+            f"codex: no managed hook entry found in {path}",
+            "codex-hook", path, None, None))
+        return
+    text = json.dumps(data, indent=2) + "\n"
+
+    def _do(path=path, text=text):
+        publish_shared(path, text)
+        return None
+
+    planned.append(Planned(f"the managed hook entry from {path}",
+                           "codex-hook", path, None, _do,
+                           done=f"removed the managed hook entry from {path}"))
+
+
+def plan_remove_agentsmd(target, planned, refusals):
+    """Plan splicing the sentinel block out of target, or a refusal.
+
+    target is user-owned, so --force never overrides a refusal here —
+    unlike the installer-owned single-file artifacts above.
+    """
+    target = Path(target)
+    try:
+        st = os.lstat(target)
+    except FileNotFoundError:
+        planned.append(Planned(f"agentsmd: not installed ({target})",
+                               "agentsmd", target, None, None))
+        return
+    except OSError as exc:
+        refusals.append(f"refusing to uninstall agentsmd: cannot inspect "
+                        f"{target}: {exc}.")
+        return
+    if not stat.S_ISREG(st.st_mode):
+        refusals.append(f"refusing to touch {target}: it is not a regular "
+                        "file; repair it by hand.")
+        return
+    if not bak_sibling_ok(target):
+        bak = target.with_name(target.name + ".bak")
+        refusals.append(f"refusing to touch {target}: its backup slot {bak} "
+                        "exists and is not a regular file; move it aside "
+                        "and re-run.")
+        return
+    data = manifest.read_regular_bytes(target, manifest.CLASSIFY_LIMIT)
+    if data is None:
+        refusals.append(f"refusing to touch {target}: cannot read it; "
+                        "repair or remove it by hand.")
+        return
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        refusals.append(f"refusing to touch {target}: cannot decode it as "
+                        "UTF-8; repair it by hand.")
+        return
+    has_open = SENTINEL_OPEN in text
+    has_close = SENTINEL_CLOSE in text
+    if has_open != has_close:
+        refusals.append(f"refusing to touch {target}: found one sentinel "
+                        "marker without its pair; repair the block by hand.")
+        return
+    if has_open and (text.count(SENTINEL_OPEN) != 1
+                      or text.count(SENTINEL_CLOSE) != 1
+                      or text.index(SENTINEL_OPEN) > text.index(SENTINEL_CLOSE)):
+        refusals.append(f"refusing to touch {target}: sentinel markers are "
+                        "out of order or repeated; repair the block by hand.")
+        return
+    if not has_open:
+        planned.append(Planned(f"agentsmd: no block found in {target}",
+                               "agentsmd", target, None, None))
+        return
+
+    def _do(target=target, text=text):
+        pre = text.split(SENTINEL_OPEN)[0]
+        post = text.split(SENTINEL_CLOSE, 1)[1].lstrip("\n")
+        new = pre.rstrip("\n")
+        if new and post:
+            new = new + "\n\n" + post
+        elif post:
+            new = post
+        elif new:
+            new = new + "\n"
+        publish_shared(target, new)
+        return None
+
+    planned.append(Planned(f"the semantic-linefeeds block from {target}",
+                           "agentsmd", target, None, _do,
+                           done=f"removed the semantic-linefeeds block from {target}"))
+
+
 def uninstall_command(argv):
-    print("semlf uninstall: not implemented yet", file=sys.stderr)
-    return 64
+    parsed = _parse_targets(argv, "uninstall", ("dry_run", "force"))
+    if parsed is None:
+        return 64
+    targets, agentsmd_path, flags = parsed
+    if not targets and agentsmd_path is None:
+        print("semlf uninstall: name a target (codex, opencode, "
+              "agentsmd PATH).", file=sys.stderr)
+        return 64
+    planned, refusals = [], []
+    if "codex" in targets:
+        plan_remove_codex_hook(planned, refusals)
+        plan_remove_file("codex skill",
+                         payload_destinations()["codex-skill"],
+                         "codex-skill", flags["force"], planned,
+                         refusals, prune_parent=True)
+    if "opencode" in targets:
+        destinations = payload_destinations()
+        plan_remove_file("opencode plugin",
+                         destinations["opencode-plugin"],
+                         "opencode-plugin", flags["force"], planned,
+                         refusals)
+        plan_remove_file("opencode checker",
+                         destinations["opencode-checker"],
+                         "opencode-checker", flags["force"], planned,
+                         refusals)
+    if agentsmd_path is not None:
+        plan_remove_agentsmd(agentsmd_path, planned, refusals)
+    if flags["dry_run"]:
+        # Dry-run dominates everything: it reports the would-be refusals instead of taking them, and exits 0 (the design's fixed precedence covers the whole command surface).
+        for item in planned:
+            print(item.label if item.do is None
+                  else f"[dry-run] would remove {item.label}")
+        for refusal in refusals:
+            print(f"[dry-run] would refuse: {refusal}")
+        return 0
+    if refusals:
+        for refusal in refusals:
+            print(refusal, file=sys.stderr)
+        return 1
+    rc = apply_plan(planned)
+    if "codex" in targets and rc == 0:
+        print(f"note: the published payloads under "
+              f"{manifest.semlf_data_dir()} are shared and retained; "
+              "`semlf status` reports leftovers.")
+    return rc
 
 
 def run(command, argv):

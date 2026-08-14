@@ -5,8 +5,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "cli"))
 sys.path.insert(0, str(REPO / "scripts"))
@@ -238,7 +236,6 @@ def test_status_reports_payload_lag_by_version_label(tmp_path):
     assert "semlf install" in r.stdout
 
 
-@pytest.mark.xfail(reason="needs semlf uninstall", strict=False)
 def test_status_names_no_consumer_leftovers_in_one_line(tmp_path):
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex"], env)
@@ -321,3 +318,83 @@ def test_a_skill_only_machine_keeps_payloads_expected(tmp_path):
     r = run_semlf(["status"], env)
     assert r.returncode == 0
     assert "no remaining" not in r.stdout.lower()
+
+
+def test_uninstall_without_a_target_is_a_usage_error(tmp_path):
+    r = run_semlf(["uninstall"], isolated_env(tmp_path))
+    assert r.returncode == 64
+
+
+def test_uninstall_codex_removes_hook_and_skill_but_keeps_payloads(
+        tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    r = run_semlf(["uninstall", "codex"], env)
+    assert r.returncode == 0, r.stderr
+    hooks = json.loads((tmp_path / "codex" / "hooks.json").read_text())
+    from semlf import manifest as m  # path inserted at module top
+    assert m.owned_codex_hooks(hooks) == []
+    skill = tmp_path / "home" / ".agents" / "skills" / \
+        "semantic-linefeeds" / "SKILL.md"
+    assert not skill.exists()
+    assert (data_root(tmp_path) / "check_linefeeds.py").exists()
+    assert (data_root(tmp_path) / "README.md").exists()
+
+
+def test_uninstall_refuses_an_edited_skill_without_force(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    skill = tmp_path / "home" / ".agents" / "skills" / \
+        "semantic-linefeeds" / "SKILL.md"
+    skill.write_text("hand-patched", encoding="utf-8")
+    # Clear its record so admission can only come from byte identity.
+    (tmp_path / "state" / "semlf" / "artifacts" /
+     "codex-skill.json").unlink()
+    r = run_semlf(["uninstall", "codex"], env)
+    assert r.returncode == 1
+    assert skill.exists()
+    r = run_semlf(["uninstall", "codex", "--force"], env)
+    assert r.returncode == 0
+    assert not skill.exists()
+
+
+def test_uninstall_agentsmd_requires_and_uses_the_path(tmp_path):
+    env = isolated_env(tmp_path)
+    target = tmp_path / "AGENTS.md"
+    target.write_text("# mine\n", encoding="utf-8")
+    run_semlf(["install", "agentsmd", str(target)], env)
+    r = run_semlf(["uninstall", "agentsmd"], env)
+    assert r.returncode == 64
+    r = run_semlf(["uninstall", "agentsmd", str(target)], env)
+    assert r.returncode == 0
+    text = target.read_text(encoding="utf-8")
+    assert "semantic-linefeeds" not in text
+    assert "# mine" in text
+
+
+def test_uninstall_dry_run_removes_nothing(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "opencode"], env)
+    plugin = tmp_path / "xdg" / "opencode" / "plugins" / \
+        "semantic-linefeeds.ts"
+    assert plugin.exists()
+    r = run_semlf(["uninstall", "opencode", "--dry-run"], env)
+    assert r.returncode == 0
+    assert plugin.exists()
+
+
+def test_uninstall_dry_run_reports_a_would_be_refusal_at_exit_zero(
+        tmp_path):
+    """Dry-run dominates refusals on uninstall exactly as on install:
+    report, write nothing, exit 0."""
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    skill = tmp_path / "home" / ".agents" / "skills" / \
+        "semantic-linefeeds" / "SKILL.md"
+    skill.write_text("hand-patched", encoding="utf-8")
+    (tmp_path / "state" / "semlf" / "artifacts" /
+     "codex-skill.json").unlink()
+    r = run_semlf(["uninstall", "codex", "--dry-run"], env)
+    assert r.returncode == 0
+    assert "would refuse" in r.stdout
+    assert skill.read_text(encoding="utf-8") == "hand-patched"
