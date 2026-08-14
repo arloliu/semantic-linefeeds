@@ -1,0 +1,10 @@
+# Canonical payload sources: the build hook stages these into
+# semlf/payloads/<id>, so the sdist must carry every registry source
+# even though none of them import as Python code.
+include scripts/check_linefeeds.py
+include README.md
+include LICENSE
+include adapters/codex/hooks.json
+include adapters/opencode/semantic-linefeeds.ts
+include adapters/agentsmd/SNIPPET.md
+include skills/semantic-linefeeds/SKILL.md

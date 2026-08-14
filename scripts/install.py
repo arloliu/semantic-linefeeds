@@ -39,10 +39,6 @@ SKILL_SOURCE = REPO / "skills" / "semantic-linefeeds" / "SKILL.md"
 CLI_PKG = REPO / "cli" / "semlf"
 PYZ_INTERPRETER = "/usr/bin/env python3"
 MAIN_STUB = "from semlf.cli import main\nraise SystemExit(main())\n"
-PYZ_REQUIRED_MEMBERS = {"__main__.py", "check_linefeeds.py",
-                        "semlf/__init__.py", "semlf/cli.py",
-                        "semlf/providers.py", "semlf/doctor.py",
-                        "semlf/manifest.py"}
 
 SENTINEL_OPEN = "<!-- semantic-linefeeds -->"
 SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"
@@ -52,9 +48,23 @@ TRUST_NOTE = ("note: Codex hashes unmanaged hooks; on your next interactive "
 
 sys.path.insert(0, str(REPO / "cli"))
 from semlf import manifest  # noqa: E402 -- must follow the path insert above
+from semlf import registry  # noqa: E402
 from semlf.manifest import (  # noqa: E402
     codex_home, opencode_plugins_dir, codex_skill_dest, cli_bin_dest,
 )
+
+# Deliberately does NOT list semlf/lifecycle.py:
+# that module arrives only in Task 5,
+# and _snapshot_runnable requires every listed member to exist
+# (a member listed before its module exists fails every pyz runnable check).
+# Task 5 appends "semlf/lifecycle.py" to this set as one of its own steps.
+PYZ_REQUIRED_MEMBERS = frozenset(
+    {"__main__.py", "check_linefeeds.py",
+     "semlf/__init__.py", "semlf/cli.py",
+     "semlf/providers.py", "semlf/doctor.py",
+     "semlf/manifest.py", "semlf/registry.py",
+     "semlf/classify.py"}
+    | {row.member for row in registry.ROWS})
 
 
 def core_version():
@@ -212,6 +222,7 @@ def build_pyz(dest):
         shutil.copy2(CHECKER, stage / CHECKER.name)
         for src in sorted(CLI_PKG.glob("*.py")):
             shutil.copy2(src, stage / "semlf" / src.name)
+        registry.stage_payloads(stage, repo=REPO)
         (stage / "__main__.py").write_text(MAIN_STUB, encoding="utf-8")
         fd, tmp = tempfile.mkstemp(dir=str(dest.parent), prefix=dest.name)
         os.close(fd)

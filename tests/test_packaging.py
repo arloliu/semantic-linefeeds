@@ -36,3 +36,113 @@ def test_wheel_carries_both_module_roots():
 
 def test_python_floor_matches_the_core_contract():
     assert _load()["project"]["requires-python"] == ">=3.9"
+
+
+import subprocess
+import zipfile
+
+sys.path.insert(0, str(REPO / "cli"))
+from semlf import registry
+
+
+def test_the_pyz_embeds_every_registry_member(tmp_path):
+    sys.path.insert(0, str(REPO / "scripts"))
+    import importlib
+    install = importlib.import_module("install")
+    pyz = tmp_path / "semlf.pyz"
+    install.build_pyz(pyz)
+    with zipfile.ZipFile(pyz) as z:
+        names = set(z.namelist())
+        assert {r.member for r in registry.ROWS} <= names
+        for row in registry.ROWS:
+            assert z.read(row.member) == (REPO / row.source).read_bytes()
+
+
+def test_pyz_required_members_cover_the_registry():
+    import importlib
+    sys.path.insert(0, str(REPO / "scripts"))
+    install = importlib.import_module("install")
+    assert {r.member for r in registry.ROWS} <= install.PYZ_REQUIRED_MEMBERS
+
+
+def test_payload_bytes_reads_from_inside_a_zipapp(tmp_path):
+    """The rendering source works from a pyz install, not only a checkout:
+    the archive itself lands on sys.path via zipimport."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    import importlib
+    install = importlib.import_module("install")
+    pyz = tmp_path / "semlf.pyz"
+    install.build_pyz(pyz)
+    code = ("import sys; sys.path.insert(0, %r); "
+            "from semlf import registry; "
+            "sys.stdout.buffer.write(registry.payload_bytes('checker'))"
+            % str(pyz))
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout == (REPO / "scripts" / "check_linefeeds.py").read_bytes()
+
+
+def _setuptools_at_least_61():
+    try:
+        import setuptools
+        return int(setuptools.__version__.split(".")[0]) >= 61
+    except Exception:
+        return False
+
+
+def _pip_available():
+    r = subprocess.run([sys.executable, "-m", "pip", "--version"],
+                       capture_output=True)
+    return r.returncode == 0
+
+
+WHEEL_PREREQS = pytest.mark.skipif(
+    not (_setuptools_at_least_61() and _pip_available()),
+    reason="wheel build needs pip and setuptools>=61")
+
+
+# Skips guard only genuinely absent prerequisites, probed up front.
+# Once a build starts, ANY backend failure is a test failure —
+# a broken setup.py hook or a MANIFEST.in gap must never pass as a skip.
+@WHEEL_PREREQS
+def test_the_wheel_embeds_every_registry_member(tmp_path):
+    r = subprocess.run(
+        [sys.executable, "-m", "pip", "wheel", str(REPO), "--no-deps",
+         "--no-build-isolation", "-w", str(tmp_path)],
+        capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stderr[-2000:]
+    wheels = list(tmp_path.glob("semlf-*.whl"))
+    assert len(wheels) == 1
+    with zipfile.ZipFile(wheels[0]) as z:
+        names = set(z.namelist())
+        assert {r_.member for r_ in registry.ROWS} <= names
+        for row in registry.ROWS:
+            assert z.read(row.member) == (REPO / row.source).read_bytes()
+    # Nothing packaging-only was left in the repository.
+    assert not (REPO / "cli" / "semlf" / "payloads").exists()
+
+
+@WHEEL_PREREQS
+def test_a_wheel_built_from_the_sdist_carries_the_members(tmp_path):
+    """MANIFEST.in must put every canonical payload source into the sdist,
+    or a wheel built from it stages nothing."""
+    r = subprocess.run(
+        [sys.executable, "setup.py", "sdist", "--dist-dir",
+         str(tmp_path)],
+        cwd=str(REPO), capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stderr[-2000:]
+    sdists = list(tmp_path.glob("semlf-*.tar.gz"))
+    assert len(sdists) == 1
+    r = subprocess.run(
+        [sys.executable, "-m", "pip", "wheel", str(sdists[0]),
+         "--no-deps", "--no-build-isolation", "-w",
+         str(tmp_path / "from-sdist")],
+        capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stderr[-2000:]
+    wheels = list((tmp_path / "from-sdist").glob("semlf-*.whl"))
+    assert len(wheels) == 1
+    with zipfile.ZipFile(wheels[0]) as z:
+        names = set(z.namelist())
+        assert {row.member for row in registry.ROWS} <= names
+        for row in registry.ROWS:
+            assert z.read(row.member) == (REPO / row.source).read_bytes()
