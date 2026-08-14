@@ -394,3 +394,81 @@ def test_agentsmd_up_to_date_note_prints_at_plan_time(
     out = capsys.readouterr().out
     assert "not on PATH" not in out
     assert len(planned) == 1 and planned[0].do is None
+
+
+@pytest.mark.parametrize("name", ["checker", "readme", "codex-skill",
+                                  "opencode-plugin",
+                                  "opencode-checker"])
+def test_every_registry_row_reaches_the_classifier(home, name, capsys):
+    """Each recorded row classifies through its own registry destination and rendering —
+    edited refuses, managed-older replaces, exact adopts —
+    so no row can bypass the matrix."""
+    targets = ["codex", "opencode"]
+    planned, refusals = lifecycle.plan_install(targets, None, False)
+    assert refusals == []
+    lifecycle.apply_plan(planned)
+    dest = lifecycle.payload_destinations()[name]
+    dest.write_bytes(b"hand-patched\n")
+    manifest.forget(name)
+    planned, refusals = lifecycle.plan_install(targets, None, False)
+    assert any(str(dest) in r for r in refusals)
+    manifest.record(name, dest, "0.0.1",
+                    manifest.sha256_bytes(b"hand-patched\n"))
+    planned, refusals = lifecycle.plan_install(targets, None, False)
+    assert refusals == []
+    assert lifecycle.apply_plan(planned) == 0
+    assert dest.read_bytes() == lifecycle.rendered_bytes(name)
+    assert manifest.classify(name, dest) == "managed"
+
+
+def test_tty_prompt_answered_n_declines(home, capsys, monkeypatch):
+    (Path(os.environ["CODEX_HOME"])).mkdir()
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda prompt="": "n")
+    rc = lifecycle.install_command([])
+    assert rc == 1
+    assert not (manifest.semlf_data_dir() / "check_linefeeds.py").exists()
+
+
+def test_tty_prompt_eof_declines(home, capsys, monkeypatch):
+    (Path(os.environ["CODEX_HOME"])).mkdir()
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+
+    def eof(prompt=""):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", eof)
+    assert lifecycle.install_command([]) == 1
+
+
+def test_tty_prompt_y_applies(home, capsys, monkeypatch):
+    (Path(os.environ["CODEX_HOME"])).mkdir()
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda prompt="": "y")
+    assert lifecycle.install_command([]) == 0
+    assert (manifest.semlf_data_dir() / "check_linefeeds.py").exists()
+
+
+def test_a_transform_error_during_rendering_becomes_a_refusal(
+        home, monkeypatch):
+    """A canonical-source edit that breaks a rewrite must refuse the plan cleanly,
+    never escape planning as a raw traceback."""
+    def boom(data_dir):
+        raise registry.TransformError("boom")
+
+    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    planned, refusals = lifecycle.plan_install(["codex"], None, False)
+    assert any("codex-skill" in r and "boom" in r for r in refusals)
+    assert not any(item.name == "codex-skill" for item in planned)
+
+
+def test_dry_run_reports_a_transform_error_as_a_would_be_refusal(
+        home, monkeypatch, capsys):
+    def boom(data_dir):
+        raise registry.TransformError("boom")
+
+    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    rc = lifecycle.install_command(["codex", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "would refuse" in out

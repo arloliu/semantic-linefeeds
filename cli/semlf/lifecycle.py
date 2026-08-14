@@ -141,7 +141,12 @@ def plan_file(name, force, snapshot, destinations, planned, refusals):
         refusals.append(f"refusing to install {name}: cannot determine "
                         "a home directory to install it under.")
         return
-    rendered = rendered_bytes(name)
+    try:
+        rendered = rendered_bytes(name)
+    except registry.TransformError as exc:
+        refusals.append(f"refusing to install {name}: cannot render "
+                        f"this artifact's payload ({exc}).")
+        return
     verdict = classify.classify_artifact(snapshot.get(name), dest,
                                          rendered, artifact_version(),
                                          force)
@@ -317,7 +322,12 @@ def plan_codex_hook(planned, refusals):
         refusals.append("refusing to install the codex hook: cannot "
                         "determine a home directory to install it under.")
         return
-    entry = registry.render_codex_hook_entry(data_dir)
+    try:
+        entry = registry.render_codex_hook_entry(data_dir)
+    except registry.TransformError as exc:
+        refusals.append(f"refusing to install the codex hook: cannot "
+                        f"render this artifact's payload ({exc}).")
+        return
     command = entry["hooks"][0]["command"]
     path = home / "hooks.json"
     if not os.path.lexists(path):
@@ -455,3 +465,187 @@ def plan_agentsmd(target, planned, refusals):
 
     planned.append(Planned(f"agentsmd: wrote the snippet block to {target}",
                            "agentsmd", target, None, _do))
+
+
+# --- the `semlf install` command surface --------------------------------
+
+
+def detect_agents():
+    """[(agent, evidence)] for every agent this machine shows signs of.
+
+    Detection is a presence probe, never an execution:
+    a binary on PATH or the agent's own directory existing is evidence enough to offer an install,
+    and printing the evidence keeps the decision inspectable.
+    """
+    found = []
+    if shutil.which("codex"):
+        found.append(("codex", "`codex` on PATH"))
+    else:
+        home = manifest.codex_home()
+        if home is not None and home.is_dir():
+            found.append(("codex", f"{home} exists"))
+    if shutil.which("opencode"):
+        found.append(("opencode", "`opencode` on PATH"))
+    else:
+        d = manifest.opencode_plugins_dir()
+        if d is not None and d.parent.is_dir():
+            found.append(("opencode", f"{d.parent} exists"))
+    return found
+
+
+def _parse_targets(argv, verb, allowed_flags):
+    """(ordered targets, agentsmd_path, flags) or None after a usage error."""
+    targets = []
+    agentsmd_path = None
+    flags = {"yes": False, "dry_run": False, "force": False}
+    by_flag = {"--yes": "yes", "--dry-run": "dry_run", "--force": "force"}
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg in by_flag and by_flag[arg] in allowed_flags:
+            flags[by_flag[arg]] = True
+        elif arg in ("codex", "opencode"):
+            if arg not in targets:
+                targets.append(arg)
+        elif arg == "agentsmd":
+            if i + 1 >= len(argv) or argv[i + 1].startswith("-"):
+                print(f"semlf {verb}: agentsmd requires an explicit "
+                      "path; refusing to default one.", file=sys.stderr)
+                return None
+            i += 1
+            agentsmd_path = Path(argv[i])
+        else:
+            print(f"semlf {verb}: unknown target or flag {arg!r}",
+                  file=sys.stderr)
+            return None
+        i += 1
+    return targets, agentsmd_path, flags
+
+
+def plan_install(targets, agentsmd_path, force):
+    """The whole request's plan, walked in the registry's own order.
+
+    The apply order comes from the rows' order field —
+    the neutral checker and readme first, then each integration's own files —
+    never from a hand-maintained call sequence here.
+    """
+    planned, refusals = [], []
+    snapshot = manifest.load()
+    destinations = payload_destinations()
+    for row in registry.ROWS:
+        if row.recorded and row.owner in targets:
+            plan_file(row.id, force, snapshot, destinations,
+                      planned, refusals)
+        elif row.id == "codex-hook-template" and "codex" in targets:
+            plan_codex_hook(planned, refusals)
+        elif (row.id == "agentsmd-snippet"
+                and agentsmd_path is not None):
+            plan_agentsmd(agentsmd_path, planned, refusals)
+    return planned, refusals
+
+
+def claude_code_trailer():
+    """The marketplace pair, visually set off as the last block."""
+    home = os.path.expanduser("~")
+    has_dir = home != "~" and (Path(home) / ".claude").exists()
+    if not (shutil.which("claude") or has_dir):
+        return
+    print("")
+    print("Claude Code is managed by its own plugin marketplace — "
+          "semlf never touches it:")
+    print("  claude plugin marketplace add "
+          "https://github.com/arloliu/semantic-linefeeds")
+    print("  claude plugin install semantic-linefeeds@semantic-linefeeds")
+
+
+def shim_warning():
+    """Warn when `semlf` on PATH is not the artifact that ran this."""
+    resolved = shutil.which("semlf")
+    if resolved is None:
+        return
+    try:
+        if os.path.realpath(resolved) != os.path.realpath(sys.argv[0]):
+            print(f"warning: `semlf` on PATH resolves to {resolved}, "
+                  "not this artifact; a pre-redesign zipapp or a second "
+                  "channel may be shadowing it. remove it with the "
+                  "checkout door (install.py --uninstall --cli) or the "
+                  "other package manager.")
+    except OSError:
+        pass
+
+
+def _finish(rc):
+    """Every valid install/status outcome ends with the trailer.
+
+    The design pins the marketplace block as the LAST block of the output,
+    so success, dry run, refusal, and a declined prompt all route through here;
+    only usage errors (64) skip it.
+    """
+    claude_code_trailer()
+    return rc
+
+
+def install_command(argv):
+    parsed = _parse_targets(argv, "install",
+                            ("yes", "dry_run", "force"))
+    if parsed is None:
+        return 64
+    targets, agentsmd_path, flags = parsed
+    named = bool(targets or agentsmd_path is not None)
+    if not named:
+        detected = detect_agents()
+        for agent, evidence in detected:
+            print(f"{agent}: detected ({evidence})")
+        if not detected:
+            print("semlf install: no supported agents detected; "
+                  "nothing to do.")
+            return _finish(0)
+        targets = [agent for agent, _ in detected]
+    planned, refusals = plan_install(targets, agentsmd_path,
+                                     flags["force"])
+    if flags["dry_run"]:
+        describe_plan(planned, refusals, prefix="[dry-run] ")
+        return _finish(0)
+    if refusals:
+        # A refusing request reports every artifact's verdict,
+        # not only the refusals (the design's disclosure rule).
+        describe_plan(planned, [])
+        for refusal in refusals:
+            print(refusal, file=sys.stderr)
+        return _finish(1)
+    if not named and not flags["yes"]:
+        describe_plan(planned, refusals)
+        if not sys.stdin.isatty():
+            print("semlf install: not a terminal; re-run with --yes "
+                  "to apply this plan.", file=sys.stderr)
+            return _finish(1)
+        try:
+            answer = input("apply this plan? [y/N] ")
+        except (EOFError, KeyboardInterrupt):
+            print("")
+            return _finish(1)
+        if answer.strip().lower() not in ("y", "yes"):
+            return _finish(1)
+    rc = apply_plan(planned)
+    shim_warning()
+    return _finish(rc)
+
+
+def status_command(argv):
+    print("semlf status: not implemented yet", file=sys.stderr)
+    return 64
+
+
+def uninstall_command(argv):
+    print("semlf uninstall: not implemented yet", file=sys.stderr)
+    return 64
+
+
+def run(command, argv):
+    if command == "install":
+        return install_command(argv)
+    if command == "status":
+        return status_command(argv)
+    if command == "uninstall":
+        return uninstall_command(argv)
+    return 64

@@ -28,7 +28,12 @@ modes:
   --changed              check all changes against HEAD
   --hook [claude|codex]  run as a PostToolUse hook reading JSON on stdin
   doctor                 replay a synthetic payload end to end and report evidence
+  install [TARGET...]    detect agents, list every path the plan writes, ask y/N;
+                         naming a target (codex, opencode, agentsmd PATH) applies it immediately
+  status [agentsmd PATH] report every discoverable or recorded artifact's state
+  uninstall TARGET...    preflight-then-apply removal of a target's artifacts
 options forwarded to the core: --json, --long-limit N (git modes accept both)
+options: install takes --yes, --dry-run, --force; uninstall takes --dry-run, --force
 """
 
 GIT_MODE_FLAGS = ("--staged", "--diff", "--changed")
@@ -83,6 +88,12 @@ def main(argv=None):
     if argv[:1] == ["doctor"]:
         from semlf import doctor
         return doctor.run(argv[1:])
+    if argv[:1] and argv[0] in ("install", "status", "uninstall"):
+        if argv[1:2] and argv[1] in ("--help", "-h"):
+            print(USAGE, end="")
+            return 0
+        from semlf import lifecycle
+        return lifecycle.run(argv[0], argv[1:])
     head = argv[: argv.index("--")] if "--" in argv else argv
     if any(flag in head for flag in GIT_MODE_FLAGS):
         return _git_mode(argv)
