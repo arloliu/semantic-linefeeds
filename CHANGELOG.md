@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`.semlf.ini` can now opt a project into `wrap` feedback**:
+  `experimental-wrap = true` does what
+  `SEMLF_EXPERIMENTAL_WRAP=1` already did, project-wide.
+  The environment variable still wins whenever it is set,
+  so it can force `wrap` on or off regardless of what the file says.
+
 ### Fixed
 
 - **The AGENTS.md snippet's install hint now works outside this repository.**

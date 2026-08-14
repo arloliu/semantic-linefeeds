@@ -2,6 +2,11 @@
 
 **Status:** accepted  
 **Date:** 2026-08-10
+**Amended:** 2026-08-14 —
+[ADR-0017](0017-experimental-wrap-also-lives-in-ini.md) adds a
+`.semlf.ini` `experimental-wrap` key beside the environment variable;
+the opt-in-surface sentence below now names one of two surfaces,
+env still winning over ini.
 
 ## Context
 

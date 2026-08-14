@@ -7,6 +7,11 @@
 and rules that an invalid **value** for one key now drops only that key, not the whole file;
 the whole-file-drop rule below stays accurate for file-level trouble only —
 a missing, unreadable, undecodable, or unparsable-as-INI file.
+**Amended:** 2026-08-14 —
+[ADR-0017](0017-experimental-wrap-also-lives-in-ini.md) adds a third key,
+`experimental-wrap`, and gives it its own precedence order — env beats ini beats off,
+the reverse of the flag-beats-env-beats-ini order below —
+because `wrap`'s opt-in has no flag leg to defer to.
 
 ## Decision
 

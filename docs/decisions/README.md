@@ -22,7 +22,7 @@ If a record and a rule disagree, the rule wins until a new record supersedes it.
 | Record | Decision |
 |---|---|
 | [ADR-0001](0001-long-never-blocks-an-edit.md) | `long` never blocks an edit, and non-blocking findings use each host's model-visible protocol |
-| [ADR-0002](0002-wrap-withdrawn-from-default-feedback.md) | `wrap` leaves default hook feedback; three candidate predicates were refuted and none is adopted |
+| [ADR-0002](0002-wrap-withdrawn-from-default-feedback.md) | `wrap` leaves default hook feedback; three candidate predicates were refuted and none is adopted — opt-in surface amended by [ADR-0017](0017-experimental-wrap-also-lives-in-ini.md) |
 | [ADR-0003](0003-precision-measured-against-labels.md) | Precision and recall are measured against independent labels, never against detector output |
 | [ADR-0004](0004-portable-core-and-repository-cli.md) | The core stays one portable stdlib-only file; a separate CLI owns git, lifecycle, and rendering — lifecycle-verb parts superseded by [ADR-0016](0016-one-entry-point-and-the-payload-registry.md) |
 | [ADR-0005](0005-changed-span-analysis-and-ownership.md) | Analysis may see the whole file; reporting is restricted to diagnostics a change owns |
@@ -37,6 +37,7 @@ If a record and a rule disagree, the rule wins until a new record supersedes it.
 | [ADR-0014](0014-lifecycle-verbs-and-the-provenance-manifest.md) | Install, uninstall, and status stay in `scripts/install.py`; doctor and the identity module ship inside the artifact; provenance is one state file per artifact, refusal over overwrite on any trouble — verb split superseded by [ADR-0016](0016-one-entry-point-and-the-payload-registry.md) |
 | [ADR-0015](0015-distribution-channels.md) | pipx and uv install `semlf` from the repository, never PyPI automation; the wheel maps `cli/semlf` and `check_linefeeds.py` from their repo locations; the zipapp remains the air-gapped channel; one channel per machine, surfaced by three independent refusals — artifact contents, primary source, and collision story superseded by [ADR-0016](0016-one-entry-point-and-the-payload-registry.md) |
 | [ADR-0016](0016-one-entry-point-and-the-payload-registry.md) | `semlf` is the single entry point and owns install, status, and uninstall; payloads embed through one declarative registry and publish to a neutral root; admission is the three-axis classifier; PyPI is the package channel's primary source and the zipapp stays behind the checkout door |
+| [ADR-0017](0017-experimental-wrap-also-lives-in-ini.md) | `experimental-wrap` joins `.semlf.ini` beside `long-limit` and `exclude`; the environment variable still wins whenever it is set, so it can force `wrap` on or off regardless of the file |
 
 ## Principles these records share
 

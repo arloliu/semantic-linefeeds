@@ -12,7 +12,8 @@ Two modes.
 and reads a stable snapshot of the edited file to report real line numbers,
 falling back to checking only the payload's own text when the edit cannot be mapped to it exactly.
 A fused finding blocks the edit: exit 2, with the report on stderr.
-A wrap finding reaches the model only when SEMLF_EXPERIMENTAL_WRAP is set, and never blocks.
+A wrap finding reaches the model only when the wrap opt-in is on, and never blocks:
+SEMLF_EXPERIMENTAL_WRAP or the project's experimental-wrap key, the env var winning when set.
 A result carrying only advisories exits 0 instead,
 delivering them as one JSON object on stdout under hookSpecificOutput.additionalContext,
 which is the shape both hosts make visible to the model.
@@ -38,6 +39,13 @@ __version__ = "0.6.0"
 DEFAULT_LONG_LINE = 120
 CLI_LONG_LIMIT = None  # set by --long-limit in main()
 CONFIG_FILENAME = ".semlf.ini"
+
+# The .semlf.ini key name for the wrap opt-in (ADR-0017).
+# Hyphenated like long-limit, not underscored like its env-var counterpart.
+# Named once so both configparser calls below share one literal:
+# a second, independently spelled literal is how a rename silently breaks one call
+# and leaves the other raising configparser.NoOptionError.
+WRAP_KEY = "experimental-wrap"
 
 
 def active_long_limit(path=None):
@@ -92,7 +100,8 @@ def _config_and_root(start_dir):
     File-level trouble — unreadable, undecodable, parser error —
     drops the whole file;
     an invalid value drops only its own key,
-    so one bad long-limit cannot silence a good exclude beside it.
+    so one bad long-limit cannot silence a good exclude beside it
+    (and, per ADR-0017, a malformed experimental-wrap cannot silence either).
     """
     cur = os.path.realpath(start_dir)
     if not os.path.isdir(cur):
@@ -119,6 +128,7 @@ def _config_and_root(start_dir):
             parser.remove_option(configparser.DEFAULTSECT, option)
         raw_limit = parser.get("semlf", "long-limit", fallback=None)
         raw_exclude = parser.get("semlf", "exclude", fallback=None)
+        raw_wrap = parser.get("semlf", WRAP_KEY, fallback=None)
     except (OSError, UnicodeDecodeError, configparser.Error):
         return {}, None
     cfg = {}
@@ -137,6 +147,11 @@ def _config_and_root(start_dir):
                 patterns.append(pattern)
         if patterns:
             cfg["exclude"] = patterns
+    if raw_wrap is not None:
+        try:
+            cfg["experimental_wrap"] = parser.getboolean("semlf", WRAP_KEY)
+        except ValueError:
+            pass
     return cfg, cur
 
 
@@ -145,9 +160,10 @@ def load_config(start_dir):
 
     The walk and its boundary rules live on _config_and_root;
     this wrapper keeps the public shape every v0.6a caller uses.
-    Returns {"long_limit": int} and/or {"exclude": [str, ...]} for a
-    valid file, else {} — a config file can tune the checker but must
-    never break it, and an invalid value drops only its own key.
+    Returns any of {"long_limit": int}, {"exclude": [str, ...]}, and
+    {"experimental_wrap": bool}, merged, for a valid file, else {} —
+    a config file can tune the checker but must never break it,
+    and an invalid value drops only its own key.
     """
     return _config_and_root(start_dir)[0]
 
@@ -1495,22 +1511,42 @@ WITHHELD_KIND = "wrap"
 WITHHELD_OPT_IN = "SEMLF_EXPERIMENTAL_WRAP"
 
 # Values that read as "off" rather than as an opt-in.
+# "" only reaches this set for a whitespace-only env value now (ADR-0017):
+# an unset/empty env var short-circuits earlier, before DISABLED_VALUES is consulted.
 DISABLED_VALUES = {"", "0", "false", "no", "off"}
 
 
-def opted_into_withheld_kind():
-    """Whether the caller asked to see the kind this release withholds."""
-    return os.environ.get(WITHHELD_OPT_IN, "").strip().lower() not in DISABLED_VALUES
+def opted_into_withheld_kind(path=None):
+    """Whether the caller asked to see the kind this release withholds.
+
+    Precedence (ADR-0017):
+    $SEMLF_EXPERIMENTAL_WRAP decides outright when set to any non-empty value.
+    DISABLED_VALUES still reads "0", "false", and friends as off,
+    so the env var can force-disable an ini-enabled repo just as it can force-enable one that never opted in.
+    Only when the env var is unset or empty does the project config's `experimental-wrap` key apply.
+    Discovery walks from path's directory the same way active_long_limit discovers long_limit (ADR-0013).
+    A path-less caller falls back to env-only rather than crashing.
+    Default is off.
+    """
+    raw = os.environ.get(WITHHELD_OPT_IN, "")
+    if raw:
+        return raw.strip().lower() not in DISABLED_VALUES
+    if path is not None:
+        cfg = load_config(_existing_start(path))
+        if "experimental_wrap" in cfg:
+            return cfg["experimental_wrap"]
+    return False
 
 
-def model_visible(findings):
+def model_visible(findings, path=None):
     """The findings a hook may put in front of the model.
 
     Narrower than what `check` returns, and deliberately so.
     The gate this release is measured by asks what the model is told,
     not what the checker can see.
+    `path` threads through to opted_into_withheld_kind's env/ini/default resolution (ADR-0017).
     """
-    if opted_into_withheld_kind():
+    if opted_into_withheld_kind(path):
         return list(findings)
     return [finding for finding in findings if _kind_of(finding) != WITHHELD_KIND]
 
@@ -1654,7 +1690,7 @@ def deliver(reports, transport, note=None):
     A single-file delivery keeps that line-number label as-is, since the report body right above it already names the one file in play;
     once a second report is present, each label also names its file, or two findings sharing a line number across files would read as the same one.
     """
-    reports = [(p, model_visible(f), s) for p, f, s in reports]
+    reports = [(p, model_visible(f, p), s) for p, f, s in reports]
     reports = [(p, f, s) for p, f, s in reports if f]
     if not reports:
         return 0
@@ -1937,7 +1973,8 @@ def main(prog=None):
                       help="read a PostToolUse JSON payload on stdin and check only the "
                            "text just written; fused exits 2 with the report on stderr, "
                            "advisory-only findings exit 0 as JSON on stdout; wrap is "
-                           "withheld unless SEMLF_EXPERIMENTAL_WRAP is set "
+                           "withheld unless SEMLF_EXPERIMENTAL_WRAP or the ini "
+                           "experimental-wrap key opts in (env wins) "
                            "(default agent: claude)")
     # Zero or more, with a trailing catch-all, so that `--file --json PATH` parses.
     # With `nargs="+"`, an option word standing where a path belongs left `--file` with

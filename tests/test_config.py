@@ -634,3 +634,203 @@ def test_hostile_exclude_configs_never_change_hook_kinds(tmp_path):
         r = run_hook(payload, tmp_path)
         assert r.returncode == 2, hostile
         assert kinds_in(r.stderr) == {"fused"}, hostile
+
+
+# --- experimental-wrap ini key / experimental_wrap cfg dict key:
+# env > ini > default(off) (ADR-0017) ---
+
+def test_experimental_wrap_true_parses(tmp_path):
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {"experimental_wrap": True}
+
+
+def test_experimental_wrap_false_parses(tmp_path):
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = false\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {"experimental_wrap": False}
+
+
+def test_experimental_wrap_accepts_numeric_and_word_spellings(tmp_path):
+    for spelling, expected in (("1", True), ("yes", True), ("on", True),
+                               ("0", False), ("no", False), ("off", False)):
+        write(tmp_path / ".semlf.ini",
+              f"[semlf]\nexperimental-wrap = {spelling}\n")
+        assert check_linefeeds.load_config(str(tmp_path)) == {
+            "experimental_wrap": expected}, spelling
+
+
+def test_experimental_wrap_is_case_insensitive(tmp_path):
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = TRUE\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {"experimental_wrap": True}
+
+
+def test_experimental_wrap_invalid_value_drops_the_key(tmp_path):
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = maybe\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {}
+
+
+def test_experimental_wrap_combines_with_other_keys(tmp_path):
+    write(tmp_path / ".semlf.ini",
+          "[semlf]\nlong-limit = 80\nexperimental-wrap = true\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {
+        "long_limit": 80, "experimental_wrap": True}
+
+
+def test_bad_experimental_wrap_does_not_drop_a_good_long_limit(tmp_path):
+    write(tmp_path / ".semlf.ini",
+          "[semlf]\nlong-limit = 80\nexperimental-wrap = maybe\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {"long_limit": 80}
+
+
+def test_old_underscore_spelling_in_ini_is_inert(tmp_path):
+    """`experimental_wrap` (underscore) is not the ini key — `experimental-wrap` is.
+
+    An unrecognized key is just prose configparser ignores,
+    so this reads as "no experimental_wrap key present", same as no config at all.
+    """
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental_wrap = true\n")
+    assert check_linefeeds.load_config(str(tmp_path)) == {}
+
+
+def test_opted_into_withheld_kind_no_config_or_env_defaults_off(tmp_path, monkeypatch):
+    monkeypatch.delenv("SEMLF_EXPERIMENTAL_WRAP", raising=False)
+    assert check_linefeeds.opted_into_withheld_kind(str(tmp_path / "x.md")) is False
+
+
+def test_opted_into_withheld_kind_ini_true_enables(tmp_path, monkeypatch):
+    monkeypatch.delenv("SEMLF_EXPERIMENTAL_WRAP", raising=False)
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
+    assert check_linefeeds.opted_into_withheld_kind(str(tmp_path / "x.md")) is True
+
+
+def test_opted_into_withheld_kind_ini_false_stays_off(tmp_path, monkeypatch):
+    monkeypatch.delenv("SEMLF_EXPERIMENTAL_WRAP", raising=False)
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = false\n")
+    assert check_linefeeds.opted_into_withheld_kind(str(tmp_path / "x.md")) is False
+
+
+def test_opted_into_withheld_kind_env_wins_over_ini_disable(tmp_path, monkeypatch):
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = false\n")
+    monkeypatch.setenv("SEMLF_EXPERIMENTAL_WRAP", "1")
+    assert check_linefeeds.opted_into_withheld_kind(str(tmp_path / "x.md")) is True
+
+
+def test_opted_into_withheld_kind_env_wins_over_ini_enable(tmp_path, monkeypatch):
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
+    monkeypatch.setenv("SEMLF_EXPERIMENTAL_WRAP", "0")
+    assert check_linefeeds.opted_into_withheld_kind(str(tmp_path / "x.md")) is False
+
+
+def test_opted_into_withheld_kind_invalid_ini_defaults_off(tmp_path, monkeypatch):
+    monkeypatch.delenv("SEMLF_EXPERIMENTAL_WRAP", raising=False)
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = maybe\n")
+    assert check_linefeeds.opted_into_withheld_kind(str(tmp_path / "x.md")) is False
+
+
+def test_opted_into_withheld_kind_no_path_falls_back_to_env_only(monkeypatch):
+    """A call site with no file path still resolves — env-only, never a crash."""
+    monkeypatch.setenv("SEMLF_EXPERIMENTAL_WRAP", "1")
+    assert check_linefeeds.opted_into_withheld_kind() is True
+    monkeypatch.setenv("SEMLF_EXPERIMENTAL_WRAP", "0")
+    assert check_linefeeds.opted_into_withheld_kind() is False
+
+
+def test_opted_into_withheld_kind_empty_env_string_falls_through_to_ini(tmp_path, monkeypatch):
+    """Set-but-empty is "unset" for this leg, same as opted_into_withheld_kind always read it.
+
+    Pins the exact `if raw:` check against a change to `if raw.strip():`,
+    which would flip this and the whitespace-only case below differently.
+    """
+    monkeypatch.setenv("SEMLF_EXPERIMENTAL_WRAP", "")
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
+    assert check_linefeeds.opted_into_withheld_kind(str(tmp_path / "x.md")) is True
+
+
+def test_opted_into_withheld_kind_whitespace_env_string_wins_as_disabled(tmp_path, monkeypatch):
+    """Whitespace is non-empty, so the env leg decides outright and strips to "off".
+
+    A change from `if raw:` to `if raw.strip():` would fall through to the ini's `true` here,
+    silently flipping this case to enabled.
+    """
+    monkeypatch.setenv("SEMLF_EXPERIMENTAL_WRAP", " ")
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
+    assert check_linefeeds.opted_into_withheld_kind(str(tmp_path / "x.md")) is False
+
+
+WRAP_ONLY = "a line that ends mid-clause because it was\nwrapped at a column.\n"
+
+
+def codex_multiline_payload(name, text):
+    """Like codex_payload, but prefixes every line.
+
+    A multi-line text then survives the patch as one contiguous "add" run.
+    codex_payload's single leading "+" would lose every line but the first.
+    """
+    body = "".join("+" + line + "\n" for line in text.splitlines())
+    patch = ("*** Begin Patch\n*** Update File: " + name + "\n@@\n" + body +
+             "*** End Patch")
+    return {"session_id": "s1", "turn_id": "t1", "transcript_path": "/tmp/t",
+            "cwd": ".", "hook_event_name": "PostToolUse", "model": "m",
+            "permission_mode": "default", "tool_name": "apply_patch",
+            "tool_input": {"command": patch},
+            "tool_response": {"output": "Done"}, "tool_use_id": "call_1"}
+
+
+def test_experimental_wrap_ini_true_enables_wrap_in_hook_feedback(tmp_path, monkeypatch):
+    monkeypatch.delenv("SEMLF_EXPERIMENTAL_WRAP", raising=False)
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / "doc.md", WRAP_ONLY)
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
+    for agent, payload in (("claude", claude_payload("doc.md", WRAP_ONLY)),
+                           ("codex", codex_multiline_payload("doc.md", WRAP_ONLY))):
+        r = run_hook(payload, tmp_path, agent=agent)
+        assert r.returncode == 0, agent
+        assert kinds_in(r.stdout) == {"wrap"}, agent
+        assert r.stderr == "", agent
+
+
+def test_experimental_wrap_ini_false_env_true_env_wins(tmp_path, monkeypatch):
+    monkeypatch.setenv("SEMLF_EXPERIMENTAL_WRAP", "1")
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / "doc.md", WRAP_ONLY)
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = false\n")
+    for agent, payload in (("claude", claude_payload("doc.md", WRAP_ONLY)),
+                           ("codex", codex_multiline_payload("doc.md", WRAP_ONLY))):
+        r = run_hook(payload, tmp_path, agent=agent)
+        assert r.returncode == 0, agent
+        assert kinds_in(r.stdout) == {"wrap"}, agent
+
+
+def test_experimental_wrap_ini_true_env_zero_env_wins_disabled(tmp_path, monkeypatch):
+    monkeypatch.setenv("SEMLF_EXPERIMENTAL_WRAP", "0")
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / "doc.md", WRAP_ONLY)
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = true\n")
+    for agent, payload in (("claude", claude_payload("doc.md", WRAP_ONLY)),
+                           ("codex", codex_multiline_payload("doc.md", WRAP_ONLY))):
+        r = run_hook(payload, tmp_path, agent=agent)
+        assert r.returncode == 0, agent
+        assert r.stdout == "", agent
+        assert r.stderr == "", agent
+
+
+def test_experimental_wrap_invalid_ini_value_keeps_wrap_withheld(tmp_path, monkeypatch):
+    monkeypatch.delenv("SEMLF_EXPERIMENTAL_WRAP", raising=False)
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / "doc.md", WRAP_ONLY)
+    write(tmp_path / ".semlf.ini", "[semlf]\nexperimental-wrap = maybe\n")
+    payload = claude_payload("doc.md", WRAP_ONLY)
+    r = run_hook(payload, tmp_path)
+    assert r.returncode == 0
+    assert r.stdout == ""
+    assert r.stderr == ""
+
+
+def test_experimental_wrap_no_config_matches_current_behavior(tmp_path, monkeypatch):
+    monkeypatch.delenv("SEMLF_EXPERIMENTAL_WRAP", raising=False)
+    (tmp_path / ".git").mkdir()
+    write(tmp_path / "doc.md", WRAP_ONLY)
+    payload = claude_payload("doc.md", WRAP_ONLY)
+    r = run_hook(payload, tmp_path)
+    assert r.returncode == 0
+    assert r.stdout == ""
+    assert r.stderr == ""

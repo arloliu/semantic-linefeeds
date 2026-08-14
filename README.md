@@ -125,7 +125,8 @@ So this kit backs the rule with three layers instead of trusting the model to re
    a long line comes back as advice, because leaving it long is often the right answer.
    `wrap` is not reported to the model at all,
    because a labeled corpus measured its false positives and the number was not small enough to act on.
-   Set `SEMLF_EXPERIMENTAL_WRAP=1` to see it anyway, as advice that never blocks.
+   Set `SEMLF_EXPERIMENTAL_WRAP=1` to see it anyway, as advice that never blocks,
+   or set `experimental-wrap = true` in `.semlf.ini` to opt a whole project in.
 2. **Skill** —
    `semantic-linefeeds` carries the judgment calls the detector can't make on its own:
    what counts as a clause boundary, the compound-object `and` test, the never-break list,
@@ -221,6 +222,9 @@ the checker falls back to the next precedence leg rather than failing the run.
 `SEMLF_EXPERIMENTAL_WRAP=1` puts `wrap` back in hook feedback,
 where it arrives as advice at exit 0 and never blocks an edit.
 Any value other than `0`, `false`, `no`, or `off` turns it on.
+A project can opt in the same way with `experimental-wrap = true` in `.semlf.ini` (ADR-0017);
+the environment variable still wins whenever it is set,
+so it can also force-disable an opted-in repository.
 
 Hook mode skips paths under the platform temp directory and any `tmp/` component,
 so agent scratch files are never flagged.
