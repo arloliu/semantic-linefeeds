@@ -2815,6 +2815,22 @@ def test_status_names_no_consumer_leftovers_in_one_line(tmp_path):
     assert str(data_root(tmp_path)) in out
 
 
+def test_status_points_opencode_leftovers_at_their_real_path(tmp_path):
+    """The leftover pointer derives from each identity row's own
+    destination: an opencode-checker leftover lives in the opencode
+    plugins directory, never under the neutral data root."""
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "opencode"], env)
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    (plugins / "semantic-linefeeds.ts").unlink()
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0
+    out = r.stdout
+    assert "no remaining" in out.lower()
+    assert str(plugins / "check_linefeeds.py") in out
+    assert str(data_root(tmp_path)) not in out
+
+
 def test_status_excludes_agentsmd_without_a_path(tmp_path):
     r = run_semlf(["status"], isolated_env(tmp_path))
     assert "agentsmd" not in r.stdout.lower()
@@ -3029,7 +3045,8 @@ def status_command(argv):
         return 64
     consumers = installed_consumers()
     snapshot = manifest.load()
-    leftovers = False
+    destinations = payload_destinations()
+    leftover_paths = []
     # Every identity payload — both checker copies and the readme —
     # reports through payload_identity; the classifier vocabulary
     # never appears on a payload line.
@@ -3046,7 +3063,10 @@ def status_command(argv):
             continue
         print(f"payload {line}")
         if state != "missing" and row.owner not in consumers:
-            leftovers = True
+            # The leftover pointer derives from the row's own
+            # destination — an opencode-checker leftover lives in the
+            # opencode plugins directory, never under the data root.
+            leftover_paths.append(destinations[row.id])
     home = manifest.codex_home()
     data_dir = manifest.semlf_data_dir()
     if home is None or data_dir is None:
@@ -3075,8 +3095,8 @@ def status_command(argv):
                       "re-run `semlf install codex`)")
     # The skill and the plugin are integration artifacts, not
     # identity payloads: they report the classifier state verbatim
-    # (the one manifest snapshot above serves this loop too).
-    destinations = payload_destinations()
+    # (the one manifest snapshot and destinations above serve this
+    # loop too).
     for name, label in (("codex-skill", "codex skill"),
                         ("opencode-plugin", "opencode plugin")):
         dest = destinations[name]
@@ -3091,9 +3111,10 @@ def status_command(argv):
             snapshot.get(name), dest, rendered_bytes(name),
             artifact_version(), False)
         print(f"{label}: {verdict.state} ({dest})")
-    if leftovers:
-        print(f"payloads: no remaining consumer; remove "
-              f"{manifest.semlf_data_dir()} by hand if unwanted.")
+    if leftover_paths:
+        listed = ", ".join(str(p) for p in leftover_paths)
+        print(f"payloads: no remaining consumer; remove {listed} "
+              "by hand if unwanted.")
     shim_warning()
     return _finish(0)
 ```
@@ -3364,13 +3385,13 @@ Append to `tests/test_doctor.py`
 the new tests drive the package-door state with the same isolated env shape as `tests/test_semlf_install.py`):
 
 ```python
-def _install_codex_via_semlf(tmp_path, env):
+def _install_via_semlf(tmp_path, env, target="codex"):
     bootstrap = ("import sys; sys.path[:0] = [%r, %r]; "
                  "from semlf.cli import main; "
                  "sys.exit(main(sys.argv[1:]))"
                  % (str(REPO / "cli"), str(REPO / "scripts")))
     r = subprocess.run([sys.executable, "-c", bootstrap,
-                        "install", "codex"],
+                        "install", target],
                        capture_output=True, text=True, env=env,
                        timeout=60)
     assert r.returncode == 0, r.stderr
@@ -3379,7 +3400,7 @@ def _install_codex_via_semlf(tmp_path, env):
 
 def test_doctor_passes_with_current_payloads(tmp_path):
     pyz, env = installed_pyz(tmp_path)
-    _install_codex_via_semlf(tmp_path, env)
+    _install_via_semlf(tmp_path, env)
     r = run_doctor(pyz, env, cwd=str(tmp_path))
     assert r.returncode == 0, r.stdout + r.stderr
     assert "payload" in r.stdout
@@ -3387,7 +3408,7 @@ def test_doctor_passes_with_current_payloads(tmp_path):
 
 def test_doctor_fails_on_an_expected_payload_mismatch(tmp_path):
     pyz, env = installed_pyz(tmp_path)
-    _install_codex_via_semlf(tmp_path, env)
+    _install_via_semlf(tmp_path, env)
     checker = Path(env["XDG_DATA_HOME"]) / "semlf" / "check_linefeeds.py"
     checker.write_text(checker.read_text(encoding="utf-8") + "# edited\n",
                        encoding="utf-8")
@@ -3417,7 +3438,7 @@ def test_doctor_fails_an_installed_hook_with_no_published_payload(
 
 def test_doctor_warns_but_passes_on_no_consumer_leftovers(tmp_path):
     pyz, env = installed_pyz(tmp_path)
-    _install_codex_via_semlf(tmp_path, env)
+    _install_via_semlf(tmp_path, env)
     # Remove the consumer but keep the payloads (the uninstall verb's
     # deliberate leftover policy).
     hooks = Path(env["CODEX_HOME"]) / "hooks.json"
@@ -3436,6 +3457,21 @@ def test_doctor_passes_on_a_machine_with_no_integrations(tmp_path):
     pyz, env = installed_pyz(tmp_path)
     r = run_doctor(pyz, env, cwd=str(tmp_path))
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_doctor_leftover_pointer_names_each_real_path(tmp_path):
+    """The leftover pointer derives from each identity row's own
+    destination: an opencode-checker leftover is named by its path in
+    the opencode plugins directory, never by the neutral data root."""
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env, "opencode")
+    plugins = Path(env["XDG_CONFIG_HOME"]) / "opencode" / "plugins"
+    (plugins / "semantic-linefeeds.ts").unlink()
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "warn" in r.stdout.lower()
+    assert str(plugins / "check_linefeeds.py") in r.stdout
+    assert str(Path(env["XDG_DATA_HOME"]) / "semlf") not in r.stdout
 ```
 
 Extend the existing `installed_pyz` helper's env with
@@ -3449,7 +3485,7 @@ which after this task is an expected-consumer-with-missing-payload machine —
 exactly the migration half-state doctor must flag —
 so its healthy-path assertion would fail.
 Update that test to publish the payloads first
-(run `semlf install codex` through `_install_codex_via_semlf` before asserting exit 0),
+(run `semlf install codex` through `_install_via_semlf` before asserting exit 0),
 and pin the flagging behavior explicitly in the new
 `test_doctor_fails_on_an_expected_payload_mismatch` family below
 (add a case: owned hook present, payload never published → exit 1 with a `payload: FAIL` line).
@@ -3495,9 +3531,11 @@ def _payload_identity_check():
     """
     failures = 0
     consumers = lifecycle.installed_consumers()
-    leftover_dir = None
-    # The identity set and its consumer expectedness both come from
-    # the registry rows — no hand-maintained name tuple here.
+    destinations = lifecycle.payload_destinations()
+    leftover_paths = []
+    # The identity set, its consumer expectedness, and the leftover
+    # pointer all come from the registry rows — no hand-maintained
+    # name tuple here.
     for row in registry.ROWS:
         if not row.identity:
             continue
@@ -3510,13 +3548,13 @@ def _payload_identity_check():
             failures += 1
         elif not expected:
             print(f"payload: warn — {line} (no remaining consumer)")
-            if row.id in ("checker", "readme"):
-                leftover_dir = manifest.semlf_data_dir()
+            if destinations[row.id] is not None:
+                leftover_paths.append(destinations[row.id])
         else:
             print(f"payload: {line}")
-    if leftover_dir is not None:
-        print(f"payload: warn — remove {leftover_dir} by hand if "
-              "unwanted")
+    if leftover_paths:
+        listed = ", ".join(str(p) for p in leftover_paths)
+        print(f"payload: warn — remove {listed} by hand if unwanted")
     return failures
 ```
 
