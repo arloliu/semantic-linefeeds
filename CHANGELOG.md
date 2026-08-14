@@ -5,23 +5,57 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] - 2026-08-14
+
+`semlf` is now installable straight from PyPI.
+`install`, `status`, `uninstall`, and `doctor` are the full lifecycle behind that one command.
 
 ### Added
 
+- **`semlf` installs from PyPI**: `uv tool install semlf`,
+  or the equivalent `pipx install semlf`.
+  `semlf install` detects your agents and proposes one plan before writing anything,
+  `semlf status` reports every artifact's state,
+  `semlf uninstall` removes what was installed without touching anything it did not write,
+  and `semlf doctor` replays a real edit through every installed hook end to end.
 - **`.semlf.ini` can now opt a project into `wrap` feedback**:
   `experimental-wrap = true` does what
   `SEMLF_EXPERIMENTAL_WRAP=1` already did, project-wide.
   The environment variable still wins whenever it is set,
   so it can force `wrap` on or off regardless of what the file says.
 
+### Changed
+
+- **Hooks and skills now point at a shared install location outside any checkout**:
+  `${XDG_DATA_HOME:-~/.local/share}/semlf/` holds the checker and README every installed hook and skill read,
+  so an install keeps working even after the checkout that created it moves or is deleted.
+- **Upgrading is one pair of commands**: `uv tool upgrade semlf && semlf install`.
+- **A checkout install's hook now targets that same shared location, not the checkout itself.**
+  `install.py --codex` used to point the Codex hook at a path inside the repository it ran from;
+  it now points at the same shared copy a PyPI install writes,
+  so the hook survives the checkout moving or being deleted.
+- **`install.py --dry-run` reports a file that has diverged from what this kit installed,
+  instead of failing.**
+  It used to exit non-zero on a hand-edited skill or opencode file;
+  it now prints the refusal it would make and exits 0, like any other preview.
+- **A file this kit installed now upgrades in place, without `--force` and without a backup.**
+  Only a hand-edited copy still needs `--force` to replace,
+  and only that replacement still takes a backup first.
+- **An existing backup file now blocks a forced replace instead of being silently overwritten.**
+  `--force` used to overwrite a stale `.bak` left by an earlier forced replace;
+  it now refuses whenever the backup slot is already occupied, the same way everywhere.
+- **`install.py --codex` also publishes the checker and README to the shared install location.**
+  A checkout install and a PyPI install now leave byte-identical copies behind.
+- **Bare `install.py` status no longer probes `./AGENTS.md` in the current directory.**
+  `semlf status agentsmd PATH` reports on a specific file instead.
+
 ### Fixed
 
-- **The AGENTS.md snippet's install hint now works outside this repository.**
-  It said `semlf` comes from `install.py --cli` — a file only this repository has —
-  so a repository that received the snippet told its users to run a command
-  nobody said how to obtain.
-  It now gives the `pipx install` command from the git URL, which works anywhere.
+- **The AGENTS.md snippet's install hint now names the published package.**
+  It used to point at `install.py --cli`, a file only this repository has,
+  so a repository that received the snippet told its users to run a command nobody said how to obtain.
+  It now gives `uv tool install semlf` (or the equivalent `pipx install semlf`),
+  which works from any repository now that the package is on PyPI.
 
 ## [0.6.0] - 2026-08-14
 

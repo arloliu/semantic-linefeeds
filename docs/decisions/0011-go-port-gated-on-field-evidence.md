@@ -2,6 +2,10 @@
 
 **Status:** accepted
 **Date:** 2026-08-13
+**Reviewed:** 2026-08-14 —
+gate unchanged at the v0.6→v0.7 boundary:
+no field evidence of a missing-runtime adoption blocker;
+next review before v1.0.
 
 ## Decision
 
