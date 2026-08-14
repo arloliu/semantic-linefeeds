@@ -29,6 +29,7 @@ version = {attr = "check_linefeeds.__version__"}
 target-version = "py39"
 line-length = 88
 extend-exclude = ["tests/fixtures", "tests/extractor", "*.md"]
+force-exclude = true
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "C4", "UP"]
