@@ -214,19 +214,7 @@ def _codex_hook_check():
         print("codex hook: FAIL — hooks.json is unreadable, oversized, "
               "not a regular file, or not valid JSON")
         return 1
-    hooks = data.get("hooks") if isinstance(data, dict) else None
-    post = hooks.get("PostToolUse") if isinstance(hooks, dict) else None
-    if not isinstance(post, list):
-        print("codex hook: not installed")
-        return 0
-    owned = []
-    for block in post:
-        if not isinstance(block, dict) or not isinstance(block.get("hooks"), list):
-            continue
-        for h in block["hooks"]:
-            argv = manifest.parse_managed_codex_hook(block.get("matcher"), h)
-            if argv:
-                owned.append(argv)
+    owned = manifest.owned_codex_hooks(data)
     if not owned:
         print("codex hook: not installed")
         return 0

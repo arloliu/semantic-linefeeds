@@ -1,6 +1,7 @@
 """tests/test_manifest.py — provenance identity and its failure directions."""
 import json
 import os
+import stat
 import sys
 from pathlib import Path
 
@@ -214,3 +215,82 @@ def test_writers_cannot_interfere_across_artifacts(tmp_path, monkeypatch):
     manifest.forget("cli")
     record_current("opencode-plugin", b)  # a later, unrelated record
     assert "cli" not in manifest.load()   # the forgotten name stays gone
+
+
+def test_known_grows_the_neutral_payload_names():
+    assert "checker" in manifest.KNOWN
+    assert "readme" in manifest.KNOWN
+    assert manifest.artifact_state_path("checker") is not None
+
+
+def test_semlf_data_dir_honors_xdg(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg"))
+    assert manifest.semlf_data_dir() == tmp_path / "xdg" / "semlf"
+
+
+def test_semlf_data_dir_falls_back_to_local_share(monkeypatch, tmp_path):
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    assert manifest.semlf_data_dir() == (
+        tmp_path / ".local" / "share" / "semlf")
+
+
+def test_record_preflight_accepts_a_writable_root(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    assert manifest.record_preflight("checker") is None
+
+
+def test_record_preflight_refuses_a_directory_at_the_record_path(
+        monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    path = manifest.artifact_state_path("checker")
+    path.mkdir(parents=True)
+    refusal = manifest.record_preflight("checker")
+    assert refusal is not None and "not a regular file" in refusal
+
+
+def test_record_preflight_refuses_a_file_blocking_the_parent(
+        monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    (tmp_path / "state").mkdir()
+    (tmp_path / "state" / "semlf").write_text("in the way")
+    refusal = manifest.record_preflight("checker")
+    assert refusal is not None and "not a directory" in refusal
+
+
+@pytest.mark.skipif(hasattr(os, "geteuid") and os.geteuid() == 0,
+                    reason="root ignores permission bits")
+def test_record_preflight_refuses_an_unwritable_state_tree(
+        monkeypatch, tmp_path):
+    """A writable destination plus a read-only artifacts directory must
+    refuse at preflight, not publish and then fail the record write."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    artifacts = tmp_path / "state" / "semlf" / "artifacts"
+    artifacts.mkdir(parents=True)
+    artifacts.chmod(0o555)
+    try:
+        refusal = manifest.record_preflight("checker")
+        assert refusal is not None and "writ" in refusal
+    finally:
+        artifacts.chmod(0o755)
+
+
+def test_owned_codex_hooks_finds_only_managed_entries():
+    data = {"hooks": {"PostToolUse": [
+        {"matcher": "apply_patch", "hooks": [
+            {"type": "command",
+             "command": 'python3 "/x/check_linefeeds.py" --hook codex'},
+            {"type": "command", "command": "echo unrelated"}]},
+        {"matcher": "shell", "hooks": [
+            {"type": "command",
+             "command": 'python3 "/x/check_linefeeds.py" --hook codex'}]},
+    ]}}
+    owned = manifest.owned_codex_hooks(data)
+    assert owned == [["python3", "/x/check_linefeeds.py",
+                      "--hook", "codex"]]
+
+
+def test_owned_codex_hooks_is_total_over_hostile_shapes():
+    for data in (None, [], {"hooks": []}, {"hooks": {"PostToolUse": {}}},
+                 {"hooks": {"PostToolUse": [None, {"hooks": "x"}]}}):
+        assert manifest.owned_codex_hooks(data) == []

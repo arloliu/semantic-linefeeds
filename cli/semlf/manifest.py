@@ -21,7 +21,8 @@ import stat
 import tempfile
 from pathlib import Path
 
-KNOWN = ("cli", "codex-skill", "opencode-plugin", "opencode-checker")
+KNOWN = ("cli", "checker", "readme", "codex-skill",
+         "opencode-plugin", "opencode-checker")
 
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -276,3 +277,77 @@ def cli_bin_dest():
     if home == "~":
         return None
     return Path(home) / ".local" / "bin" / "semlf"
+
+
+def semlf_data_dir():
+    """${XDG_DATA_HOME:-~/.local/share}/semlf, or None when no home resolves.
+
+    The neutral payload root:
+    installed hooks and skills point here, whatever channel semlf itself arrived by,
+    so a hook survives a channel switch, a venv rebuild, or a CLI uninstall untouched.
+    """
+    if os.environ.get("XDG_DATA_HOME"):
+        return Path(os.environ["XDG_DATA_HOME"]) / "semlf"
+    home = os.path.expanduser("~")
+    if home == "~":
+        return None
+    return Path(home) / ".local" / "share" / "semlf"
+
+
+def record_preflight(name):
+    """None when name's record can be written here, else a refusal string.
+
+    Preflight admits the provenance side before the first destination is touched:
+    the state root must resolve, the record leaf must be absent or a regular file,
+    and the nearest existing ancestor of its parent must be a directory —
+    a file squatting on the semlf state directory would otherwise fail the record write after publication,
+    leaving the half-state a preflight exists to prevent.
+    """
+    state = artifact_state_path(name)
+    if state is None:
+        return "no state root resolves (no home directory)"
+    try:
+        if os.path.lexists(state) and not stat.S_ISREG(os.lstat(state).st_mode):
+            return (f"record path {state} exists and is "
+                    "not a regular file")
+        probe = state.parent
+        while not os.path.lexists(probe):
+            if probe.parent == probe:
+                break
+            probe = probe.parent
+        if os.path.lexists(probe):
+            if not probe.is_dir():
+                return (f"record parent {probe} exists and is not a "
+                        "directory")
+            # record() creates missing directories, stages a temp file,
+            # and os.replace()s it into the parent —
+            # all of which need write+search permission on the nearest existing ancestor.
+            if not os.access(str(probe), os.W_OK | os.X_OK):
+                return f"record parent {probe} is not writable"
+    except OSError as exc:
+        return f"cannot inspect the record path {state}: {exc}"
+    return None
+
+
+def owned_codex_hooks(data):
+    """Every managed hook argv in a parsed hooks.json; [] on any trouble.
+
+    The one structural scan doctor, status, and the installer share,
+    so "installed" can never mean different things to different verbs.
+    """
+    if not isinstance(data, dict):
+        return []
+    hooks = data.get("hooks", {})
+    if not isinstance(hooks, dict):
+        return []
+    post = hooks.get("PostToolUse", [])
+    if not isinstance(post, list):
+        return []
+    out = []
+    for block in post:
+        if isinstance(block, dict) and isinstance(block.get("hooks"), list):
+            for h in block["hooks"]:
+                argv = parse_managed_codex_hook(block.get("matcher"), h)
+                if argv is not None:
+                    out.append(argv)
+    return out
