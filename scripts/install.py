@@ -49,21 +49,20 @@ TRUST_NOTE = ("note: Codex hashes unmanaged hooks; on your next interactive "
 sys.path.insert(0, str(REPO / "cli"))
 from semlf import manifest  # noqa: E402 -- must follow the path insert above
 from semlf import registry  # noqa: E402
+from semlf.lifecycle import (  # noqa: E402
+    exclusive_backup as _exclusive_backup,
+    publish_exclusive as _publish_new,
+)
 from semlf.manifest import (  # noqa: E402
     codex_home, opencode_plugins_dir, codex_skill_dest, cli_bin_dest,
 )
 
-# Deliberately does NOT list semlf/lifecycle.py:
-# that module arrives only in Task 5,
-# and _snapshot_runnable requires every listed member to exist
-# (a member listed before its module exists fails every pyz runnable check).
-# Task 5 appends "semlf/lifecycle.py" to this set as one of its own steps.
 PYZ_REQUIRED_MEMBERS = frozenset(
     {"__main__.py", "check_linefeeds.py",
      "semlf/__init__.py", "semlf/cli.py",
      "semlf/providers.py", "semlf/doctor.py",
      "semlf/manifest.py", "semlf/registry.py",
-     "semlf/classify.py"}
+     "semlf/classify.py", "semlf/lifecycle.py"}
     | {row.member for row in registry.ROWS})
 
 
@@ -326,47 +325,6 @@ def pyz_runnable(path):
 def _path_note(dest):
     if str(dest.parent) not in os.environ.get("PATH", "").split(os.pathsep):
         print(f"note: {dest.parent} is not on PATH; add it in your shell profile.")
-
-
-def _publish_new(staged, dest):
-    """Exclusively publish staged at dest; False when dest already appeared.
-
-    os.link fails with FileExistsError when dest exists,
-    so a file that appeared after classification is never replaced unclassified.
-    The staged file is always consumed.
-    """
-    try:
-        os.link(staged, dest)
-    except FileExistsError:
-        return False
-    finally:
-        os.unlink(staged)
-    return True
-
-
-def _exclusive_backup(src, bak, data):
-    """Write data — the already-guarded classification snapshot — to bak.
-
-    data, never a fresh read of src, is the point:
-    the caller took src's bytes through the no-follow snapshot primitive once, to classify it,
-    and the backup must preserve exactly what was classified, not whatever src holds by the time this runs.
-    O_EXCL is the other half: the backup slot is claimed atomically,
-    so a concurrent double --force cannot overwrite the only copy of a hand-patched artifact,
-    and a pre-existing symlink at bak is refused, never followed.
-    copystat still reads src's own metadata (permissions, timestamps) — that is a stat call, not a content read,
-    and src is already proven a regular file by the caller before this runs.
-    The cleanup covers every step including copystat:
-    a failure at any point releases the slot,
-    so a retry never finds it occupied by a half-made backup.
-    """
-    fd = os.open(str(bak), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        with os.fdopen(fd, "wb") as fh:
-            fh.write(data)
-        shutil.copystat(src, bak)
-    except BaseException:
-        os.unlink(bak)
-        raise
 
 
 def _adopt_current_cli(dest, snapshot):
