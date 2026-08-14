@@ -10,6 +10,9 @@ cli/semlf/                        # repository CLI (ADR-0004); delegates all ana
 cli/semlf/providers.py             # git snapshot providers (the only place git runs)
 cli/semlf/doctor.py                # end-to-end replay diagnostics (ships in the artifact)
 cli/semlf/manifest.py              # install provenance (read by installer and doctor)
+cli/semlf/registry.py              # the one payload table: sources, members, destinations, transforms
+cli/semlf/classify.py              # three-axis admission (object state x provenance x mode)
+cli/semlf/lifecycle.py             # shared install/status/uninstall engine behind both doors
 hooks/hooks.json                  # Claude Code adapter (PostToolUse → --hook claude)
 skills/semantic-linefeeds/        # the skill agents load to fix findings
 adapters/codex/                   # Codex CLI adapter (hooks.json template + INSTALL.md)
@@ -37,9 +40,15 @@ The boundary is drawn by what a thing needs, not by how long the file has become
 - The **repository CLI** (`cli/semlf/`) owns git snapshot selection, subcommand routing,
   doctor, and rendering.
   It reuses the core's discovery function rather than carrying its own.
-- The **installer** (`scripts/install.py`) owns install, uninstall, and status —
-  the verbs that live beside the payloads they copy and report on
-  ([ADR-0014](../../docs/decisions/0014-lifecycle-verbs-and-the-provenance-manifest.md)).
+- The **CLI also owns install, uninstall, and status**,
+  because the registry embeds every payload in the wheel and the zipapp,
+  so those verbs no longer need a checkout to copy from
+  ([ADR-0016](../../docs/decisions/0016-one-entry-point-and-the-payload-registry.md)).
+- `scripts/install.py` is the **checkout door**:
+  a thin parser over the same shared lifecycle operations,
+  keeping its whole flag vocabulary so `install.sh` is unaffected,
+  and the only door that builds or removes the zipapp
+  ([ADR-0016](../../docs/decisions/0016-one-entry-point-and-the-payload-registry.md)).
 
 A packaging proof under [`docs/proofs/zipapp-packaging/`](../../docs/proofs/zipapp-packaging/)
 shows the split ships as one artifact, and one command replays it.

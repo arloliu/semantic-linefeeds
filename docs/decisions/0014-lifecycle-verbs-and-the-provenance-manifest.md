@@ -1,7 +1,12 @@
 # ADR-0014: Lifecycle verbs and the provenance manifest
 
-**Status:** accepted
+**Status:** accepted — superseded in part by [ADR-0016](0016-one-entry-point-and-the-payload-registry.md)
 **Date:** 2026-08-14
+**Superseded in part:** 2026-08-14 —
+[ADR-0016](0016-one-entry-point-and-the-payload-registry.md)
+supersedes the verb split in the decision, evidence,
+and rejected-alternatives sections below;
+payload embedding removes the "no checkout to copy from" premise.
 
 ## Decision
 

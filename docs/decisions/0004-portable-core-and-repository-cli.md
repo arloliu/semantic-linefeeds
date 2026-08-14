@@ -1,10 +1,15 @@
 # ADR-0004: One portable core, one separate repository CLI
 
-**Status:** accepted  
+**Status:** accepted — superseded in part by [ADR-0016](0016-one-entry-point-and-the-payload-registry.md)  
 **Date:** 2026-08-10
 **Amended:** 2026-08-14 —
 [ADR-0014](0014-lifecycle-verbs-and-the-provenance-manifest.md)
 refines the lifecycle-verb assignment.
+**Superseded in part:** 2026-08-14 —
+[ADR-0016](0016-one-entry-point-and-the-payload-registry.md)
+supersedes the amendment header above,
+the decision parenthetical, and the lifecycle-verb sentence;
+install, uninstall, and status move behind `semlf`.
 
 ## Decision
 

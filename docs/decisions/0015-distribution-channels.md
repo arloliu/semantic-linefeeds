@@ -1,7 +1,12 @@
 # ADR-0015: Distribution channels
 
-**Status:** accepted
+**Status:** accepted — superseded in part by [ADR-0016](0016-one-entry-point-and-the-payload-registry.md)
 **Date:** 2026-08-14
+**Superseded in part:** 2026-08-14 —
+[ADR-0016](0016-one-entry-point-and-the-payload-registry.md)
+supersedes the wheel and zipapp contents, the package channel's primary source,
+and the collision story below;
+the maintainer-act publishing boundary and the no-fork mapping rule stand.
 
 ## Decision
 
