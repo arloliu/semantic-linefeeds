@@ -18,9 +18,9 @@ The manual steps are for review or for unusual setups only.
 1. Clone this repo somewhere stable, e.g. `~/tools/semantic-linefeeds`.
 2. Copy `adapters/codex/hooks.json` to `~/.codex/hooks.json` (user scope)
    or `<project>/.codex/hooks.json` (project scope),
-   replacing `__REPO__` with the absolute repo path:
+   replacing `__CHECKER__` with the absolute path to the checker script:
 
-       sed "s|__REPO__|$HOME/tools/semantic-linefeeds|" adapters/codex/hooks.json > ~/.codex/hooks.json
+       sed "s|__CHECKER__|$HOME/tools/semantic-linefeeds/scripts/check_linefeeds.py|" adapters/codex/hooks.json > ~/.codex/hooks.json
 
    If you already have a `hooks.json`, merge the `PostToolUse` entry instead of overwriting.
 3. Codex asks you to trust the hook on first run

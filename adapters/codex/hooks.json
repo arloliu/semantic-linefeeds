@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"__REPO__/scripts/check_linefeeds.py\" --hook codex"
+            "command": "python3 \"__CHECKER__\" --hook codex"
           }
         ]
       }
