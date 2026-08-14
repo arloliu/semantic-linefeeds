@@ -4,7 +4,12 @@ opencode plugins are in-process TypeScript; this one shells out to the same core
 
 The quick path is the installer:
 
-    python3 scripts/install.py --opencode
+    semlf install opencode
+
+On an air-gapped machine with no package index,
+the checkout door covers the same install:
+
+    curl -fsSL https://raw.githubusercontent.com/arloliu/semantic-linefeeds/main/install.sh | sh -s -- --opencode
 
 The manual steps below remain for review or for unusual setups.
 

@@ -1,8 +1,9 @@
 # semantic-linefeeds
 
+**AI coding agents know where a sentence ends — they just don't wrap lines there.**
+
 > **A diff-aware prose guardrail for AI coding agents and source repositories.**
-> Agents produce non-semantic line breaks,
-> instructions alone don't reliably prevent it,
+> Instructions alone don't reliably prevent it,
 > and a deterministic check at the tool boundary catches it.
 
 **The Problem:**
@@ -60,6 +61,55 @@ The same edit under semantic line breaks touches only the one line whose meaning
 Reviewers see exactly the word that changed,
 and blame on any sentence finds the commit that wrote it.
 
+## Quickstart
+
+```bash
+uv tool install semlf        # or: pipx install semlf
+semlf install                # detects agents, lists every path it would write, asks y/N
+semlf doctor                 # replays the payloads end to end
+```
+
+Claude Code stays on its own plugin marketplace and is never touched by `semlf`.
+`/path/to/semantic-linefeeds` is a local checkout of this repo, or any git remote of it:
+
+```bash
+claude plugin marketplace add /path/to/semantic-linefeeds
+claude plugin install semantic-linefeeds@semantic-linefeeds
+```
+
+| Agent | Command |
+|---|---|
+| Codex CLI | `semlf install codex` |
+| opencode | `semlf install opencode` |
+| Claude Code | the marketplace pair above |
+| Anything else (AGENTS.md) | `semlf install agentsmd PATH` |
+
+`semlf install` with no target detects which agents are present
+and proposes one plan covering all of them, then asks y/N.
+Naming a target instead — `codex`, `opencode`, or `agentsmd PATH` — applies that one target immediately.
+
+Pick one channel for the `semlf` command itself.
+A zipapp left at `~/.local/bin/semlf` and a `uv tool install`/`pipx install` shim would otherwise shadow each other;
+`semlf install`'s end-of-run `PATH` check, and `semlf doctor`, both name the collision when they see one.
+
+## What Gets Installed
+
+| Component | Location | Purpose | Who needs it |
+|---|---|---|---|
+| Checker | `${XDG_DATA_HOME:-~/.local/share}/semlf/check_linefeeds.py` | The enforcement core every installed hook and skill runs | Codex CLI (the hook's target) |
+| README | published beside the checker, at the same neutral root | Resolves the installed skill's suppression-rules link, even on an air-gapped machine | Codex CLI |
+| Codex hook entry | `$CODEX_HOME/hooks.json` (default `~/.codex/hooks.json`) | Runs the checker after every edit; blocks `fused`, reports `wrap`/`long` as advice | Codex CLI |
+| Codex skill | `~/.agents/skills/semantic-linefeeds/SKILL.md` | The judgment layer: clause-boundary calls, suppression syntax, the disagreement rule | Codex CLI |
+| opencode plugin | the opencode plugins directory (`$XDG_CONFIG_HOME/opencode/plugins`, default `~/.config/opencode/plugins`) | Wires the checker into opencode's edit/write/apply_patch tool output | opencode |
+| opencode's checker copy | the same opencode plugins directory, beside the plugin | The plugin resolves its checker next to itself, not at the neutral root | opencode |
+| AGENTS.md snippet | the file you name with `semlf install agentsmd PATH` | The judgment layer for any agent with no native skill mechanism | Any AGENTS.md-reading agent |
+
+On the package channel, the `semlf` package is the installer and cannot be skipped —
+but its check commands (`semlf check`, `semlf --staged`, and so on) stay optional after that.
+A guardrail-only machine that wants no CLI at all is the checkout door's offer instead:
+`install.sh --codex`, with no `--cli`, writes the hook, the skill, and the neutral-root payloads, and stops there
+(see [Air-gapped and mirror installs](#air-gapped-and-mirror-installs)).
+
 ## Why Telling an Agent Isn't Enough
 
 Writing the rule into AGENTS.md, CLAUDE.md, or any other instruction file doesn't hold up at generation time:
@@ -83,7 +133,7 @@ So this kit backs the rule with three layers instead of trusting the model to re
    judge a finding before rewriting, and a believed false positive
    or a finding that survives one repair goes to the user instead of another rewrite.
    Claude Code ships it as a plugin skill;
-   `scripts/install.py --codex` writes a native copy for Codex CLI;
+   `semlf install codex` writes a native copy for Codex CLI;
    other agents fall back to the AGENTS.md snippet.
    Hook feedback names the skill only when a usable copy is present at a location
    Codex resolves skills from.
@@ -145,91 +195,6 @@ Suggested replacement for line 12:
 The suggestion exists only for the `!`/`?` automatic class, never for a period boundary.
 It is never applied for you —
 apply it as your next edit, after judging the finding like any other.
-
-## Quick Start
-
-One command clones (or updates) a checkout under `${XDG_DATA_HOME:-~/.local/share}/semantic-linefeeds`
-and hands the remaining arguments to `scripts/install.py`:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/arloliu/semantic-linefeeds/main/install.sh | sh -s -- --codex --cli
-```
-
-Pass the flag for your agent to the one-liner above, or to `python3 scripts/install.py` inside a checkout.
-Passing no flag prints a status report of what's installed where.
-Every path bottoms out in the same detector script.
-Add `--cli` to build the `semlf` zipapp and install it as `~/.local/bin/semlf`,
-the standalone `semlf --file`/`semlf check` command the Configuration and snippet sections below assume.
-
-| Agent | Installer flag | Guide |
-|---|---|---|
-| Claude Code | none | [marketplace commands below](#claude-code-marketplace) |
-| Codex CLI | `--codex` | [adapters/codex/INSTALL.md](adapters/codex/INSTALL.md) |
-| opencode | `--opencode` | [adapters/opencode/INSTALL.md](adapters/opencode/INSTALL.md) |
-| Anything else | `--agentsmd PATH` | [adapters/agentsmd/SNIPPET.md](adapters/agentsmd/SNIPPET.md) |
-
-### As a package (pipx or uv)
-
-```bash
-pipx install git+https://github.com/arloliu/semantic-linefeeds
-# or
-uv tool install git+https://github.com/arloliu/semantic-linefeeds
-```
-
-Either gives you the `semlf` command — check, git modes, and doctor.
-Agent hook installs still come from a checkout's `install.py`,
-because the adapter payloads live there.
-Pick one channel per machine:
-a zipapp already at `~/.local/bin/semlf` and a pipx install would otherwise shadow each other,
-and `semlf doctor` will say so.
-The zipapp channel (`install.py --cli`) remains supported for air-gapped and mirrored machines.
-
-### Claude Code (Marketplace)
-
-The repo embeds its own marketplace (`.claude-plugin/marketplace.json` with `source: "./"`),
-so it installs from a local path or any private git remote — no public registry involved:
-
-```bash
-claude plugin marketplace add /path/to/semantic-linefeeds
-claude plugin install semantic-linefeeds@semantic-linefeeds
-```
-
-### Private Network
-
-Everything installs from a mirror without edits.
-`install.sh` reads its clone source from `--repo` or the `SEMLF_REPO` env var,
-and the checker itself never touches the network.
-Mirror this repo to your internal git host,
-curl the script from the mirror's raw endpoint,
-and point `SEMLF_REPO` back at the mirror:
-
-```bash
-# GitLab raw path shown; Gitea/Forgejo use /raw/branch/main/ instead of /-/raw/main/
-curl -fsSL https://git.internal/you/semantic-linefeeds/-/raw/main/install.sh |
-  SEMLF_REPO=git@git.internal:you/semantic-linefeeds.git sh -s -- --codex
-```
-
-Export `SEMLF_REPO` once in your shell profile,
-and every later re-run installs and updates from the mirror without repeating it.
-`--ref`/`SEMLF_REF` pins a tag or branch;
-`--home`/`SEMLF_HOME` moves the checkout.
-
-For Claude Code,
-`claude plugin marketplace add git@git.internal:you/semantic-linefeeds.git` covers the same case.
-
-## Lifecycle
-
-```bash
-python3 scripts/install.py            # status of every install
-python3 scripts/install.py --auto     # detect agents, install for what's present
-python3 scripts/install.py --uninstall --codex   # remove hook + skill
-semlf doctor                          # replay a payload end to end, report evidence
-```
-
-Upgrades are provenance-aware:
-re-running an installer replaces an untouched older release silently,
-and refuses a hand-edited copy unless you say `--force` —
-which claims `semlf.bak` exclusively and never overwrites an existing backup.
 
 ## Configuration
 
@@ -350,10 +315,110 @@ After writing any text block, act on whatever the linefeeds hook reports.
 A blocked edit must be fixed; an advisory is a judgment call, and leaving the line alone can be right.
 ```
 
-## Testing
+## Appendix
+
+### Air-gapped and mirror installs
+
+The package channel's `git+URL` form still works when a machine can't reach PyPI:
 
 ```bash
-python3 -m pytest tests/ -q                        # full suite: CLI, detector, extractor goldens
+pipx install git+https://github.com/arloliu/semantic-linefeeds
+# or
+uv tool install git+https://github.com/arloliu/semantic-linefeeds
+```
+
+For a fully offline or mirrored network, the checkout door covers every artifact this kit installs.
+One command clones (or updates) a checkout under `${XDG_DATA_HOME:-~/.local/share}/semantic-linefeeds`
+and hands the remaining arguments to `scripts/install.py`,
+the same shared lifecycle engine behind `semlf install`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/arloliu/semantic-linefeeds/main/install.sh | sh -s -- --codex --cli
+```
+
+Pass the flag for your agent to the one-liner above, or to `python3 scripts/install.py` inside a checkout.
+Passing no flag prints a status report of what's installed where.
+
+| Agent | Installer flag |
+|---|---|
+| Codex CLI | `--codex` |
+| opencode | `--opencode` |
+| Anything else | `--agentsmd PATH` |
+
+Add `--cli` to build the `semlf` zipapp and install it as `~/.local/bin/semlf` —
+the one channel that needs no package index at all,
+and the one the package door deliberately has no equivalent for:
+pipx, uv, and the zipapp all want the same `~/.local/bin/semlf` shim,
+so building and removing the zipapp stays exclusive to the checkout door.
+
+`install.sh` reads its clone source from `--repo` or the `SEMLF_REPO` env var,
+and the checker itself never touches the network.
+Mirror this repo to your internal git host,
+curl the script from the mirror's raw endpoint,
+and point `SEMLF_REPO` back at the mirror:
+
+```bash
+# GitLab raw path shown; Gitea/Forgejo use /raw/branch/main/ instead of /-/raw/main/
+curl -fsSL https://git.internal/you/semantic-linefeeds/-/raw/main/install.sh |
+  SEMLF_REPO=git@git.internal:you/semantic-linefeeds.git sh -s -- --codex
+```
+
+Export `SEMLF_REPO` once in your shell profile,
+and every later re-run installs and updates from the mirror without repeating it.
+`--ref`/`SEMLF_REF` pins a tag or branch;
+`--home`/`SEMLF_HOME` moves the checkout.
+
+For Claude Code,
+`claude plugin marketplace add git@git.internal:you/semantic-linefeeds.git` covers the same case.
+
+The [Vercel `skills` CLI](https://www.npmjs.com/package/skills) can fetch the judgment-layer skill on its own,
+as a supplement rather than an install path.
+It copies `SKILL.md` and nothing else,
+so it cannot install the hook —
+this kit's load-bearing layer, the one that surfaces findings at generation time —
+and an agent that only has the skill this way still needs `semlf install` or the checkout door for the hook.
+
+### Lifecycle
+
+```bash
+semlf install [TARGET...]     # detect agents and propose a plan, or apply one named target
+semlf status [agentsmd PATH]  # report every discoverable or recorded artifact's state
+semlf uninstall TARGET...     # preflight-then-apply removal of a target's artifacts
+semlf doctor                  # replay a payload end to end, report evidence
+```
+
+Upgrading is a two-command pair:
+
+```bash
+uv tool upgrade semlf && semlf install
+# or: pipx upgrade semlf && semlf install
+```
+
+The first command updates the `semlf` command itself, its embedded payloads included;
+the second re-applies the current payload set over whatever is already installed.
+Upgrades are provenance-aware:
+re-running an installer replaces an untouched older release silently.
+A release newer than the one already published is a downgrade and refuses by default;
+`--force` states the intent and replaces it, no backup, since a managed file is never the only copy of anything.
+An edited or unrecorded file always refuses first;
+`--force` there takes an exclusive backup to `<name>.bak` before replacing it,
+and an occupied backup slot refuses either way.
+
+Uninstalling one integration never deletes the neutral root's published checker or README:
+their independence from any single integration is the point of the neutral root,
+so they are left in place once the last integration that used them is gone,
+and `semlf status` lists the specific leftover file paths in one line for manual removal.
+
+A zipapp left over from before this redesign is a migration case:
+`semlf install` runs a `PATH` check at the end of every run
+and warns when `semlf` on `PATH` is not the artifact that just ran;
+`semlf status` and `semlf doctor` repeat the warning,
+with the checkout-door removal pointer (`install.py --uninstall --cli`).
+
+### Testing
+
+```bash
+python3 -m pytest tests/ -q                        # full suite: CLI, detector, extractor, install/doctor
 python3 scripts/check_linefeeds.py --file <files>   # audit files by hand
 bun test adapters/opencode/                         # opencode plugin's own unit tests (needs bun)
 ```

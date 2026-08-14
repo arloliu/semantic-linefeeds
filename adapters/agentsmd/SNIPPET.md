@@ -25,5 +25,4 @@ Check your work with:
     semlf --file <files you touched>
 
 (If `semlf` is not installed:
-`pipx install git+https://github.com/arloliu/semantic-linefeeds`,
-or the equivalent `uv tool install`.)
+`uv tool install semlf`, or the equivalent `pipx install semlf`.)
