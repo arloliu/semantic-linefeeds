@@ -1,6 +1,6 @@
 # Install UX Redesign — Design
 
-**Status:** third revision, awaiting review
+**Status:** fourth revision, awaiting review
 **Date:** 2026-08-14
 
 ## Problem
@@ -110,17 +110,25 @@ the canonical repository path,
 the embedded member path (`semlf/payloads/<id>` in both wheel and zipapp),
 the installed destination or destinations,
 the transform with its required match count,
-and the owning install target.
+the owning install target,
+and its apply-order position.
+The registry lives as one table in a `cli/semlf/` module,
+imported by the installer, both builders, and the tests.
+Neither builder copies canonical files by hand:
+a shared staging step reads the registry
+and places each canonical source at its member path in the build tree only —
+the wheel's build hook and the zipapp builder both call it,
+and no packaging copy is ever committed to the repository.
 
 | Id | Canonical source | Installed destination | Transform | Owner |
 |---|---|---|---|---|
 | `checker` | `scripts/check_linefeeds.py` | `<data root>/semlf/check_linefeeds.py` | byte copy | codex |
 | `readme` | `README.md` | `<data root>/semlf/README.md` | byte copy | codex |
-| codex hook (structural, no record) | `adapters/codex/hooks.json` | merged entry in `$CODEX_HOME/hooks.json` | `__CHECKER__` → neutral checker path | codex |
+| `codex-hook-template` (structural admission, no record) | `adapters/codex/hooks.json` | merged entry in `$CODEX_HOME/hooks.json` | `__CHECKER__` → neutral checker path | codex |
 | `codex-skill` | `skills/semantic-linefeeds/SKILL.md` | `~/.agents/skills/semantic-linefeeds/SKILL.md` | three rewrites, each must match exactly once | codex |
 | `opencode-plugin` | `adapters/opencode/semantic-linefeeds.ts` | opencode plugins dir | byte copy | opencode |
 | `opencode-checker` | `scripts/check_linefeeds.py` | checker beside the plugin | byte copy | opencode |
-| agentsmd snippet (sentinel, no record) | `adapters/agentsmd/SNIPPET.md` | sentinel block in the path the user names | byte splice | agentsmd |
+| `agentsmd-snippet` (sentinel admission, no record) | `adapters/agentsmd/SNIPPET.md` | sentinel block in the path the user names | byte splice | agentsmd |
 
 `manifest.KNOWN` grows the `checker` and `readme` names;
 the codex hook keeps structural admission
@@ -131,6 +139,14 @@ and carries the full checker path,
 because substituting a directory into today's `__REPO__/scripts/...` shape bakes a stray `/scripts/` segment into the command.
 Every transform fails loud when its match count is wrong,
 so a canonical-source edit can never silently disable a rewrite.
+The codex-skill rewrites are pinned to the neutral root:
+the fenced command's checker path becomes `<data root>/semlf/check_linefeeds.py`,
+the suppression link becomes `<data root>/semlf/README.md`,
+and the checkout-only fallback sentence is removed;
+the rendering test asserts all three rendered strings.
+The two no-record rows still have ids
+so their member paths exist —
+the hook template and the snippet ride in both artifacts for rendering and for `semlf install agentsmd PATH`.
 The installed hook command keeps the shape
 `python3 <path ending in check_linefeeds.py> --hook codex`,
 so the structural ownership rule holds unchanged.
@@ -154,7 +170,9 @@ for every registry row that is a single-file artifact
 | absent | write, record provenance | same |
 | exact current rendering | no-op; adopt or refresh a missing or stale record | same |
 | managed older release | replace, refresh record, no backup | same |
-| managed newer release (downgrade) | refuse: "published is newer than this artifact" | replace, refresh record, no backup |
+| managed newer release (downgrade) | refuse: "published is newer than this artifact — rerun with `--force` to downgrade" | replace, refresh record, no backup |
+| managed, equal version, different bytes | replace, refresh record, no backup | same |
+| managed, unorderable version | refuse: "cannot order the recorded version against this artifact's" | replace, refresh record, no backup |
 | edited or unrecorded | refuse, name the finding | exclusive `O_EXCL` backup, then replace and record |
 | backup slot occupied or non-regular | refuse | still refuse |
 | symlink, directory, special, unreadable | refuse | still refuse — force never overrides an object-state refusal |
@@ -163,9 +181,15 @@ Adoption in the exact-rendering row is deliberate:
 publication and record are separate files,
 so a correct copy with a missing record must converge to `managed` on the next run,
 not stay `unrecorded` forever.
+Versions order as dot-separated integer tuples, compared numerically;
+a recorded version that does not parse that way is unorderable,
+and the classifier fails closed on it rather than guessing.
+Equal version with different bytes replaces:
+two builds can share a version string,
+and the running artifact's rendering is the one its record must describe.
 Downgrade refusal is the default
 because an old zipapp or checkout run must not silently drag every hook's checker backwards;
-`--force` states the intent.
+`--force` states the intent, and the refusal message names it.
 Managed replacements in either direction skip the backup —
 ADR-0014's rationale stands: a recorded release is not the only copy of anything.
 `--dry-run` never prompts, never writes a destination, never mutates a record,
@@ -180,13 +204,22 @@ whose dry-run today exits nonzero on a diverged skill or plugin file.
 `semlf install` classifies every artifact of the whole request read-only first;
 any refusal aborts the run before the first write,
 reporting every artifact's verdict.
-Apply order follows the registry's dependencies:
+Preflight admits the provenance side too:
+the state root must resolve,
+and each record's parent and leaf must be writable paths,
+not directories or special files,
+before the first destination is touched.
+Apply order follows the registry's order field:
 the neutral `checker` and `readme` first,
 then each integration's own files.
 If the filesystem fails mid-apply anyway,
-the run reports, per artifact, applied or not-applied,
+the run reports, per artifact,
+applied, not applied,
+or published-but-not-recorded —
+the half-state where a destination replaced but its record write failed —
 and a rerun converges:
-every completed artifact classifies as exact rendering and no-ops,
+every completed artifact classifies as exact rendering
+and no-ops or adopts its missing record,
 every incomplete one is attempted again.
 Rollback is deliberately not offered.
 
@@ -207,7 +240,8 @@ degraded classification, never a silent overwrite.
 | `semlf install agentsmd PATH` | first-class; the path is required, never defaulted, never auto-detected |
 | `semlf install --yes` | apply without prompting, any mode |
 | `semlf install --dry-run` | print every artifact's classification and planned action, write nothing, exit 0 |
-| `semlf status` | report every artifact's state, including published-payload lag and no-consumer leftovers |
+| `semlf status` | report every discoverable or recorded artifact's state, including published-payload lag and no-consumer leftovers; the agentsmd snippet lives at a user-named path and is excluded |
+| `semlf status agentsmd PATH` | report the sentinel block's state in the named file |
 | `semlf uninstall codex` | preflight-then-apply removal, ADR-0014 semantics unchanged |
 | `semlf uninstall agentsmd PATH` | removes the sentinel block from the named file; path required, mirroring install |
 | `semlf uninstall` (no target) | usage error, exit 64 |
@@ -248,7 +282,15 @@ The version string is the human-facing label in the report,
 with distinct wordings for missing, edited,
 managed-but-lagging, managed-but-ahead,
 and same-version-different-bytes.
-`semlf status` reports; `semlf doctor` counts any mismatch as a failed check and exits 1.
+Expectedness is conditioned on consumers:
+an installed integration makes its payloads expected,
+and a mismatch on an expected payload is what doctor fails on.
+A payload with no remaining consumer —
+the deliberately retained leftovers above —
+is reported as a warning with the manual-removal pointer, never a failure,
+a machine with no integrations passes,
+and a codex-only machine is never failed over the absent opencode copy.
+`semlf status` reports; `semlf doctor` counts any expected-payload mismatch as a failed check and exits 1.
 The doctor row in the command table above is this addition;
 doctor's existing replay contract is otherwise untouched.
 
@@ -281,9 +323,16 @@ and keeps installing the zipapp unconditionally;
 the package door's `semlf install` never does.
 
 The flag surface is unchanged;
-two behaviors under it change deliberately and are documented:
-the installed hook's target path moves from the checkout to the neutral root,
-and `--dry-run` on a diverged file prints the would-be refusal at exit 0 instead of exiting nonzero.
+the behavior deltas under it are enumerated here, documented, and called out in the release notes:
+the installed hook's target path moves from the checkout to the neutral root;
+`--dry-run` on a diverged file prints the would-be refusal at exit 0 instead of exiting nonzero;
+a manifest-managed older skill or opencode file now upgrades without `--force`;
+managed replacements skip the backup that `atomic_write` takes today;
+an occupied backup slot now refuses uniformly,
+where today the skill and opencode paths overwrite a stale `.bak` last-run-wins;
+`--codex` newly publishes the neutral checker and readme;
+and argumentless status stops probing `./AGENTS.md`,
+which `semlf status agentsmd PATH` replaces.
 
 ### Channels after the change
 
@@ -335,28 +384,34 @@ one channel per machine, and `semlf doctor` names a collision when it sees one.
 
 ### ADR impact
 
-The amendment task is a full textual consistency sweep,
-not a list of single sentences:
-decision text, evidence lists, rejected-alternative entries, amendment headers,
-and the decisions index all carry restatements of the old verb split
-and the old packaging shape.
+The decisions index's own policy holds:
+an accepted record is never edited,
+so the redesign is recorded as one new ADR
+that supersedes the affected parts of ADR-0004, ADR-0014, and ADR-0015,
+and the superseded records gain only status and superseded-by pointers.
+The sweep below names what the new record must cover,
+because decision text, evidence lists, rejected-alternative entries,
+amendment headers, the decisions index, and the project rule all restate the old verb split and the old packaging shape.
 
-- **ADR-0014** — decision, evidence, and rejected-alternatives text:
+- **ADR-0014** — the new record supersedes its decision, evidence, and rejected-alternatives claims:
   payload embedding removes the "no payload to copy from" premise,
   and install, uninstall, and status move behind `semlf`.
   Preflight-then-apply, the provenance manifest,
   structural hook ownership, and doctor's contract carry over;
   the managed-upgrade rule is extended by the classifier above, not weakened.
-- **ADR-0015** — wheel and zipapp contents gain the registry's rows,
+- **ADR-0015** — the new record supersedes three areas:
+  wheel and zipapp contents gain the registry's rows,
   the package channel gains PyPI as its primary source
   (git-URL retained for mirrors),
   and the collision story records the moved surface;
   its evidence list and rejected collision alternative are updated with it.
   The maintainer-act publishing boundary and the no-fork mapping rule stand.
 - **ADR-0004** — the amendment header, the decision parenthetical,
-  and the lifecycle-verb sentence are rewritten together.
+  and the lifecycle-verb sentence are superseded together,
+  each marked by a pointer to the new record, never rewritten in place.
 - **`.agents/rules/100-project-map.md`** and **`docs/decisions/README.md`** —
-  their verb-assignment and distribution summaries are amended in the same commit as the ADRs.
+  living documents, not records —
+  their verb-assignment and distribution summaries are amended in the same commit as the new record.
 
 ## Non-goals
 
@@ -368,7 +423,8 @@ and the old packaging shape.
 - No change to detector behavior, hook wire formats, or the one-file core rule.
 - No rollback machinery and no lifecycle-command locking;
   the preflight, idempotent-rerun, and fail-closed rules above are the whole contract.
-- `semlf update` (headroom-style, channel-detecting self-update) is a possible follow-up,
+- `semlf update` (headroom-style, channel-detecting self-update)
+  and `semlf clean` (removing no-consumer leftovers) are possible follow-ups,
   not part of this slice.
 
 ## Testing
@@ -383,7 +439,10 @@ and the old packaging shape.
   including adoption, downgrade refusal and forced downgrade,
   the occupied backup slot, and the force-never-overrides object-state rows.
 - Preflight: a request with one refusing artifact mutates nothing;
-  a mid-apply failure leaves a state a rerun converges from;
+  a mid-apply failure leaves a state a rerun converges from,
+  including the published-but-not-recorded half-state
+  and permanent record-side failures —
+  no resolvable state root, a directory at the record path;
   crossed destination-and-record interleavings classify as `edited` or `unrecorded`.
 - Migration: tests begin from current checkout-rendered artifacts
   and existing provenance records,
