@@ -14,6 +14,7 @@ Concurrent lifecycle commands stay out of scope (ADR-0014's boundary).
 import os
 import re
 import shutil
+import stat
 import sys
 import tempfile
 from collections import namedtuple
@@ -250,3 +251,207 @@ def describe_plan(planned, refusals, prefix=""):
         print(prefix + item.label)
     for refusal in refusals:
         print(f"{prefix}would refuse: {refusal}")
+
+
+# --- shared-file artifacts ---------------------------------------------------
+# The codex hook and the agentsmd snippet each own a shared file this kit does not control end to end:
+# structural admission over hooks.json's PostToolUse entries,
+# and sentinel-block admission over a user-named Markdown file.
+# Both keep their own preflight-then-apply plan, folded into the same
+# `planned`/`refusals` lists every other artifact uses.
+
+
+SENTINEL_OPEN = "<!-- semantic-linefeeds -->"
+SENTINEL_CLOSE = "<!-- /semantic-linefeeds -->"
+
+TRUST_NOTE = ("note: Codex hashes unmanaged hooks; on your next "
+              "interactive codex run it will ask you to trust this "
+              "hook — accept it once.")
+
+
+def bak_sibling_ok(path):
+    """Whether path's .bak sibling is absent or a plain regular file."""
+    bak = path.with_name(path.name + ".bak")
+    try:
+        return (not os.path.lexists(bak)
+                or stat.S_ISREG(os.lstat(bak).st_mode))
+    except OSError:
+        return False
+
+
+def publish_shared(path, text):
+    """atomic_write for a shared merged file (hooks.json, AGENTS.md).
+
+    Ported from install.py's atomic_write with semantics unchanged:
+    an existing regular file is first copied to <name>.bak — last-run-wins,
+    because the next run re-merges the shared file, so the backup is never the only copy of anything —
+    and a non-regular object in the slot raises OSError instead of being written through.
+    Publication is the same-directory temp file and os.replace.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        bak = path.with_name(path.name + ".bak")
+        try:
+            bak_mode = os.lstat(bak).st_mode
+        except FileNotFoundError:
+            bak_mode = None
+        if bak_mode is not None and not stat.S_ISREG(bak_mode):
+            raise OSError(f"backup slot {bak} exists and is not a "
+                          "regular file; move it aside and re-run")
+        shutil.copy2(path, bak)
+    publish_bytes(path, text.encode("utf-8"))
+
+
+def plan_codex_hook(planned, refusals):
+    """Plan the PostToolUse merge into $CODEX_HOME/hooks.json.
+
+    Structural admission, no provenance record:
+    ownership is parse_managed_codex_hook over the shared file, never per-file bytes,
+    and foreign entries are preserved exactly.
+    """
+    import json
+    home = manifest.codex_home()
+    data_dir = manifest.semlf_data_dir()
+    if home is None or data_dir is None:
+        refusals.append("refusing to install the codex hook: cannot "
+                        "determine a home directory to install it under.")
+        return
+    entry = registry.render_codex_hook_entry(data_dir)
+    command = entry["hooks"][0]["command"]
+    path = home / "hooks.json"
+    if not os.path.lexists(path):
+        data = {"hooks": {"PostToolUse": [entry]}}
+        label = f"codex hook: create {path}"
+    else:
+        data = manifest.read_state_json(path)
+        if data is None or not isinstance(data, dict):
+            refusals.append(f"refusing to touch {path}: cannot read or "
+                            "parse it; merge the entry from the codex "
+                            "adapter template by hand.")
+            return
+        hooks = data.setdefault("hooks", {})
+        if not isinstance(hooks, dict):
+            refusals.append(f"refusing to touch {path}: cannot parse "
+                            "it; repair it by hand.")
+            return
+        post = hooks.setdefault("PostToolUse", [])
+        if not isinstance(post, list):
+            refusals.append(f"refusing to touch {path}: cannot parse "
+                            "it; repair it by hand.")
+            return
+        # Guard every nested level before iterating:
+        # a parseable but hostile shape ({"hooks": 7}, a non-dict block) must plan around the garbage,
+        # never raise TypeError mid-preflight.
+        ours = [h for block in post if isinstance(block, dict)
+                and isinstance(block.get("hooks"), list)
+                for h in block["hooks"]
+                if isinstance(h, dict)
+                and manifest.parse_managed_codex_hook(
+                    block.get("matcher"), h) is not None]
+        if ours and all(h["command"] == command for h in ours):
+            # The no-op is decided BEFORE backup-slot admission:
+            # an up-to-date hook writes nothing, so a hostile unused
+            # .bak must not turn clean idempotence into a refusal.
+            planned.append(Planned(
+                f"codex hook: up to date ({path})",
+                "codex-hook", path, None, None))
+            return
+        if not bak_sibling_ok(path):
+            bak = path.with_name(path.name + ".bak")
+            refusals.append(f"refusing to touch {path}: its backup slot "
+                            f"{bak} exists and is not a regular file; "
+                            "move it aside and re-run.")
+            return
+        if ours:
+            for h in ours:
+                h["command"] = command
+            label = f"codex hook: update the checker path in {path}"
+        else:
+            post.append(entry)
+            label = f"codex hook: append the PostToolUse entry to {path}"
+    text = json.dumps(data, indent=2) + "\n"
+
+    def _do(path=path, text=text):
+        publish_shared(path, text)
+        print(TRUST_NOTE)
+        return None
+
+    planned.append(Planned(label, "codex-hook", path, None, _do))
+
+
+def agents_block():
+    body = registry.payload_bytes("agentsmd-snippet").decode("utf-8")
+    return f"{SENTINEL_OPEN}\n{body.rstrip()}\n{SENTINEL_CLOSE}\n"
+
+
+def _semlf_note():
+    if shutil.which("semlf") is None:
+        print("note: semlf is not on PATH; the snippet's check "
+              "command needs it. install it with `uv tool install "
+              "semlf` (or `pipx install semlf`).")
+
+
+def plan_agentsmd(target, planned, refusals):
+    """Plan the sentinel-block splice into the user-named file.
+
+    Sentinel admission in a user-owned file:
+    force never overrides a refusal here,
+    and every malformed-sentinel shape is a repair-by-hand refusal, exactly as before.
+    """
+    target = Path(target)
+    block = agents_block()
+    if os.path.lexists(target):
+        data = manifest.read_regular_bytes(target, manifest.CLASSIFY_LIMIT)
+        if data is None:
+            refusals.append(f"refusing to touch {target}: it exists but "
+                            "is not a readable regular file.")
+            return
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            refusals.append(f"refusing to touch {target}: cannot decode "
+                            "it as UTF-8; repair it by hand.")
+            return
+        has_open = SENTINEL_OPEN in text
+        has_close = SENTINEL_CLOSE in text
+        if has_open != has_close:
+            refusals.append(f"refusing to touch {target}: found one "
+                            "sentinel marker without its pair; repair "
+                            "the block by hand.")
+            return
+        if has_open and (text.count(SENTINEL_OPEN) != 1
+                         or text.count(SENTINEL_CLOSE) != 1
+                         or text.index(SENTINEL_OPEN) > text.index(SENTINEL_CLOSE)):
+            refusals.append(f"refusing to touch {target}: sentinel "
+                            "markers are out of order or repeated; "
+                            "repair the block by hand.")
+            return
+        if has_open:
+            pre = text.split(SENTINEL_OPEN)[0]
+            post_raw = text.split(SENTINEL_CLOSE, 1)[1]
+            post = post_raw.lstrip("\n")
+            if post:
+                post = "\n" + post
+            new = pre + block + post
+        else:
+            new = text.rstrip("\n") + "\n\n" + block
+        if new == text:
+            # The up-to-date leg has no `do` closure to defer through,
+            # so it ends by printing the same advisory note the write leg's closure prints,
+            # exactly as install_agentsmd did inline before this planner existed.
+            _semlf_note()
+            planned.append(Planned(
+                f"agentsmd: already up to date ({target})",
+                "agentsmd", target, None, None))
+            return
+    else:
+        new = block
+
+    def _do(target=target, new=new):
+        publish_shared(target, new)
+        _semlf_note()
+        return None
+
+    planned.append(Planned(f"agentsmd: wrote the snippet block to {target}",
+                           "agentsmd", target, None, _do))

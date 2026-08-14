@@ -224,3 +224,173 @@ def test_adopt_rerecords_the_running_version_on_identical_bytes(
     assert planned[0].verdict.action == "adopt"
     assert lifecycle.apply_plan(planned) == 0
     assert manifest.load()["readme"]["version"] == lifecycle.artifact_version()
+
+
+def hook_path():
+    return Path(os.environ["CODEX_HOME"]) / "hooks.json"
+
+
+def plan_hook():
+    planned, refusals = [], []
+    lifecycle.plan_codex_hook(planned, refusals)
+    return planned, refusals
+
+
+def test_hook_plan_creates_a_fresh_hooks_json(home, capsys):
+    planned, refusals = plan_hook()
+    assert refusals == []
+    assert lifecycle.apply_plan(planned) == 0
+    import json
+    data = json.loads(hook_path().read_text(encoding="utf-8"))
+    owned = manifest.owned_codex_hooks(data)
+    assert len(owned) == 1
+    checker = str(manifest.semlf_data_dir() / "check_linefeeds.py")
+    assert owned[0][1] == checker
+
+
+def test_hook_plan_updates_a_stale_path_and_preserves_foreign_entries(
+        home, capsys):
+    import json
+    hook_path().parent.mkdir(parents=True)
+    hook_path().write_text(json.dumps({"hooks": {"PostToolUse": [
+        {"matcher": "shell",
+         "hooks": [{"type": "command", "command": "echo hi"}]},
+        {"matcher": "apply_patch", "hooks": [
+            {"type": "command",
+             "command": 'python3 "/old/clone/scripts/check_linefeeds.py"'
+                        ' --hook codex'}]},
+    ]}}), encoding="utf-8")
+    planned, refusals = plan_hook()
+    assert refusals == []
+    lifecycle.apply_plan(planned)
+    data = json.loads(hook_path().read_text(encoding="utf-8"))
+    commands = [h["hooks"][0]["command"]
+                for h in data["hooks"]["PostToolUse"]]
+    assert commands[0] == "echo hi"
+    assert "/old/clone/" not in commands[1]
+    assert str(manifest.semlf_data_dir()) in commands[1]
+
+
+def test_hook_plan_noops_when_current(home, capsys):
+    planned, _ = plan_hook()
+    lifecycle.apply_plan(planned)
+    before = hook_path().read_text(encoding="utf-8")
+    planned, refusals = plan_hook()
+    assert refusals == []
+    assert all(item.do is None for item in planned)
+    lifecycle.apply_plan(planned)
+    assert hook_path().read_text(encoding="utf-8") == before
+
+
+def test_hook_plan_refuses_unparseable_json(home):
+    hook_path().parent.mkdir(parents=True)
+    hook_path().write_text("{not json", encoding="utf-8")
+    planned, refusals = plan_hook()
+    assert refusals and "hand" in refusals[0]
+
+
+def test_hook_plan_is_total_over_hostile_parseable_shapes(home, capsys):
+    """{"hooks": 7} and a non-dict block must be planned around and preserved exactly,
+    never raise TypeError mid-preflight."""
+    import json
+    hook_path().parent.mkdir(parents=True)
+    hostile = {"hooks": {"PostToolUse": [
+        None, {"hooks": 7}, {"matcher": "apply_patch"}]}}
+    hook_path().write_text(json.dumps(hostile), encoding="utf-8")
+    planned, refusals = plan_hook()
+    assert refusals == []
+    lifecycle.apply_plan(planned)
+    data = json.loads(hook_path().read_text(encoding="utf-8"))
+    post = data["hooks"]["PostToolUse"]
+    assert post[:3] == hostile["hooks"]["PostToolUse"]
+    assert len(manifest.owned_codex_hooks(data)) == 1
+
+
+def test_an_up_to_date_hook_ignores_a_hostile_backup_slot(home, capsys):
+    """A no-op writes nothing,
+    so a symlink squatting on hooks.json.bak must not break clean idempotence."""
+    planned, _ = plan_hook()
+    lifecycle.apply_plan(planned)
+    bak = hook_path().with_name("hooks.json.bak")
+    if bak.exists():
+        bak.unlink()
+    bak.symlink_to(hook_path().parent / "elsewhere")
+    planned, refusals = plan_hook()
+    assert refusals == []
+    assert all(item.do is None for item in planned)
+    # A stale hook with the same hostile slot still refuses.
+    import json
+    data = json.loads(hook_path().read_text(encoding="utf-8"))
+    data["hooks"]["PostToolUse"][0]["hooks"][0]["command"] = (
+        'python3 "/old/check_linefeeds.py" --hook codex')
+    hook_path().write_text(json.dumps(data), encoding="utf-8")
+    planned, refusals = plan_hook()
+    assert refusals and ".bak" in refusals[0]
+
+
+def test_hook_merge_backs_up_the_shared_file(home, capsys):
+    """Shared merged files keep their .bak —
+    the skip-backups rule is for provenance-managed single files only."""
+    import json
+    hook_path().parent.mkdir(parents=True)
+    hook_path().write_text(json.dumps({"hooks": {"PostToolUse": [
+        {"matcher": "shell",
+         "hooks": [{"type": "command", "command": "echo hi"}]}]}}),
+        encoding="utf-8")
+    before = hook_path().read_bytes()
+    planned, _ = plan_hook()
+    lifecycle.apply_plan(planned)
+    bak = hook_path().with_name("hooks.json.bak")
+    assert bak.read_bytes() == before
+
+
+def test_agentsmd_plan_writes_and_reruns_clean(home, tmp_path, capsys):
+    target = tmp_path / "AGENTS.md"
+    planned, refusals = [], []
+    lifecycle.plan_agentsmd(target, planned, refusals)
+    assert refusals == []
+    lifecycle.apply_plan(planned)
+    text = target.read_text(encoding="utf-8")
+    assert lifecycle.SENTINEL_OPEN in text and lifecycle.SENTINEL_CLOSE in text
+    planned, refusals = [], []
+    lifecycle.plan_agentsmd(target, planned, refusals)
+    assert refusals == []
+    assert all(item.do is None for item in planned)
+
+
+def test_agentsmd_plan_refuses_a_broken_sentinel_pair(home, tmp_path):
+    target = tmp_path / "AGENTS.md"
+    target.write_text(lifecycle.SENTINEL_OPEN + "\nno close",
+                      encoding="utf-8")
+    planned, refusals = [], []
+    lifecycle.plan_agentsmd(target, planned, refusals)
+    assert refusals and "sentinel" in refusals[0]
+
+
+def test_agentsmd_up_to_date_note_prints_at_plan_time(
+        home, tmp_path, capsys, monkeypatch):
+    """The up-to-date leg has no `do` closure for apply_plan to print through,
+    so plan_agentsmd prints its advisory note immediately —
+    a deliberate plan-time disclosure,
+    not a stray apply-time side effect, and never an action to undo on a later refusal."""
+    target = tmp_path / "AGENTS.md"
+    planned, refusals = [], []
+    lifecycle.plan_agentsmd(target, planned, refusals)
+    lifecycle.apply_plan(planned)
+    capsys.readouterr()  # discard the first write's own output
+
+    monkeypatch.setattr(lifecycle.shutil, "which", lambda name: None)
+    planned, refusals = [], []
+    lifecycle.plan_agentsmd(target, planned, refusals)
+    out = capsys.readouterr().out
+    assert "not on PATH" in out
+    assert refusals == []
+    assert len(planned) == 1 and planned[0].do is None
+
+    monkeypatch.setattr(lifecycle.shutil, "which",
+                        lambda name: "/usr/bin/semlf")
+    planned, refusals = [], []
+    lifecycle.plan_agentsmd(target, planned, refusals)
+    out = capsys.readouterr().out
+    assert "not on PATH" not in out
+    assert len(planned) == 1 and planned[0].do is None
