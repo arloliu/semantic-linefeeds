@@ -19,6 +19,7 @@ def installed_pyz(tmp_path):
         "HOME": str(tmp_path / "home"),
         "CODEX_HOME": str(tmp_path / "codex"),
         "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
         "XDG_STATE_HOME": str(tmp_path / "state"),
     })
     (tmp_path / "home").mkdir(exist_ok=True)
@@ -225,6 +226,7 @@ def test_doctor_fails_when_the_replay_misbehaves(tmp_path, monkeypatch):
 
 def test_doctor_replays_an_installed_codex_hook(tmp_path):
     pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
     hooks = tmp_path / "codex" / "hooks.json"
     hooks.parent.mkdir(parents=True, exist_ok=True)
     checker = REPO / "scripts" / "check_linefeeds.py"
@@ -303,3 +305,91 @@ def test_doctor_rejects_arguments(tmp_path):
     r = subprocess.run([sys.executable, str(pyz), "doctor", "--json"],
                        capture_output=True, text=True, env=env)
     assert r.returncode == 64
+
+
+def _install_via_semlf(tmp_path, env, target="codex"):
+    bootstrap = ("import sys; sys.path[:0] = [%r, %r]; "
+                 "from semlf.cli import main; "
+                 "sys.exit(main(sys.argv[1:]))"
+                 % (str(REPO / "cli"), str(REPO / "scripts")))
+    r = subprocess.run([sys.executable, "-c", bootstrap,
+                        "install", target],
+                       capture_output=True, text=True, env=env,
+                       timeout=60)
+    assert r.returncode == 0, r.stderr
+    return r
+
+
+def test_doctor_passes_with_current_payloads(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "payload" in r.stdout
+
+
+def test_doctor_fails_on_an_expected_payload_mismatch(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    checker = Path(env["XDG_DATA_HOME"]) / "semlf" / "check_linefeeds.py"
+    checker.write_text(checker.read_text(encoding="utf-8") + "# edited\n",
+                       encoding="utf-8")
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 1
+    assert "payload" in r.stdout and "FAIL" in r.stdout
+
+
+def test_doctor_fails_an_installed_hook_with_no_published_payload(
+        tmp_path):
+    """An owned hook makes the payloads expected;
+    a machine that has the hook but never published them is the migration half-state doctor exists to flag."""
+    pyz, env = installed_pyz(tmp_path)
+    hooks = Path(env["CODEX_HOME"]) / "hooks.json"
+    hooks.parent.mkdir(parents=True, exist_ok=True)
+    checker = Path(env["XDG_DATA_HOME"]) / "semlf" / "check_linefeeds.py"
+    hooks.write_text(json.dumps({"hooks": {"PostToolUse": [
+        {"matcher": "apply_patch", "hooks": [
+            {"type": "command",
+             "command": f'python3 "{checker}" --hook codex'}]}]}}),
+        encoding="utf-8")
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 1
+    assert "payload" in r.stdout and "FAIL" in r.stdout
+
+
+def test_doctor_warns_but_passes_on_no_consumer_leftovers(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    # Remove the consumer but keep the payloads
+    # (the uninstall verb's deliberate leftover policy).
+    hooks = Path(env["CODEX_HOME"]) / "hooks.json"
+    hooks.write_text('{"hooks": {"PostToolUse": []}}', encoding="utf-8")
+    skill = Path(env["HOME"]) / ".agents" / "skills" / \
+        "semantic-linefeeds" / "SKILL.md"
+    if skill.exists():
+        skill.unlink()
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "warn" in r.stdout.lower()
+    assert str(Path(env["XDG_DATA_HOME"]) / "semlf") in r.stdout
+
+
+def test_doctor_passes_on_a_machine_with_no_integrations(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_doctor_leftover_pointer_names_each_real_path(tmp_path):
+    """The leftover pointer derives from each identity row's own destination:
+    an opencode-checker leftover is named by its path in the opencode plugins directory,
+    never by the neutral data root."""
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env, "opencode")
+    plugins = Path(env["XDG_CONFIG_HOME"]) / "opencode" / "plugins"
+    (plugins / "semantic-linefeeds.ts").unlink()
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "warn" in r.stdout.lower()
+    assert str(plugins / "check_linefeeds.py") in r.stdout
+    assert str(Path(env["XDG_DATA_HOME"]) / "semlf") not in r.stdout

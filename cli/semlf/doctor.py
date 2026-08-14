@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 import check_linefeeds as core
-from semlf import manifest
+from semlf import lifecycle, manifest, registry
 
 BAD_PAYLOAD = json.dumps({"tool_input": {
     "file_path": "/x/a.md",
@@ -66,21 +66,10 @@ def _pipe(cmd, payload):
 
 
 def _expected_destinations():
-    """Each known artifact's current expected location, or None entries.
-
-    The same helpers the installer publishes with (they live in the manifest module),
-    so provenance is always judged against where the artifact would be installed today —
-    never against a record's own claim about itself.
-    """
-    opencode_dir = manifest.opencode_plugins_dir()
-    return {
-        "cli": manifest.cli_bin_dest(),
-        "codex-skill": manifest.codex_skill_dest(),
-        "opencode-plugin":
-            None if opencode_dir is None else opencode_dir / "semantic-linefeeds.ts",
-        "opencode-checker":
-            None if opencode_dir is None else opencode_dir / "check_linefeeds.py",
-    }
+    """Each known artifact's current expected location, or None entries."""
+    destinations = lifecycle.payload_destinations()
+    destinations["cli"] = manifest.cli_bin_dest()
+    return destinations
 
 
 def _long_limit_line():
@@ -124,8 +113,9 @@ def run(argv, artifact=None):
     if resolved is None:
         print("path: warn — semlf is not on PATH")
     elif os.path.realpath(resolved) != os.path.realpath(artifact):
-        print(f"path: warn — `semlf` resolves to {resolved}, "
-              "not the artifact running doctor")
+        print(f"path: warn — `semlf` resolves to {resolved}, not the "
+              "artifact running doctor; a pre-redesign zipapp may be "
+              "shadowing it (remove with install.py --uninstall --cli)")
     else:
         print(f"path: semlf resolves to {resolved}")
 
@@ -158,6 +148,7 @@ def run(argv, artifact=None):
         print(_provenance_line(name, entry, destinations.get(name)))
 
     failures += _codex_hook_check()
+    failures += _payload_identity_check()
 
     if failures:
         print(f"doctor: {failures} check(s) failed")
@@ -191,6 +182,44 @@ def _provenance_line(name, entry, dest):
         return (f"provenance: {name} warn — recorded for {_diag(entry['path'])}, "
                 f"expected {dest}")
     return f"provenance: {name} unrecorded ({entry['version']})"
+
+
+def _payload_identity_check():
+    """Expected-payload mismatches fail; no-consumer leftovers warn.
+
+    Expectedness is conditioned on consumers:
+    an installed integration makes its payloads expected,
+    a payload with no remaining consumer is a warning with the manual-removal pointer,
+    a machine with no integrations passes,
+    and a codex-only machine is never failed over the absent opencode copy.
+    """
+    failures = 0
+    consumers = lifecycle.installed_consumers()
+    destinations = lifecycle.payload_destinations()
+    leftover_paths = []
+    # The identity set, its consumer expectedness,
+    # and the leftover pointer all come from the registry rows —
+    # no hand-maintained name tuple here.
+    for row in registry.ROWS:
+        if not row.identity:
+            continue
+        expected = row.owner in consumers
+        state, line = lifecycle.payload_identity(row.id)
+        if state == "missing" and not expected:
+            continue
+        if expected and state != "ok":
+            print(f"payload: FAIL — {line}")
+            failures += 1
+        elif not expected:
+            print(f"payload: warn — {line} (no remaining consumer)")
+            if destinations[row.id] is not None:
+                leftover_paths.append(destinations[row.id])
+        else:
+            print(f"payload: {line}")
+    if leftover_paths:
+        listed = ", ".join(str(p) for p in leftover_paths)
+        print(f"payload: warn — remove {listed} by hand if unwanted")
+    return failures
 
 
 def _codex_hook_check():
