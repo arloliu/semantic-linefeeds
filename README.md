@@ -1,6 +1,7 @@
 # semantic-linefeeds
 
-**AI coding agents know where a sentence ends — they just don't wrap lines there.**
+**AI coding agents know where a sentence ends — they just don't wrap lines there.**<br>
+*Line breaks are for meaning, not margins.*
 
 > **A diff-aware prose guardrail for AI coding agents and source repositories.**
 > Instructions alone don't reliably prevent it,
@@ -69,8 +70,14 @@ semlf install                # detects agents, lists every path it would write, 
 semlf doctor                 # replays the payloads end to end
 ```
 
-Claude Code stays on its own plugin marketplace and is never touched by `semlf`.
-`/path/to/semantic-linefeeds` is a local checkout of this repo, or any git remote of it:
+Claude Code stays on its own plugin marketplace and is never touched by `semlf`:
+
+```bash
+claude plugin marketplace add arloliu/semantic-linefeeds
+claude plugin install semantic-linefeeds@semantic-linefeeds
+```
+
+A local checkout works the same way — point the first command at its path instead:
 
 ```bash
 claude plugin marketplace add /path/to/semantic-linefeeds
@@ -199,32 +206,38 @@ apply it as your next edit, after judging the finding like any other.
 
 ## Configuration
 
-The long-line advisory threshold defaults to 120 characters.
-Set it per run with `--long-limit N` (0 disables the advisory),
-or per environment with `SEMLF_LONG_LINE=N` — the flag wins over the environment variable.
-Fused and wrap findings are never affected;
-only the advisory threshold moves.
-
-A project can set the same threshold once, in a `.semlf.ini` file at the repository root:
+`.semlf.ini` at the repository root holds every project setting the checker reads,
+one `[semlf]` section, three optional keys:
 
 ```ini
 [semlf]
 long-limit = 100
+experimental-wrap = true
+exclude =
+    docs/legacy/
+    *.gen.md
 ```
 
-The flag and the environment variable still win over the file (ADR-0012).
-The core discovers `.semlf.ini` by walking upward from the checked path
+- `long-limit` — the long-line advisory threshold, in characters (`0` disables the advisory).
+  Precedence is the `--long-limit` flag, then `$SEMLF_LONG_LINE`, then this key,
+  then the built-in default of 120.
+  Fused and wrap findings are never affected — only the advisory threshold moves.
+- `experimental-wrap` — opts `wrap` findings back into hook feedback,
+  arriving as advice that never blocks an edit (ADR-0017).
+  `$SEMLF_EXPERIMENTAL_WRAP` decides outright whenever it is set to a non-empty value —
+  `0`, `false`, `no`, or `off` reads as off, anything else as on —
+  so it can force the kind on for a repo that never opted in, or off for one that did.
+- `exclude` — one glob pattern per line, matched per path segment;
+  a trailing `/` names a folder, excluded at any depth unless an inner `/` anchors a chain at the config root
+  (see "Excluding paths" below).
+
+The flag and the environment variable always win over the file (ADR-0012).
+The core discovers `.semlf.ini` by walking upward from the checked file
 and stops at the first directory holding either the file or a `.git` entry,
 so a config never leaks across a repository boundary.
 A missing, malformed, or unparseable file is inert —
-the checker falls back to the next precedence leg rather than failing the run.
-
-`SEMLF_EXPERIMENTAL_WRAP=1` puts `wrap` back in hook feedback,
-where it arrives as advice at exit 0 and never blocks an edit.
-Any value other than `0`, `false`, `no`, or `off` turns it on.
-A project can opt in the same way with `experimental-wrap = true` in `.semlf.ini` (ADR-0017);
-the environment variable still wins whenever it is set,
-so it can also force-disable an opted-in repository.
+the checker falls back to the next precedence leg rather than failing the run,
+and an invalid value in one key never silences another.
 
 Hook mode skips paths under the platform temp directory and any `tmp/` component,
 so agent scratch files are never flagged.
@@ -232,7 +245,8 @@ so agent scratch files are never flagged.
 
 ### Excluding paths
 
-The same `.semlf.ini` file also takes an `exclude` key, one pattern per line:
+`exclude` takes one pattern per line;
+the three shapes below are worth seeing side by side:
 
 ```ini
 [semlf]
