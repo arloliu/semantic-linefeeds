@@ -631,9 +631,189 @@ def install_command(argv):
     return _finish(rc)
 
 
+def installed_consumers():
+    """Integrations whose own artifacts are present on this machine.
+
+    codex counts as installed when EITHER its hook entry or its installed skill file is present:
+    the skill references the neutral checker and README too,
+    so removing only the hook must not downgrade required payloads to leftovers.
+    """
+    found = set()
+    home = manifest.codex_home()
+    if home is not None:
+        data = manifest.read_state_json(home / "hooks.json")
+        if manifest.owned_codex_hooks(data):
+            found.add("codex")
+    skill = manifest.codex_skill_dest()
+    if skill is not None and os.path.lexists(str(skill)):
+        found.add("codex")
+    d = manifest.opencode_plugins_dir()
+    if d is not None and os.path.lexists(str(d / "semantic-linefeeds.ts")):
+        found.add("opencode")
+    return found
+
+
+def payload_identity(name):
+    """(state, human line) for one published payload.
+
+    Guarded bytes decide the state, never the version string alone:
+    two builds can differ under one version,
+    and on a downgrade the published copy is ahead, not behind.
+    The version is the human-facing label in the line.
+    """
+    dest = payload_destinations()[name]
+    if dest is None:
+        return "missing", f"{name}: missing, no destination resolves here"
+    state = classify.object_state(dest)
+    if state == "absent":
+        return "missing", f"{name}: missing, not published ({dest})"
+    if state != "regular":
+        return "unreadable", f"{name}: {dest} is a {state}"
+    current = manifest.read_regular_bytes(dest, manifest.CLASSIFY_LIMIT)
+    if current is None:
+        return "unreadable", f"{name}: {dest} is unreadable"
+    if current == rendered_bytes(name):
+        return "ok", f"{name}: current ({dest})"
+    entry = manifest.load().get(name)
+    prov = manifest.classify_entry(entry, dest)
+    running = artifact_version()
+    if prov != "managed":
+        return "edited", (f"{name}: edited or unrecorded ({dest}); "
+                          "rerun `semlf install` with --force to replace it")
+    recorded = entry["version"]
+    rv, cv = (classify.parse_version(recorded),
+              classify.parse_version(running))
+    if rv is None or cv is None:
+        return "unorderable", (f"{name}: managed, but the recorded "
+                               f"version ({recorded}) cannot be ordered "
+                               f"against this artifact's ({running})")
+    if rv < cv:
+        return "lagging", (f"{name}: published v{recorded} lags this "
+                           f"artifact (v{running}); run `semlf install` "
+                           "to refresh it")
+    if rv > cv:
+        return "ahead", (f"{name}: published v{recorded} is ahead of "
+                         f"this artifact (v{running})")
+    return "same-version-different-bytes", (
+        f"{name}: published v{recorded} matches this artifact's "
+        "version but not its bytes; run `semlf install` to refresh it")
+
+
+def snippet_state(target):
+    if not os.path.lexists(target):
+        return "absent"
+    data = manifest.read_regular_bytes(target, manifest.CLASSIFY_LIMIT)
+    if data is None:
+        return "unreadable"
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return "unreadable"
+    has_open = SENTINEL_OPEN in text
+    has_close = SENTINEL_CLOSE in text
+    if not has_open and not has_close:
+        return "absent"
+    # The same pairing, count, and order predicate the install plan enforces:
+    # a repeated or reversed pair is malformed, not present.
+    if (has_open != has_close
+            or text.count(SENTINEL_OPEN) != 1
+            or text.count(SENTINEL_CLOSE) != 1
+            or text.index(SENTINEL_OPEN) > text.index(SENTINEL_CLOSE)):
+        return "malformed"
+    return "present"
+
+
 def status_command(argv):
-    print("semlf status: not implemented yet", file=sys.stderr)
-    return 64
+    if argv[:1] == ["agentsmd"]:
+        if len(argv) != 2:
+            print("semlf status: agentsmd requires an explicit path.",
+                  file=sys.stderr)
+            return 64
+        target = Path(argv[1])
+        print(f"agentsmd: block {snippet_state(target)} in {target}")
+        return 0
+    if argv:
+        print(f"semlf status: unknown argument {argv[0]!r}",
+              file=sys.stderr)
+        return 64
+    consumers = installed_consumers()
+    snapshot = manifest.load()
+    destinations = payload_destinations()
+    leftover_paths = []
+    # Every identity payload — both checker copies and the readme — reports through payload_identity;
+    # the classifier vocabulary never appears on a payload line.
+    for row in registry.ROWS:
+        if not row.identity:
+            continue
+        state, line = payload_identity(row.id)
+        if (state == "missing" and row.owner not in consumers
+                and snapshot.get(row.id) is None):
+            # Only a payload with neither a consumer nor a valid provenance record is irrelevant here:
+            # status reports every discoverable OR RECORDED artifact,
+            # so a recorded payload whose file vanished is named as missing.
+            continue
+        print(f"payload {line}")
+        if state != "missing" and row.owner not in consumers:
+            # The leftover pointer derives from the row's own destination —
+            # an opencode-checker leftover lives in the opencode plugins directory, never under the data root.
+            leftover_paths.append(destinations[row.id])
+    home = manifest.codex_home()
+    data_dir = manifest.semlf_data_dir()
+    if home is None or data_dir is None:
+        # CODEX_HOME may resolve while no data root does;
+        # rendering the wanted command needs both,
+        # so guard both (a bare render_codex_hook_entry(None) would raise instead of report).
+        print("codex hook: no home to check")
+    else:
+        hooks_path = home / "hooks.json"
+        data = manifest.read_state_json(hooks_path)
+        owned = manifest.owned_codex_hooks(data)
+        if not os.path.lexists(str(hooks_path)):
+            print(f"codex hook: not installed ({hooks_path})")
+        elif data is None:
+            print(f"codex hook: unreadable ({hooks_path})")
+        elif not owned:
+            print(f"codex hook: not installed ({hooks_path})")
+        else:
+            try:
+                entry = registry.render_codex_hook_entry(data_dir)
+            except registry.TransformError as exc:
+                print(f"codex hook: cannot render the managed entry ({exc})")
+            else:
+                import shlex as _shlex
+                wanted = _shlex.split(entry["hooks"][0]["command"])
+                if all(argv_ == wanted for argv_ in owned):
+                    print(f"codex hook: installed ({hooks_path})")
+                else:
+                    print("codex hook: installed (stale checker path; "
+                          "re-run `semlf install codex`)")
+    # The skill and the plugin are integration artifacts, not identity payloads:
+    # they report the classifier state verbatim (the one manifest snapshot and destinations above serve this loop too).
+    for name, label in (("codex-skill", "codex skill"),
+                        ("opencode-plugin", "opencode plugin")):
+        dest = destinations[name]
+        if dest is None:
+            print(f"{label}: no home to check")
+            continue
+        state = classify.object_state(dest)
+        if state == "absent":
+            print(f"{label}: not installed ({dest})")
+            continue
+        try:
+            rendered = rendered_bytes(name)
+        except registry.TransformError as exc:
+            print(f"{label}: cannot render this artifact's payload ({exc})")
+            continue
+        verdict = classify.classify_artifact(
+            snapshot.get(name), dest, rendered,
+            artifact_version(), False)
+        print(f"{label}: {verdict.state} ({dest})")
+    if leftover_paths:
+        listed = ", ".join(str(p) for p in leftover_paths)
+        print(f"payloads: no remaining consumer; remove {listed} "
+              "by hand if unwanted.")
+    shim_warning()
+    return _finish(0)
 
 
 def uninstall_command(argv):

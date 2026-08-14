@@ -472,3 +472,55 @@ def test_dry_run_reports_a_transform_error_as_a_would_be_refusal(
     out = capsys.readouterr().out
     assert rc == 0
     assert "would refuse" in out
+
+
+@pytest.mark.parametrize("name", ["checker", "readme",
+                                  "opencode-checker"])
+def test_payload_identity_states_per_payload(home, name, capsys):
+    planned, refusals = lifecycle.plan_install(["codex", "opencode"],
+                                               None, False)
+    assert refusals == []
+    lifecycle.apply_plan(planned)
+    dest = lifecycle.payload_destinations()[name]
+    version = lifecycle.artifact_version()
+    assert lifecycle.payload_identity(name)[0] == "ok"
+
+    dest.unlink()
+    assert lifecycle.payload_identity(name)[0] == "missing"
+
+    dest.write_bytes(b"edited by hand\n")
+    manifest.forget(name)
+    assert lifecycle.payload_identity(name)[0] == "edited"
+
+    def managed(version_str, data=b"managed bytes\n"):
+        dest.write_bytes(data)
+        manifest.record(name, dest, version_str,
+                        manifest.sha256_bytes(data))
+
+    managed("0.0.1")
+    assert lifecycle.payload_identity(name)[0] == "lagging"
+    managed("999.0")
+    assert lifecycle.payload_identity(name)[0] == "ahead"
+    managed(version)
+    assert (lifecycle.payload_identity(name)[0]
+            == "same-version-different-bytes")
+    managed("not-a-version")
+    assert lifecycle.payload_identity(name)[0] == "unorderable"
+
+
+def test_status_reports_a_transform_error_without_a_traceback(
+        home, monkeypatch, capsys):
+    """A broken canonical rewrite must not crash the read-only status command;
+    it reports the artifact as unrenderable and continues, exactly as plan_install already does for the write path."""
+    planned, refusals = lifecycle.plan_install(["codex"], None, False)
+    assert refusals == []
+    lifecycle.apply_plan(planned)
+
+    def boom(data_dir):
+        raise registry.TransformError("boom")
+
+    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    rc = lifecycle.status_command([])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "cannot render" in out

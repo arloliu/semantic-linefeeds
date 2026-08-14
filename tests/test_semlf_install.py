@@ -204,3 +204,120 @@ def test_subcommand_help_prints_usage_and_exits_zero(tmp_path):
         r = run_semlf([cmd, "--help"], isolated_env(tmp_path))
         assert r.returncode == 0, cmd
         assert "usage: semlf" in r.stdout
+
+
+def test_status_reports_a_healthy_install(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0
+    out = r.stdout.lower()
+    assert "checker" in out and "readme" in out
+    assert "codex" in out
+
+
+def test_status_reports_payload_lag_by_version_label(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    checker = data_root(tmp_path) / "check_linefeeds.py"
+    stale = checker.read_text(encoding="utf-8").replace(
+        '__version__ = "', '__version__ = "0.0.', 1)
+    checker.write_text(stale, encoding="utf-8")
+    # Make the stale copy managed so the state is lagging, not edited.
+    import hashlib
+    record = {"path": str(checker),
+              "sha256": hashlib.sha256(
+                  stale.encode("utf-8")).hexdigest(),
+              "version": "0.0.1"}
+    state = tmp_path / "state" / "semlf" / "artifacts" / "checker.json"
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text(json.dumps(record), encoding="utf-8")
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0
+    assert "lag" in r.stdout.lower()
+    assert "semlf install" in r.stdout
+
+
+@pytest.mark.xfail(reason="needs semlf uninstall", strict=False)
+def test_status_names_no_consumer_leftovers_in_one_line(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    run_semlf(["uninstall", "codex"], env)
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0
+    out = r.stdout
+    assert "no remaining" in out.lower() or "leftover" in out.lower()
+    assert str(data_root(tmp_path)) in out
+
+
+def test_status_points_opencode_leftovers_at_their_real_path(tmp_path):
+    """The leftover pointer derives from each identity row's own destination:
+    an opencode-checker leftover lives in the opencode plugins directory, never under the neutral data root."""
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "opencode"], env)
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    (plugins / "semantic-linefeeds.ts").unlink()
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0
+    out = r.stdout
+    assert "no remaining" in out.lower()
+    assert str(plugins / "check_linefeeds.py") in out
+    assert str(data_root(tmp_path)) not in out
+
+
+def test_status_excludes_agentsmd_without_a_path(tmp_path):
+    r = run_semlf(["status"], isolated_env(tmp_path))
+    # "agentsmd:" (with the colon) is the actual status-line marker this asserts against;
+    # a bare "agentsmd" substring can appear incidentally inside tmp_path's own directory name
+    # (pytest truncates long test ids to 30 chars for tmp_path,
+    # and this test's own name happens to survive that truncation).
+    assert "agentsmd:" not in r.stdout.lower()
+
+
+def test_status_agentsmd_reports_the_named_file(tmp_path):
+    env = isolated_env(tmp_path)
+    target = tmp_path / "AGENTS.md"
+    run_semlf(["install", "agentsmd", str(target)], env)
+    r = run_semlf(["status", "agentsmd", str(target)], env)
+    assert r.returncode == 0
+    assert "present" in r.stdout.lower()
+    r = run_semlf(["status", "agentsmd", str(tmp_path / "other.md")], env)
+    assert "absent" in r.stdout.lower()
+
+
+def test_status_agentsmd_reports_malformed_sentinels(tmp_path):
+    env = isolated_env(tmp_path)
+    target = tmp_path / "AGENTS.md"
+    target.write_text("<!-- semantic-linefeeds -->\nno close\n",
+                      encoding="utf-8")
+    r = run_semlf(["status", "agentsmd", str(target)], env)
+    assert "malformed" in r.stdout.lower()
+    target.write_text(
+        "<!-- /semantic-linefeeds -->\nreversed\n"
+        "<!-- semantic-linefeeds -->\n", encoding="utf-8")
+    r = run_semlf(["status", "agentsmd", str(target)], env)
+    assert "malformed" in r.stdout.lower()
+
+
+def test_status_names_a_recorded_payload_whose_file_vanished(tmp_path):
+    """Status reports every discoverable OR RECORDED artifact:
+    a valid record with a missing file is missing, never silently omitted."""
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    run_semlf(["uninstall", "codex"], env)
+    (data_root(tmp_path) / "check_linefeeds.py").unlink()
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0
+    assert "checker" in r.stdout and "missing" in r.stdout.lower()
+
+
+def test_a_skill_only_machine_keeps_payloads_expected(tmp_path):
+    """Removing only the hook must not downgrade the neutral payloads to leftovers —
+    the installed skill still references them."""
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    (tmp_path / "codex" / "hooks.json").write_text(
+        '{"hooks": {"PostToolUse": []}}', encoding="utf-8")
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0
+    assert "no remaining" not in r.stdout.lower()
