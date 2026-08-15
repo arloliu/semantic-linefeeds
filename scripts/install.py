@@ -459,35 +459,10 @@ def _plan_cli(planned, refusals, force):
 def uninstall(args):
     """Preflight every selected target, then apply only if all admit."""
     planned, refusals = [], []
-    destinations = lifecycle.payload_destinations()
-    if args.codex:
-        lifecycle.plan_remove_codex_hook(planned, refusals)
-        lifecycle.plan_remove_file(
-            "codex skill",
-            destinations["codex-skill"],
-            "codex-skill",
-            args.force,
-            planned,
-            refusals,
-            prune_parent=True,
-        )
-    if args.opencode:
-        lifecycle.plan_remove_file(
-            "opencode plugin",
-            destinations["opencode-plugin"],
-            "opencode-plugin",
-            args.force,
-            planned,
-            refusals,
-        )
-        lifecycle.plan_remove_file(
-            "opencode checker",
-            destinations["opencode-checker"],
-            "opencode-checker",
-            args.force,
-            planned,
-            refusals,
-        )
+    targets = {
+        name for name, on in (("codex", args.codex), ("opencode", args.opencode)) if on
+    }
+    lifecycle.plan_remove_targets(targets, args.force, planned, refusals)
     if args.cli:
         _plan_cli(planned, refusals, args.force)
     if args.agentsmd is not None:

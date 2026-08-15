@@ -2500,3 +2500,45 @@ def test_auto_rejects_explicit_mode_flags(tmp_path):
 def test_auto_rejects_uninstall(tmp_path):
     r = run_install(["--auto", "--uninstall"], isolated_env(tmp_path))
     assert r.returncode == 64
+
+
+def setup_artifacts(tmp_path):
+    """Codex's setup skill, opencode's setup skill, opencode's setup command."""
+    return (
+        tmp_path / "home" / ".agents" / "skills" / "setup-semlf" / "SKILL.md",
+        tmp_path / "xdg" / "opencode" / "skills" / "setup-semlf" / "SKILL.md",
+        tmp_path / "xdg" / "opencode" / "commands" / "setup-semlf.md",
+    )
+
+
+def test_checkout_door_installs_the_setup_artifacts(tmp_path):
+    """The curl rung runs this script, so it must write what the package door writes.
+
+    The setup skill tells an agent to fall back to `install.sh ... --auto`,
+    which execs this installer:
+    a door that skipped these rows would leave the very skill that recommended it uninstalled.
+    """
+    codex_skill, opencode_skill, opencode_command = setup_artifacts(tmp_path)
+    assert run_install(["--codex"], isolated_env(tmp_path)).returncode == 0
+    assert codex_skill.exists()
+    assert run_install(["--opencode"], isolated_env(tmp_path)).returncode == 0
+    assert opencode_skill.exists()
+    assert opencode_command.exists()
+
+
+def test_checkout_door_uninstall_removes_the_setup_artifacts(tmp_path):
+    """Both doors plan removals from one list, so neither can orphan a file.
+
+    This installer once kept its own copy of that list.
+    Adding a row updated the package door and silently left this one removing the older set,
+    which orphaned an artifact that `uninstall` reported as gone.
+    """
+    codex_skill, opencode_skill, opencode_command = setup_artifacts(tmp_path)
+    env = isolated_env(tmp_path)
+    run_install(["--codex", "--opencode"], env)
+    assert codex_skill.exists() and opencode_skill.exists()
+
+    assert run_install(["--codex", "--opencode", "--uninstall"], env).returncode == 0
+    assert not codex_skill.exists()
+    assert not opencode_skill.exists()
+    assert not opencode_command.exists()

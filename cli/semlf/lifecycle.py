@@ -1200,6 +1200,75 @@ def plan_remove_agentsmd(target, planned, refusals):
     )
 
 
+def plan_remove_targets(targets, force, planned, refusals):
+    """Every artifact removal the named targets imply, for both doors.
+
+    Both doors remove the same files, so both plan them here:
+    the package door's `semlf uninstall` and the checkout door's `install.py --uninstall`.
+    A second hand-maintained list is how one door came to remove an older set than the other just wrote:
+    adding a row updated one copy and silently orphaned the file on the other.
+    The `cli` and `agentsmd` legs stay with their callers,
+    since only one door installs a zipapp and the snippet's path is user-named.
+    """
+    destinations = payload_destinations()
+    if "codex" in targets:
+        plan_remove_codex_hook(planned, refusals)
+        plan_remove_file(
+            "codex skill",
+            destinations["codex-skill"],
+            "codex-skill",
+            force,
+            planned,
+            refusals,
+            prune_parent=True,
+        )
+        plan_remove_file(
+            "codex setup skill",
+            destinations["codex-setup-skill"],
+            "codex-setup-skill",
+            force,
+            planned,
+            refusals,
+            prune_parent=True,
+        )
+    if "opencode" in targets:
+        plan_remove_file(
+            "opencode plugin",
+            destinations["opencode-plugin"],
+            "opencode-plugin",
+            force,
+            planned,
+            refusals,
+        )
+        plan_remove_file(
+            "opencode checker",
+            destinations["opencode-checker"],
+            "opencode-checker",
+            force,
+            planned,
+            refusals,
+        )
+        # The skill sits in a directory of its own, so removing it prunes that directory;
+        # the command shares the commands directory with the user's own, so it never does.
+        plan_remove_file(
+            "opencode setup skill",
+            destinations["opencode-setup-skill"],
+            "opencode-setup-skill",
+            force,
+            planned,
+            refusals,
+            prune_parent=True,
+        )
+        plan_remove_file(
+            "opencode setup command",
+            destinations["opencode-setup-command"],
+            "opencode-setup-command",
+            force,
+            planned,
+            refusals,
+        )
+
+
 def uninstall_command(argv):
     parsed = _parse_targets(argv, "uninstall", ("dry_run", "force"))
     if parsed is None:
@@ -1212,63 +1281,7 @@ def uninstall_command(argv):
         )
         return 64
     planned, refusals = [], []
-    if "codex" in targets:
-        plan_remove_codex_hook(planned, refusals)
-        plan_remove_file(
-            "codex skill",
-            payload_destinations()["codex-skill"],
-            "codex-skill",
-            flags["force"],
-            planned,
-            refusals,
-            prune_parent=True,
-        )
-        plan_remove_file(
-            "codex setup skill",
-            payload_destinations()["codex-setup-skill"],
-            "codex-setup-skill",
-            flags["force"],
-            planned,
-            refusals,
-            prune_parent=True,
-        )
-    if "opencode" in targets:
-        destinations = payload_destinations()
-        plan_remove_file(
-            "opencode plugin",
-            destinations["opencode-plugin"],
-            "opencode-plugin",
-            flags["force"],
-            planned,
-            refusals,
-        )
-        plan_remove_file(
-            "opencode checker",
-            destinations["opencode-checker"],
-            "opencode-checker",
-            flags["force"],
-            planned,
-            refusals,
-        )
-        # The skill sits in a directory of its own, so removing it prunes that directory;
-        # the command shares the commands directory with the user's own, so it never does.
-        plan_remove_file(
-            "opencode setup skill",
-            destinations["opencode-setup-skill"],
-            "opencode-setup-skill",
-            flags["force"],
-            planned,
-            refusals,
-            prune_parent=True,
-        )
-        plan_remove_file(
-            "opencode setup command",
-            destinations["opencode-setup-command"],
-            "opencode-setup-command",
-            flags["force"],
-            planned,
-            refusals,
-        )
+    plan_remove_targets(targets, flags["force"], planned, refusals)
     if agentsmd_path is not None:
         plan_remove_agentsmd(agentsmd_path, planned, refusals)
     if flags["dry_run"]:

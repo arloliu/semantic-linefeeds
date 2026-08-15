@@ -126,6 +126,32 @@ def test_install_migrates_a_checkout_rendered_machine(tmp_path):
     assert not skill.with_name("SKILL.md.bak").exists()
 
 
+def test_a_machine_without_the_setup_skill_is_not_reported_broken(tmp_path):
+    """Adding rows must not retroactively condemn every install that predates them.
+
+    A machine set up before the setup skill existed has no record for those rows and no files at them.
+    `status` should say so plainly, and `install` should offer them,
+    but nothing about their absence is a fault:
+    a release that reported every existing install as defective would teach people to ignore the report.
+    """
+    env, _, _ = old_checkout_state(tmp_path)
+    out = run_semlf(["status"], env).stdout
+    assert "codex setup skill: not installed" in out
+
+    # Absent artifacts have no provenance record, so nothing claims they were edited or lost.
+    for name in ("codex-setup-skill", "opencode-setup-skill", "opencode-setup-command"):
+        assert not (
+            tmp_path / "state" / "semlf" / "artifacts" / f"{name}.json"
+        ).exists()
+        assert f"{name}: missing" not in out
+
+    r = run_semlf(["install", "codex"], env)
+    assert r.returncode == 0, r.stderr
+    assert (
+        tmp_path / "home" / ".agents" / "skills" / "setup-semlf" / "SKILL.md"
+    ).exists()
+
+
 def test_dry_run_over_the_old_machine_writes_nothing(tmp_path):
     env, hooks, skill = old_checkout_state(tmp_path)
     before_hooks = hooks.read_bytes()
