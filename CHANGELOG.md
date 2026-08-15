@@ -100,13 +100,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`semlf doctor` no longer points you at an install that would refuse to run.**
-  When it found an old skill copy under opencode's own skills directory,
-  it told you `semlf install` would clear it.
-  That is true only for a copy `semlf` can prove it wrote:
-  for one you edited, or one it has no record of, install stops and clears nothing —
-  and it stops the rest of the install with it.
-  Doctor now tells you which of the two you have, and says to move the file aside when that is what is needed.
 - **The AGENTS.md snippet's install hint now names the published package.**
   It used to point at `install.py --cli`, a file only this repository has,
   so a repository that received the snippet told its users to run a command nobody said how to obtain.
