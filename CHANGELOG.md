@@ -28,6 +28,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   opencode offers skills to the model and commands to you,
   so the same procedure is installed both ways and you can start it yourself by typing the command.
 
+### Changed
+
+- **The `semantic-linefeeds` and `setup-semlf` skills now install once, not once per agent.**
+  `semlf install codex` and `semlf install opencode` both publish the same copy to `~/.agents/skills`,
+  which Codex CLI and opencode both read.
+  opencode 1.18.18 or newer is required;
+  setting `OPENCODE_DISABLE_EXTERNAL_SKILLS` hides the shared skill from opencode entirely.
+- **Installing for opencode alone now also publishes the checker and README to the shared install location.**
+  The one skill copy points there, so `semlf install opencode` writes them even on a machine with no Codex CLI.
+  Uninstalling opencode leaves them behind, and `semlf status` names them if you want them gone.
+- **Installing no longer refuses when your agents already share one skills folder.**
+  Pointing several agents' skills directories at the same shared folder —
+  a common setup for anyone running more than one agent — used to make install refuse outright.
+  It is now the arrangement install expects.
+- **Upgrading clears out the old per-agent skill copies.**
+  A copy left behind in opencode's own directory used to keep loading after an upgrade instead of the shared one;
+  upgrading now removes it.
+- **`semlf doctor` now reports a leftover skill file that competes with the shared copy.**
+  If one is still sitting in opencode's own directory, `doctor` names it instead of missing it.
+
 ## [0.7.0] - 2026-08-14
 
 `semlf` is now installable straight from PyPI.

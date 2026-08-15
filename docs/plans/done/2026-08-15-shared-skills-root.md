@@ -1,7 +1,7 @@
 # One skill, one copy, in the root both targets already read
 
 **Date:** 2026-08-15
-**Status:** in review — revised after two rounds of external review, no code written yet
+**Status:** implemented
 **Answers:** [the neutral-ownership handoff](2026-08-15-neutral-ownership-handoff.md)
 **Supersedes:** [ADR-0018](../../decisions/0018-skills-ship-per-target.md), whose objections are answered at the end
 
