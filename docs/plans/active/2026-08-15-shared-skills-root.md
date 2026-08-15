@@ -164,9 +164,54 @@ So the rule throughout is:
 - **`os.path.samefile`, or `st_dev` and `st_ino` compared directly, whenever both paths exist.**
   It is correct through symlinks, bind mounts, and hard links alike.
   It raises when either side is missing, so every caller handles that rather than letting it propagate.
-- **`os.path.realpath` only where a destination need not exist yet**, which is `colliding_destinations`.
+- **`os.path.realpath` only as the fallback when a path does not exist yet.**
   A path that has never been created has no inode to compare,
-  and there is nothing to delete there either, so the weaker test is sound in that one place.
+  and there is nothing to delete there either, so the weaker test is sound there.
+  `colliding_destinations` needs both:
+  it compares destinations that may not exist, and, since it now also compares against installed rows,
+  destinations that do.
+  Using realpath alone there would miss precisely the bind-mounted collision this rule exists to catch.
+
+### The removal guard compares parent directories, not files
+
+Asking "is the legacy path the same file as the shared destination" is the wrong question,
+even though it is the obvious one.
+
+The right question is whether unlinking the legacy path would destroy the shared file's own directory entry.
+That is answered by the **parents**:
+
+- `samefile(dirname(legacy), dirname(shared))` — the two roots are joined,
+  by a parent symlink or a bind mount, so `os.unlink` on the legacy path resolves to the shared entry.
+  Skip the removal.
+- the parents differ — the legacy path is a hard link or a leaf symlink to the shared file,
+  and unlinking it removes only that entry.
+  Remove it.
+
+Comparing the files instead gets the second case backwards, and that is not a tidiness problem.
+A hard link left in place survives exactly until the shared file is next published.
+`publish_bytes` stages a temporary file and `os.replace`s it, which gives the shared path a new inode,
+and the hard link is then stranded on the old content —
+a stale copy in opencode's own root serving last release's instructions,
+which is the failure this whole design exists to prevent.
+
+A leaf symlink is the milder version of the same case.
+It tracks the shared file across a republish rather than going stale, so leaving it is harmless,
+but it is legacy residue and removing it is safe.
+`plan_remove_file` refuses a non-regular destination, so a symlink there is reported rather than unlinked,
+which is an acceptable outcome and not a silent one.
+
+### What absence means, for each guard that asks
+
+`samefile` raises when either side is missing, and the fallback is not the same everywhere.
+Getting one backwards either strands a file forever or deletes the shared copy.
+
+| Guard | Missing side | Conclusion |
+|---|---|---|
+| legacy removal, and migration | the shared destination does not exist | **admit the removal** — nothing can be destroyed through a path that is not there, and refusing would strand the legacy artifact permanently |
+| legacy removal, and migration | the legacy path does not exist | **admit** — there is nothing to unlink, and admitting is what lets the stale record be cleared |
+| `doctor`'s competitor check | the opencode path does not exist | healthy, and silent |
+| `doctor`'s competitor check | the shared file does not exist | report that install has not run under this layout, not that something is shadowed |
+| `colliding_destinations` | either destination does not exist | fall back to `realpath` |
 
 Two properties of `samefile` are worth naming rather than discovering later.
 It goes through `os.stat`, so it **follows symlinks** —
@@ -542,15 +587,15 @@ so its bytes differ from the shared rendering by construction.
 |---|---|
 | `~/.agents/skills/…/SKILL.md` recorded as `codex-skill` | project the record onto `skill`, publish normally, then forget the retired record |
 | the same, recorded as `codex-setup-skill` | the same, onto `setup-skill` |
-| a real `…/opencode/skills/…/SKILL.md` whose record proves it, and which is **not** the shared file | remove it, prune its now-empty directory, forget the record |
-| the same, but which **is** the shared file | project the record onto `skill` or `setup-skill`; never remove the file |
+| a real `…/opencode/skills/…/SKILL.md` whose record proves it, whose parent directory is **not** the shared file's parent | remove it, prune its now-empty directory, forget the record |
+| the same, but whose parent directory **is** the shared file's parent | project the record onto `skill` or `setup-skill`; never remove the file |
 | `…/opencode/plugins/README.md` whose record proves it, and which is **not** the `readme` destination | remove it, forget the record |
 | the same, but which **is** the `readme` destination | keep the file, clear only the redundant record |
 | any of those paths holding content no record proves | refuse, naming the path |
 
-"Is the shared file" is `os.path.samefile`, for the reason given in the findings:
+The comparison is `os.path.samefile` on the two **parent directories**, for the reasons in the findings:
 a bind mount joins two paths that `realpath` still reports as different,
-and the guard's failure mode is deleting the shared copy.
+and comparing the files themselves would spare a hard link that must be removed.
 
 The second row is the trap this whole design has to survive.
 On a machine whose opencode skills root is a symlink into `~/.agents/skills`,
@@ -658,7 +703,14 @@ Pinned by the suite:
   The second install refuses rather than adopting the shared checker under a second name,
   and neither door's uninstall deletes a file the other integration still records.
 - A bind-mounted join, where `realpath` reports two different paths for one file.
-  Nothing is deleted through the second spelling.
+  Nothing is deleted through the second spelling, and the collision is still refused.
+- A legacy path that is a **hard link** to the shared file:
+  it is removed, not spared, and a following republish leaves no stale copy behind.
+- A legacy path that is a leaf symlink to the shared file:
+  reported rather than silently unlinked, and never followed into the shared file.
+- Each row of the absence table:
+  a legacy removal with no shared destination yet admits rather than stranding the file,
+  and `doctor` stays silent when the opencode path is absent.
 - `uninstall opencode` on a joined root deletes nothing through the legacy opencode path, with and without `--force`.
 - Uninstall of a legacy machine that never ran an install under the new layout.
 - Migration from the pre-change layout, in both the separate-roots and joined-root variants,
