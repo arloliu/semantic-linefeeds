@@ -188,6 +188,14 @@ So the rule throughout is:
   That answers correctly for a bind mount, a symlinked parent, and an ordinary distinct path alike,
   and it degrades to a plain comparison when both leaves already exist.
 
+  Comparing the suffixes as plain strings is safe rather than lucky.
+  A suffix only ever holds components below the deepest directory that exists,
+  and those come from this project's own registry literals.
+  Everything a user can spell differently — `$HOME`, `XDG_CONFIG_HOME`, a differently-cased path —
+  sits at or above the anchor.
+  There `samefile` resolves it against the filesystem's own rules rather than by string comparison.
+  So a case-insensitive filesystem cannot turn one destination into two here.
+
 `colliding_destinations` is where both halves meet:
 it compares destinations that may not exist, and, since it now also compares against installed rows,
 destinations that do.
