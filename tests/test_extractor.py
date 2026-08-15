@@ -1,9 +1,8 @@
 import json
 
+import check_linefeeds
 import pytest
 from conftest import REPO
-
-import check_linefeeds
 
 IN_DIR = REPO / "tests" / "extractor" / "in"
 OUT_DIR = REPO / "tests" / "extractor" / "out"

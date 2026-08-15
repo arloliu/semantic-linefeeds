@@ -1,5 +1,3 @@
-from conftest import PAYLOADS, FIXTURES, run_cli, load_fixture, REPO, SCRIPT
-import check_linefeeds
 import io
 import json
 import os
@@ -7,7 +5,9 @@ import shutil
 import subprocess
 import sys
 
+import check_linefeeds
 import pytest
+from conftest import FIXTURES, PAYLOADS, REPO, SCRIPT, load_fixture, run_cli
 
 
 def hook(payload_name):
@@ -122,7 +122,10 @@ def test_paths_on_both_sides_of_an_option_are_all_checked(tmp_path):
         path.write_text("One sentence here. Another sentence follows.\n")
     r = run_cli(["--file", str(first), "--json", str(second)])
     assert r.returncode == 1, r.stderr
-    assert {report["path"] for report in json.loads(r.stdout)} == {str(first), str(second)}
+    assert {report["path"] for report in json.loads(r.stdout)} == {
+        str(first),
+        str(second),
+    }
 
 
 def test_the_flag_with_no_paths_at_all_is_still_a_usage_error():
@@ -195,8 +198,9 @@ def test_codex_malformed_never_crashes():
 
 @pytest.mark.skipif(shutil.which("bun") is None, reason="bun not installed")
 def test_opencode_plugin_unit_tests():
-    r = subprocess.run(["bun", "test", "adapters/opencode/"],
-                       cwd=REPO, capture_output=True, text=True)
+    r = subprocess.run(
+        ["bun", "test", "adapters/opencode/"], cwd=REPO, capture_output=True, text=True
+    )
     assert r.returncode == 0, r.stderr
 
 
@@ -216,13 +220,16 @@ def test_skip_path_tmp_component():
 
 def test_hook_ignores_temp_markdown():
     import tempfile as _tf
-    payload = json.dumps({
-        "tool_name": "Write",
-        "tool_input": {
-            "file_path": _tf.gettempdir() + "/agent_prompt.md",
-            "content": "Bad break here. Another sentence follows.\n",
-        },
-    })
+
+    payload = json.dumps(
+        {
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": _tf.gettempdir() + "/agent_prompt.md",
+                "content": "Bad break here. Another sentence follows.\n",
+            },
+        }
+    )
     r = run_cli(["--hook"], payload)
     assert r.returncode == 0
     assert r.stderr == ""
@@ -235,8 +242,10 @@ def test_file_mode_still_checks_temp_paths(tmp_path, monkeypatch):
     assert check_linefeeds.run_files([str(bad)]) == 1
 
 
-LONGISH = ("This clause runs on and on past sixty characters, "
-           "and the tail keeps going to make the point.\n")
+LONGISH = (
+    "This clause runs on and on past sixty characters, "
+    "and the tail keeps going to make the point.\n"
+)
 
 
 def test_long_limit_flag_lowers_threshold(tmp_path):
@@ -262,7 +271,9 @@ def test_long_limit_env_var(tmp_path):
     env["SEMLF_LONG_LINE"] = "60"
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--file", str(doc)],
-        capture_output=True, text=True, env=env,
+        capture_output=True,
+        text=True,
+        env=env,
     )
     assert "[long]" in r.stdout
 
@@ -274,7 +285,9 @@ def test_long_limit_flag_beats_env(tmp_path):
     env["SEMLF_LONG_LINE"] = "60"
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--file", str(doc), "--long-limit", "1000"],
-        capture_output=True, text=True, env=env,
+        capture_output=True,
+        text=True,
+        env=env,
     )
     assert "[long]" not in r.stdout
 
@@ -286,7 +299,9 @@ def test_long_limit_bad_env_falls_back(tmp_path):
     env["SEMLF_LONG_LINE"] = "banana"
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--file", str(doc)],
-        capture_output=True, text=True, env=env,
+        capture_output=True,
+        text=True,
+        env=env,
     )
     assert r.returncode == 0
     assert "[long]" not in r.stdout  # 95 chars is under the 120 default
@@ -321,13 +336,21 @@ def test_hook_survives_a_failing_temp_discovery(monkeypatch, capsys):
     so an exception raised deeper made the hook exit 1 before checking anything.
     """
     monkeypatch.setattr(check_linefeeds.tempfile, "gettempdir", raising_gettempdir)
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
-        "tool_name": "Write",
-        "tool_input": {
-            "file_path": "/x/doc.md",
-            "content": "One sentence here. Another sentence follows.\n",
-        },
-    })))
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(
+                {
+                    "tool_name": "Write",
+                    "tool_input": {
+                        "file_path": "/x/doc.md",
+                        "content": "One sentence here. Another sentence follows.\n",
+                    },
+                }
+            )
+        ),
+    )
     assert check_linefeeds.run_hook_claude() == 2
     assert "[fused]" in capsys.readouterr().err
 

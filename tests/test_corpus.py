@@ -11,11 +11,11 @@ Each file goes through the hook the way a write would.
 That keeps the gate honest as the set of reported kinds narrows.
 """
 
-from conftest import run_cli
 import json
 import pathlib
 
 import pytest
+from conftest import run_cli
 
 CORPUS = pathlib.Path(__file__).resolve().parent / "corpus"
 COMPLIANT = CORPUS / "compliant"
@@ -44,11 +44,16 @@ def model_visible_output(path):
     Returns the empty string when the model is told nothing,
     which is the only acceptable result for a compliant file.
     """
-    payload = json.dumps({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "Write",
-        "tool_input": {"file_path": str(path), "content": path.read_text(encoding="utf-8")},
-    })
+    payload = json.dumps(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": str(path),
+                "content": path.read_text(encoding="utf-8"),
+            },
+        }
+    )
     result = run_cli(["--hook", "claude"], payload)
     if result.returncode == 2:
         return result.stderr
@@ -59,8 +64,10 @@ def model_visible_output(path):
 
 
 def load_record():
-    return {k: [tuple(pair) for pair in v]
-            for k, v in json.loads(RECORD.read_text(encoding="utf-8")).items()}
+    return {
+        k: [tuple(pair) for pair in v]
+        for k, v in json.loads(RECORD.read_text(encoding="utf-8")).items()
+    }
 
 
 def test_the_corpus_is_not_empty():
@@ -72,9 +79,13 @@ def test_every_corpus_file_is_accounted_for():
     """Adding a file without recording its status must not pass silently."""
     recorded = set(load_record())
     present = {relative(p) for p in corpus_files()}
-    assert recorded <= present, f"recorded but missing from disk: {sorted(recorded - present)}"
+    assert recorded <= present, (
+        f"recorded but missing from disk: {sorted(recorded - present)}"
+    )
     unrecorded = sorted(p for p in present - recorded if findings_for(COMPLIANT / p))
-    assert not unrecorded, f"files with findings that the record does not mention: {unrecorded}"
+    assert not unrecorded, (
+        f"files with findings that the record does not mention: {unrecorded}"
+    )
 
 
 def test_recorded_false_positives_have_not_changed():
@@ -91,10 +102,12 @@ def test_recorded_false_positives_have_not_changed():
         expected = set(record.get(name, []))
         appeared += [f"{name}:{n} [{k}]" for n, k in sorted(current - expected)]
         disappeared += [f"{name}:{n} [{k}]" for n, k in sorted(expected - current)]
-    assert not appeared, (
-        "new false positives against correct prose:\n  " + "\n  ".join(appeared))
+    assert not appeared, "new false positives against correct prose:\n  " + "\n  ".join(
+        appeared
+    )
     assert not disappeared, (
-        "these were fixed; remove them from the record:\n  " + "\n  ".join(disappeared))
+        "these were fixed; remove them from the record:\n  " + "\n  ".join(disappeared)
+    )
 
 
 def gate_can_hear():
@@ -112,7 +125,8 @@ def test_the_gate_can_still_hear_a_complaint():
     """
     assert gate_can_hear(), (
         "prose known to be wrong drew no complaint, so the gate below is measuring "
-        "nothing; a checkout under the platform temp directory does exactly this")
+        "nothing; a checkout under the platform temp directory does exactly this"
+    )
 
 
 def test_compliant_corpus_draws_no_complaint():
@@ -123,8 +137,10 @@ def test_compliant_corpus_draws_no_complaint():
     so a person auditing a file still sees them and a model being written for does not.
     """
     if not gate_can_hear():
-        pytest.skip("hook mode cannot see this checkout, so silence here would "
-                    "read as a repair rather than as a blind gate")
+        pytest.skip(
+            "hook mode cannot see this checkout, so silence here would "
+            "read as a repair rather than as a blind gate"
+        )
     complaints = []
     for path in corpus_files():
         output = model_visible_output(path)
@@ -132,5 +148,6 @@ def test_compliant_corpus_draws_no_complaint():
             for line in output.splitlines():
                 if line.lstrip().startswith("["):
                     complaints.append(f"{relative(path)}: {line.strip()}")
-    assert not complaints, (
-        "correct prose was complained about:\n  " + "\n  ".join(complaints))
+    assert not complaints, "correct prose was complained about:\n  " + "\n  ".join(
+        complaints
+    )

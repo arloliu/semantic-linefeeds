@@ -1,4 +1,5 @@
 """tests/test_classify.py — every cell of the admission matrix, per axis."""
+
 import os
 import sys
 from pathlib import Path
@@ -16,27 +17,42 @@ VERSION = "0.7.0"
 
 
 def entry_for(path, data, version):
-    return {"path": str(path), "sha256": manifest.sha256_bytes(data),
-            "version": version}
+    return {
+        "path": str(path),
+        "sha256": manifest.sha256_bytes(data),
+        "version": version,
+    }
 
 
-def verdict(dest, entry=None, rendered=RENDERED, version=VERSION,
-            force=False):
+def verdict(dest, entry=None, rendered=RENDERED, version=VERSION, force=False):
     return classify.classify_artifact(entry, dest, rendered, version, force)
 
 
 # --- version ordering -------------------------------------------------------
 
-@pytest.mark.parametrize("text,expected", [
-    ("0.7.0", (0, 7, 0)), ("1.0", (1, 0)), ("10", (10,)),
-    ("0.7.0rc1", None), ("", None), ("1..2", None), ("-1.0", None),
-    (None, None), ("a.b", None), ("²", None), ("٣.٧", None),
-])
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("0.7.0", (0, 7, 0)),
+        ("1.0", (1, 0)),
+        ("10", (10,)),
+        ("0.7.0rc1", None),
+        ("", None),
+        ("1..2", None),
+        ("-1.0", None),
+        (None, None),
+        ("a.b", None),
+        ("²", None),
+        ("٣.٧", None),
+    ],
+)
 def test_versions_order_as_dot_separated_integer_tuples(text, expected):
     assert classify.parse_version(text) == expected
 
 
 # --- object-state axis ------------------------------------------------------
+
 
 def test_absent_writes(tmp_path):
     v = verdict(tmp_path / "a")
@@ -68,8 +84,9 @@ def test_special_file_refuses_even_with_force(tmp_path):
         assert (v.state, v.action) == ("special", "refuse")
 
 
-@pytest.mark.skipif(hasattr(os, "geteuid") and os.geteuid() == 0,
-                    reason="root ignores permission bits")
+@pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0, reason="root ignores permission bits"
+)
 def test_unreadable_file_refuses_even_with_force(tmp_path):
     dest = tmp_path / "a"
     dest.write_bytes(b"content\n")
@@ -94,6 +111,7 @@ def test_oversized_file_is_unreadable_even_with_force(tmp_path, monkeypatch):
 
 
 # --- provenance axis (readable regular file) --------------------------------
+
 
 def test_exact_rendering_adopts(tmp_path):
     dest = tmp_path / "a"

@@ -27,8 +27,14 @@ sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(TESTS.parent / "scripts"))
 
 from corpus_harness import (  # noqa: E402
-    KINDS, REPORTED_STRATA, Holdout, ScoringRefused,
-    floor_problems, recall, replay_kinds)
+    KINDS,
+    REPORTED_STRATA,
+    Holdout,
+    ScoringRefused,
+    floor_problems,
+    recall,
+    replay_kinds,
+)
 
 CORPUS = TESTS / "corpus"
 HOLDOUT = CORPUS / "holdout"
@@ -59,8 +65,12 @@ def main(number):
     reporting = manifest["reporting"]["recall_floors"]
     bands = reporting["strata_bands"]
     floors = reporting["holdout"][str(number)]
-    holdout = Holdout(round_dir / "bundle.json", CORPUS / "freeze.jsonl",
-                      TESTS.parent / "scripts" / "check_linefeeds.py", CORPUS / "manifest.json")
+    holdout = Holdout(
+        round_dir / "bundle.json",
+        CORPUS / "freeze.jsonl",
+        TESTS.parent / "scripts" / "check_linefeeds.py",
+        CORPUS / "manifest.json",
+    )
 
     passphrase = getpass.getpass("passphrase: ")
     try:
@@ -71,11 +81,14 @@ def main(number):
     units = scored(body["units"])
     overall = {kind: recall(units, kind)["all"] for kind in KINDS}
     strata = {
-        dimension: {kind: recall(units, kind, dimension, bands.get(dimension))
-                    for kind in KINDS}
+        dimension: {
+            kind: recall(units, kind, dimension, bands.get(dimension)) for kind in KINDS
+        }
         for dimension in REPORTED_STRATA
     }
-    false_positives = sorted(record["id"] for record in units if record.get("false_positive"))
+    false_positives = sorted(
+        record["id"] for record in units if record.get("false_positive")
+    )
     non_violations = sum(1 for record in units if record["label"] == "false")
 
     result = {
@@ -85,32 +98,55 @@ def main(number):
         "floors": floors,
         "floors_met": not floor_problems(units, floors),
         "floor_problems": floor_problems(units, floors),
-        "recall": {kind: {"detected": counts["detected"], "true": counts["true"],
-                          "rate": counts["rate"], "interval": counts["interval"],
-                          "withheld": list(counts["withheld"])}
-                   for kind, counts in overall.items()},
-        "strata": {dimension: {kind: {str(level): {
-                        "detected": counts["detected"], "true": counts["true"],
-                        "rate": counts["rate"], "withheld": list(counts["withheld"])}
-                        for level, counts in sorted(report.items(), key=lambda p: str(p[0]))}
-                    for kind, report in per_kind.items()}
-                   for dimension, per_kind in strata.items()},
-        "false_positives": {"count": len(false_positives),
-                            "of_labeled_non_violations": non_violations,
-                            "ids": false_positives},
+        "recall": {
+            kind: {
+                "detected": counts["detected"],
+                "true": counts["true"],
+                "rate": counts["rate"],
+                "interval": counts["interval"],
+                "withheld": list(counts["withheld"]),
+            }
+            for kind, counts in overall.items()
+        },
+        "strata": {
+            dimension: {
+                kind: {
+                    str(level): {
+                        "detected": counts["detected"],
+                        "true": counts["true"],
+                        "rate": counts["rate"],
+                        "withheld": list(counts["withheld"]),
+                    }
+                    for level, counts in sorted(report.items(), key=lambda p: str(p[0]))
+                }
+                for kind, report in per_kind.items()
+            }
+            for dimension, per_kind in strata.items()
+        },
+        "false_positives": {
+            "count": len(false_positives),
+            "of_labeled_non_violations": non_violations,
+            "ids": false_positives,
+        },
         "ambiguous": sum(1 for record in units if record["label"] == "ambiguous"),
     }
 
     (round_dir / "result.json").write_text(
-        json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     holdout.record_evaluation(result)
 
     print(f"{result['records']} records, {result['boundaries']} boundaries")
     for kind, counts in sorted(overall.items()):
-        rate = "withheld: " + "; ".join(counts["withheld"]) if counts["rate"] is None \
+        rate = (
+            "withheld: " + "; ".join(counts["withheld"])
+            if counts["rate"] is None
             else f"{counts['rate']:.1%}"
-        print(f"  {kind:6} {counts['detected']:4}/{counts['true']:<4} {rate}"
-              f"   floor {floors[kind]:.2f}")
+        )
+        print(
+            f"  {kind:6} {counts['detected']:4}/{counts['true']:<4} {rate}"
+            f"   floor {floors[kind]:.2f}"
+        )
     print(f"  false positives  {len(false_positives)} of {non_violations}")
     print(f"  ambiguous        {result['ambiguous']}")
     print("floors met" if result["floors_met"] else "FLOORS NOT MET:")

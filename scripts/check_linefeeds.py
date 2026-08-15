@@ -189,9 +189,9 @@ def _existing_start(path):
 
 def _segments_match(parts, patterns):
     """Segment-wise glob equality: same length, every segment matches its pattern."""
-    return (len(parts) == len(patterns)
-            and all(fnmatch.fnmatchcase(part, pattern)
-                    for part, pattern in zip(parts, patterns)))
+    return len(parts) == len(patterns) and all(
+        fnmatch.fnmatchcase(part, pattern) for part, pattern in zip(parts, patterns)
+    )
 
 
 def _exclude_match(rel, patterns):
@@ -218,7 +218,9 @@ def _exclude_match(rel, patterns):
         if pattern.endswith("/"):
             chain = pattern.rstrip("/").split("/")
             if len(chain) > 1:
-                if len(parts) > len(chain) and _segments_match(parts[:len(chain)], chain):
+                if len(parts) > len(chain) and _segments_match(
+                    parts[: len(chain)], chain
+                ):
                     return True
             elif any(fnmatch.fnmatchcase(part, chain[0]) for part in parts[:-1]):
                 return True
@@ -258,8 +260,16 @@ def excluded(path):
     return _exclude_match(rel, patterns)
 
 
-SKIP_DIRS = {"vendor", "node_modules", "testdata", "fixtures",
-             ".git", "dist", "build", "tmp"}
+SKIP_DIRS = {
+    "vendor",
+    "node_modules",
+    "testdata",
+    "fixtures",
+    ".git",
+    "dist",
+    "build",
+    "tmp",
+}
 
 LICENSE_RE = re.compile(
     r"SPDX-License-Identifier|Copyright \(c\)|Copyright \d{4}|©|All rights reserved",
@@ -272,10 +282,27 @@ SIG_RE = re.compile(r"^(async\s+def|def|class)\b")
 # A line may legitimately end without terminal punctuation when the break
 # lands before a conjunction or relative/subordinate clause on the next line.
 CONNECTORS = {
-    "and", "but", "so", "or", "nor", "yet",
-    "which", "that", "where", "who", "whose", "whom",
-    "when", "while", "because", "although", "though",
-    "unless", "until", "if", "as",
+    "and",
+    "but",
+    "so",
+    "or",
+    "nor",
+    "yet",
+    "which",
+    "that",
+    "where",
+    "who",
+    "whose",
+    "whom",
+    "when",
+    "while",
+    "because",
+    "although",
+    "though",
+    "unless",
+    "until",
+    "if",
+    "as",
 }
 
 # Characters that can legitimately end a semantically broken line.
@@ -305,7 +332,8 @@ FUSED_RE = re.compile(
     r"(?:\b(?!(?:" + "|".join(MID_SENTENCE_ABBREVIATIONS) + r")\.)"
     r"[a-z]{2,}|`[^`]+`)"
     r"[.!?][\"')\]*_~]*"
-    r"\s+(?:[A-Z]|`[^`]+`\s*\w)")
+    r"\s+(?:[A-Z]|`[^`]+`\s*\w)"
+)
 
 # Emphasis delimiters standing between the terminal punctuation and the end of the line,
 # where they hide that punctuation from the wrap check.
@@ -359,9 +387,7 @@ PRE_OPEN_RE = re.compile(r"<pre\b|<pre>", re.IGNORECASE)
 
 # A bare "and" is usually a compound object (not a boundary); require the
 # comma-led form, or strong punctuation, before advising a split.
-BOUNDARY_HINT_RE = re.compile(
-    r"[;:—]|\s–\s|, (?:and|but|so|which|that|where)\b"
-)
+BOUNDARY_HINT_RE = re.compile(r"[;:—]|\s–\s|, (?:and|but|so|which|that|where)\b")
 
 Language = collections.namedtuple(
     "Language",
@@ -369,50 +395,114 @@ Language = collections.namedtuple(
 )
 
 
-def _lang(name, extensions, line=None, doc_lines=(), blocks=(), block_prefix="",
-          directives=(), docstrings=False):
-    return Language(name, tuple(extensions), line, tuple(doc_lines),
-                    tuple(blocks), block_prefix,
-                    tuple(re.compile(p) for p in directives), docstrings)
+def _lang(
+    name,
+    extensions,
+    line=None,
+    doc_lines=(),
+    blocks=(),
+    block_prefix="",
+    directives=(),
+    docstrings=False,
+):
+    return Language(
+        name,
+        tuple(extensions),
+        line,
+        tuple(doc_lines),
+        tuple(blocks),
+        block_prefix,
+        tuple(re.compile(p) for p in directives),
+        docstrings,
+    )
 
 
 LANGUAGES = [
-    _lang("go", [".go"], line="//", blocks=[("/*", "*/")],
-          # gofail failpoints are written with a space (`// gofail: var x T`),
-          # so the unspaced marker pattern never reaches them.
-          directives=[r"^//[a-zA-Z0-9_+-]+:", r"^//\s*\+build\b",
-                      r"^//\s*gofail:"]),
-    _lang("cfamily",
-          [".c", ".h", ".cc", ".cpp", ".hpp", ".hh", ".java",
-           ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".cs",
-           ".kt", ".kts", ".swift", ".scala", ".dart", ".m", ".mm",
-           ".php", ".groovy", ".gradle"],
-          line="//", doc_lines=["///"], blocks=[("/*", "*/")], block_prefix="*",
-          directives=[r"^//[a-zA-Z0-9_+-]+:",
-                      r"^//\s*(eslint|prettier|biome|@ts-|tslint|NOLINT|noinspection|istanbul)"]),
-    _lang("rust", [".rs"], line="//", doc_lines=["///", "//!"],
-          blocks=[("/*", "*/")], block_prefix="*"),
-    _lang("python", [".py", ".pyi"], line="#", docstrings=True,
-          directives=[r"^#!",
-                      r"^#\s*-\*-",
-                      r"^#\s*(noqa|type:|pylint:|ruff:|flake8:|fmt:|isort:|mypy:|pragma:)",
-                      r"^#[a-zA-Z0-9_+-]+:"]),
-    _lang("shell", [".sh", ".bash"], line="#",
-          directives=[r"^#!", r"^#\s*shellcheck"]),
+    _lang(
+        "go",
+        [".go"],
+        line="//",
+        blocks=[("/*", "*/")],
+        # gofail failpoints are written with a space (`// gofail: var x T`),
+        # so the unspaced marker pattern never reaches them.
+        directives=[r"^//[a-zA-Z0-9_+-]+:", r"^//\s*\+build\b", r"^//\s*gofail:"],
+    ),
+    _lang(
+        "cfamily",
+        [
+            ".c",
+            ".h",
+            ".cc",
+            ".cpp",
+            ".hpp",
+            ".hh",
+            ".java",
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
+            ".mjs",
+            ".cjs",
+            ".cs",
+            ".kt",
+            ".kts",
+            ".swift",
+            ".scala",
+            ".dart",
+            ".m",
+            ".mm",
+            ".php",
+            ".groovy",
+            ".gradle",
+        ],
+        line="//",
+        doc_lines=["///"],
+        blocks=[("/*", "*/")],
+        block_prefix="*",
+        directives=[
+            r"^//[a-zA-Z0-9_+-]+:",
+            r"^//\s*(eslint|prettier|biome|@ts-|tslint|NOLINT|noinspection|istanbul)",
+        ],
+    ),
+    _lang(
+        "rust",
+        [".rs"],
+        line="//",
+        doc_lines=["///", "//!"],
+        blocks=[("/*", "*/")],
+        block_prefix="*",
+    ),
+    _lang(
+        "python",
+        [".py", ".pyi"],
+        line="#",
+        docstrings=True,
+        directives=[
+            r"^#!",
+            r"^#\s*-\*-",
+            r"^#\s*(noqa|type:|pylint:|ruff:|flake8:|fmt:|isort:|mypy:|pragma:)",
+            r"^#[a-zA-Z0-9_+-]+:",
+        ],
+    ),
+    _lang("shell", [".sh", ".bash"], line="#", directives=[r"^#!", r"^#\s*shellcheck"]),
     _lang("vbnet", [".vb"], line="'", doc_lines=["'''"]),
     _lang("sql", [".sql"], line="--", blocks=[("/*", "*/")], block_prefix="*"),
-    _lang("lua", [".lua"], line="--", blocks=[("--[[", "]]")],
-          directives=[r"^---@"]),
-    _lang("ruby", [".rb", ".rake"], line="#",
-          directives=[r"^#!",
-                      r"^#\s*(frozen_string_literal|rubocop|encoding|typed):"]),
+    _lang("lua", [".lua"], line="--", blocks=[("--[[", "]]")], directives=[r"^---@"]),
+    _lang(
+        "ruby",
+        [".rb", ".rake"],
+        line="#",
+        directives=[r"^#!", r"^#\s*(frozen_string_literal|rubocop|encoding|typed):"],
+    ),
     _lang("perl", [".pl", ".pm"], line="#", directives=[r"^#!"]),
-    _lang("powershell", [".ps1", ".psm1", ".psd1"], line="#",
-          blocks=[("<#", "#>")],
-          directives=[r"^#!", r"^#[rR]equires",
-                      r"^#(?i:endregion|region)\b"]),
-    _lang("rlang", [".r", ".R"], line="#", doc_lines=["#'"],
-          directives=[r"^#!"]),
+    _lang(
+        "powershell",
+        [".ps1", ".psm1", ".psd1"],
+        line="#",
+        blocks=[("<#", "#>")],
+        directives=[r"^#!", r"^#[rR]equires", r"^#(?i:endregion|region)\b"],
+    ),
+    _lang("rlang", [".r", ".R"], line="#", doc_lines=["#'"], directives=[r"^#!"]),
     _lang("haskell", [".hs"], line="--", blocks=[("{-", "-}")]),
     _lang("elixir", [".ex", ".exs"], line="#", directives=[r"^#!"]),
     _lang("zig", [".zig"], line="//", doc_lines=["///", "//!"]),
@@ -511,7 +601,7 @@ def license_header_extent(text, lang):
                     transition = True  # a second scope begins here
                 else:
                     style = "block"
-                    in_block = cd not in s[len(od):]
+                    in_block = cd not in s[len(od) :]
                     close = cd
                     opened = True
                 break
@@ -568,7 +658,7 @@ def peel_emphasis(prose):
         match = CLOSING_EMPHASIS_RE.search(prose)
         if not match:
             return prose
-        head = prose[:match.start()]
+        head = prose[: match.start()]
         if match.group(1) not in head:
             return prose
         prose = head
@@ -589,7 +679,7 @@ def peel_code_span(prose):
     match = TRAILING_CODE_SPAN_RE.search(prose)
     if not match:
         return prose
-    return prose[:match.start()].rstrip() or prose
+    return prose[: match.start()].rstrip() or prose
 
 
 def line_ending(prose):
@@ -688,7 +778,7 @@ def strip_quote_markers(raw):
         match = QUOTE_MARKER_RE.match(raw)
         if not match:
             return raw
-        raw = raw[match.end():]
+        raw = raw[match.end() :]
 
 
 def prose_lines_markdown(text):
@@ -891,7 +981,7 @@ def prose_lines_code(text, lang):
             if m:
                 doc_quote = m.group(1)
                 doc_base = len(raw) - len(raw.lstrip())
-                rest = stripped[m.end():]
+                rest = stripped[m.end() :]
                 expect_doc = False
                 reset_scope()
                 one_line = doc_quote in rest
@@ -916,12 +1006,12 @@ def prose_lines_code(text, lang):
                 body = body.split(block_close)[0]
             s = body.strip()
             if lang.block_prefix and s.startswith(lang.block_prefix):
-                body = s[len(lang.block_prefix):]
+                body = s[len(lang.block_prefix) :]
             else:
                 # Undecorated block: keep indentation relative to the block
                 # opener so indented example code stays recognizable.
                 lead = len(body) - len(body.lstrip())
-                body = body[min(lead, block_base):]
+                body = body[min(lead, block_base) :]
             prose = body_prose(body)
             if prose:
                 yield i, raw, prose
@@ -936,7 +1026,7 @@ def prose_lines_code(text, lang):
         opened = False
         for open_d, close_d in lang.blocks:
             if stripped.startswith(open_d):
-                rest = stripped[len(open_d):]
+                rest = stripped[len(open_d) :]
                 one_line = close_d in rest
                 if one_line:
                     rest = rest.split(close_d)[0]
@@ -999,7 +1089,7 @@ def prose_lines_code(text, lang):
             yield i, None, None  # column change: new paragraph
         prev_col = col
 
-        prose = body_prose(stripped[len(marker):])
+        prose = body_prose(stripped[len(marker) :])
         if prose:
             yield i, raw, prose
         else:
@@ -1033,7 +1123,7 @@ def header_comment_text(text, lang):
         for open_d, close_d in lang.blocks:
             if s.startswith(open_d):
                 header.append(s)
-                in_block = close_d not in s[len(open_d):]
+                in_block = close_d not in s[len(open_d) :]
                 close = close_d
                 opened = True
                 break
@@ -1044,6 +1134,7 @@ def header_comment_text(text, lang):
             continue
         break
     return "\n".join(header)
+
 
 PATCH_FILE_RE = re.compile(r"^\*\*\* (?:Add|Update) File: (.+)$")
 PATCH_MOVE_RE = re.compile(r"^\*\*\* Move to: (.+)$")
@@ -1060,7 +1151,9 @@ def prose_stream(text, path):
     # replacing them: narrowing the older rule would start checking files it
     # now skips, and a change that adds findings is not one this corpus can score.
     head = "\n".join(text.splitlines()[:5])
-    if GENERATED_RE.search(head) or GENERATED_RE.search(header_comment_text(text, lang)):
+    if GENERATED_RE.search(head) or GENERATED_RE.search(
+        header_comment_text(text, lang)
+    ):
         return iter(())
     return prose_lines_code(text, lang)
 
@@ -1170,8 +1263,10 @@ def _fused_suggestion(prose, raw, match):
         return None
     idx = raw.find(prose)
     prefix = raw[:idx]
-    tail_text = raw[idx + len(prose):]
-    if not _SUGGESTION_PREFIX_RE.match(prefix) or not _SUGGESTION_TAIL_RE.match(tail_text):
+    tail_text = raw[idx + len(prose) :]
+    if not _SUGGESTION_PREFIX_RE.match(prefix) or not _SUGGESTION_TAIL_RE.match(
+        tail_text
+    ):
         return None
     cut = match.start() + ws.start()
     p1 = prose[:cut]
@@ -1211,8 +1306,11 @@ def diagnose(text, path, spans=None):
         # Checked against the still-unrebound raw line: the trailing-carrier
         # block below this one reassigns `raw` later in the same iteration.
         parsed = parse_directive(prose)
-        if (parsed is not None and parsed is not MALFORMED
-                and _standalone_carrier_is_ascii(raw, prose)):
+        if (
+            parsed is not None
+            and parsed is not MALFORMED
+            and _standalone_carrier_is_ascii(raw, prose)
+        ):
             # A well-formed standalone directive line is a paragraph boundary,
             # not prose (ADR-0010).
             # A MALFORMED line, or one whose carrier whitespace is not
@@ -1230,7 +1328,7 @@ def diagnose(text, path, spans=None):
             if trimmed_prose.endswith(carrier):
                 suppressions.setdefault(lineno + offset, set()).update(kinds)
                 raw = judged_raw
-                prose = trimmed_prose[:-len(carrier)].rstrip(" \t")
+                prose = trimmed_prose[: -len(carrier)].rstrip(" \t")
                 carrier_stripped = True
                 if not prose:
                     prev = None
@@ -1243,17 +1341,20 @@ def diagnose(text, path, spans=None):
             anchor = _line_range(text, offsets, lineno)
             located = locate_in_line(text, offsets, lineno, match.group(0))
             if located and located["end"] <= anchor["end"]:
-                tail = re.search(r"\s", text[located["end"]:anchor["end"]])
+                tail = re.search(r"\s", text[located["end"] : anchor["end"]])
                 end = located["end"] + tail.start() if tail else anchor["end"]
                 ownership, basis = {"start": located["start"], "end": end}, "token"
             else:
                 ownership, basis = None, "degraded"
             finding = {
-                "kind": "fused", "line": lineno,
+                "kind": "fused",
+                "line": lineno,
                 "message": "two sentences on one line — one sentence per line",
                 "excerpt": prose,
-                "anchor": anchor, "evidence": dict(anchor),
-                "ownership": ownership, "ownership_basis": basis,
+                "anchor": anchor,
+                "evidence": dict(anchor),
+                "ownership": ownership,
+                "ownership_basis": basis,
             }
             if not carrier_stripped:
                 suggestion = _fused_suggestion(prose, raw, match)
@@ -1270,52 +1371,77 @@ def diagnose(text, path, spans=None):
                 and first_word.group(0) not in CONNECTORS
             ):
                 upper_words = line_ending(prev_prose).rsplit(maxsplit=1)
-                upper = (locate_in_line(text, offsets, prev_no, upper_words[-1])
-                         if upper_words else None)
+                upper = (
+                    locate_in_line(text, offsets, prev_no, upper_words[-1])
+                    if upper_words
+                    else None
+                )
                 lower = locate_in_line(text, offsets, lineno, first_word.group(0))
                 anchor = _line_range(text, offsets, prev_no)
-                evidence = {"start": anchor["start"],
-                            "end": _line_range(text, offsets, lineno)["end"]}
+                evidence = {
+                    "start": anchor["start"],
+                    "end": _line_range(text, offsets, lineno)["end"],
+                }
                 if upper and lower and upper["end"] <= lower["start"]:
-                    ownership, basis = {"start": upper["start"], "end": lower["end"]}, "token"
+                    ownership, basis = (
+                        {"start": upper["start"], "end": lower["end"]},
+                        "token",
+                    )
                 else:
                     ownership, basis = None, "degraded"
-                findings.append({
-                    "kind": "wrap", "line": prev_no,
-                    "message": "ends mid-clause (column-wrapped?) — break at sentence or clause boundaries, not at a column",
-                    "excerpt": prev_prose,
-                    "anchor": anchor, "evidence": evidence,
-                    "ownership": ownership, "ownership_basis": basis,
-                })
+                findings.append(
+                    {
+                        "kind": "wrap",
+                        "line": prev_no,
+                        "message": "ends mid-clause (column-wrapped?) — break at sentence or clause boundaries, not at a column",
+                        "excerpt": prev_prose,
+                        "anchor": anchor,
+                        "evidence": evidence,
+                        "ownership": ownership,
+                        "ownership_basis": basis,
+                    }
+                )
 
         if limit and len(raw) > limit and BOUNDARY_HINT_RE.search(prose):
             anchor = _line_range(text, offsets, lineno)
             located = locate_in_line(text, offsets, lineno, prose)
             ownership, basis = (located, "token") if located else (None, "degraded")
-            findings.append({
-                "kind": "long", "line": lineno,
-                "message": f"advisory: {len(raw)} chars with a possible clause boundary — scan from ~{limit} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long",
-                "excerpt": prose,
-                "anchor": anchor, "evidence": dict(anchor),
-                "ownership": ownership, "ownership_basis": basis,
-            })
+            findings.append(
+                {
+                    "kind": "long",
+                    "line": lineno,
+                    "message": f"advisory: {len(raw)} chars with a possible clause boundary — scan from ~{limit} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long",
+                    "excerpt": prose,
+                    "anchor": anchor,
+                    "evidence": dict(anchor),
+                    "ownership": ownership,
+                    "ownership_basis": basis,
+                }
+            )
 
         prev = (lineno, prose)
     findings.sort(key=lambda d: d["line"])
     if normalized is not None:
-        findings = [d for d in findings
-                    if d["ownership"] is not None
-                    and any(touches(d["ownership"], span) for span in normalized)]
+        findings = [
+            d
+            for d in findings
+            if d["ownership"] is not None
+            and any(touches(d["ownership"], span) for span in normalized)
+        ]
     if suppressions:
-        findings = [d for d in findings
-                    if d["kind"] not in suppressions.get(d["line"], frozenset())]
+        findings = [
+            d
+            for d in findings
+            if d["kind"] not in suppressions.get(d["line"], frozenset())
+        ]
     return findings
 
 
 def check(text, path):
     """Return a list of (lineno, kind, message, excerpt) findings."""
-    return [(d["line"], d["kind"], d["message"], d["excerpt"])
-            for d in diagnose(text, path)]
+    return [
+        (d["line"], d["kind"], d["message"], d["excerpt"]) for d in diagnose(text, path)
+    ]
 
 
 DIAGNOSTIC_SCHEMA_VERSION = 1
@@ -1327,9 +1453,11 @@ def to_schema(path, diagnostics):
     Text output, SARIF, and annotations are renderers over this shape;
     the version field is what lets the next breaking change announce itself instead of being discovered by a consumer's parser.
     """
-    return {"schema_version": DIAGNOSTIC_SCHEMA_VERSION,
-            "path": path,
-            "diagnostics": diagnostics}
+    return {
+        "schema_version": DIAGNOSTIC_SCHEMA_VERSION,
+        "path": path,
+        "diagnostics": diagnostics,
+    }
 
 
 def _as_tuples(findings):
@@ -1338,8 +1466,10 @@ def _as_tuples(findings):
     `format_findings` is the one renderer both callers share,
     and this line is what lets it stay ignorant of which shape it received.
     """
-    return [(f["line"], f["kind"], f["message"], f["excerpt"])
-            if isinstance(f, dict) else f for f in findings]
+    return [
+        (f["line"], f["kind"], f["message"], f["excerpt"]) if isinstance(f, dict) else f
+        for f in findings
+    ]
 
 
 def _kind_of(finding):
@@ -1350,12 +1480,16 @@ def _kind_of(finding):
 def format_findings(findings, path, snippet, skill_hint=True):
     findings = _as_tuples(findings)
     where = "the text just written to" if snippet else ""
-    lines = [f"semantic-linefeeds: {len(findings)} issue(s) in {where} {path}:".replace("  ", " ")]
+    lines = [
+        f"semantic-linefeeds: {len(findings)} issue(s) in {where} {path}:".replace(
+            "  ", " "
+        )
+    ]
     for lineno, kind, msg, excerpt in findings:
         label = f"line {lineno} of your edit" if snippet else f"line {lineno}"
         if len(excerpt) > 60:
             excerpt = excerpt[:57] + "..."
-        lines.append(f'  [{kind}] {label}: {msg}\n         > {excerpt}')
+        lines.append(f"  [{kind}] {label}: {msg}\n         > {excerpt}")
     limit = active_long_limit(path) or DEFAULT_LONG_LINE
     if blocking_kinds(findings):
         blocking = [
@@ -1366,7 +1500,9 @@ def format_findings(findings, path, snippet, skill_hint=True):
             f"judge each one; leave the line alone if the break would sever a clause."
         ]
         if skill_hint:
-            blocking.append("If unsure of the rules, load the semantic-linefeeds skill.")
+            blocking.append(
+                "If unsure of the rules, load the semantic-linefeeds skill."
+            )
         lines.append(" ".join(blocking))
     else:
         # An advisory report must not say "Fix these".
@@ -1418,7 +1554,7 @@ def _standalone_carrier_is_ascii(raw, prose):
     idx = raw.find(prose)
     if idx < 0:
         return False
-    outer = raw[:idx] + raw[idx + len(prose):]
+    outer = raw[:idx] + raw[idx + len(prose) :]
     return all(ch in " \t\r" for ch in outer if ch.isspace())
 
 
@@ -1466,13 +1602,13 @@ def trailing_carrier(line, is_md, lang):
         parsed = parse_directive(m.group(1))
         if parsed is None or parsed is MALFORMED:
             return None
-        return parsed, trimmed[:m.start()].rstrip(" \t"), trimmed[m.start():]
+        return parsed, trimmed[: m.start()].rstrip(" \t"), trimmed[m.start() :]
     if lang is None or not lang.line:
         return None
     idx = trimmed.rfind(lang.line)
     if idx <= 0:
         return None  # no marker, or only the comment's own leading marker
-    parsed = parse_directive(trimmed[idx + len(lang.line):])
+    parsed = parse_directive(trimmed[idx + len(lang.line) :])
     if parsed is None or parsed is MALFORMED:
         return None
     return parsed, trimmed[:idx].rstrip(" \t"), trimmed[idx:]
@@ -1637,7 +1773,7 @@ def _looks_like_the_skill(path):
     close = re.search(close_pattern, body)
     if not close:
         return False
-    frontmatter = body[:close.start()]
+    frontmatter = body[: close.start()]
     return "name: semantic-linefeeds" in frontmatter.splitlines()
 
 
@@ -1655,11 +1791,16 @@ def _judgment_layer_present(transport):
     if transport == "claude":
         return True
     if transport == "codex":
-        candidates = [os.path.join(".agents", "skills", "semantic-linefeeds", "SKILL.md")]
+        candidates = [
+            os.path.join(".agents", "skills", "semantic-linefeeds", "SKILL.md")
+        ]
         home = os.path.expanduser("~")
         if home != "~":
-            candidates.append(os.path.join(home, ".agents", "skills",
-                                            "semantic-linefeeds", "SKILL.md"))
+            candidates.append(
+                os.path.join(
+                    home, ".agents", "skills", "semantic-linefeeds", "SKILL.md"
+                )
+            )
         return any(_looks_like_the_skill(p) for p in candidates)
     return True
 
@@ -1695,13 +1836,19 @@ def deliver(reports, transport, note=None):
     if not reports:
         return 0
     skill_hint = _judgment_layer_present(transport)
-    body = "\n".join(format_findings(f, p, s, skill_hint=skill_hint) for p, f, s in reports)
+    body = "\n".join(
+        format_findings(f, p, s, skill_hint=skill_hint) for p, f, s in reports
+    )
     multi = len(reports) > 1
     for path, findings, snippet in reports:
         for finding in findings:
             if not isinstance(finding, dict) or "suggestion" not in finding:
                 continue
-            label = f"line {finding['line']} of your edit" if snippet else f"line {finding['line']}"
+            label = (
+                f"line {finding['line']} of your edit"
+                if snippet
+                else f"line {finding['line']}"
+            )
             if multi:
                 label = f"{label} of {path}"
             line1, line2 = finding["suggestion"]["lines"]
@@ -1713,10 +1860,16 @@ def deliver(reports, transport, note=None):
     if any(blocking_kinds(f) for _, f, _ in reports):
         print(body, file=sys.stderr)
         return 2
-    print(json.dumps({"hookSpecificOutput": {
-        "hookEventName": "PostToolUse",
-        "additionalContext": body,
-    }}))
+    print(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": body,
+                }
+            }
+        )
+    )
     return 0
 
 
@@ -1759,7 +1912,9 @@ def run_hook_claude():
         snapshot = None if tool_input.get("replace_all") else _read_snapshot(path)
         span = _locate_unique(snapshot, new_string) if snapshot is not None else None
         if span:
-            return deliver([(path, diagnose(snapshot, path, spans=[span]), False)], "claude")
+            return deliver(
+                [(path, diagnose(snapshot, path, spans=[span]), False)], "claude"
+            )
         return deliver([(path, diagnose(new_string, path), True)], "claude")
     content = tool_input.get("content")
     if isinstance(content, str) and content:
@@ -1815,8 +1970,7 @@ def hunks_by_file(patch):
             hunk.append(("del", ""))
         else:
             hunk.append(("ctx", line[1:] if line.startswith(" ") else line))
-    return {p: [h for h in hunks if h] for p, hunks in files.items()
-            if any(hunks)}
+    return {p: [h for h in hunks if h] for p, hunks in files.items() if any(hunks)}
 
 
 def _locate_hunk(text, body):
@@ -1836,8 +1990,9 @@ def _locate_hunk(text, body):
         if idx < 0:
             return found
         end = idx + len(body)
-        if ((idx == 0 or text[idx - 1] == "\n")
-                and (end == len(text) or text[end] == "\n")):
+        if (idx == 0 or text[idx - 1] == "\n") and (
+            end == len(text) or text[end] == "\n"
+        ):
             if found is not None:
                 return None
             found = {"start": idx, "end": end}
@@ -1856,8 +2011,12 @@ def run_hook_codex():
     elif isinstance(tool_input, dict):
         # "command" is the current stable contract; "input"/"patch" are
         # best-effort fallbacks for older payload shapes.
-        patch = (tool_input.get("command") or tool_input.get("input")
-                 or tool_input.get("patch") or "")
+        patch = (
+            tool_input.get("command")
+            or tool_input.get("input")
+            or tool_input.get("patch")
+            or ""
+        )
     else:
         return 0
     if not isinstance(patch, str):
@@ -1897,8 +2056,12 @@ def run_hook_codex():
                     spans.append({"at": at})
                     continue
                 if kind == "add":
-                    spans.append({"start": located["start"] + starts[index],
-                                  "end": located["start"] + starts[index] + len(text)})
+                    spans.append(
+                        {
+                            "start": located["start"] + starts[index],
+                            "end": located["start"] + starts[index] + len(text),
+                        }
+                    )
                 index += 1
         if spans:
             reports.append((path, diagnose(snapshot, path, spans=spans), False))
@@ -1921,9 +2084,14 @@ def run_hook_codex():
             added = "\n\n".join("\n".join(run) for run in runs)
             findings = diagnose(added, path) if added.strip() else []
             reports.append((path, findings, True))
-    return deliver(reports, "codex", note=(
-        "(line numbers are approximate positions within the added "
-        "lines of your patch; locate findings by the quoted excerpts)"))
+    return deliver(
+        reports,
+        "codex",
+        note=(
+            "(line numbers are approximate positions within the added "
+            "lines of your patch; locate findings by the quoted excerpts)"
+        ),
+    )
 
 
 def run_sources(sources, as_json=False):
@@ -1968,29 +2136,50 @@ def run_files(paths, as_json=False):
 def main(prog=None):
     ap = argparse.ArgumentParser(prog=prog or "check_linefeeds", description=__doc__)
     mode = ap.add_mutually_exclusive_group()
-    mode.add_argument("--hook", nargs="?", const="claude",
-                      choices=["claude", "codex"], default=None,
-                      help="read a PostToolUse JSON payload on stdin and check only the "
-                           "text just written; fused exits 2 with the report on stderr, "
-                           "advisory-only findings exit 0 as JSON on stdout; wrap is "
-                           "withheld unless SEMLF_EXPERIMENTAL_WRAP or the ini "
-                           "experimental-wrap key opts in (env wins) "
-                           "(default agent: claude)")
+    mode.add_argument(
+        "--hook",
+        nargs="?",
+        const="claude",
+        choices=["claude", "codex"],
+        default=None,
+        help="read a PostToolUse JSON payload on stdin and check only the "
+        "text just written; fused exits 2 with the report on stderr, "
+        "advisory-only findings exit 0 as JSON on stdout; wrap is "
+        "withheld unless SEMLF_EXPERIMENTAL_WRAP or the ini "
+        "experimental-wrap key opts in (env wins) "
+        "(default agent: claude)",
+    )
     # Zero or more, with a trailing catch-all, so that `--file --json PATH` parses.
     # With `nargs="+"`, an option word standing where a path belongs left `--file` with
     # nothing to consume, which turned a common ordering into a usage error.
-    mode.add_argument("--file", nargs="*", default=None, metavar="PATH",
-                      help="check whole files and report to stdout; exit 1 on any "
-                           "fused/wrap violation (long findings are advisory only)")
+    mode.add_argument(
+        "--file",
+        nargs="*",
+        default=None,
+        metavar="PATH",
+        help="check whole files and report to stdout; exit 1 on any "
+        "fused/wrap violation (long findings are advisory only)",
+    )
     ap.add_argument("paths", nargs="*", metavar="PATH", help=argparse.SUPPRESS)
-    ap.add_argument("--version", action="version",
-                    version=f"%(prog)s {__version__}",
-                    help="print the version and exit")
-    ap.add_argument("--json", action="store_true",
-                    help="with --file, emit findings as JSON instead of text")
-    ap.add_argument("--long-limit", type=int, default=None, metavar="N",
-                    help="long-line advisory threshold in chars; 0 disables "
-                         "(default: $SEMLF_LONG_LINE or 120)")
+    ap.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="print the version and exit",
+    )
+    ap.add_argument(
+        "--json",
+        action="store_true",
+        help="with --file, emit findings as JSON instead of text",
+    )
+    ap.add_argument(
+        "--long-limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="long-line advisory threshold in chars; 0 disables "
+        "(default: $SEMLF_LONG_LINE or 120)",
+    )
     try:
         args = ap.parse_args()
     except SystemExit as e:

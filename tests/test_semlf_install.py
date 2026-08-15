@@ -1,4 +1,5 @@
 """tests/test_semlf_install.py — the package door's command surface."""
+
 import json
 import os
 import subprocess
@@ -9,29 +10,39 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "cli"))
 sys.path.insert(0, str(REPO / "scripts"))
 
-BOOTSTRAP = ("import sys; sys.path[:0] = [%r, %r]; "
-             "from semlf.cli import main; sys.exit(main(sys.argv[1:]))"
-             % (str(REPO / "cli"), str(REPO / "scripts")))
+BOOTSTRAP = (
+    "import sys; sys.path[:0] = [{!r}, {!r}]; "
+    "from semlf.cli import main; sys.exit(main(sys.argv[1:]))".format(
+        str(REPO / "cli"), str(REPO / "scripts")
+    )
+)
 
 
 def isolated_env(tmp_path, path=""):
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
-    return {"HOME": str(home),
-            "CODEX_HOME": str(tmp_path / "codex"),
-            "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
-            "XDG_DATA_HOME": str(tmp_path / "data"),
-            "XDG_STATE_HOME": str(tmp_path / "state"),
-            "PATH": path}
+    return {
+        "HOME": str(home),
+        "CODEX_HOME": str(tmp_path / "codex"),
+        "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+        "XDG_STATE_HOME": str(tmp_path / "state"),
+        "PATH": path,
+    }
 
 
 def run_semlf(args, env_overrides, stdin_text=""):
     env = os.environ.copy()
     env["PATH"] = ""
     env.update(env_overrides)
-    return subprocess.run([sys.executable, "-c", BOOTSTRAP] + args,
-                          input=stdin_text, capture_output=True,
-                          text=True, env=env, timeout=60)
+    return subprocess.run(
+        [sys.executable, "-c", BOOTSTRAP] + args,
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
 
 
 def data_root(tmp_path):
@@ -42,13 +53,13 @@ def test_named_target_is_consent_and_applies(tmp_path):
     r = run_semlf(["install", "codex"], isolated_env(tmp_path))
     assert r.returncode == 0, r.stderr
     assert (data_root(tmp_path) / "check_linefeeds.py").read_bytes() == (
-        REPO / "scripts" / "check_linefeeds.py").read_bytes()
+        REPO / "scripts" / "check_linefeeds.py"
+    ).read_bytes()
     assert (data_root(tmp_path) / "README.md").exists()
     hooks = json.loads((tmp_path / "codex" / "hooks.json").read_text())
     command = hooks["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
     assert str(data_root(tmp_path) / "check_linefeeds.py") in command
-    skill = tmp_path / "home" / ".agents" / "skills" / \
-        "semantic-linefeeds" / "SKILL.md"
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     body = skill.read_text(encoding="utf-8")
     assert str(data_root(tmp_path) / "check_linefeeds.py") in body
     assert str(data_root(tmp_path) / "README.md") in body
@@ -96,21 +107,18 @@ def test_dry_run_reports_a_would_be_refusal_at_exit_zero(tmp_path):
     env = isolated_env(tmp_path)
     root = data_root(tmp_path)
     root.mkdir(parents=True)
-    (root / "check_linefeeds.py").write_text("hand-patched",
-                                             encoding="utf-8")
+    (root / "check_linefeeds.py").write_text("hand-patched", encoding="utf-8")
     r = run_semlf(["install", "codex", "--dry-run"], env)
     assert r.returncode == 0
     assert "would refuse" in r.stdout
-    assert (root / "check_linefeeds.py").read_text(
-        encoding="utf-8") == "hand-patched"
+    assert (root / "check_linefeeds.py").read_text(encoding="utf-8") == "hand-patched"
 
 
 def test_a_refusal_without_dry_run_aborts_the_whole_request(tmp_path):
     env = isolated_env(tmp_path)
     root = data_root(tmp_path)
     root.mkdir(parents=True)
-    (root / "check_linefeeds.py").write_text("hand-patched",
-                                             encoding="utf-8")
+    (root / "check_linefeeds.py").write_text("hand-patched", encoding="utf-8")
     r = run_semlf(["install", "codex"], env)
     assert r.returncode == 1
     assert not (tmp_path / "codex" / "hooks.json").exists()
@@ -121,12 +129,12 @@ def test_force_replaces_with_an_exclusive_backup(tmp_path):
     env = isolated_env(tmp_path)
     root = data_root(tmp_path)
     root.mkdir(parents=True)
-    (root / "check_linefeeds.py").write_text("hand-patched",
-                                             encoding="utf-8")
+    (root / "check_linefeeds.py").write_text("hand-patched", encoding="utf-8")
     r = run_semlf(["install", "codex", "--force"], env)
     assert r.returncode == 0, r.stderr
     assert (root / "check_linefeeds.py.bak").read_text(
-        encoding="utf-8") == "hand-patched"
+        encoding="utf-8"
+    ) == "hand-patched"
 
 
 def test_agentsmd_requires_an_explicit_path(tmp_path):
@@ -136,8 +144,7 @@ def test_agentsmd_requires_an_explicit_path(tmp_path):
 
 def test_agentsmd_with_a_path_is_first_class(tmp_path):
     target = tmp_path / "AGENTS.md"
-    r = run_semlf(["install", "agentsmd", str(target)],
-                  isolated_env(tmp_path))
+    r = run_semlf(["install", "agentsmd", str(target)], isolated_env(tmp_path))
     assert r.returncode == 0, r.stderr
     assert "semantic-linefeeds" in target.read_text(encoding="utf-8")
 
@@ -192,8 +199,7 @@ def test_a_refusing_request_still_names_every_verdict(tmp_path):
 
 
 def test_dry_run_output_carries_the_dry_run_marker(tmp_path):
-    r = run_semlf(["install", "codex", "--dry-run"],
-                  isolated_env(tmp_path))
+    r = run_semlf(["install", "codex", "--dry-run"], isolated_env(tmp_path))
     assert "[dry-run] " in r.stdout
 
 
@@ -219,14 +225,17 @@ def test_status_reports_payload_lag_by_version_label(tmp_path):
     run_semlf(["install", "codex"], env)
     checker = data_root(tmp_path) / "check_linefeeds.py"
     stale = checker.read_text(encoding="utf-8").replace(
-        '__version__ = "', '__version__ = "0.0.', 1)
+        '__version__ = "', '__version__ = "0.0.', 1
+    )
     checker.write_text(stale, encoding="utf-8")
     # Make the stale copy managed so the state is lagging, not edited.
     import hashlib
-    record = {"path": str(checker),
-              "sha256": hashlib.sha256(
-                  stale.encode("utf-8")).hexdigest(),
-              "version": "0.0.1"}
+
+    record = {
+        "path": str(checker),
+        "sha256": hashlib.sha256(stale.encode("utf-8")).hexdigest(),
+        "version": "0.0.1",
+    }
     state = tmp_path / "state" / "semlf" / "artifacts" / "checker.json"
     state.parent.mkdir(parents=True, exist_ok=True)
     state.write_text(json.dumps(record), encoding="utf-8")
@@ -285,13 +294,13 @@ def test_status_agentsmd_reports_the_named_file(tmp_path):
 def test_status_agentsmd_reports_malformed_sentinels(tmp_path):
     env = isolated_env(tmp_path)
     target = tmp_path / "AGENTS.md"
-    target.write_text("<!-- semantic-linefeeds -->\nno close\n",
-                      encoding="utf-8")
+    target.write_text("<!-- semantic-linefeeds -->\nno close\n", encoding="utf-8")
     r = run_semlf(["status", "agentsmd", str(target)], env)
     assert "malformed" in r.stdout.lower()
     target.write_text(
-        "<!-- /semantic-linefeeds -->\nreversed\n"
-        "<!-- semantic-linefeeds -->\n", encoding="utf-8")
+        "<!-- /semantic-linefeeds -->\nreversed\n<!-- semantic-linefeeds -->\n",
+        encoding="utf-8",
+    )
     r = run_semlf(["status", "agentsmd", str(target)], env)
     assert "malformed" in r.stdout.lower()
 
@@ -314,7 +323,8 @@ def test_a_skill_only_machine_keeps_payloads_expected(tmp_path):
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex"], env)
     (tmp_path / "codex" / "hooks.json").write_text(
-        '{"hooks": {"PostToolUse": []}}', encoding="utf-8")
+        '{"hooks": {"PostToolUse": []}}', encoding="utf-8"
+    )
     r = run_semlf(["status"], env)
     assert r.returncode == 0
     assert "no remaining" not in r.stdout.lower()
@@ -325,17 +335,16 @@ def test_uninstall_without_a_target_is_a_usage_error(tmp_path):
     assert r.returncode == 64
 
 
-def test_uninstall_codex_removes_hook_and_skill_but_keeps_payloads(
-        tmp_path):
+def test_uninstall_codex_removes_hook_and_skill_but_keeps_payloads(tmp_path):
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex"], env)
     r = run_semlf(["uninstall", "codex"], env)
     assert r.returncode == 0, r.stderr
     hooks = json.loads((tmp_path / "codex" / "hooks.json").read_text())
     from semlf import manifest as m  # path inserted at module top
+
     assert m.owned_codex_hooks(hooks) == []
-    skill = tmp_path / "home" / ".agents" / "skills" / \
-        "semantic-linefeeds" / "SKILL.md"
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     assert not skill.exists()
     assert (data_root(tmp_path) / "check_linefeeds.py").exists()
     assert (data_root(tmp_path) / "README.md").exists()
@@ -344,12 +353,10 @@ def test_uninstall_codex_removes_hook_and_skill_but_keeps_payloads(
 def test_uninstall_refuses_an_edited_skill_without_force(tmp_path):
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex"], env)
-    skill = tmp_path / "home" / ".agents" / "skills" / \
-        "semantic-linefeeds" / "SKILL.md"
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     skill.write_text("hand-patched", encoding="utf-8")
     # Clear its record so admission can only come from byte identity.
-    (tmp_path / "state" / "semlf" / "artifacts" /
-     "codex-skill.json").unlink()
+    (tmp_path / "state" / "semlf" / "artifacts" / "codex-skill.json").unlink()
     r = run_semlf(["uninstall", "codex"], env)
     assert r.returncode == 1
     assert skill.exists()
@@ -375,25 +382,21 @@ def test_uninstall_agentsmd_requires_and_uses_the_path(tmp_path):
 def test_uninstall_dry_run_removes_nothing(tmp_path):
     env = isolated_env(tmp_path)
     run_semlf(["install", "opencode"], env)
-    plugin = tmp_path / "xdg" / "opencode" / "plugins" / \
-        "semantic-linefeeds.ts"
+    plugin = tmp_path / "xdg" / "opencode" / "plugins" / "semantic-linefeeds.ts"
     assert plugin.exists()
     r = run_semlf(["uninstall", "opencode", "--dry-run"], env)
     assert r.returncode == 0
     assert plugin.exists()
 
 
-def test_uninstall_dry_run_reports_a_would_be_refusal_at_exit_zero(
-        tmp_path):
+def test_uninstall_dry_run_reports_a_would_be_refusal_at_exit_zero(tmp_path):
     """Dry-run dominates refusals on uninstall exactly as on install:
     report, write nothing, exit 0."""
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex"], env)
-    skill = tmp_path / "home" / ".agents" / "skills" / \
-        "semantic-linefeeds" / "SKILL.md"
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     skill.write_text("hand-patched", encoding="utf-8")
-    (tmp_path / "state" / "semlf" / "artifacts" /
-     "codex-skill.json").unlink()
+    (tmp_path / "state" / "semlf" / "artifacts" / "codex-skill.json").unlink()
     r = run_semlf(["uninstall", "codex", "--dry-run"], env)
     assert r.returncode == 0
     assert "would refuse" in r.stdout

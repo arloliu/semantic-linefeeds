@@ -23,7 +23,13 @@ sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(TESTS.parent / "scripts"))
 
 from corpus_harness import (  # noqa: E402
-    Holdout, ScoringRefused, draw_corpus, level_of, quota_shortfalls, records_for)
+    Holdout,
+    ScoringRefused,
+    draw_corpus,
+    level_of,
+    quota_shortfalls,
+    records_for,
+)
 
 CORPUS = TESTS / "corpus"
 MANIFEST = CORPUS / "manifest.json"
@@ -48,8 +54,12 @@ def main(root, number):
     # so what is checked here is the predicate alone.
     # Nothing else can be checked before the prose is on disk,
     # which is exactly why this check has to happen here rather than at sealing time.
-    holdout = Holdout(out_dir / "bundle.json", CORPUS / "freeze.jsonl",
-                      TESTS.parent / "scripts" / "check_linefeeds.py", MANIFEST)
+    holdout = Holdout(
+        out_dir / "bundle.json",
+        CORPUS / "freeze.jsonl",
+        TESTS.parent / "scripts" / "check_linefeeds.py",
+        MANIFEST,
+    )
     try:
         frozen = holdout.require_predicate_freeze()
     except ScoringRefused as refusal:
@@ -69,18 +79,28 @@ def main(root, number):
     # so a mistyped number refuses above rather than leaving an empty directory behind.
     out_dir.mkdir(exist_ok=True)
     out = out_dir / "sample.json"
-    out.write_text(json.dumps({
-        "base": BASE,
-        "seed": seed,
-        "per_level": PER_LEVEL,
-        "quotas": {name: {"bands": bands, "per_level": count}
-                   for name, (bands, count) in sorted(QUOTAS.items())},
-        "population": len(population),
-        "units": drawn,
-    }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(
+            {
+                "base": BASE,
+                "seed": seed,
+                "per_level": PER_LEVEL,
+                "quotas": {
+                    name: {"bands": bands, "per_level": count}
+                    for name, (bands, count) in sorted(QUOTAS.items())
+                },
+                "population": len(population),
+                "units": drawn,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     print(f"population {len(population)}, drew {len(drawn)} -> {out}")
-    for name, (bands, count) in sorted(QUOTAS.items()):
+    for name, (bands, _count) in sorted(QUOTAS.items()):
         levels = {}
         for unit in drawn:
             level = level_of(unit, name, bands)

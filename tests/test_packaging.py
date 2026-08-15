@@ -1,4 +1,5 @@
 """tests/test_packaging.py — the wheel ships the repo's own files, unforked."""
+
 import sys
 from pathlib import Path
 
@@ -48,6 +49,7 @@ from semlf import registry
 def test_the_pyz_embeds_every_registry_member(tmp_path):
     sys.path.insert(0, str(REPO / "scripts"))
     import importlib
+
     install = importlib.import_module("install")
     pyz = tmp_path / "semlf.pyz"
     install.build_pyz(pyz)
@@ -60,6 +62,7 @@ def test_the_pyz_embeds_every_registry_member(tmp_path):
 
 def test_pyz_required_members_cover_the_registry():
     import importlib
+
     sys.path.insert(0, str(REPO / "scripts"))
     install = importlib.import_module("install")
     assert {r.member for r in registry.ROWS} <= install.PYZ_REQUIRED_MEMBERS
@@ -70,13 +73,15 @@ def test_payload_bytes_reads_from_inside_a_zipapp(tmp_path):
     the archive itself lands on sys.path via zipimport."""
     sys.path.insert(0, str(REPO / "scripts"))
     import importlib
+
     install = importlib.import_module("install")
     pyz = tmp_path / "semlf.pyz"
     install.build_pyz(pyz)
-    code = ("import sys; sys.path.insert(0, %r); "
-            "from semlf import registry; "
-            "sys.stdout.buffer.write(registry.payload_bytes('checker'))"
-            % str(pyz))
+    code = (
+        f"import sys; sys.path.insert(0, {str(pyz)!r}); "
+        "from semlf import registry; "
+        "sys.stdout.buffer.write(registry.payload_bytes('checker'))"
+    )
     r = subprocess.run([sys.executable, "-c", code], capture_output=True)
     assert r.returncode == 0, r.stderr
     assert r.stdout == (REPO / "scripts" / "check_linefeeds.py").read_bytes()
@@ -85,20 +90,21 @@ def test_payload_bytes_reads_from_inside_a_zipapp(tmp_path):
 def _setuptools_at_least_61():
     try:
         import setuptools
+
         return int(setuptools.__version__.split(".")[0]) >= 61
     except Exception:
         return False
 
 
 def _pip_available():
-    r = subprocess.run([sys.executable, "-m", "pip", "--version"],
-                       capture_output=True)
+    r = subprocess.run([sys.executable, "-m", "pip", "--version"], capture_output=True)
     return r.returncode == 0
 
 
 WHEEL_PREREQS = pytest.mark.skipif(
     not (_setuptools_at_least_61() and _pip_available()),
-    reason="wheel build needs pip and setuptools>=61")
+    reason="wheel build needs pip and setuptools>=61",
+)
 
 
 # Skips guard only genuinely absent prerequisites, probed up front.
@@ -107,9 +113,21 @@ WHEEL_PREREQS = pytest.mark.skipif(
 @WHEEL_PREREQS
 def test_the_wheel_embeds_every_registry_member(tmp_path):
     r = subprocess.run(
-        [sys.executable, "-m", "pip", "wheel", str(REPO), "--no-deps",
-         "--no-build-isolation", "-w", str(tmp_path)],
-        capture_output=True, text=True, timeout=300)
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            str(REPO),
+            "--no-deps",
+            "--no-build-isolation",
+            "-w",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
     assert r.returncode == 0, r.stderr[-2000:]
     wheels = list(tmp_path.glob("semlf-*.whl"))
     assert len(wheels) == 1
@@ -127,17 +145,31 @@ def test_a_wheel_built_from_the_sdist_carries_the_members(tmp_path):
     """MANIFEST.in must put every canonical payload source into the sdist,
     or a wheel built from it stages nothing."""
     r = subprocess.run(
-        [sys.executable, "setup.py", "sdist", "--dist-dir",
-         str(tmp_path)],
-        cwd=str(REPO), capture_output=True, text=True, timeout=300)
+        [sys.executable, "setup.py", "sdist", "--dist-dir", str(tmp_path)],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
     assert r.returncode == 0, r.stderr[-2000:]
     sdists = list(tmp_path.glob("semlf-*.tar.gz"))
     assert len(sdists) == 1
     r = subprocess.run(
-        [sys.executable, "-m", "pip", "wheel", str(sdists[0]),
-         "--no-deps", "--no-build-isolation", "-w",
-         str(tmp_path / "from-sdist")],
-        capture_output=True, text=True, timeout=300)
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            str(sdists[0]),
+            "--no-deps",
+            "--no-build-isolation",
+            "-w",
+            str(tmp_path / "from-sdist"),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
     assert r.returncode == 0, r.stderr[-2000:]
     wheels = list((tmp_path / "from-sdist").glob("semlf-*.whl"))
     assert len(wheels) == 1

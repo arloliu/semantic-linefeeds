@@ -27,8 +27,12 @@ def main(number, intent):
     if not intent.strip():
         sys.exit("a freeze with no stated intent records nothing; nothing was written")
 
-    holdout = Holdout(HERE.parent / f"round-{number}" / "bundle.json", CORPUS / "freeze.jsonl",
-                      TESTS.parent / "scripts" / "check_linefeeds.py", CORPUS / "manifest.json")
+    holdout = Holdout(
+        HERE.parent / f"round-{number}" / "bundle.json",
+        CORPUS / "freeze.jsonl",
+        TESTS.parent / "scripts" / "check_linefeeds.py",
+        CORPUS / "manifest.json",
+    )
     holdout.freeze_predicate(intent)
     frozen = holdout.require_predicate_freeze()
 

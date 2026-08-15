@@ -43,15 +43,39 @@ KINDS = ("wrap", "fused")
 # The nine dimensions ADR-0003 stratifies `wrap` on.
 # Only the structurally rare ones drive a quota,
 # but all nine are recorded for every unit so any cross can be recomputed later.
-COVARIATES = ("prose_width", "raw_end_column", "indentation_depth", "language",
-              "markdown_nesting", "trailing_inline_markup", "list_item_adjacency",
-              "paragraph_line_count", "eligible_anchor_count")
+COVARIATES = (
+    "prose_width",
+    "raw_end_column",
+    "indentation_depth",
+    "language",
+    "markdown_nesting",
+    "trailing_inline_markup",
+    "list_item_adjacency",
+    "paragraph_line_count",
+    "eligible_anchor_count",
+)
 
-SECTIONS = ("schema_version", "rubric", "reporting", "covariate_definitions",
-            "eligible_anchor", "frames", "protocol_notes", "sources", "units")
+SECTIONS = (
+    "schema_version",
+    "rubric",
+    "reporting",
+    "covariate_definitions",
+    "eligible_anchor",
+    "frames",
+    "protocol_notes",
+    "sources",
+    "units",
+)
 
-SOURCE_FIELDS = ("id", "side", "composition", "url", "commit", "license",
-                 "selection_command")
+SOURCE_FIELDS = (
+    "id",
+    "side",
+    "composition",
+    "url",
+    "commit",
+    "license",
+    "selection_command",
+)
 
 # Both sides carry the same three compositions.
 # A predicate calibrated only against one author's habits fails the holdout uninterpretably.
@@ -60,8 +84,13 @@ COMPOSITIONS = ("self-authored", "third-party-code", "third-party-markdown")
 # Unit text is vendored into this repository, so the licence decides what may be stored at all.
 # The LLVM exception waives Apache conditions for object-code embedding and adds none,
 # so prose vendored under the combined identifier is governed by the plain Apache-2.0 terms.
-PERMISSIVE = ("Apache-2.0", "Apache-2.0 WITH LLVM-exception",
-              "BSD-2-Clause", "BSD-3-Clause", "MIT")
+PERMISSIVE = (
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "MIT",
+)
 
 # What a third-party source is admitted on.
 # Selecting sources by finding density would repeat, at repository granularity,
@@ -71,8 +100,14 @@ QUALIFICATION = ("wrapping_column", "qualification")
 # The dimensions a rate may be broken down by.
 # Fixed here rather than in the manifest:
 # a stratum the manifest can drop is a floor the manifest can drop.
-REPORTED_STRATA = ("language", "markdown_nesting", "list_item_adjacency",
-                   "trailing_inline_markup", "indentation_depth", "raw_end_column")
+REPORTED_STRATA = (
+    "language",
+    "markdown_nesting",
+    "list_item_adjacency",
+    "trailing_inline_markup",
+    "indentation_depth",
+    "raw_end_column",
+)
 
 # Settled before any rate existed, and checked so that no rate can loosen them afterwards.
 REPORTING = {
@@ -144,9 +179,12 @@ def file_digest(path):
 def _keys(passphrase, salt, iterations):
     """Two independent keys from one passphrase: one to mask, one to authenticate."""
     root = hashlib.pbkdf2_hmac(
-        "sha256", passphrase.encode("utf-8"), salt, iterations, dklen=32)
-    return (hmac.new(root, b"keystream", hashlib.sha256).digest(),
-            hmac.new(root, b"tag", hashlib.sha256).digest())
+        "sha256", passphrase.encode("utf-8"), salt, iterations, dklen=32
+    )
+    return (
+        hmac.new(root, b"keystream", hashlib.sha256).digest(),
+        hmac.new(root, b"tag", hashlib.sha256).digest(),
+    )
 
 
 def _keystream(key, length):
@@ -198,15 +236,17 @@ def paragraphs(text, path):
     stream = check_linefeeds.without_license_text(stream, text, path)
     runs, current = [], []
     for lineno, raw, prose in stream:
-        parsed = (check_linefeeds.parse_directive(prose)
-                  if prose is not None else None)
+        parsed = check_linefeeds.parse_directive(prose) if prose is not None else None
         # The bare-prose and code-comment standalone forms are never gated at extraction time.
         # diagnose applies this same ASCII-adjacency rule before honoring one.
         # The sampler must apply it too,
         # or a Unicode-WS candidate would be dropped here
         # while diagnose still judges it as ordinary prose.
-        is_directive = (parsed is not None and parsed is not check_linefeeds.MALFORMED
-                         and check_linefeeds._standalone_carrier_is_ascii(raw, prose))
+        is_directive = (
+            parsed is not None
+            and parsed is not check_linefeeds.MALFORMED
+            and check_linefeeds._standalone_carrier_is_ascii(raw, prose)
+        )
         if prose is None or is_directive:
             # A well-formed standalone directive is a paragraph boundary
             # to the checker, so the frame must not sample it as prose.
@@ -227,9 +267,11 @@ def boundaries(text, path):
     `wrap` is a property of the boundary and `fused` a property of the upper line,
     and one reading of the pair yields both labels.
     """
-    return [Boundary(path, run[i], run[i + 1], run)
-            for run in paragraphs(text, path)
-            for i in range(len(run) - 1)]
+    return [
+        Boundary(path, run[i], run[i + 1], run)
+        for run in paragraphs(text, path)
+        for i in range(len(run) - 1)
+    ]
 
 
 # A window of comment lines with nothing in front of it reads as a leading licence region.
@@ -255,8 +297,11 @@ def replay_kinds(unit):
         offset = 1
     text = "\n".join(window) + "\n"
     upper = unit["upper_index"] + offset + 1
-    return {kind for lineno, kind, _, _ in check_linefeeds.check(text, "replay" + suffix)
-            if lineno == upper}
+    return {
+        kind
+        for lineno, kind, _, _ in check_linefeeds.check(text, "replay" + suffix)
+        if lineno == upper
+    }
 
 
 def covariates(unit):
@@ -266,18 +311,20 @@ def covariates(unit):
     The rest arrive spread on their own,
     and all nine are recorded so a reader can recompute any cross without trusting this split.
     """
-    import check_linefeeds
 
     raw = unit.upper.raw.rstrip()
     shown = raw.expandtabs(TAB_WIDTH)
     return {
-        "prose_width": max(len(line.raw.rstrip().expandtabs(TAB_WIDTH))
-                           for line in unit.paragraph),
+        "prose_width": max(
+            len(line.raw.rstrip().expandtabs(TAB_WIDTH)) for line in unit.paragraph
+        ),
         "raw_end_column": len(raw),
         "indentation_depth": len(shown) - len(shown.lstrip()),
         "language": _language(unit.path),
         "markdown_nesting": _nesting(unit),
-        "trailing_inline_markup": unit.upper.prose.rstrip().endswith(tuple(TRAILING_MARKUP)),
+        "trailing_inline_markup": unit.upper.prose.rstrip().endswith(
+            tuple(TRAILING_MARKUP)
+        ),
         "list_item_adjacency": bool(LIST_MARKER_RE.match(unit.lower.raw.lstrip())),
         "paragraph_line_count": len(unit.paragraph),
         "eligible_anchor_count": _eligible_anchors(unit.upper.prose),
@@ -324,10 +371,13 @@ def _eligible_anchors(prose):
     No punctuation and no word list enters the count,
     because either one would restate the condition the corpus is measuring.
     """
-    return sum(1 for i, char in enumerate(prose)
-               if char == " "
-               and len(prose[:i].strip()) >= ANCHOR_MIN_SIDE
-               and len(prose[i + 1:].strip()) >= ANCHOR_MIN_SIDE)
+    return sum(
+        1
+        for i, char in enumerate(prose)
+        if char == " "
+        and len(prose[:i].strip()) >= ANCHOR_MIN_SIDE
+        and len(prose[i + 1 :].strip()) >= ANCHOR_MIN_SIDE
+    )
 
 
 def band_of(value, bands):
@@ -380,9 +430,15 @@ def files_of(source, root):
     """
     words = shlex.split(source["selection_command"])
     if words[:2] != ["git", "ls-files"]:
-        raise ValueError(f"source {source['id']} selects files by an unrecognized command")
-    return subprocess.run(["git", "-C", str(root), "ls-files"] + words[2:],
-                          capture_output=True, text=True, check=True).stdout.split()
+        raise ValueError(
+            f"source {source['id']} selects files by an unrecognized command"
+        )
+    return subprocess.run(
+        ["git", "-C", str(root), "ls-files"] + words[2:],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
 
 
 def records_for(source, root):
@@ -396,22 +452,24 @@ def records_for(source, root):
         for unit in boundaries(text, name):
             first = unit.paragraph.index(unit.upper)
             start = max(0, first - CONTEXT)
-            window = unit.paragraph[start:first + CONTEXT + 2]
-            out.append({
-                # The raw lines travel with the unit, so the checker can be rerun over it offline.
-                # That is what makes a frozen status a test rather than a claim.
-                "raw_window": [line.raw for line in window],
-                "upper_index": first - start,
-                "id": f"{source['id']}:{name}:{unit.upper.lineno}",
-                "source": source["id"],
-                "frame": "main",
-                "path": name,
-                "lines": [unit.upper.lineno, unit.lower.lineno],
-                "upper": unit.upper.prose,
-                "lower": unit.lower.prose,
-                "context": [line.prose for line in window],
-                "covariates": covariates(unit),
-            })
+            window = unit.paragraph[start : first + CONTEXT + 2]
+            out.append(
+                {
+                    # The raw lines travel with the unit, so the checker can be rerun over it offline.
+                    # That is what makes a frozen status a test rather than a claim.
+                    "raw_window": [line.raw for line in window],
+                    "upper_index": first - start,
+                    "id": f"{source['id']}:{name}:{unit.upper.lineno}",
+                    "source": source["id"],
+                    "frame": "main",
+                    "path": name,
+                    "lines": [unit.upper.lineno, unit.lower.lineno],
+                    "upper": unit.upper.prose,
+                    "lower": unit.lower.prose,
+                    "context": [line.prose for line in window],
+                    "covariates": covariates(unit),
+                }
+            )
     return out
 
 
@@ -432,8 +490,10 @@ def draw_corpus(population, base, quotas, seed):
     Nothing here invents units to reach a number.
     """
     pool = sorted(population, key=lambda record: record["id"])
-    chosen = {record["id"]: record
-              for record in _rng(seed, "base").sample(pool, min(base, len(pool)))}
+    chosen = {
+        record["id"]: record
+        for record in _rng(seed, "base").sample(pool, min(base, len(pool)))
+    }
     for dimension, (bands, per_level) in sorted(quotas.items()):
         members = collections.defaultdict(list)
         for record in pool:
@@ -443,7 +503,9 @@ def draw_corpus(population, base, quotas, seed):
             if short <= 0:
                 continue
             rest = [r for r in at_level if r["id"] not in chosen]
-            for record in _rng(seed, dimension, level).sample(rest, min(short, len(rest))):
+            for record in _rng(seed, dimension, level).sample(
+                rest, min(short, len(rest))
+            ):
                 chosen[record["id"]] = record
     return sorted(chosen.values(), key=lambda record: record["id"])
 
@@ -451,9 +513,11 @@ def draw_corpus(population, base, quotas, seed):
 def band_levels(bands):
     """Every level a set of band edges names, whether or not the population reaches it."""
     edges = list(bands)
-    return tuple([f"..{edges[0]}"]
-                 + [f"{low + 1}..{high}" for low, high in zip(edges, edges[1:])]
-                 + [f"{edges[-1] + 1}.."])
+    return tuple(
+        [f"..{edges[0]}"]
+        + [f"{low + 1}..{high}" for low, high in zip(edges, edges[1:])]
+        + [f"{edges[-1] + 1}.."]
+    )
 
 
 def quota_shortfalls(population, drawn, quotas):
@@ -467,17 +531,28 @@ def quota_shortfalls(population, drawn, quotas):
     """
     problems = []
     for dimension, (bands, per_level) in sorted(quotas.items()):
-        wanted = (band_levels(bands) if bands
-                  else sorted({level_of(record, dimension, None) for record in population}))
+        wanted = (
+            band_levels(bands)
+            if bands
+            else sorted({level_of(record, dimension, None) for record in population})
+        )
         present = {level_of(record, dimension, bands) for record in population}
         if len(present) < 2:
             held = sorted(present)[0] if present else "nothing"
-            problems.append("%s: the population holds %s%s, so the quota separates nothing"
-                            % (dimension, "only " if present else "", held))
+            problems.append(
+                "{}: the population holds {}{}, so the quota separates nothing".format(
+                    dimension, "only " if present else "", held
+                )
+            )
             continue
-        counts = collections.Counter(level_of(record, dimension, bands) for record in drawn)
-        problems += ["%s at %s: %d of %d" % (dimension, level, counts[level], per_level)
-                     for level in wanted if counts[level] < per_level]
+        counts = collections.Counter(
+            level_of(record, dimension, bands) for record in drawn
+        )
+        problems += [
+            f"{dimension} at {level}: {counts[level]} of {per_level}"
+            for level in wanted
+            if counts[level] < per_level
+        ]
     return problems
 
 
@@ -489,7 +564,7 @@ def labeling_batches(sample, labeler, size):
     """
     order = sorted(sample, key=lambda record: record["id"])
     _rng(labeler).shuffle(order)
-    return [order[i:i + size] for i in range(0, len(order), size)]
+    return [order[i : i + size] for i in range(0, len(order), size)]
 
 
 def wilson(successes, total):
@@ -505,7 +580,9 @@ def wilson(successes, total):
     p = successes / total
     denominator = 1 + z * z / total
     centre = (p + z * z / (2 * total)) / denominator
-    spread = z * math.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / denominator
+    spread = (
+        z * math.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / denominator
+    )
     return max(0.0, centre - spread), min(1.0, centre + spread)
 
 
@@ -521,7 +598,9 @@ def recall(units, kind, dimension=None, bands=None):
         if record["question"] != kind:
             continue
         level = level_of(record, dimension, bands) if dimension else "all"
-        counts = levels.setdefault(level, {"true": 0, "detected": 0, "ambiguous": 0, "labeled": 0})
+        counts = levels.setdefault(
+            level, {"true": 0, "detected": 0, "ambiguous": 0, "labeled": 0}
+        )
         counts["labeled"] += 1
         if record["label"] == "ambiguous":
             counts["ambiguous"] += 1
@@ -535,17 +614,27 @@ def recall(units, kind, dimension=None, bands=None):
         withheld = []
         if counts["true"] < REPORTING["min_true_violations"]:
             withheld.append(
-                "fewer than %d true violations" % REPORTING["min_true_violations"])
-        if interval and (interval[1] - interval[0]) / 2 > REPORTING["max_interval_half_width"]:
-            withheld.append("interval wider than %d points"
-                            % round(REPORTING["max_interval_half_width"] * 100))
-        if counts["ambiguous"] > REPORTING["max_ambiguous_fraction"] * counts["labeled"]:
+                f"fewer than {REPORTING['min_true_violations']} true violations"
+            )
+        if (
+            interval
+            and (interval[1] - interval[0]) / 2 > REPORTING["max_interval_half_width"]
+        ):
+            withheld.append(
+                f"interval wider than {round(REPORTING['max_interval_half_width'] * 100)} points"
+            )
+        if (
+            counts["ambiguous"]
+            > REPORTING["max_ambiguous_fraction"] * counts["labeled"]
+        ):
             withheld.append("more than a quarter of the labels are ambiguous")
         report[level] = dict(
             counts,
             interval=interval,
             withheld=tuple(withheld),
-            rate=None if withheld or not interval else counts["detected"] / counts["true"],
+            rate=None
+            if withheld or not interval
+            else counts["detected"] / counts["true"],
         )
     return report
 
@@ -566,16 +655,22 @@ def floor_problems(units, floors, dimension=None, bands=None):
         report = recall(units, kind, dimension, bands)
         wanted = stated if dimension else {"all": stated}
         for level, floor in sorted(wanted.items(), key=lambda pair: str(pair[0])):
-            where = kind if not dimension else "%s at %s %s" % (kind, dimension, level)
+            where = kind if not dimension else f"{kind} at {dimension} {level}"
             counts = report.get(level)
             if counts is None:
-                problems.append("%s: a floor of %.2f, and nothing labeled there" % (where, floor))
+                problems.append(
+                    f"{where}: a floor of {floor:.2f}, and nothing labeled there"
+                )
             elif counts["rate"] is None:
-                problems.append("%s: a floor of %.2f, and no rate to hold it — %s"
-                                % (where, floor, "; ".join(counts["withheld"])))
+                problems.append(
+                    "{}: a floor of {:.2f}, and no rate to hold it — {}".format(
+                        where, floor, "; ".join(counts["withheld"])
+                    )
+                )
             elif counts["rate"] < floor:
-                problems.append("%s: %d of %d is %.3f, below the floor of %.2f"
-                                % (where, counts["detected"], counts["true"], counts["rate"], floor))
+                problems.append(
+                    f"{where}: {counts['detected']} of {counts['true']} is {counts['rate']:.3f}, below the floor of {floor:.2f}"
+                )
     return problems
 
 
@@ -585,12 +680,18 @@ def manifest_problems(document):
     A gate that reports a number tells a reader to go looking;
     a gate that reports `c-0417: expected status missing` tells them where.
     """
-    problems = [f"the manifest has no {name} section"
-                for name in SECTIONS if name not in document]
+    problems = [
+        f"the manifest has no {name} section"
+        for name in SECTIONS
+        if name not in document
+    ]
     problems += _reporting_problems(document.get("reporting", {}))
     defined = document.get("covariate_definitions", {})
-    problems += [f"dimension {name} is recorded on units but never defined"
-                 for name in COVARIATES if not defined.get(name)]
+    problems += [
+        f"dimension {name} is recorded on units but never defined"
+        for name in COVARIATES
+        if not defined.get(name)
+    ]
     for source in document.get("sources", []):
         problems += _source_problems(source)
     declared = {source["id"] for source in document.get("sources", [])}
@@ -606,33 +707,48 @@ def _reporting_problems(reporting):
     Recording the rules in the manifest is what lets a reviewer reproduce a rate.
     Checking them here is what stops a level from being made reportable after its rate is known.
     """
-    return [f"reporting rule {name} is {reporting.get(name)!r}, "
-            f"and the frozen value is {value!r}"
-            for name, value in REPORTING.items() if reporting.get(name) != value]
+    return [
+        f"reporting rule {name} is {reporting.get(name)!r}, "
+        f"and the frozen value is {value!r}"
+        for name, value in REPORTING.items()
+        if reporting.get(name) != value
+    ]
 
 
 def _source_problems(source):
     name = source.get("id", "<unnamed source>")
-    problems = [f"source {name} records no {field}"
-                for field in SOURCE_FIELDS if not source.get(field)]
+    problems = [
+        f"source {name} records no {field}"
+        for field in SOURCE_FIELDS
+        if not source.get(field)
+    ]
     if source.get("side") not in ("calibration", "holdout"):
-        problems.append(f"source {name} is on side {source.get('side')!r}, "
-                        "and calibration and holdout stay separate")
+        problems.append(
+            f"source {name} is on side {source.get('side')!r}, "
+            "and calibration and holdout stay separate"
+        )
     elif source["side"] == "holdout" and not isinstance(source.get("round"), int):
         # A holdout source is spent once the round that drew it has been opened and read.
         # Without a round on the source, a later draw enumerates the spent ones too
         # and scores a predicate against prose its repairs were fitted to.
-        problems.append(f"source {name} is a holdout source and declares no round, "
-                        "so a later draw cannot tell it from a spent one")
+        problems.append(
+            f"source {name} is a holdout source and declares no round, "
+            "so a later draw cannot tell it from a spent one"
+        )
     if source.get("composition") not in COMPOSITIONS:
         problems.append(f"source {name} has composition {source.get('composition')!r}")
     elif source["composition"].startswith("third-party"):
         if source.get("license") not in PERMISSIVE:
-            problems.append(f"source {name} vendors text under {source.get('license')!r}, "
-                            f"and only {', '.join(sorted(PERMISSIVE))} may be stored here")
-        problems += [f"source {name} records no {field}, "
-                     "and a third-party source qualifies on that measurement alone"
-                     for field in QUALIFICATION if not source.get(field)]
+            problems.append(
+                f"source {name} vendors text under {source.get('license')!r}, "
+                f"and only {', '.join(sorted(PERMISSIVE))} may be stored here"
+            )
+        problems += [
+            f"source {name} records no {field}, "
+            "and a third-party source qualifies on that measurement alone"
+            for field in QUALIFICATION
+            if not source.get(field)
+        ]
     return problems
 
 
@@ -640,9 +756,13 @@ def _unit_problems(record, declared_sources, declared_frames):
     unit = record.get("id", "<unnamed unit>")
     problems = []
     if record.get("source") not in declared_sources:
-        problems.append(f"{unit}: source {record.get('source')!r} is not declared in the manifest")
+        problems.append(
+            f"{unit}: source {record.get('source')!r} is not declared in the manifest"
+        )
     if record.get("frame") not in declared_frames:
-        problems.append(f"{unit}: frame {record.get('frame')!r} is not declared in the manifest")
+        problems.append(
+            f"{unit}: frame {record.get('frame')!r} is not declared in the manifest"
+        )
     for name in COVARIATES:
         if name not in record.get("covariates", {}):
             problems.append(f"{unit}: covariate {name} is missing")
@@ -651,27 +771,34 @@ def _unit_problems(record, declared_sources, declared_frames):
     label = record.get("label")
     if settled == "adjudicated":
         if not record.get("adjudication"):
-            problems.append(f"{unit}: a refuted unit needs a recorded adjudication reason")
+            problems.append(
+                f"{unit}: a refuted unit needs a recorded adjudication reason"
+            )
         if label not in LABELS:
             problems.append(f"{unit}: label {label!r} is not one of {LABELS}")
     else:
         if label != settled:
             problems.append(
-                f"{unit}: label {label!r} contradicts what the passes settle on ({settled!r})")
+                f"{unit}: label {label!r} contradicts what the passes settle on ({settled!r})"
+            )
         if record.get("adjudication"):
             problems.append(f"{unit}: adjudication recorded for a unit nobody refuted")
 
     if record.get("question") not in KINDS:
-        problems.append(f"{unit}: question {record.get('question')!r} is not one of {KINDS}")
+        problems.append(
+            f"{unit}: question {record.get('question')!r} is not one of {KINDS}"
+        )
 
     if label == "true":
         if record.get("expected") not in ("detected", "accepted_miss"):
             problems.append(
-                f"{unit}: a true violation must carry a frozen expected status")
+                f"{unit}: a true violation must carry a frozen expected status"
+            )
     elif record.get("expected") is not None:
         problems.append(
             f"{unit}: only a true violation carries an expected status, "
-            "and rates exclude this unit")
+            "and rates exclude this unit"
+        )
     return problems
 
 
@@ -696,12 +823,14 @@ class Holdout:
         It names a predicate and nothing else that has been read yet,
         and the draw refuses to run without it.
         """
-        self._append({
-            "record": "predicate_freeze",
-            "predicate_digest": self._predicate_digest(),
-            "manifest_digest": self._manifest_digest(),
-            "intent": intent,
-        })
+        self._append(
+            {
+                "record": "predicate_freeze",
+                "predicate_digest": self._predicate_digest(),
+                "manifest_digest": self._manifest_digest(),
+                "intent": intent,
+            }
+        )
 
     def require_predicate_freeze(self):
         """The record committing to this predicate, or a refusal naming what is missing.
@@ -713,12 +842,15 @@ class Holdout:
         """
         digest = self._predicate_digest()
         for record in self._records():
-            if (record.get("record") == "predicate_freeze"
-                    and record["predicate_digest"] == digest):
+            if (
+                record.get("record") == "predicate_freeze"
+                and record["predicate_digest"] == digest
+            ):
                 return record
         raise ScoringRefused(
             "no freeze record names this predicate; "
-            "freeze it before drawing the prose it will be scored against")
+            "freeze it before drawing the prose it will be scored against"
+        )
 
     def seal(self, text, passphrase):
         """Write the ciphertext bundle.
@@ -733,24 +865,34 @@ class Holdout:
         salt = os.urandom(16)
         mask_key, tag_key = _keys(passphrase, salt, KDF_ITERATIONS)
         ciphertext = _mask(text.encode("utf-8"), mask_key)
-        self.bundle.write_text(json.dumps({
-            "kdf": "pbkdf2-hmac-sha256",
-            "iterations": KDF_ITERATIONS,
-            "salt": base64.b64encode(salt).decode("ascii"),
-            "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
-            "tag": base64.b64encode(
-                hmac.new(tag_key, ciphertext, hashlib.sha256).digest()).decode("ascii"),
-        }, indent=2) + "\n", encoding="utf-8")
+        self.bundle.write_text(
+            json.dumps(
+                {
+                    "kdf": "pbkdf2-hmac-sha256",
+                    "iterations": KDF_ITERATIONS,
+                    "salt": base64.b64encode(salt).decode("ascii"),
+                    "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+                    "tag": base64.b64encode(
+                        hmac.new(tag_key, ciphertext, hashlib.sha256).digest()
+                    ).decode("ascii"),
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     def freeze(self, reporting_rules):
         """Commit to a predicate, a calibration manifest, and a bundle, before seeing any of it."""
-        self._append({
-            "record": "freeze",
-            "predicate_digest": self._predicate_digest(),
-            "manifest_digest": self._manifest_digest(),
-            "ciphertext_digest": self._ciphertext_digest(),
-            "reporting_rules": reporting_rules,
-        })
+        self._append(
+            {
+                "record": "freeze",
+                "predicate_digest": self._predicate_digest(),
+                "manifest_digest": self._manifest_digest(),
+                "ciphertext_digest": self._ciphertext_digest(),
+                "reporting_rules": reporting_rules,
+            }
+        )
 
     def open(self, passphrase):
         """Return the sealed text, or refuse and say which rule refused."""
@@ -762,14 +904,16 @@ class Holdout:
         """Spend this bundle, against the freeze record it answers."""
         frozen = self._require_freeze()
         self._require_unspent()
-        self._append({
-            "record": "evaluation",
-            "predicate_digest": frozen["predicate_digest"],
-            "manifest_digest": frozen["manifest_digest"],
-            "ciphertext_digest": frozen["ciphertext_digest"],
-            "reporting_rules": frozen["reporting_rules"],
-            "result": result,
-        })
+        self._append(
+            {
+                "record": "evaluation",
+                "predicate_digest": frozen["predicate_digest"],
+                "manifest_digest": frozen["manifest_digest"],
+                "ciphertext_digest": frozen["ciphertext_digest"],
+                "reporting_rules": frozen["reporting_rules"],
+                "result": result,
+            }
+        )
 
     def _require_freeze(self):
         """The matching freeze record, or a refusal that names what moved.
@@ -778,34 +922,44 @@ class Holdout:
         so a stale predicate and a missing record must not read the same.
         """
         ciphertext = self._ciphertext_digest()
-        frozen = [record for record in self._records()
-                  if record.get("record") == "freeze"
-                  and record["ciphertext_digest"] == ciphertext]
+        frozen = [
+            record
+            for record in self._records()
+            if record.get("record") == "freeze"
+            and record["ciphertext_digest"] == ciphertext
+        ]
         if not frozen:
             raise ScoringRefused("no freeze record names this bundle")
         predicate, manifest = self._predicate_digest(), self._manifest_digest()
         for record in frozen:
-            if (record["predicate_digest"] == predicate
-                    and record["manifest_digest"] == manifest):
+            if (
+                record["predicate_digest"] == predicate
+                and record["manifest_digest"] == manifest
+            ):
                 return record
         if not any(record["predicate_digest"] == predicate for record in frozen):
             raise ScoringRefused(
-                "the predicate changed since the freeze; a tuned predicate needs a new holdout")
+                "the predicate changed since the freeze; a tuned predicate needs a new holdout"
+            )
         raise ScoringRefused("the calibration manifest changed since the freeze")
 
     def _require_unspent(self):
         ciphertext = self._ciphertext_digest()
         for record in self._records():
-            if (record.get("record") == "evaluation"
-                    and record["ciphertext_digest"] == ciphertext):
+            if (
+                record.get("record") == "evaluation"
+                and record["ciphertext_digest"] == ciphertext
+            ):
                 raise ScoringRefused(
-                    "this bundle has already been evaluated; scoring again needs a new holdout")
+                    "this bundle has already been evaluated; scoring again needs a new holdout"
+                )
 
     def _decrypt(self, passphrase):
         bundle = json.loads(self.bundle.read_text(encoding="utf-8"))
         ciphertext = base64.b64decode(bundle["ciphertext"])
         mask_key, tag_key = _keys(
-            passphrase, base64.b64decode(bundle["salt"]), bundle["iterations"])
+            passphrase, base64.b64decode(bundle["salt"]), bundle["iterations"]
+        )
         tag = hmac.new(tag_key, ciphertext, hashlib.sha256).digest()
         if not hmac.compare_digest(tag, base64.b64decode(bundle["tag"])):
             raise ScoringRefused("the passphrase does not open this bundle")
@@ -814,8 +968,11 @@ class Holdout:
     def _records(self):
         if not self.ledger.exists():
             return []
-        return [json.loads(line)
-                for line in self.ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
+        return [
+            json.loads(line)
+            for line in self.ledger.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
 
     def _append(self, record):
         with self.ledger.open("a", encoding="utf-8") as handle:

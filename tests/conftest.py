@@ -14,9 +14,27 @@ sys.path.insert(0, str(REPO / "scripts"))
 
 # The full set of extensions the fixture corpus may use; anything else in
 # tests/fixtures/ is a mistake and fails test_fixture_corpus_is_intentional.
-ALLOWED_SUFFIXES = {".go", ".md", ".java", ".ts", ".rs", ".py", ".sh", ".c",
-                    ".kt", ".vb", ".sql", ".lua", ".rb", ".pl", ".ps1", ".r",
-                    ".hs", ".ex", ".zig"}
+ALLOWED_SUFFIXES = {
+    ".go",
+    ".md",
+    ".java",
+    ".ts",
+    ".rs",
+    ".py",
+    ".sh",
+    ".c",
+    ".kt",
+    ".vb",
+    ".sql",
+    ".lua",
+    ".rb",
+    ".pl",
+    ".ps1",
+    ".r",
+    ".hs",
+    ".ex",
+    ".zig",
+}
 
 # A marker like "{fused}" on a line asserts one finding of that kind on that
 # line; markers are stripped before the text is checked.  A line may carry
@@ -44,31 +62,44 @@ def run_cli(args, stdin_text="", env=None):
         environment.update(env)
     return subprocess.run(
         [sys.executable, str(SCRIPT)] + args,
-        input=stdin_text, capture_output=True, text=True, env=environment,
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        env=environment,
     )
 
 
 def pytest_addoption(parser):
-    parser.addoption("--update-golden", action="store_true",
-                     help="rewrite extractor golden files from current output")
+    parser.addoption(
+        "--update-golden",
+        action="store_true",
+        help="rewrite extractor golden files from current output",
+    )
 
 
 HAS_GIT = shutil.which("git") is not None
 
-_GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@example.com",
-        "-c", "commit.gpgsign=false"]
+_GIT = [
+    "git",
+    "-c",
+    "user.name=t",
+    "-c",
+    "user.email=t@example.com",
+    "-c",
+    "commit.gpgsign=false",
+]
 
 
 def git(*args, cwd):
     """Run git deterministically for repo-building tests."""
-    subprocess.run(_GIT + list(args), cwd=str(cwd), check=True,
-                   capture_output=True)
+    subprocess.run(_GIT + list(args), cwd=str(cwd), check=True, capture_output=True)
 
 
 def git_out(*args, cwd):
     """Captured stdout of a deterministic git command, decoded and stripped."""
-    proc = subprocess.run(_GIT + list(args), cwd=str(cwd), check=True,
-                          capture_output=True)
+    proc = subprocess.run(
+        _GIT + list(args), cwd=str(cwd), check=True, capture_output=True
+    )
     return proc.stdout.decode("utf-8").strip()
 
 
@@ -84,10 +115,16 @@ def isolate_git_env(monkeypatch):
     monkeypatch.setenv("GIT_CONFIG_SYSTEM", os.devnull)
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     monkeypatch.setenv("GIT_CONFIG_COUNT", "0")
-    monkeypatch.setenv("GIT_TEMPLATE_DIR",
-                       os.path.join(os.sep, "semlf-no-template"))
-    for var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE",
-                "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
-                "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE",
-                "GIT_CEILING_DIRECTORIES", "GIT_CONFIG_PARAMETERS"):
+    monkeypatch.setenv("GIT_TEMPLATE_DIR", os.path.join(os.sep, "semlf-no-template"))
+    for var in (
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_COMMON_DIR",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_NAMESPACE",
+        "GIT_CEILING_DIRECTORIES",
+        "GIT_CONFIG_PARAMETERS",
+    ):
         monkeypatch.delenv(var, raising=False)

@@ -75,7 +75,8 @@ def test_a_predicate_tuned_after_its_freeze_cannot_be_sealed_against(unsealed):
     """
     unsealed.freeze_predicate("a predicate that is about to change")
     unsealed.predicate.write_text(
-        "def check(text, path):\n    return [(1, 'wrap')]\n", encoding="utf-8")
+        "def check(text, path):\n    return [(1, 'wrap')]\n", encoding="utf-8"
+    )
     with pytest.raises(ScoringRefused, match="no freeze record names this predicate"):
         unsealed.seal(PLAINTEXT, PASSPHRASE)
 
@@ -104,7 +105,8 @@ def test_a_tuned_predicate_no_longer_opens_the_bundle(holdout):
     """
     holdout.freeze(RULES)
     holdout.predicate.write_text(
-        "def check(text, path):\n    return [(1, 'fused')]\n", encoding="utf-8")
+        "def check(text, path):\n    return [(1, 'fused')]\n", encoding="utf-8"
+    )
     with pytest.raises(ScoringRefused, match="the predicate changed since the freeze"):
         holdout.open(PASSPHRASE)
 
@@ -117,7 +119,9 @@ def test_a_changed_calibration_manifest_no_longer_opens_the_bundle(holdout):
     """
     holdout.freeze(RULES)
     holdout.manifest.write_text('{"units": [{"id": "c-0001"}]}\n', encoding="utf-8")
-    with pytest.raises(ScoringRefused, match="the calibration manifest changed since the freeze"):
+    with pytest.raises(
+        ScoringRefused, match="the calibration manifest changed since the freeze"
+    ):
         holdout.open(PASSPHRASE)
 
 
@@ -170,7 +174,9 @@ def test_the_sealed_bundle_carries_nothing_but_cipher_parameters(holdout):
     assert "h-0001" not in text
 
 
-@pytest.mark.parametrize("name", ["sample.json", "adjudications.json", "labels/claude-0.out"])
+@pytest.mark.parametrize(
+    "name", ["sample.json", "adjudications.json", "labels/claude-0.out"]
+)
 def test_a_round_that_does_not_exist_yet_already_keeps_its_prose_out_of_history(name):
     """git keeps what a later commit deletes, so one careless `git add` ends a round.
 

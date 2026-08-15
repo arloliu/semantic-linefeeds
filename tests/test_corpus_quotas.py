@@ -22,8 +22,9 @@ def population(**levels):
     for dimension, counts in levels.items():
         for value, how_many in counts.items():
             for i in range(how_many):
-                made.append({"id": f"{dimension}-{value}-{i}",
-                             "covariates": {dimension: value}})
+                made.append(
+                    {"id": f"{dimension}-{value}-{i}", "covariates": {dimension: value}}
+                )
     return made
 
 
@@ -56,7 +57,8 @@ def test_a_named_band_the_population_never_reaches_is_reported():
     drawn = draw_corpus(people, 20, quotas, "seed")
     problems = quota_shortfalls(people, drawn, quotas)
     assert [p for p in problems if p.startswith("raw_end_column at 72..")] == [
-        "raw_end_column at 72..: 0 of 20"]
+        "raw_end_column at 72..: 0 of 20"
+    ]
 
 
 def test_a_dimension_the_population_holds_at_one_level_separates_nothing():
@@ -76,7 +78,8 @@ def test_a_dimension_the_population_holds_at_one_level_separates_nothing():
 
 def test_an_empty_population_is_reported_rather_than_divided_by_zero():
     assert quota_shortfalls([], [], {"language": (None, 20)}) == [
-        "language: the population holds nothing, so the quota separates nothing"]
+        "language: the population holds nothing, so the quota separates nothing"
+    ]
 
 
 def test_the_holdout_draw_reports_what_it_could_not_buy():
@@ -89,7 +92,11 @@ def test_the_holdout_draw_reports_what_it_could_not_buy():
     if not sample_path.exists():
         return
     sample = json.loads(sample_path.read_text(encoding="utf-8"))
-    quotas = {name: (spec["bands"], spec["per_level"])
-              for name, spec in sample["quotas"].items()}
+    quotas = {
+        name: (spec["bands"], spec["per_level"])
+        for name, spec in sample["quotas"].items()
+    }
     problems = quota_shortfalls(sample["units"], sample["units"], quotas)
-    assert any("list_item_adjacency" in p and "separates nothing" in p for p in problems)
+    assert any(
+        "list_item_adjacency" in p and "separates nothing" in p for p in problems
+    )

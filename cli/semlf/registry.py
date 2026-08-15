@@ -9,6 +9,7 @@ Members carry canonical bytes; transforms run on the installing machine,
 and every transform fails loud when its match count is wrong,
 so a canonical-source edit can never silently disable a rewrite.
 """
+
 import json
 import zipfile
 from collections import namedtuple
@@ -16,9 +17,20 @@ from pathlib import Path
 
 from semlf import manifest
 
-PayloadRow = namedtuple("PayloadRow",
-                        ["id", "source", "member", "owner", "order",
-                         "recorded", "identity", "dest", "render"])
+PayloadRow = namedtuple(
+    "PayloadRow",
+    [
+        "id",
+        "source",
+        "member",
+        "owner",
+        "order",
+        "recorded",
+        "identity",
+        "dest",
+        "render",
+    ],
+)
 
 CHECKER_NAME = "check_linefeeds.py"
 
@@ -36,40 +48,83 @@ def _data_path(name):
 # module-level names resolve at call time, so the forward references are safe,
 # and the table stays one readable block.
 ROWS = (
-    PayloadRow("checker", "scripts/check_linefeeds.py",
-               "semlf/payloads/checker", "codex", 0, True, True,
-               lambda: _data_path(CHECKER_NAME),
-               lambda data_dir: payload_bytes("checker")),
-    PayloadRow("readme", "README.md",
-               "semlf/payloads/readme", "codex", 1, True, True,
-               lambda: _data_path("README.md"),
-               lambda data_dir: payload_bytes("readme")),
-    PayloadRow("codex-hook-template", "adapters/codex/hooks.json",
-               "semlf/payloads/codex-hook-template", "codex", 2,
-               False, False,
-               lambda: _in(manifest.codex_home(), "hooks.json"),
-               None),
-    PayloadRow("codex-skill", "skills/semantic-linefeeds/SKILL.md",
-               "semlf/payloads/codex-skill", "codex", 3, True, False,
-               manifest.codex_skill_dest,
-               lambda data_dir: render_codex_skill(
-                   data_dir).encode("utf-8")),
-    PayloadRow("opencode-plugin",
-               "adapters/opencode/semantic-linefeeds.ts",
-               "semlf/payloads/opencode-plugin", "opencode", 4, True,
-               False,
-               lambda: _in(manifest.opencode_plugins_dir(),
-                           "semantic-linefeeds.ts"),
-               lambda data_dir: payload_bytes("opencode-plugin")),
-    PayloadRow("opencode-checker", "scripts/check_linefeeds.py",
-               "semlf/payloads/opencode-checker", "opencode", 5, True,
-               True,
-               lambda: _in(manifest.opencode_plugins_dir(),
-                           CHECKER_NAME),
-               lambda data_dir: payload_bytes("opencode-checker")),
-    PayloadRow("agentsmd-snippet", "adapters/agentsmd/SNIPPET.md",
-               "semlf/payloads/agentsmd-snippet", "agentsmd", 6,
-               False, False, None, None),
+    PayloadRow(
+        "checker",
+        "scripts/check_linefeeds.py",
+        "semlf/payloads/checker",
+        "codex",
+        0,
+        True,
+        True,
+        lambda: _data_path(CHECKER_NAME),
+        lambda data_dir: payload_bytes("checker"),
+    ),
+    PayloadRow(
+        "readme",
+        "README.md",
+        "semlf/payloads/readme",
+        "codex",
+        1,
+        True,
+        True,
+        lambda: _data_path("README.md"),
+        lambda data_dir: payload_bytes("readme"),
+    ),
+    PayloadRow(
+        "codex-hook-template",
+        "adapters/codex/hooks.json",
+        "semlf/payloads/codex-hook-template",
+        "codex",
+        2,
+        False,
+        False,
+        lambda: _in(manifest.codex_home(), "hooks.json"),
+        None,
+    ),
+    PayloadRow(
+        "codex-skill",
+        "skills/semantic-linefeeds/SKILL.md",
+        "semlf/payloads/codex-skill",
+        "codex",
+        3,
+        True,
+        False,
+        manifest.codex_skill_dest,
+        lambda data_dir: render_codex_skill(data_dir).encode("utf-8"),
+    ),
+    PayloadRow(
+        "opencode-plugin",
+        "adapters/opencode/semantic-linefeeds.ts",
+        "semlf/payloads/opencode-plugin",
+        "opencode",
+        4,
+        True,
+        False,
+        lambda: _in(manifest.opencode_plugins_dir(), "semantic-linefeeds.ts"),
+        lambda data_dir: payload_bytes("opencode-plugin"),
+    ),
+    PayloadRow(
+        "opencode-checker",
+        "scripts/check_linefeeds.py",
+        "semlf/payloads/opencode-checker",
+        "opencode",
+        5,
+        True,
+        True,
+        lambda: _in(manifest.opencode_plugins_dir(), CHECKER_NAME),
+        lambda data_dir: payload_bytes("opencode-checker"),
+    ),
+    PayloadRow(
+        "agentsmd-snippet",
+        "adapters/agentsmd/SNIPPET.md",
+        "semlf/payloads/agentsmd-snippet",
+        "agentsmd",
+        6,
+        False,
+        False,
+        None,
+        None,
+    ),
 )
 
 BY_ID = {row.id: row for row in ROWS}
@@ -87,8 +142,7 @@ class TransformError(ValueError):
 def _replace_exactly_once(text, old, new, what):
     count = text.count(old)
     if count != 1:
-        raise TransformError(
-            f"{what}: expected exactly one match, found {count}")
+        raise TransformError(f"{what}: expected exactly one match, found {count}")
     return text.replace(old, new)
 
 
@@ -120,8 +174,7 @@ def payload_bytes(row_id):
     root = _repo_root()
     if root is not None:
         return (root / row.source).read_bytes()
-    raise FileNotFoundError(
-        f"payload {row_id!r} is neither embedded nor in a checkout")
+    raise FileNotFoundError(f"payload {row_id!r} is neither embedded nor in a checkout")
 
 
 def stage_payloads(build_root, repo=None):
@@ -150,8 +203,7 @@ def stage_payloads(build_root, repo=None):
 # and the relative suppression-section link is rewritten to the neutral README path,
 # so it resolves on air-gapped machines too.
 SKILL_COMMAND_OLD = (
-    'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/check_linefeeds.py" '
-    '--file <files>'
+    'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/check_linefeeds.py" --file <files>'
 )
 SKILL_FALLBACK_LINE = (
     "(If `CLAUDE_PLUGIN_ROOT` is unset, the script is at "
@@ -163,29 +215,35 @@ SKILL_README_LINK_OLD = "../../README.md"
 def render_codex_skill(data_dir):
     """The installed skill body, pinned to the neutral root."""
     if data_dir is None:
-        raise ValueError("data_dir cannot be None: no data root "
-                         "resolves here")
+        raise ValueError("data_dir cannot be None: no data root resolves here")
     data_dir = Path(data_dir)
     text = payload_bytes("codex-skill").decode("utf-8")
     checker = data_dir / CHECKER_NAME
     text = _replace_exactly_once(
-        text, SKILL_COMMAND_OLD,
-        f'python3 "{checker}" --file <files>', "codex-skill command")
+        text,
+        SKILL_COMMAND_OLD,
+        f'python3 "{checker}" --file <files>',
+        "codex-skill command",
+    )
     text = _replace_exactly_once(
-        text, SKILL_FALLBACK_LINE, "", "codex-skill fallback line")
+        text, SKILL_FALLBACK_LINE, "", "codex-skill fallback line"
+    )
     return _replace_exactly_once(
-        text, SKILL_README_LINK_OLD, str(data_dir / "README.md"),
-        "codex-skill readme link")
+        text,
+        SKILL_README_LINK_OLD,
+        str(data_dir / "README.md"),
+        "codex-skill readme link",
+    )
 
 
 def render_codex_hook_entry(data_dir):
     """The one PostToolUse entry the installer merges."""
     if data_dir is None:
-        raise ValueError("data_dir cannot be None: no data root "
-                         "resolves here")
+        raise ValueError("data_dir cannot be None: no data root resolves here")
     data_dir = Path(data_dir)
     text = payload_bytes("codex-hook-template").decode("utf-8")
     checker = data_dir / CHECKER_NAME
-    text = _replace_exactly_once(text, "__CHECKER__", str(checker),
-                                 "codex hook template")
+    text = _replace_exactly_once(
+        text, "__CHECKER__", str(checker), "codex hook template"
+    )
     return json.loads(text)["hooks"]["PostToolUse"][0]

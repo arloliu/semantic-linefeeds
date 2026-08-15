@@ -12,6 +12,7 @@ Failures raise SourceError with a message ready for stderr:
 a snapshot that cannot be enumerated or read is a loud stop,
 never a silently shorter file list.
 """
+
 import os
 import subprocess
 
@@ -24,13 +25,14 @@ class SourceError(Exception):
 
 def _git(root, *args, input_bytes=None):
     try:
-        proc = subprocess.run(["git", "-C", root, *args],
-                              capture_output=True, input=input_bytes)
+        proc = subprocess.run(
+            ["git", "-C", root, *args], capture_output=True, input=input_bytes
+        )
     except OSError as exc:
-        raise SourceError(f"semlf: cannot run git: {exc}")
+        raise SourceError(f"semlf: cannot run git: {exc}") from exc
     if proc.returncode != 0:
         detail = proc.stderr.decode("utf-8", "replace").strip()
-        raise SourceError(f"semlf: {detail or 'git exited %d' % proc.returncode}")
+        raise SourceError(f"semlf: {detail or f'git exited {proc.returncode}'}")
     return proc.stdout
 
 
@@ -43,7 +45,7 @@ def _git_query(root, *args):
     try:
         proc = subprocess.run(["git", "-C", root, *args], capture_output=True)
     except OSError as exc:
-        raise SourceError(f"semlf: cannot run git: {exc}")
+        raise SourceError(f"semlf: cannot run git: {exc}") from exc
     return proc.returncode, proc.stdout, proc.stderr
 
 
@@ -85,20 +87,18 @@ def _parse_raw(out):
             if len(mode) != 6 or any(c not in "01234567" for c in mode):
                 raise SourceError("semlf: unparsable git diff record")
         for oid in (old_oid, new_oid):
-            if (len(oid) not in (40, 64)
-                    or any(c not in "0123456789abcdef" for c in oid)):
+            if len(oid) not in (40, 64) or any(
+                c not in "0123456789abcdef" for c in oid
+            ):
                 raise SourceError("semlf: unparsable git diff record")
         if len(old_oid) != len(new_oid):
             raise SourceError("semlf: unparsable git diff record")
         if status == "U":
-            raise SourceError(
-                f"semlf: unmerged path {path}; resolve the merge first")
+            raise SourceError(f"semlf: unmerged path {path}; resolve the merge first")
         if status == "X":
-            raise SourceError(
-                f"semlf: git reported an unknown change for {path}")
+            raise SourceError(f"semlf: git reported an unknown change for {path}")
         if status not in ("A", "M", "T"):
-            raise SourceError(
-                f"semlf: unsupported diff status {status} for {path}")
+            raise SourceError(f"semlf: unsupported diff status {status} for {path}")
         records.append((path, new_mode, new_oid))
     if tokens[i:] != [b""]:
         raise SourceError("semlf: trailing garbage in git diff records")
@@ -113,8 +113,16 @@ def _raw_records(root, *selector):
     a rename arrives as an addition of the new path,
     which is the checkable post-image either way.
     """
-    out = _git(root, "diff", "--raw", "-z", "--no-abbrev", "--no-renames",
-               "--diff-filter=AMTUX", *selector)
+    out = _git(
+        root,
+        "diff",
+        "--raw",
+        "-z",
+        "--no-abbrev",
+        "--no-renames",
+        "--diff-filter=AMTUX",
+        *selector,
+    )
     return _parse_raw(out)
 
 
@@ -133,14 +141,12 @@ def _head_or_empty_tree(root):
         return "HEAD"
     except SourceError:
         try:
-            target = os.fsdecode(
-                _git(root, "symbolic-ref", "--quiet", "HEAD")).strip()
+            target = os.fsdecode(_git(root, "symbolic-ref", "--quiet", "HEAD")).strip()
         except SourceError:
-            raise SourceError("semlf: cannot resolve HEAD in this repository")
-        code, _, err = _git_query(root, "rev-parse", "--verify", "--quiet",
-                                  target)
+            raise SourceError("semlf: cannot resolve HEAD in this repository") from None
+        code, _, err = _git_query(root, "rev-parse", "--verify", "--quiet", target)
         if code != 1 or err.strip():
-            raise SourceError("semlf: cannot resolve HEAD in this repository")
+            raise SourceError("semlf: cannot resolve HEAD in this repository") from None
         return os.fsdecode(
             _git(root, "hash-object", "-t", "tree", "--stdin", input_bytes=b"")
         ).strip()
@@ -194,7 +200,7 @@ def _worktree_sources(root, records):
             with open(full, encoding="utf-8", errors="replace") as fh:
                 sources.append((display, fh.read()))
         except OSError as exc:
-            raise SourceError(f"semlf: cannot read {display}: {exc}")
+            raise SourceError(f"semlf: cannot read {display}: {exc}") from exc
     return sources
 
 

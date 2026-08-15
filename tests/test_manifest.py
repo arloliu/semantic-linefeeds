@@ -1,7 +1,7 @@
 """tests/test_manifest.py — provenance identity and its failure directions."""
+
 import json
 import os
-import stat
 import sys
 from pathlib import Path
 
@@ -15,12 +15,14 @@ from semlf import manifest
 def test_state_path_honors_xdg_state_home(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     assert manifest.artifact_state_path("cli") == (
-        tmp_path / "state" / "semlf" / "artifacts" / "cli.json")
+        tmp_path / "state" / "semlf" / "artifacts" / "cli.json"
+    )
 
 
 def record_current(name, artifact, version="0.6.0"):
-    manifest.record(name, artifact, version,
-                    manifest.sha256_bytes(artifact.read_bytes()))
+    manifest.record(
+        name, artifact, version, manifest.sha256_bytes(artifact.read_bytes())
+    )
 
 
 def test_record_then_classify_managed(tmp_path, monkeypatch):
@@ -61,8 +63,7 @@ def test_a_symlink_destination_is_never_managed(tmp_path, monkeypatch):
     real.write_bytes(b"published bytes")
     link = tmp_path / "semlf"
     link.symlink_to(real)
-    manifest.record("cli", link, "0.6.0",
-                    manifest.sha256_bytes(b"published bytes"))
+    manifest.record("cli", link, "0.6.0", manifest.sha256_bytes(b"published bytes"))
     assert manifest.classify("cli", link) == "unrecorded"
 
 
@@ -84,8 +85,7 @@ def test_valid_entry_rejects_an_unencodable_surrogate_path():
     # An unpaired UTF-16 surrogate can reach a Python string from JSON's \uXXXX escape,
     # and no OS filesystem call can ever open, stat, or otherwise identify a destination by that string.
     # Schema validity must reject it here, at load, rather than let it survive into a classification or diagnostic call downstream (fix-report P0-2b).
-    entry = {"path": "/tmp/evil\ud800dir/semlf",
-             "sha256": "a" * 64, "version": "0.6.0"}
+    entry = {"path": "/tmp/evil\ud800dir/semlf", "sha256": "a" * 64, "version": "0.6.0"}
     assert manifest._valid_entry(entry) is False
 
 
@@ -95,10 +95,16 @@ def test_unknown_artifact_names_are_never_read(tmp_path, monkeypatch):
     artifact.write_bytes(b"x")
     rogue = manifest.artifact_state_path("cli").parent / "rogue.json"
     rogue.parent.mkdir(parents=True, exist_ok=True)
-    rogue.write_text(json.dumps({
-        "path": str(artifact),
-        "sha256": manifest.sha256_bytes(b"x"),
-        "version": "0.6.0"}), encoding="utf-8")
+    rogue.write_text(
+        json.dumps(
+            {
+                "path": str(artifact),
+                "sha256": manifest.sha256_bytes(b"x"),
+                "version": "0.6.0",
+            }
+        ),
+        encoding="utf-8",
+    )
     assert "rogue" not in manifest.load()
 
 
@@ -169,11 +175,15 @@ def test_malformed_state_degrades_to_empty(tmp_path, monkeypatch):
 
 
 def test_codex_ownership_is_structural_not_substring():
-    ours = {"type": "command",
-            "command": 'python3 "/some/repo/scripts/check_linefeeds.py" --hook codex'}
+    ours = {
+        "type": "command",
+        "command": 'python3 "/some/repo/scripts/check_linefeeds.py" --hook codex',
+    }
     assert manifest.parse_managed_codex_hook("apply_patch", ours) is not None
+
     def cmd(text):
         return {"type": "command", "command": text}
+
     foreign_hooks = [
         cmd("echo check_linefeeds.py"),
         cmd('bash "/tmp/notcheck_linefeeds.py" --hook codex'),
@@ -214,7 +224,7 @@ def test_writers_cannot_interfere_across_artifacts(tmp_path, monkeypatch):
     record_current("codex-skill", b)
     manifest.forget("cli")
     record_current("opencode-plugin", b)  # a later, unrelated record
-    assert "cli" not in manifest.load()   # the forgotten name stays gone
+    assert "cli" not in manifest.load()  # the forgotten name stays gone
 
 
 def test_known_grows_the_neutral_payload_names():
@@ -231,8 +241,7 @@ def test_semlf_data_dir_honors_xdg(monkeypatch, tmp_path):
 def test_semlf_data_dir_falls_back_to_local_share(monkeypatch, tmp_path):
     monkeypatch.delenv("XDG_DATA_HOME", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path))
-    assert manifest.semlf_data_dir() == (
-        tmp_path / ".local" / "share" / "semlf")
+    assert manifest.semlf_data_dir() == (tmp_path / ".local" / "share" / "semlf")
 
 
 def test_record_preflight_accepts_a_writable_root(monkeypatch, tmp_path):
@@ -240,8 +249,7 @@ def test_record_preflight_accepts_a_writable_root(monkeypatch, tmp_path):
     assert manifest.record_preflight("checker") is None
 
 
-def test_record_preflight_refuses_a_directory_at_the_record_path(
-        monkeypatch, tmp_path):
+def test_record_preflight_refuses_a_directory_at_the_record_path(monkeypatch, tmp_path):
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     path = manifest.artifact_state_path("checker")
     path.mkdir(parents=True)
@@ -249,8 +257,7 @@ def test_record_preflight_refuses_a_directory_at_the_record_path(
     assert refusal is not None and "not a regular file" in refusal
 
 
-def test_record_preflight_refuses_a_file_blocking_the_parent(
-        monkeypatch, tmp_path):
+def test_record_preflight_refuses_a_file_blocking_the_parent(monkeypatch, tmp_path):
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     (tmp_path / "state").mkdir()
     (tmp_path / "state" / "semlf").write_text("in the way")
@@ -258,10 +265,10 @@ def test_record_preflight_refuses_a_file_blocking_the_parent(
     assert refusal is not None and "not a directory" in refusal
 
 
-@pytest.mark.skipif(hasattr(os, "geteuid") and os.geteuid() == 0,
-                    reason="root ignores permission bits")
-def test_record_preflight_refuses_an_unwritable_state_tree(
-        monkeypatch, tmp_path):
+@pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0, reason="root ignores permission bits"
+)
+def test_record_preflight_refuses_an_unwritable_state_tree(monkeypatch, tmp_path):
     """A writable destination plus a read-only artifacts directory must
     refuse at preflight, not publish and then fail the record write."""
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
@@ -276,21 +283,41 @@ def test_record_preflight_refuses_an_unwritable_state_tree(
 
 
 def test_owned_codex_hooks_finds_only_managed_entries():
-    data = {"hooks": {"PostToolUse": [
-        {"matcher": "apply_patch", "hooks": [
-            {"type": "command",
-             "command": 'python3 "/x/check_linefeeds.py" --hook codex'},
-            {"type": "command", "command": "echo unrelated"}]},
-        {"matcher": "shell", "hooks": [
-            {"type": "command",
-             "command": 'python3 "/x/check_linefeeds.py" --hook codex'}]},
-    ]}}
+    data = {
+        "hooks": {
+            "PostToolUse": [
+                {
+                    "matcher": "apply_patch",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": 'python3 "/x/check_linefeeds.py" --hook codex',
+                        },
+                        {"type": "command", "command": "echo unrelated"},
+                    ],
+                },
+                {
+                    "matcher": "shell",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": 'python3 "/x/check_linefeeds.py" --hook codex',
+                        }
+                    ],
+                },
+            ]
+        }
+    }
     owned = manifest.owned_codex_hooks(data)
-    assert owned == [["python3", "/x/check_linefeeds.py",
-                      "--hook", "codex"]]
+    assert owned == [["python3", "/x/check_linefeeds.py", "--hook", "codex"]]
 
 
 def test_owned_codex_hooks_is_total_over_hostile_shapes():
-    for data in (None, [], {"hooks": []}, {"hooks": {"PostToolUse": {}}},
-                 {"hooks": {"PostToolUse": [None, {"hooks": "x"}]}}):
+    for data in (
+        None,
+        [],
+        {"hooks": []},
+        {"hooks": {"PostToolUse": {}}},
+        {"hooks": {"PostToolUse": [None, {"hooks": "x"}]}},
+    ):
         assert manifest.owned_codex_hooks(data) == []

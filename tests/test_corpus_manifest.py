@@ -15,7 +15,12 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from corpus_harness import (  # noqa: E402
-    COVARIATES, file_digest, manifest_problems, replay_kinds, resolution)
+    COVARIATES,
+    file_digest,
+    manifest_problems,
+    replay_kinds,
+    resolution,
+)
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 MANIFEST = REPO / "tests" / "corpus" / "manifest.json"
@@ -59,32 +64,39 @@ def manifest(**overrides):
     """A manifest holding one unit, valid until a test breaks one thing in it."""
     document = {
         "schema_version": 1,
-        "rubric": {"path": "skills/semantic-linefeeds/SKILL.md", "digest": "sha256:" + "0" * 64},
+        "rubric": {
+            "path": "skills/semantic-linefeeds/SKILL.md",
+            "digest": "sha256:" + "0" * 64,
+        },
         "reporting": {
             "interval": "wilson-95",
             "min_true_violations": 10,
             "max_interval_half_width": 0.15,
             "max_ambiguous_fraction": 0.25,
         },
-        "covariate_definitions": {name: f"how {name} is measured" for name in COVARIATES},
+        "covariate_definitions": {
+            name: f"how {name} is measured" for name in COVARIATES
+        },
         "eligible_anchor": {
             "definition": "the count of positions in the upper line where a break "
-                          "would leave text on both sides, stated geometrically "
-                          "and computed by this harness rather than by the checker",
+            "would leave text on both sides, stated geometrically "
+            "and computed by this harness rather than by the checker",
         },
         "protocol_notes": [
             "the session that labels the holdout must not be the session that later tunes a predicate",
         ],
         "frames": {"main": {}, "out_of_scope": {}},
-        "sources": [{
-            "id": "styx",
-            "side": "calibration",
-            "composition": "self-authored",
-            "url": "https://github.com/arloliu/styx",
-            "commit": "0" * 40,
-            "license": "MIT",
-            "selection_command": "git ls-files '*.go'",
-        }],
+        "sources": [
+            {
+                "id": "styx",
+                "side": "calibration",
+                "composition": "self-authored",
+                "url": "https://github.com/arloliu/styx",
+                "commit": "0" * 40,
+                "license": "MIT",
+                "selection_command": "git ls-files '*.go'",
+            }
+        ],
         "units": [unit()],
     }
     document.update(overrides)
@@ -172,8 +184,10 @@ def test_an_ambiguous_unit_carries_no_expected_status():
 
     Giving one an expected status would smuggle it back into a denominator it was excluded from.
     """
-    ambiguous = unit(passes={"claude": "true", "codex": "true", "agy": "ambiguous"},
-                     label="ambiguous")
+    ambiguous = unit(
+        passes={"claude": "true", "codex": "true", "agy": "ambiguous"},
+        label="ambiguous",
+    )
     problems = manifest_problems(manifest(units=[ambiguous]))
     assert any("c-0001" in p and "expected" in p for p in problems), problems
 
@@ -197,8 +211,10 @@ def test_an_adjudicated_unit_without_a_recorded_reason_is_rejected():
 
 def test_an_adjudicated_unit_with_a_reason_is_accepted():
     """Adjudication is a legitimate outcome, not a defect."""
-    adjudicated = unit(passes={"claude": "true", "codex": "true", "agy": "false"},
-                       adjudication="the continuation is a demonstrative, not a wrapped clause")
+    adjudicated = unit(
+        passes={"claude": "true", "codex": "true", "agy": "false"},
+        adjudication="the continuation is a demonstrative, not a wrapped clause",
+    )
     assert manifest_problems(manifest(units=[adjudicated])) == []
 
 
@@ -211,7 +227,9 @@ def test_a_unit_missing_one_covariate_is_rejected():
     thin = unit()
     del thin["covariates"]["eligible_anchor_count"]
     problems = manifest_problems(manifest(units=[thin]))
-    assert any("c-0001" in p and "eligible_anchor_count" in p for p in problems), problems
+    assert any("c-0001" in p and "eligible_anchor_count" in p for p in problems), (
+        problems
+    )
 
 
 def test_a_unit_naming_an_undeclared_source_is_rejected():
@@ -251,7 +269,9 @@ def test_switching_the_interval_estimator_is_rejected():
 def test_a_third_party_source_under_a_copyleft_license_is_rejected():
     """Unit text is vendored, so the licence decides what may be stored at all."""
     copyleft = manifest()
-    copyleft["sources"][0].update(composition="third-party-code", license="GPL-3.0-only")
+    copyleft["sources"][0].update(
+        composition="third-party-code", license="GPL-3.0-only"
+    )
     assert any("GPL-3.0-only" in p for p in manifest_problems(copyleft))
 
 
@@ -263,9 +283,11 @@ def test_a_permissive_license_with_an_exception_that_only_relaxes_is_accepted():
     """
     excepted = manifest()
     excepted["sources"][0].update(
-        composition="third-party-markdown", license="Apache-2.0 WITH LLVM-exception",
+        composition="third-party-markdown",
+        license="Apache-2.0 WITH LLVM-exception",
         wrapping_column=80,
-        qualification="mode of raw Markdown paragraph line lengths over 32357 lines")
+        qualification="mode of raw Markdown paragraph line lengths over 32357 lines",
+    )
     assert manifest_problems(excepted) == []
 
 
@@ -285,9 +307,11 @@ def test_a_measured_third_party_source_is_accepted():
     """The measurement is a requirement, not an obstacle."""
     measured = manifest()
     measured["sources"][0].update(
-        composition="third-party-code", license="MIT",
+        composition="third-party-code",
+        license="MIT",
         wrapping_column=72,
-        qualification="mode of raw comment line lengths over 5996 lines")
+        qualification="mode of raw comment line lengths over 5996 lines",
+    )
     assert manifest_problems(measured) == []
 
 
@@ -351,7 +375,8 @@ def test_the_pinned_rubric_still_matches_the_skill_it_names():
     rubric = on_disk()["rubric"]
     assert rubric["digest"] == file_digest(REPO / rubric["path"]), (
         "the published rule changed; decide whether the corpus needs relabeling, "
-        "then repin the digest")
+        "then repin the digest"
+    )
 
 
 def test_every_frozen_status_still_holds():
@@ -366,19 +391,24 @@ def test_every_frozen_status_still_holds():
         frozen = record.get("expected")
         if frozen is None:
             continue
-        now = "detected" if record["question"] in replay_kinds(record) else "accepted_miss"
+        now = (
+            "detected"
+            if record["question"] in replay_kinds(record)
+            else "accepted_miss"
+        )
         if now != frozen:
             slipped.append(f"{record['id']}: frozen as {frozen}, now {now}")
     assert not slipped, (
         "these labeled violations changed detection status; approve the change in the "
-        "manifest or fix the regression:\n  " + "\n  ".join(slipped))
+        "manifest or fix the regression:\n  " + "\n  ".join(slipped)
+    )
 
 
 @pytest.mark.xfail(
     strict=True,
     reason="one of 450 labeled non-violations still draws a complaint: a line already "
-           "carrying a fused sentence, whose wrap the labelers judged to be the same defect "
-           "counted twice; the precision repairs cleared the other six",
+    "carrying a fused sentence, whose wrap the labelers judged to be the same defect "
+    "counted twice; the precision repairs cleared the other six",
 )
 def test_no_labeled_non_violation_draws_a_complaint():
     """Zero false positives, measured against prose somebody read rather than prose we wrote.
@@ -390,12 +420,15 @@ def test_no_labeled_non_violation_draws_a_complaint():
     Marked strict, so it fails the moment it starts passing
     and the marker cannot outlive the defects it names.
     """
-    complaints = [f"{record['id']}: {record['upper']}"
-                  for record in on_disk()["units"]
-                  if record["label"] == "false" and record["question"] in replay_kinds(record)]
+    complaints = [
+        f"{record['id']}: {record['upper']}"
+        for record in on_disk()["units"]
+        if record["label"] == "false" and record["question"] in replay_kinds(record)
+    ]
     assert not complaints, (
         "the detector complained about prose three labelers judged correct:\n  "
-        + "\n  ".join(complaints))
+        + "\n  ".join(complaints)
+    )
 
 
 def test_the_manifest_has_not_changed_without_a_recorded_reason():
@@ -407,5 +440,8 @@ def test_the_manifest_has_not_changed_without_a_recorded_reason():
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
     assert lock["digest"] == file_digest(MANIFEST), (
         "the manifest changed; record what changed and why in manifest.lock, "
-        "then repin the digest")
-    assert lock["reason"].strip(), "a manifest change with no stated reason is an unexplained one"
+        "then repin the digest"
+    )
+    assert lock["reason"].strip(), (
+        "a manifest change with no stated reason is an unexplained one"
+    )

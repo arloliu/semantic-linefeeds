@@ -23,7 +23,12 @@ TESTS = HERE.parent.parent.parent
 sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(TESTS.parent / "scripts"))
 
-from corpus_harness import draw_corpus, level_of, quota_shortfalls, records_for  # noqa: E402
+from corpus_harness import (  # noqa: E402
+    draw_corpus,
+    level_of,
+    quota_shortfalls,
+    records_for,
+)
 
 MANIFEST = TESTS / "corpus" / "manifest.json"
 
@@ -54,18 +59,28 @@ def main(root):
 
     drawn = draw_corpus(population, BASE, QUOTAS, SEED)
     out = HERE.parent / "sample.json"
-    out.write_text(json.dumps({
-        "base": BASE,
-        "seed": SEED,
-        "per_level": PER_LEVEL,
-        "quotas": {name: {"bands": bands, "per_level": count}
-                   for name, (bands, count) in sorted(QUOTAS.items())},
-        "population": len(population),
-        "units": drawn,
-    }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(
+            {
+                "base": BASE,
+                "seed": SEED,
+                "per_level": PER_LEVEL,
+                "quotas": {
+                    name: {"bands": bands, "per_level": count}
+                    for name, (bands, count) in sorted(QUOTAS.items())
+                },
+                "population": len(population),
+                "units": drawn,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     print(f"population {len(population)}, drew {len(drawn)} -> {out}")
-    for name, (bands, count) in sorted(QUOTAS.items()):
+    for name, (bands, _count) in sorted(QUOTAS.items()):
         levels = {}
         for unit in drawn:
             level = level_of(unit, name, bands)

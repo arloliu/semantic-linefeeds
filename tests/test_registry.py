@@ -1,4 +1,5 @@
 """tests/test_registry.py — one registry, no second mapping anywhere."""
+
 import sys
 from pathlib import Path
 
@@ -10,9 +11,15 @@ sys.path.insert(0, str(REPO / "scripts"))
 
 from semlf import registry
 
-
-EXPECTED_IDS = ["checker", "readme", "codex-hook-template", "codex-skill",
-                "opencode-plugin", "opencode-checker", "agentsmd-snippet"]
+EXPECTED_IDS = [
+    "checker",
+    "readme",
+    "codex-hook-template",
+    "codex-skill",
+    "opencode-plugin",
+    "opencode-checker",
+    "agentsmd-snippet",
+]
 
 
 def test_rows_carry_the_designed_ids_in_apply_order():
@@ -27,11 +34,15 @@ def test_member_paths_follow_the_id():
 
 def test_owners_match_the_design_table():
     owners = {r.id: r.owner for r in registry.ROWS}
-    assert owners == {"checker": "codex", "readme": "codex",
-                      "codex-hook-template": "codex", "codex-skill": "codex",
-                      "opencode-plugin": "opencode",
-                      "opencode-checker": "opencode",
-                      "agentsmd-snippet": "agentsmd"}
+    assert owners == {
+        "checker": "codex",
+        "readme": "codex",
+        "codex-hook-template": "codex",
+        "codex-skill": "codex",
+        "opencode-plugin": "opencode",
+        "opencode-checker": "opencode",
+        "agentsmd-snippet": "agentsmd",
+    }
 
 
 def test_the_two_no_record_rows_are_marked():
@@ -41,7 +52,10 @@ def test_the_two_no_record_rows_are_marked():
 
 def test_identity_marks_exactly_the_digest_compared_payloads():
     assert {r.id for r in registry.ROWS if r.identity} == {
-        "checker", "readme", "opencode-checker"}
+        "checker",
+        "readme",
+        "opencode-checker",
+    }
 
 
 def test_every_consumer_field_is_complete(monkeypatch, tmp_path):
@@ -73,10 +87,14 @@ def test_render_refuses_a_none_data_dir():
 
 
 def test_payload_bytes_serves_canonical_bytes_in_a_checkout():
-    assert registry.payload_bytes("checker") == (
-        REPO / "scripts" / "check_linefeeds.py").read_bytes()
-    assert registry.payload_bytes("opencode-checker") == (
-        REPO / "scripts" / "check_linefeeds.py").read_bytes()
+    assert (
+        registry.payload_bytes("checker")
+        == (REPO / "scripts" / "check_linefeeds.py").read_bytes()
+    )
+    assert (
+        registry.payload_bytes("opencode-checker")
+        == (REPO / "scripts" / "check_linefeeds.py").read_bytes()
+    )
     assert registry.payload_bytes("readme") == (REPO / "README.md").read_bytes()
 
 
@@ -94,11 +112,16 @@ def test_payload_bytes_prefers_a_staged_dir_beside_the_module(tmp_path, monkeypa
     for src in (REPO / "cli" / "semlf").glob("*.py"):
         (pkg / src.name).write_bytes(src.read_bytes())
     registry.stage_payloads(tmp_path / "site", repo=REPO)
-    import subprocess, sys as _sys
-    code = ("import sys; sys.path.insert(0, %r); "
-            "from semlf import registry; "
-            "sys.stdout.buffer.write(registry.payload_bytes('checker'))"
-            % str(tmp_path / "site"))
+    import subprocess
+    import sys as _sys
+
+    code = (
+        "import sys; sys.path.insert(0, {!r}); "
+        "from semlf import registry; "
+        "sys.stdout.buffer.write(registry.payload_bytes('checker'))".format(
+            str(tmp_path / "site")
+        )
+    )
     out = subprocess.run([_sys.executable, "-c", code], capture_output=True)
     assert out.returncode == 0
     assert out.stdout == (REPO / "scripts" / "check_linefeeds.py").read_bytes()
@@ -108,16 +131,17 @@ def test_render_codex_hook_entry_substitutes_exactly_once(tmp_path):
     entry = registry.render_codex_hook_entry(tmp_path / "data" / "semlf")
     assert entry["matcher"] == "apply_patch"
     command = entry["hooks"][0]["command"]
-    assert command == ('python3 "%s" --hook codex'
-                      % (tmp_path / "data" / "semlf" / "check_linefeeds.py"))
+    assert command == (
+        'python3 "%s" --hook codex'
+        % (tmp_path / "data" / "semlf" / "check_linefeeds.py")
+    )
     assert "__CHECKER__" not in command
 
 
 def test_render_codex_skill_pins_all_three_rewrites(tmp_path):
     data_dir = tmp_path / "data" / "semlf"
     body = registry.render_codex_skill(data_dir)
-    assert ('python3 "%s" --file <files>'
-            % (data_dir / "check_linefeeds.py")) in body
+    assert ('python3 "%s" --file <files>' % (data_dir / "check_linefeeds.py")) in body
     assert str(data_dir / "README.md") in body
     assert "CLAUDE_PLUGIN_ROOT" not in body
     assert "../../scripts/check_linefeeds.py" not in body
@@ -126,7 +150,8 @@ def test_render_codex_skill_pins_all_three_rewrites(tmp_path):
 
 def test_a_wrong_match_count_fails_loud():
     with pytest.raises(registry.TransformError):
-        registry._replace_exactly_once("no match here", "__CHECKER__", "x",
-                                       "codex hook template")
+        registry._replace_exactly_once(
+            "no match here", "__CHECKER__", "x", "codex hook template"
+        )
     with pytest.raises(registry.TransformError):
         registry._replace_exactly_once("__X__ and __X__", "__X__", "x", "twice")

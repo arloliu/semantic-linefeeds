@@ -20,7 +20,7 @@ TESTS = HERE.parent.parent.parent
 sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(TESTS.parent / "scripts"))
 
-from corpus_harness import CONTEXT, draw, records_for  # noqa: E402
+from corpus_harness import draw, records_for  # noqa: E402
 
 MANIFEST = TESTS / "corpus" / "manifest.json"
 
@@ -30,6 +30,7 @@ BANDS = (64, 71, 78, 85)
 PER_LEVEL = 12
 SEED = "pilot-raw-end-column-1"
 
+
 def main(root):
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     population = []
@@ -38,20 +39,31 @@ def main(root):
             continue
         population += records_for(source, root / source["id"])
 
-    flat = [dict(record, **{STRATUM: record["covariates"][STRATUM]}) for record in population]
+    flat = [
+        dict(record, **{STRATUM: record["covariates"][STRATUM]})
+        for record in population
+    ]
     sample = draw(flat, STRATUM, BANDS, PER_LEVEL, SEED)
     for record in sample:
         record.pop(STRATUM)
 
     out = HERE.parent / "sample.json"
-    out.write_text(json.dumps({
-        "stratum": STRATUM,
-        "bands": list(BANDS),
-        "per_level": PER_LEVEL,
-        "seed": SEED,
-        "population": len(population),
-        "units": sample,
-    }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(
+            {
+                "stratum": STRATUM,
+                "bands": list(BANDS),
+                "per_level": PER_LEVEL,
+                "seed": SEED,
+                "population": len(population),
+                "units": sample,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     print(f"population {len(population)}, sampled {len(sample)} -> {out}")
 
 

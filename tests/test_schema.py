@@ -1,4 +1,5 @@
 """tests/test_schema.py — the versioned diagnostic schema."""
+
 import json
 
 import check_linefeeds
@@ -18,8 +19,16 @@ def test_schema_is_json_serializable_with_ranges():
     doc = check_linefeeds.to_schema("doc.md", check_linefeeds.diagnose(text, "doc.md"))
     parsed = json.loads(json.dumps(doc))
     (d,) = parsed["diagnostics"]
-    assert set(d) >= {"kind", "line", "message", "excerpt",
-                      "anchor", "evidence", "ownership", "ownership_basis"}
+    assert set(d) >= {
+        "kind",
+        "line",
+        "message",
+        "excerpt",
+        "anchor",
+        "evidence",
+        "ownership",
+        "ownership_basis",
+    }
 
 
 def test_a_degraded_diagnostic_serializes_a_null_ownership():
@@ -31,9 +40,11 @@ def test_a_degraded_diagnostic_serializes_a_null_ownership():
 
 
 def test_serialized_diagnostics_keep_the_frozen_kind_order():
-    text = ("One sentence here. Another sentence follows, and this fused line also runs "
-            "long enough that the advisory logic wants to flag it as well, which makes two kinds\n"
-            "on\n")
+    text = (
+        "One sentence here. Another sentence follows, and this fused line also runs "
+        "long enough that the advisory logic wants to flag it as well, which makes two kinds\n"
+        "on\n"
+    )
     doc = check_linefeeds.to_schema("doc.md", check_linefeeds.diagnose(text, "doc.md"))
     parsed = json.loads(json.dumps(doc))
     assert [d["kind"] for d in parsed["diagnostics"]] == ["fused", "long", "wrap"]
@@ -43,5 +54,6 @@ def test_text_renderer_reads_diagnostics_and_tuples_identically():
     text = "One sentence here. Another sentence follows.\n"
     diagnostics = check_linefeeds.diagnose(text, "doc.md")
     tuples = check_linefeeds.check(text, "doc.md")
-    assert (check_linefeeds.format_findings(diagnostics, "doc.md", snippet=False)
-            == check_linefeeds.format_findings(tuples, "doc.md", snippet=False))
+    assert check_linefeeds.format_findings(
+        diagnostics, "doc.md", snippet=False
+    ) == check_linefeeds.format_findings(tuples, "doc.md", snippet=False)

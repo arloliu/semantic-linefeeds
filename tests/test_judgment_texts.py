@@ -1,6 +1,7 @@
 """tests/test_judgment_texts.py — the judgment-layer surfaces carry the pinned wording."""
-from conftest import REPO
+
 from check_linefeeds import AGENT_SUPPRESSION_NOTE
+from conftest import REPO
 
 SNIPPET = REPO / "adapters" / "agentsmd" / "SNIPPET.md"
 SKILL = REPO / "skills" / "semantic-linefeeds" / "SKILL.md"

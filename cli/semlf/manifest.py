@@ -12,6 +12,7 @@ record replaces one file, forget unlinks one file,
 so no writer can drop or resurrect another artifact's state,
 and a same-name race resolves to one of the two racing intents.
 """
+
 import hashlib
 import json
 import os
@@ -21,8 +22,14 @@ import stat
 import tempfile
 from pathlib import Path
 
-KNOWN = ("cli", "checker", "readme", "codex-skill",
-         "opencode-plugin", "opencode-checker")
+KNOWN = (
+    "cli",
+    "checker",
+    "readme",
+    "codex-skill",
+    "opencode-plugin",
+    "opencode-checker",
+)
 
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -66,9 +73,9 @@ def read_regular_bytes(path, limit):
         st = os.lstat(path)
         if not stat.S_ISREG(st.st_mode) or st.st_size > limit:
             return None
-        flags = (os.O_RDONLY
-                 | getattr(os, "O_NOFOLLOW", 0)
-                 | getattr(os, "O_NONBLOCK", 0))
+        flags = (
+            os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        )
         fd = os.open(path, flags)
         try:
             if not stat.S_ISREG(os.fstat(fd).st_mode):
@@ -111,13 +118,15 @@ def read_state_json(path, limit=65536):
 def _valid_entry(entry):
     # An empty or NUL-carrying path would make the os.path functions raise instead of classify;
     # schema validity must imply totality.
-    if not (isinstance(entry, dict)
-            and isinstance(entry.get("path"), str)
-            and entry["path"] != ""
-            and "\x00" not in entry["path"]
-            and isinstance(entry.get("sha256"), str)
-            and _HEX64_RE.match(entry["sha256"]) is not None
-            and isinstance(entry.get("version"), str)):
+    if not (
+        isinstance(entry, dict)
+        and isinstance(entry.get("path"), str)
+        and entry["path"] != ""
+        and "\x00" not in entry["path"]
+        and isinstance(entry.get("sha256"), str)
+        and _HEX64_RE.match(entry["sha256"]) is not None
+        and isinstance(entry.get("version"), str)
+    ):
         return False
     # An unpaired surrogate, or any other text the filesystem encoding cannot represent, can never identify a real destination.
     # Dropping it here keeps every downstream os.path/os.lstat call, and every diagnostic print of entry["path"], free of a string this hostile.
@@ -151,8 +160,10 @@ def record(name, path, version, sha256):
     if state is None:
         return
     state.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps({"path": str(path), "sha256": sha256,
-                       "version": version}, indent=2) + "\n"
+    text = (
+        json.dumps({"path": str(path), "sha256": sha256, "version": version}, indent=2)
+        + "\n"
+    )
     fd, tmp = tempfile.mkstemp(dir=str(state.parent), prefix=state.name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
@@ -218,10 +229,12 @@ def parse_managed_codex_hook(matcher, hook):
         argv = shlex.split(hook["command"])
     except ValueError:
         return None
-    if (len(argv) == 4
-            and argv[0] == "python3"
-            and os.path.basename(argv[1]) == "check_linefeeds.py"
-            and argv[2:] == ["--hook", "codex"]):
+    if (
+        len(argv) == 4
+        and argv[0] == "python3"
+        and os.path.basename(argv[1]) == "check_linefeeds.py"
+        and argv[2:] == ["--hook", "codex"]
+    ):
         return argv
     return None
 
@@ -308,8 +321,7 @@ def record_preflight(name):
         return "no state root resolves (no home directory)"
     try:
         if os.path.lexists(state) and not stat.S_ISREG(os.lstat(state).st_mode):
-            return (f"record path {state} exists and is "
-                    "not a regular file")
+            return f"record path {state} exists and is not a regular file"
         probe = state.parent
         while not os.path.lexists(probe):
             if probe.parent == probe:
@@ -317,8 +329,7 @@ def record_preflight(name):
             probe = probe.parent
         if os.path.lexists(probe):
             if not probe.is_dir():
-                return (f"record parent {probe} exists and is not a "
-                        "directory")
+                return f"record parent {probe} exists and is not a directory"
             # record() creates missing directories, stages a temp file,
             # and os.replace()s it into the parent —
             # all of which need write+search permission on the nearest existing ancestor.
