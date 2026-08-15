@@ -26,15 +26,32 @@ KNOWN = (
     "cli",
     "checker",
     "readme",
-    "codex-skill",
+    "skill",
     "opencode-plugin",
     "opencode-checker",
-    "opencode-readme",
+    "setup-skill",
+    "opencode-setup-command",
+)
+
+# Record names this kit wrote before the shared root (ADR-0019).
+# They are not KNOWN — no row publishes them —
+# but the state accessors must still read and clear them,
+# or an upgraded machine keeps a record nothing can reach
+# and refuses the install its own file already satisfies.
+RETIRED = (
+    "codex-skill",
     "opencode-skill",
     "codex-setup-skill",
     "opencode-setup-skill",
-    "opencode-setup-command",
+    "opencode-readme",
 )
+
+# Which retired names may prove which live row.
+RETIRED_FOR = {
+    "skill": ("codex-skill", "opencode-skill"),
+    "setup-skill": ("codex-setup-skill", "opencode-setup-skill"),
+    "readme": ("opencode-readme",),
+}
 
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -53,7 +70,13 @@ def _state_base():
 
 
 def artifact_state_path(name):
-    if name not in KNOWN:
+    """Where one record lives, for a live OR a retired name.
+
+    Both populations resolve here so that `forget` and `retired_entry` can reach a record no row publishes any more;
+    `load()` still iterates KNOWN alone,
+    so a retired record never enters the ordinary snapshot behind a live row's back.
+    """
+    if name not in KNOWN and name not in RETIRED:
         raise ValueError(f"unknown artifact name: {name!r}")
     base = _state_base()
     return None if base is None else base / "artifacts" / (name + ".json")
@@ -181,6 +204,17 @@ def load():
     return snapshot
 
 
+def retired_entry(name):
+    """A retired record's entry when it is valid, else None."""
+    if name not in RETIRED:
+        raise ValueError(f"not a retired artifact name: {name!r}")
+    path = artifact_state_path(name)
+    if path is None:
+        return None
+    entry = read_state_json(path)
+    return entry if _valid_entry(entry) else None
+
+
 def record(name, path, version, sha256):
     """Record a publication whose digest the caller computed pre-publish.
 
@@ -273,7 +307,7 @@ def parse_managed_codex_hook(matcher, hook):
 def codex_home():
     """$CODEX_HOME, or ~/.codex, or None when neither resolves.
 
-    Same guard as `codex_skill_dest`:
+    Same guard as `skill_dest`:
     `Path.home()` raises when a home directory cannot be determined,
     so the env var is checked first and `os.path.expanduser` stands in for the unguarded fallback.
     """
@@ -292,8 +326,12 @@ def opencode_plugins_dir():
     return None if base is None else base / "plugins"
 
 
-def codex_skill_dest():
-    """Where the native skill installs, or None when no home resolves.
+def skill_dest():
+    """Where the judgment skill installs, or None when no home resolves.
+
+    `~/.agents/skills` is the shared root, not Codex's (ADR-0019):
+    Codex CLI and opencode both read it, so one copy serves both.
+    A second copy under an agent's own root would only be a file neither target could remove without breaking the other.
 
     Uses `os.path.expanduser("~")` rather than `Path.home()`.
     `expanduser` returns its input unchanged when it cannot resolve;
@@ -306,10 +344,10 @@ def codex_skill_dest():
     return Path(home) / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
 
 
-def codex_setup_skill_dest():
-    """Where the setup skill installs for Codex CLI, or None when no home resolves.
+def setup_skill_dest():
+    """Where the setup skill installs, or None when no home resolves.
 
-    Same root and same guard as `codex_skill_dest`, one directory over.
+    Same shared root and same guard as `skill_dest`, one directory over.
     """
     home = os.path.expanduser("~")
     if home == "~":
@@ -320,7 +358,7 @@ def codex_setup_skill_dest():
 def _opencode_config_dir():
     """$XDG_CONFIG_HOME/opencode, or ~/.config/opencode, or None.
 
-    The shared parent `opencode_plugins_dir` and the two setup destinations below all hang off,
+    The shared parent `opencode_plugins_dir` and the destinations below all hang off,
     so the XDG guard is written once rather than three times.
     """
     if os.environ.get("XDG_CONFIG_HOME"):
@@ -331,26 +369,15 @@ def _opencode_config_dir():
     return Path(home) / ".config" / "opencode"
 
 
-def opencode_skill_dest():
-    """opencode's own copy of the judgment skill, or None when no config dir resolves.
-
-    Codex's copy at `~/.agents/skills` is a different file with a different owner (ADR-0018),
-    even though opencode scans that directory too:
-    one file read by two targets cannot be uninstalled correctly by either.
-    """
-    base = _opencode_config_dir()
-    return None if base is None else base / "skills" / "semantic-linefeeds" / "SKILL.md"
-
-
-def opencode_setup_skill_dest():
+def opencode_skills_dir():
     """opencode's own skills root, or None when no config dir resolves.
 
-    opencode also scans `~/.agents/skills`, which is where Codex's copy lands,
-    but installing there for opencode would make one target's uninstall remove another target's file.
-    Each target owning its own copy keeps removal correct.
+    Nothing is installed here.
+    It is inspected so that migration can remove a pre-change copy,
+    and so doctor can report a file competing with the shared one.
     """
     base = _opencode_config_dir()
-    return None if base is None else base / "skills" / "setup-semlf" / "SKILL.md"
+    return None if base is None else base / "skills"
 
 
 def opencode_setup_command_dest():
@@ -367,7 +394,7 @@ def opencode_setup_command_dest():
 def cli_bin_dest():
     """~/.local/bin/semlf, or None when no home resolves.
 
-    Same guard as codex_skill_dest.
+    Same guard as skill_dest.
     """
     home = os.path.expanduser("~")
     if home == "~":

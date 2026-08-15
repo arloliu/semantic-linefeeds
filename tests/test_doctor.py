@@ -99,6 +99,8 @@ def test_doctor_survives_hostile_state(tmp_path):
     (artifacts / "cli.json").write_text(
         json.dumps(["not", "a", "dict"]), encoding="utf-8"
     )
+    # A live name and a retired one: doctor reads the first and must survive either.
+    (artifacts / "skill.json").write_text("7", encoding="utf-8")
     (artifacts / "codex-skill.json").write_text("7", encoding="utf-8")
     r = run_doctor(pyz, env, tmp_path)
     assert r.returncode == 0

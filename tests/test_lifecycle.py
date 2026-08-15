@@ -435,7 +435,7 @@ def test_agentsmd_up_to_date_note_prints_at_plan_time(
 
 
 @pytest.mark.parametrize(
-    "name", ["checker", "readme", "codex-skill", "opencode-plugin", "opencode-checker"]
+    "name", ["checker", "readme", "skill", "opencode-plugin", "opencode-checker"]
 )
 def test_every_registry_row_reaches_the_classifier(home, name, capsys):
     """Each recorded row classifies through its own registry destination and rendering —
@@ -493,10 +493,10 @@ def test_a_transform_error_during_rendering_becomes_a_refusal(home, monkeypatch)
     def boom(data_dir):
         raise registry.TransformError("boom")
 
-    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    monkeypatch.setattr(registry, "render_skill", boom)
     planned, refusals = lifecycle.plan_install(["codex"], None, False)
-    assert any("codex-skill" in r and "boom" in r for r in refusals)
-    assert not any(item.name == "codex-skill" for item in planned)
+    assert any("refusing to install skill:" in r and "boom" in r for r in refusals)
+    assert not any(item.name == "skill" for item in planned)
 
 
 def test_dry_run_reports_a_transform_error_as_a_would_be_refusal(
@@ -505,7 +505,7 @@ def test_dry_run_reports_a_transform_error_as_a_would_be_refusal(
     def boom(data_dir):
         raise registry.TransformError("boom")
 
-    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    monkeypatch.setattr(registry, "render_skill", boom)
     rc = lifecycle.install_command(["codex", "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0
@@ -517,19 +517,17 @@ def test_uninstall_transform_error_during_removal_becomes_a_refusal(home, monkey
 
     The removal-side mirror of test_a_transform_error_during_rendering_becomes_a_refusal.
     """
-    dest = lifecycle.payload_destinations()["codex-skill"]
+    dest = lifecycle.payload_destinations()["skill"]
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(b"anything")
 
     def boom(data_dir):
         raise registry.TransformError("boom")
 
-    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    monkeypatch.setattr(registry, "render_skill", boom)
     planned, refusals = [], []
-    lifecycle.plan_remove_file(
-        "codex skill", dest, "codex-skill", False, planned, refusals
-    )
-    assert any("codex-skill" in r and "boom" in r for r in refusals)
+    lifecycle.plan_remove_file("skill", dest, "skill", False, planned, refusals)
+    assert any("refusing to remove skill:" in r and "boom" in r for r in refusals)
     assert not planned
 
 
@@ -575,7 +573,7 @@ def test_status_reports_a_transform_error_without_a_traceback(
     def boom(data_dir):
         raise registry.TransformError("boom")
 
-    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    monkeypatch.setattr(registry, "render_skill", boom)
     rc = lifecycle.status_command([])
     out = capsys.readouterr().out
     assert rc == 0

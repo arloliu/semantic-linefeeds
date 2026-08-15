@@ -59,7 +59,7 @@ def rendered_bytes(name):
     Callers refuse a None destination before rendering,
     and every row whose rendering needs the data root has a destination
     that resolves exactly when the data root does,
-    so the ValueError the codex-skill renderer raises on a None data root marks a caller bug, not a user-facing path.
+    so the ValueError the skill renderer raises on a None data root marks a caller bug, not a user-facing path.
     """
     return registry.BY_ID[name].render(manifest.semlf_data_dir())
 
@@ -695,6 +695,82 @@ def _one_file(a, b):
     return manifest.same_file(anchor_a, anchor_b)
 
 
+class RetiredRecordConflict(ValueError):
+    """Two retired records prove one file with different digests."""
+
+
+def project_retired(snapshot, destinations):
+    """(snapshot with retired records presented under their new names, aliases).
+
+    Preflight is read-only so that --dry-run describes exactly what apply would do,
+    and one snapshot is taken before any row is classified.
+    A rename performed during planning would break the first property;
+    performed at apply time it would be too late to affect a classification that already happened.
+    Projecting into the snapshot satisfies both:
+    classification sees a managed artifact, the dry run says so, and only apply rewrites state.
+
+    A live row can have more than one retired alias —
+    a joined root leaves both codex-skill and opencode-skill proving one file —
+    so every alias that proves the row's own destination is collected.
+    Agreeing proofs project one and mark the rest for removal.
+    Disagreeing proofs raise,
+    because choosing between two digests for one file is exactly the guess this project does not make.
+    """
+    projected = dict(snapshot)
+    aliases = {}
+    for live, retired_names in manifest.RETIRED_FOR.items():
+        dest = destinations.get(live)
+        if dest is None:
+            continue
+        proving = []
+        for retired in retired_names:
+            entry = manifest.retired_entry(retired)
+            if entry is None:
+                continue
+            if manifest.same_file(entry["path"], dest):
+                proving.append((retired, entry))
+        if not proving:
+            continue
+        digests = {entry["sha256"] for _, entry in proving}
+        if len(digests) > 1:
+            named = " and ".join(name for name, _ in proving)
+            raise RetiredRecordConflict(
+                f"refusing to migrate {live}: {named} both record "
+                f"{dest} with different digests; remove the stale one by hand"
+            )
+        aliases[live] = [name for name, _ in proving]
+        if live not in projected:
+            projected[live] = proving[0][1]
+    return projected, aliases
+
+
+def plan_forget_retired(name, planned):
+    """Clear one retired record, after the row that absorbed it is published.
+
+    Ordering is the whole point:
+    a retired record cleared before the new one is written leaves a file with no proof at all,
+    and apply_plan has no rollback.
+    """
+
+    def _do(name=name):
+        try:
+            manifest.forget(name)
+        except OSError as exc:
+            return f"published, but could not clear the {name} record: {exc}"
+        return None
+
+    planned.append(
+        Planned(
+            f"{name}: clear the superseded record",
+            name,
+            None,
+            None,
+            _do,
+            done=f"cleared the superseded {name} record",
+        )
+    )
+
+
 def plan_install(targets, agentsmd_path, force):
     """The whole request's plan, walked in the registry's own order.
 
@@ -708,9 +784,15 @@ def plan_install(targets, agentsmd_path, force):
     refusals.extend(colliding_destinations(targets))
     snapshot = manifest.load()
     destinations = payload_destinations()
+    try:
+        snapshot, aliases = project_retired(snapshot, destinations)
+    except RetiredRecordConflict as exc:
+        return planned, refusals + [str(exc)]
     for row in registry.ROWS:
         if row.recorded and selects(row, targets):
             plan_file(row.id, force, snapshot, destinations, planned, refusals)
+            for retired in aliases.get(row.id, ()):
+                plan_forget_retired(retired, planned)
         elif row.id == "codex-hook-template" and "codex" in targets:
             plan_codex_hook(planned, refusals)
         elif row.id == "agentsmd-snippet" and agentsmd_path is not None:
@@ -817,9 +899,17 @@ def install_command(argv):
 def installed_consumers():
     """Integrations whose own artifacts are present on this machine.
 
-    codex counts as installed when EITHER its hook entry or its installed skill file is present:
-    the skill references the neutral checker and README too,
-    so removing only the hook must not downgrade required payloads to leftovers.
+    Codex is inferred from its owned hook entry alone, and opencode from its plugin file:
+    each target is proved by an artifact that target alone owns (ADR-0019).
+
+    The skill used to prove codex as well,
+    because it referenced the neutral checker and README
+    and removing only the hook must not downgrade those payloads to leftovers.
+    Making them shared rows dissolves that reason.
+    The skill is a shared row too now, so its presence proves some agent rather than codex specifically,
+    and counting it would let an opencode-only machine invent a codex consumer.
+    That machine would then report the retained checker and README as expected,
+    on the very machine that has no consumer left for them.
     """
     found = set()
     home = manifest.codex_home()
@@ -827,9 +917,6 @@ def installed_consumers():
         data = manifest.read_state_json(home / "hooks.json")
         if manifest.owned_codex_hooks(data):
             found.add("codex")
-    skill = manifest.codex_skill_dest()
-    if skill is not None and os.path.lexists(str(skill)):
-        found.add("codex")
     d = manifest.opencode_plugins_dir()
     if d is not None and os.path.lexists(str(d / "semantic-linefeeds.ts")):
         found.add("opencode")
@@ -992,11 +1079,9 @@ def status_command(argv, shim_expected=None):
     # The skill and the plugin are integration artifacts, not identity payloads:
     # they report the classifier state verbatim (the one manifest snapshot and destinations above serve this loop too).
     for name, label in (
-        ("codex-skill", "codex skill"),
-        ("codex-setup-skill", "codex setup skill"),
+        ("skill", "skill"),
+        ("setup-skill", "setup skill"),
         ("opencode-plugin", "opencode plugin"),
-        ("opencode-skill", "opencode skill"),
-        ("opencode-setup-skill", "opencode setup skill"),
         ("opencode-setup-command", "opencode setup command"),
     ):
         dest = destinations[name]
@@ -1050,7 +1135,7 @@ def _forget_note(dest, name):
 def plan_remove_file(label, dest, name, force, planned, refusals, prune_parent=False):
     """Plan removal of one installer-owned file, or a refusal.
 
-    Shared by the codex skill and both opencode files.
+    Shared by the two shared skills and the opencode files.
     """
     if dest is None:
         refusals.append(
@@ -1335,19 +1420,24 @@ def plan_remove_targets(targets, force, planned, refusals):
     destinations = payload_destinations()
     if "codex" in targets:
         plan_remove_codex_hook(planned, refusals)
+        # The two skills are shared rows now,
+        # so removing them with codex is a holdover:
+        # it keeps `uninstall codex` removing what it has always removed.
+        # A last-consumer rule — remove them only when no target still has artifacts —
+        # replaces both legs.
         plan_remove_file(
-            "codex skill",
-            destinations["codex-skill"],
-            "codex-skill",
+            "skill",
+            destinations["skill"],
+            "skill",
             force,
             planned,
             refusals,
             prune_parent=True,
         )
         plan_remove_file(
-            "codex setup skill",
-            destinations["codex-setup-skill"],
-            "codex-setup-skill",
+            "setup skill",
+            destinations["setup-skill"],
+            "setup-skill",
             force,
             planned,
             refusals,
@@ -1370,34 +1460,8 @@ def plan_remove_targets(targets, force, planned, refusals):
             planned,
             refusals,
         )
-        plan_remove_file(
-            "opencode readme",
-            destinations["opencode-readme"],
-            "opencode-readme",
-            force,
-            planned,
-            refusals,
-        )
-        plan_remove_file(
-            "opencode skill",
-            destinations["opencode-skill"],
-            "opencode-skill",
-            force,
-            planned,
-            refusals,
-            prune_parent=True,
-        )
-        # The skill sits in a directory of its own, so removing it prunes that directory;
-        # the command shares the commands directory with the user's own, so it never does.
-        plan_remove_file(
-            "opencode setup skill",
-            destinations["opencode-setup-skill"],
-            "opencode-setup-skill",
-            force,
-            planned,
-            refusals,
-            prune_parent=True,
-        )
+        # The command shares the commands directory with the user's own files,
+        # so removing it never prunes that directory.
         plan_remove_file(
             "opencode setup command",
             destinations["opencode-setup-command"],

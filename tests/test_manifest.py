@@ -71,7 +71,7 @@ def test_invalid_entries_are_dropped_at_load(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     bad = {
         "cli": {"path": "/x", "sha256": "SHOUTING-NOT-HEX", "version": "1"},
-        "codex-skill": ["not", "a", "dict"],
+        "skill": ["not", "a", "dict"],
         "opencode-plugin": {"path": "/x"},
     }
     for name, entry in bad.items():
@@ -206,11 +206,11 @@ def test_forget_removes_one_entry_and_keeps_the_rest(tmp_path, monkeypatch):
     a.write_bytes(b"a")
     b.write_bytes(b"b")
     record_current("cli", a)
-    record_current("codex-skill", b)
+    record_current("skill", b)
     manifest.forget("cli")
     kept = manifest.load()
     assert "cli" not in kept
-    assert "codex-skill" in kept
+    assert "skill" in kept
 
 
 def test_writers_cannot_interfere_across_artifacts(tmp_path, monkeypatch):
@@ -221,7 +221,7 @@ def test_writers_cannot_interfere_across_artifacts(tmp_path, monkeypatch):
     a.write_bytes(b"a")
     b.write_bytes(b"b")
     record_current("cli", a)
-    record_current("codex-skill", b)
+    record_current("skill", b)
     manifest.forget("cli")
     record_current("opencode-plugin", b)  # a later, unrelated record
     assert "cli" not in manifest.load()  # the forgotten name stays gone
@@ -231,6 +231,50 @@ def test_known_grows_the_neutral_payload_names():
     assert "checker" in manifest.KNOWN
     assert "readme" in manifest.KNOWN
     assert manifest.artifact_state_path("checker") is not None
+
+
+def test_a_retired_name_is_reachable_but_never_loads(tmp_path, monkeypatch):
+    """The whole point of the retired population, in one place.
+
+    A retired record must stay readable and clearable,
+    or an upgraded machine keeps a record nothing can reach.
+    It must equally stay out of `load()`,
+    since no row publishes it and nothing may classify against it by accident.
+    """
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    b = tmp_path / "b"
+    b.write_bytes(b"b")
+    record_current("codex-skill", b)
+
+    assert manifest.artifact_state_path("codex-skill") is not None
+    assert manifest.retired_entry("codex-skill")["path"] == str(b)
+    assert "codex-skill" not in manifest.load()
+
+    manifest.forget("codex-skill")
+    assert manifest.retired_entry("codex-skill") is None
+
+
+def test_an_unknown_name_is_still_refused_by_both_accessors():
+    with pytest.raises(ValueError):
+        manifest.artifact_state_path("no-such-artifact")
+    # A live name is not a retired one: reading it as retired is a caller bug.
+    with pytest.raises(ValueError):
+        manifest.retired_entry("skill")
+
+
+def test_opencode_skills_dir_is_inspected_never_installed_into(monkeypatch, tmp_path):
+    """The root the kit stopped writing to, still resolvable so later work can look at it.
+
+    No row's destination is under it,
+    which is the whole point of the shared root;
+    migration and doctor still need to name it to clean up or report a competing file.
+    """
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    assert manifest.opencode_skills_dir() == tmp_path / "xdg" / "opencode" / "skills"
+
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(os.path, "expanduser", lambda p: p)
+    assert manifest.opencode_skills_dir() is None
 
 
 def test_semlf_data_dir_honors_xdg(monkeypatch, tmp_path):

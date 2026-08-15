@@ -2,8 +2,8 @@
 """Install the semantic-linefeeds adapters into local AI coding agents.
 
 Modes:
-  --codex           merge the PostToolUse hook into $CODEX_HOME/hooks.json (default ~/.codex/hooks.json), append-never-overwrite, pointed at the neutral data root; also installs the native semantic-linefeeds skill under ~/.agents/skills and publishes the checker and README payloads under the neutral data root
-  --opencode        copy the plugin and the checker side by side into $XDG_CONFIG_HOME/opencode/plugins (default ~/.config/...)
+  --codex           merge the PostToolUse hook into $CODEX_HOME/hooks.json (default ~/.codex/hooks.json), append-never-overwrite, pointed at the neutral data root; also installs the shared semantic-linefeeds skill under ~/.agents/skills and publishes the checker and README payloads under the neutral data root
+  --opencode        copy the plugin and the checker side by side into $XDG_CONFIG_HOME/opencode/plugins (default ~/.config/...); also installs the shared semantic-linefeeds skill and the neutral payloads it cites
   --agentsmd PATH   manage a sentinel-marked snippet block in PATH (an explicit path is required)
   --cli             build the semlf zipapp and install it as ~/.local/bin/semlf
   --auto            detect installed agents by evidence (binary on PATH or config dir) and install a matching mode for each, plus the cli unconditionally
@@ -12,7 +12,7 @@ Modes:
 Claude Code is installed through its own plugin marketplace and is never touched by this script.
 Every selected flag combination preflights as one request: any leg's refusal aborts the whole request before the first write.
 Options: --dry-run prints planned actions without writing.
---force allows overwriting opencode, codex-skill, or cli files whose content has diverged.
+--force allows overwriting opencode, skill, or cli files whose content has diverged.
 --uninstall removes an installed mode's artifacts instead of installing them.
 It requires at least one mode flag and honors --dry-run and --force the same way.
 --auto is mutually exclusive with every explicit mode flag and with --uninstall (64).
@@ -55,7 +55,7 @@ from semlf.lifecycle import (
 )
 from semlf.manifest import (  # noqa: E402
     cli_bin_dest,
-    codex_skill_dest,  # noqa: F401 -- re-exported for install_module.codex_skill_dest() in tests
+    skill_dest,  # noqa: F401 -- re-exported for install_module.skill_dest() in tests
 )
 
 PYZ_REQUIRED_MEMBERS = frozenset(
@@ -516,14 +516,15 @@ def main():
     ap.add_argument(
         "--codex",
         action="store_true",
-        help="install the Codex CLI hook and the native "
+        help="install the Codex CLI hook and the shared "
         "semantic-linefeeds skill; also publishes the "
         "checker and README under the neutral data root",
     )
     ap.add_argument(
         "--opencode",
         action="store_true",
-        help="install the opencode plugin and checker",
+        help="install the opencode plugin and checker, plus the "
+        "shared semantic-linefeeds skill and the payloads it cites",
     )
     ap.add_argument(
         "--agentsmd",
@@ -546,7 +547,7 @@ def main():
     ap.add_argument(
         "--force",
         action="store_true",
-        help="overwrite opencode, codex-skill, or cli files whose content has diverged",
+        help="overwrite opencode, skill, or cli files whose content has diverged",
     )
     ap.add_argument(
         "--uninstall",
