@@ -4,6 +4,7 @@ checkout-rendered artifacts, old records, leftover zipapp."""
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -534,6 +535,71 @@ def test_migration_refuses_an_unproven_legacy_file(tmp_path):
     assert r.returncode == 1
     assert str(legacy) in r.stderr
     assert legacy.exists()
+
+
+def test_uninstall_clears_legacy_copies_without_a_new_install(tmp_path):
+    """Upgrading the package and uninstalling immediately is a reachable path.
+
+    Without this the old skill survives an uninstall that reported success, and
+    because opencode scans its own root it stays advertised.
+    """
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "opencode"], env)
+    legacy = tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds"
+    legacy.mkdir(parents=True, exist_ok=True)
+    body = "---\nname: semantic-linefeeds\n---\n\nold\n"
+    (legacy / "SKILL.md").write_text(body, encoding="utf-8")
+    records = tmp_path / "state" / "semlf" / "artifacts"
+    (records / "opencode-skill.json").write_text(
+        json.dumps(
+            {
+                "path": str(legacy / "SKILL.md"),
+                "sha256": hashlib.sha256(body.encode()).hexdigest(),
+                "version": check_linefeeds.__version__,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    r = run_semlf(["uninstall", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert not (legacy / "SKILL.md").exists()
+    assert not (records / "opencode-skill.json").exists()
+
+
+def test_uninstall_keeps_a_legacy_record_it_could_not_remove(tmp_path):
+    """A refused removal must not forget its record.
+
+    On a joined root with another consumer still installed the shared file survives correctly,
+    but its only proof is that retired record.
+    Forgetting it would leave a file no record proves,
+    and the next install would refuse without --force.
+    """
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex", "opencode"], env)
+    skills = tmp_path / "xdg" / "opencode" / "skills"
+    if skills.exists():
+        shutil.rmtree(skills)
+    skills.symlink_to(
+        tmp_path / "home" / ".agents" / "skills", target_is_directory=True
+    )
+    records = tmp_path / "state" / "semlf" / "artifacts"
+    entry = json.loads((records / "skill.json").read_text())
+    (records / "opencode-skill.json").write_text(
+        json.dumps(dict(entry, path=str(skills / "semantic-linefeeds" / "SKILL.md"))),
+        encoding="utf-8",
+    )
+
+    r = run_semlf(["uninstall", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    assert shared.is_file()
+    assert (records / "opencode-skill.json").exists()
+
+    r = run_semlf(["install", "codex"], env)
+    assert r.returncode == 0, r.stderr
 
 
 def _pip_and_setuptools_ok():

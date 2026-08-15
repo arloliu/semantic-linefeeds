@@ -1633,6 +1633,9 @@ def plan_remove_targets(targets, force, planned, refusals):
             planned,
             refusals,
         )
+        # An upgraded machine can be uninstalled before it is ever installed under this layout,
+        # and the pre-change copies would otherwise survive an uninstall that reported success.
+        plan_legacy_cleanup(planned, refusals)
     # Last, because apply_plan stops at the first error:
     # a shared removal placed earlier would strand a target with its own artifacts installed and its skill gone.
     plan_shared_removal(targets, force, planned, refusals)
