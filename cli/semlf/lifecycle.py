@@ -577,6 +577,38 @@ def _parse_targets(argv, verb, allowed_flags):
     return targets, agentsmd_path, flags
 
 
+def colliding_destinations(targets):
+    """Refusals for rows this request would install over each other, or [].
+
+    ADR-0018 gives each target its own root so that two agents never share one file.
+    A symlink defeats that from outside:
+    point opencode's skills root at `~/.agents/skills`,
+    and two rows with different owners, different renderings, and separate provenance resolve to a single inode.
+
+    Left undetected the request half-applies.
+    The second write finds a file that "appeared after classification" and errors, stranding the artifacts behind it,
+    and a later `uninstall codex` deletes the file opencode still needs.
+    Preflight is where that is caught, because refusing the whole request is the one outcome that leaves nothing half-written.
+    """
+    seen, refusals = {}, []
+    for row in registry.ROWS:
+        if not (row.recorded and row.owner in targets):
+            continue
+        dest = row.dest()
+        if dest is None:
+            continue
+        key = os.path.realpath(str(dest))
+        if key in seen:
+            refusals.append(
+                f"refusing: {row.id} and {seen[key]} both resolve to {key}; "
+                "a symlink has joined two roots this kit keeps separate, "
+                "so neither could be installed or removed independently"
+            )
+        else:
+            seen[key] = row.id
+    return refusals
+
+
 def plan_install(targets, agentsmd_path, force):
     """The whole request's plan, walked in the registry's own order.
 
@@ -585,6 +617,9 @@ def plan_install(targets, agentsmd_path, force):
     never from a hand-maintained call sequence here.
     """
     planned, refusals = [], []
+    # Checked before any per-row planning: a collision is a property of the request,
+    # not of one artifact, and --force cannot make it safe.
+    refusals.extend(colliding_destinations(targets))
     snapshot = manifest.load()
     destinations = payload_destinations()
     for row in registry.ROWS:

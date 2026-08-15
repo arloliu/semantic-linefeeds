@@ -65,6 +65,35 @@ def test_named_target_is_consent_and_applies(tmp_path):
     assert str(data_root(tmp_path) / "README.md") in body
 
 
+def test_symlinked_skill_roots_refuse_the_whole_request(tmp_path):
+    """Per-target roots stop being separate when a symlink joins them.
+
+    ADR-0018 gives each target its own root so two agents never share a file.
+    A user can defeat that from outside by pointing opencode's skills root at `~/.agents/skills`,
+    which is a reasonable thing to do and which opencode does not need,
+    since it already reads that directory natively.
+
+    Undetected, the request half-applies.
+    The second write finds a file that appeared after classification, errors, and strands every artifact behind it,
+    and a later `uninstall codex` then deletes the file opencode still needs.
+    Refusing the whole request is the only outcome that leaves nothing half-written.
+    """
+    env = isolated_env(tmp_path)
+    agents = tmp_path / "home" / ".agents" / "skills"
+    agents.mkdir(parents=True)
+    (tmp_path / "xdg" / "opencode").mkdir(parents=True)
+    (tmp_path / "xdg" / "opencode" / "skills").symlink_to(agents)
+
+    r = run_semlf(["install", "codex", "opencode"], env)
+    assert r.returncode == 1
+    assert "both resolve to" in r.stdout + r.stderr
+
+    # Nothing at all may be written: the collision is a property of the request.
+    assert not data_root(tmp_path).exists()
+    assert not (tmp_path / "codex" / "hooks.json").exists()
+    assert not any(agents.iterdir())
+
+
 def test_opencode_gets_a_judgment_skill_resolving_its_own_files(tmp_path):
     """ADR-0006 for opencode, on ADR-0018's terms.
 

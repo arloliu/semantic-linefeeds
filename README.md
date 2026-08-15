@@ -99,6 +99,36 @@ Pick one channel for the `semlf` command itself.
 A zipapp left at `~/.local/bin/semlf` and a `uv tool install`/`pipx install` shim would otherwise shadow each other;
 `semlf install`'s end-of-run `PATH` check, and `semlf doctor`, both name the collision when they see one.
 
+## Letting the Agent Set It Up
+
+Once any agent on the machine has been set up, the rest is something you can just ask for.
+A `setup-semlf` skill installs alongside the judgment layer,
+so an agent asked to install, repair, or reconfigure `semlf` follows a fixed procedure rather than guessing at a package name or hand-editing `hooks.json`.
+
+In opencode, type the command:
+
+```
+/setup-semlf
+```
+
+In Codex CLI or Claude Code, ask in prose — "set up semlf in this project" is enough to load it.
+
+It installs the CLI when it is missing, walking `uv`, `pipx`, `pip --user`, and the checkout door in that order.
+It repairs an install left stale by an upgrade, which is the failure that actually recurs.
+And it offers to write the project's `.semlf.ini`, though most projects need none.
+
+Three things it will not do, whatever it is asked:
+
+- **Overwrite one of your files.**
+  A refusal from `semlf install` is shown to you with the difference, and `--force` stays yours to type.
+- **Add an `exclude` line on its own authority.**
+  Excludes suppress discovery, so the agent may transcribe one you dictate and never propose one itself.
+- **Run anything before showing you the command.**
+
+The first install on a fresh machine is still yours to run —
+an agent cannot fetch a skill it does not yet have.
+Use the Quickstart above, or the [checkout door](#air-gapped-and-mirror-installs) where there is no package index.
+
 ## What Gets Installed
 
 | Component | Location | Purpose | Who needs it |

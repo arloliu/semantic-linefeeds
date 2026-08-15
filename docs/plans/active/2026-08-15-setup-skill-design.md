@@ -354,6 +354,26 @@ an installed setup skill left at old bytes is refreshed by re-running install,
 while `doctor` alone stays silent about it.
 That pair is the evidence behind step 2 repairing on the strength of an upgrade rather than on a health check.
 
+## Follow-ups
+
+**Handle joined roots instead of only refusing them.**
+Preflight now detects two rows resolving to one inode and refuses the whole request,
+which is correct but blunt:
+a user whose `~/.config/opencode/skills` points at `~/.agents/skills` is told to undo that before installing.
+The installer could instead recognize the case and install one copy,
+since the shared destination is genuinely readable by both agents.
+Doing so reopens the ownership question this spec closed by separation —
+which target records it, and which target's uninstall removes it —
+so it belongs with the neutral-ownership work rather than beside the refusal.
+
+**Two same-named judgment skills on a dual-agent machine.**
+opencode scans its own skills root *and* `~/.agents/skills`,
+so a machine with both agents installed offers it two skills named `semantic-linefeeds`
+whose bodies differ in which checker path they cite.
+Both are functional — each cites a checker that exists — and opencode has no duplicate-name error,
+so this is untidy rather than broken.
+It is the cost of separation, and the same neutral-ownership work would remove it.
+
 ## Out of scope
 
 - A `semlf setup` CLI subcommand.
