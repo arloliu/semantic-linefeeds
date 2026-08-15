@@ -489,3 +489,64 @@ def test_doctor_leftover_pointer_names_each_real_path(tmp_path):
     assert r.returncode == 0, r.stdout
     assert "warn" in r.stdout.lower()
     assert str(plugins / "check_linefeeds.py") in r.stdout
+
+
+def test_doctor_is_quiet_when_the_opencode_path_is_the_shared_file(tmp_path):
+    """A joined root is the supported topology, not a fault.
+
+    Enumerating opencode's skills root and failing on whatever is there would fail every joined-root machine,
+    since that root holds the shared skills by construction plus every other tool's.
+    """
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    skills = tmp_path / "xdg" / "opencode" / "skills"
+    skills.parent.mkdir(parents=True, exist_ok=True)
+    skills.symlink_to(
+        tmp_path / "home" / ".agents" / "skills", target_is_directory=True
+    )
+    # A dangling symlink would make lexists(candidate) false,
+    # and the check would `continue` at the first gate, never reaching same_file.
+    # This confirms the link is live before doctor runs,
+    # so a quiet result below actually proves the joined-root branch, not an early skip.
+    assert (skills / "semantic-linefeeds" / "SKILL.md").is_file()
+
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert "competes" not in r.stdout
+
+
+def test_doctor_fails_on_a_competing_file_with_different_bytes(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    d = tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "SKILL.md").write_text(
+        "---\nname: semantic-linefeeds\n---\n\nold\n", encoding="utf-8"
+    )
+
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 1
+    assert "competes" in r.stdout
+    assert str(d / "SKILL.md") in r.stdout
+
+
+def test_doctor_warns_on_a_competing_file_with_identical_bytes(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    d = tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "SKILL.md").write_bytes(shared.read_bytes())
+
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "warn" in r.stdout
+    assert "competes" in r.stdout
+
+
+def test_doctor_is_quiet_when_opencodes_skills_root_is_absent(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert "competes" not in r.stdout
