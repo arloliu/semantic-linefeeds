@@ -654,3 +654,85 @@ def test_a_dangling_symlink_destination_does_not_equal_itself(tmp_path):
     verdict = classify.classify_artifact(None, dead, b"payload", "1.0.0", force=True)
     assert verdict.action == "refuse"
     assert "is a symlink" in verdict.detail
+
+
+def install_opencode(home_dir):
+    """Apply a real opencode install, so records and files agree."""
+    planned, refusals = lifecycle.plan_install(["opencode"], None, False)
+    assert refusals == []
+    assert lifecycle.apply_plan(planned) == 0
+
+
+def test_a_never_installed_target_is_absent(home, capsys):
+    """The answer the whole rule turns on: nothing here, so nothing holds the skills.
+
+    Every recorded opencode row is examined and proven missing,
+    and a row with no record names no path to examine,
+    so the predicate has looked everywhere it can and found nothing.
+    Reading an unrecorded row as could-not-inspect would be the opposite mistake:
+    the shared skills would be retained forever on every machine that never installed opencode.
+    """
+    assert lifecycle.target_present("opencode", manifest.load()) is False
+    assert lifecycle.target_present("codex", manifest.load()) is False
+
+
+def test_a_present_destination_makes_a_target_present(home, capsys):
+    install_opencode(home)
+    assert lifecycle.target_present("opencode", manifest.load()) is True
+
+
+def test_a_record_outside_the_current_environment_still_counts(
+    home, capsys, monkeypatch
+):
+    """A machine installed under one XDG_CONFIG_HOME may be operated under another.
+
+    The destinations this environment derives are all absent,
+    and only the record still names the path the files were installed to.
+    """
+    install_opencode(home)
+    snapshot = manifest.load()
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "elsewhere"))
+    assert lifecycle.payload_destinations()["opencode-plugin"].exists() is False
+    assert lifecycle.target_present("opencode", snapshot) is True
+
+
+def test_a_record_whose_file_is_proven_gone_counts_absent(home, capsys):
+    """plan_remove_file leaves a vanished destination's record in place.
+
+    A valid record is not permanent presence:
+    the shared skills would be retained forever on a machine the user cleaned up by hand.
+    """
+    install_opencode(home)
+    for name in ("opencode-plugin", "opencode-checker", "opencode-setup-command"):
+        lifecycle.payload_destinations()[name].unlink()
+    snapshot = manifest.load()
+    assert snapshot["opencode-plugin"]["path"]
+    assert lifecycle.target_present("opencode", snapshot) is False
+
+
+def test_an_unresolvable_destination_counts_present(home, capsys, monkeypatch):
+    """A path never looked at is not a path found empty."""
+    monkeypatch.setattr(manifest, "opencode_plugins_dir", lambda: None)
+    monkeypatch.setattr(manifest, "opencode_setup_command_dest", lambda: None)
+    assert lifecycle.target_present("opencode", {}) is True
+
+
+def test_an_unreadable_hooks_json_counts_codex_present(home, capsys):
+    """The state a user is in exactly when they reach for uninstall.
+
+    installed_consumers reads the same file and fails closed to absent,
+    which is harmless in a warning and destructive here.
+    """
+    hooks = manifest.codex_home() / "hooks.json"
+    hooks.parent.mkdir(parents=True, exist_ok=True)
+    hooks.write_text("{ not json", encoding="utf-8")
+    assert lifecycle.installed_consumers() == set()
+    assert lifecycle.target_present("codex", manifest.load()) is True
+
+
+def test_a_foreign_hooks_json_leaves_codex_absent(home, capsys):
+    """Presence is this kit's own artifacts, not any hooks.json at all."""
+    hooks = manifest.codex_home() / "hooks.json"
+    hooks.parent.mkdir(parents=True, exist_ok=True)
+    hooks.write_text('{"hooks": {"PostToolUse": []}}', encoding="utf-8")
+    assert lifecycle.target_present("codex", manifest.load()) is False

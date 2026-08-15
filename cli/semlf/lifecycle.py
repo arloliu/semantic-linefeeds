@@ -998,6 +998,70 @@ def installed_consumers():
     return found
 
 
+def _probe(path):
+    """'present', 'absent', or 'unknown' for one path.
+
+    Tri-state on purpose.
+    A boolean forces every inspection failure into one of the two answers,
+    and for a predicate that authorises a delete the wrong one loses data.
+    """
+    if path is None:
+        return "unknown"
+    try:
+        if not os.path.lexists(str(path)):
+            return "absent"
+    except (OSError, ValueError):
+        return "unknown"
+    return "present"
+
+
+def target_present(target, snapshot):
+    """Whether target still has artifacts here, answered conservatively.
+
+    installed_consumers is the reporting predicate and must not decide this.
+    It probes only destinations derived from the current environment,
+    and it fails closed to absent on every kind of trouble —
+    harmless when the result is a warning, destructive when it authorises an unlink.
+
+    Every ambiguity resolves to present,
+    and the places examined are stated rather than implied:
+    a path never looked at is not a path found empty.
+    Both the current environment's destinations and every path a valid record names are probed,
+    since a machine installed under one XDG_CONFIG_HOME may be operated under another.
+    A row with no record names no path, so there is nothing there to examine —
+    reading its absence as could-not-inspect would make every uninstalled target permanently present.
+
+    A record whose file is proven gone counts absent.
+    Treating every valid record as permanent presence would retain the shared skills forever on a machine the user cleaned up by hand,
+    since plan_remove_file leaves a vanished destination's record in place.
+    """
+    if target == "codex":
+        home = manifest.codex_home()
+        if home is not None:
+            hooks = home / "hooks.json"
+            if os.path.lexists(str(hooks)):
+                data = manifest.read_state_json(hooks)
+                if data is None:
+                    return True  # unreadable is could-not-inspect, never absent
+                if manifest.owned_codex_hooks(data):
+                    return True
+    seen_any = False
+    for row in registry.ROWS:
+        if row.owner != target or not row.recorded:
+            continue
+        entry = snapshot.get(row.id)
+        paths = [row.dest()]
+        if entry is not None:
+            paths.append(entry.get("path"))
+        for path in paths:
+            state = _probe(path)
+            if state == "unknown":
+                return True
+            if state == "present":
+                seen_any = True
+    return seen_any
+
+
 def payload_identity(name):
     """(state, human line) for one published payload.
 
