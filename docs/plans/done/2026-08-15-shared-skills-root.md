@@ -549,7 +549,9 @@ So the comparison widens on both axes:
   whether or not its row is part of this request.
 - The same-file guard extends to those pairs:
   `opencode-checker` against `checker`, and a retired `opencode-readme` against `readme`.
-  When two names resolve to one file, the file is preserved and only the redundant record is cleared.
+  When two names resolve to one file, the file is preserved and only the redundant record goes.
+  It is cleared by the request that could also have removed the file, which on a hard link is the one naming opencode;
+  every other request leaves the record alone rather than stranding a file it cannot take.
 
 This is a pre-existing hole rather than one this design opens —
 the current check has always been request-scoped.

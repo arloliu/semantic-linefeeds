@@ -858,7 +858,7 @@ def plan_install(targets, agentsmd_path, force):
     the cleanup's `_do` already forgets it, but only after its unlink succeeds,
     so forgetting it here first would let a later unlink failure leave the file behind with no record left to prove it.
 
-    Legacy cleanup is gated on this request naming opencode,
+    Legacy cleanup's OUTCOME is gated on this request naming opencode,
     which is the same question `plan_remove_targets` asks before calling it on the removal door.
     Install and removal must answer it the same way, and the answer follows from what the step touches:
     every path it can unlink lives under opencode's own skills root and belongs to no other target.
@@ -871,28 +871,29 @@ def plan_install(targets, agentsmd_path, force):
     The two scopes are not interchangeable,
     and `plan_shared_removal`'s wider guard is not the mirror of this one.
 
-    When the gate skips, the cleanup's retired names are claimed as owned anyway,
-    because a request that cannot unlink the file must not clear the record that proves it.
-    A hard-linked pre-change copy is exactly that case:
-    it satisfies `same_file` against the shared destination, so `project_retired` collects it as an alias,
-    while the parent-directory guard the cleanup uses would still have removed it.
-    The alias-forget below therefore defers to the request that can also remove the file.
-    Its cost is accepted:
-    on a joined root, `install codex` leaves a stale `opencode-skill` record for a later `install opencode` to clear.
+    The CLASSIFICATION runs on every request, and only its planned removals and refusals are discarded.
+    Running it is safe because nothing in it mutates:
+    it reads the skills root, the destinations, the records and the filesystem,
+    and everything that writes lives in a `_do` this path never appends.
+    Running it is necessary because `legacy_owned` must name exactly the files a skipped cleanup COULD have removed.
+    A hard-linked pre-change copy is that case.
+    It shares an inode with the shared destination,
+    so `project_retired` collects `opencode-skill` as an alias on any request that publishes the skill,
+    while the parent-directory guard here still reports a removable file.
+    Forgetting the record on a request that cannot unlink it strands the file for good,
+    so the alias-forget below defers to the request that can.
+    Claiming the retired names unconditionally instead would also defer records whose files do not exist,
+    where nothing could ever have been unlinked and there is no stranding to prevent.
     """
     planned, refusals = [], []
     # Checked before any per-row planning: a collision is a property of the request,
     # not of one artifact, and --force cannot make it safe.
     refusals.extend(colliding_destinations(targets))
     legacy_planned, legacy_refusals = [], []
-    gated_in = "opencode" in targets
-    if gated_in:
-        plan_legacy_cleanup(legacy_planned, legacy_refusals)
-    legacy_owned = (
-        {item.name for item in legacy_planned}
-        if gated_in
-        else {retired for retired, _, _ in LEGACY_ARTIFACTS}
-    )
+    plan_legacy_cleanup(legacy_planned, legacy_refusals)
+    legacy_owned = {item.name for item in legacy_planned}
+    if "opencode" not in targets:
+        legacy_planned, legacy_refusals = [], []
     snapshot = manifest.load()
     destinations = payload_destinations()
     try:

@@ -324,12 +324,7 @@ def test_a_retired_record_does_not_excuse_an_edited_file(tmp_path):
 
 
 def test_two_retired_records_naming_one_file_converge(tmp_path):
-    """A joined root can leave both codex-skill and opencode-skill on one file.
-
-    A codex-only request absorbs the codex name and leaves the opencode one alone,
-    because it is not the request that could remove the file if the record turned out to prove one.
-    Naming opencode clears it, so the machine still converges on a single live record.
-    """
+    """A joined root can leave both codex-skill and opencode-skill on one file."""
     env = isolated_env(tmp_path)
     r = run_semlf(["install", "codex"], env)
     assert r.returncode == 0, r.stderr
@@ -344,10 +339,6 @@ def test_two_retired_records_naming_one_file_converge(tmp_path):
     assert r.returncode == 0, r.stderr
     assert (records / "skill.json").exists()
     assert not (records / "codex-skill.json").exists()
-    assert (records / "opencode-skill.json").exists()
-
-    r = run_semlf(["install", "opencode"], env)
-    assert r.returncode == 0, r.stderr
     assert not (records / "opencode-skill.json").exists()
 
 
@@ -589,7 +580,7 @@ def test_a_codex_install_keeps_a_hard_linked_legacy_record(tmp_path):
 
     A hard link shares an inode with the shared destination,
     so project_retired collects opencode-skill as an alias even on a codex-only request,
-    while plan_legacy_cleanup — gated on the request naming opencode — never runs.
+    while the legacy cleanup, whose outcome is gated on the request naming opencode, cannot take the file.
     Forgetting the record there stranded the link permanently:
     the following `install opencode` found a file this kit could no longer prove it wrote,
     and refused for good.
