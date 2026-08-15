@@ -872,7 +872,10 @@ def status_command(argv, shim_expected=None):
     # they report the classifier state verbatim (the one manifest snapshot and destinations above serve this loop too).
     for name, label in (
         ("codex-skill", "codex skill"),
+        ("codex-setup-skill", "codex setup skill"),
         ("opencode-plugin", "opencode plugin"),
+        ("opencode-setup-skill", "opencode setup skill"),
+        ("opencode-setup-command", "opencode setup command"),
     ):
         dest = destinations[name]
         if dest is None:
@@ -1220,6 +1223,15 @@ def uninstall_command(argv):
             refusals,
             prune_parent=True,
         )
+        plan_remove_file(
+            "codex setup skill",
+            payload_destinations()["codex-setup-skill"],
+            "codex-setup-skill",
+            flags["force"],
+            planned,
+            refusals,
+            prune_parent=True,
+        )
     if "opencode" in targets:
         destinations = payload_destinations()
         plan_remove_file(
@@ -1234,6 +1246,25 @@ def uninstall_command(argv):
             "opencode checker",
             destinations["opencode-checker"],
             "opencode-checker",
+            flags["force"],
+            planned,
+            refusals,
+        )
+        # The skill sits in a directory of its own, so removing it prunes that directory;
+        # the command shares the commands directory with the user's own, so it never does.
+        plan_remove_file(
+            "opencode setup skill",
+            destinations["opencode-setup-skill"],
+            "opencode-setup-skill",
+            flags["force"],
+            planned,
+            refusals,
+            prune_parent=True,
+        )
+        plan_remove_file(
+            "opencode setup command",
+            destinations["opencode-setup-command"],
+            "opencode-setup-command",
             flags["force"],
             planned,
             refusals,

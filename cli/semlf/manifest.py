@@ -29,6 +29,9 @@ KNOWN = (
     "codex-skill",
     "opencode-plugin",
     "opencode-checker",
+    "codex-setup-skill",
+    "opencode-setup-skill",
+    "opencode-setup-command",
 )
 
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -257,14 +260,8 @@ def opencode_plugins_dir():
 
     Same guard as `codex_home`.
     """
-    if os.environ.get("XDG_CONFIG_HOME"):
-        base = Path(os.environ["XDG_CONFIG_HOME"])
-    else:
-        home = os.path.expanduser("~")
-        if home == "~":
-            return None
-        base = Path(home) / ".config"
-    return base / "opencode" / "plugins"
+    base = _opencode_config_dir()
+    return None if base is None else base / "plugins"
 
 
 def codex_skill_dest():
@@ -279,6 +276,53 @@ def codex_skill_dest():
     if home == "~":
         return None
     return Path(home) / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+
+
+def codex_setup_skill_dest():
+    """Where the setup skill installs for Codex CLI, or None when no home resolves.
+
+    Same root and same guard as `codex_skill_dest`, one directory over.
+    """
+    home = os.path.expanduser("~")
+    if home == "~":
+        return None
+    return Path(home) / ".agents" / "skills" / "setup-semlf" / "SKILL.md"
+
+
+def _opencode_config_dir():
+    """$XDG_CONFIG_HOME/opencode, or ~/.config/opencode, or None.
+
+    The shared parent `opencode_plugins_dir` and the two setup destinations below all hang off,
+    so the XDG guard is written once rather than three times.
+    """
+    if os.environ.get("XDG_CONFIG_HOME"):
+        return Path(os.environ["XDG_CONFIG_HOME"]) / "opencode"
+    home = os.path.expanduser("~")
+    if home == "~":
+        return None
+    return Path(home) / ".config" / "opencode"
+
+
+def opencode_setup_skill_dest():
+    """opencode's own skills root, or None when no config dir resolves.
+
+    opencode also scans `~/.agents/skills`, which is where Codex's copy lands,
+    but installing there for opencode would make one target's uninstall remove another target's file.
+    Each target owning its own copy keeps removal correct.
+    """
+    base = _opencode_config_dir()
+    return None if base is None else base / "skills" / "setup-semlf" / "SKILL.md"
+
+
+def opencode_setup_command_dest():
+    """The user-typed `/setup-semlf` entry, or None when no config dir resolves.
+
+    A skill in opencode reaches the model, not the user:
+    its body loads only when the model elects to call the skill tool.
+    A command file is the only thing a user can type, so it is what makes the skill reachable on purpose.
+    """
+    base = _opencode_config_dir()
+    return None if base is None else base / "commands" / "setup-semlf.md"
 
 
 def cli_bin_dest():

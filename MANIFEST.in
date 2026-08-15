@@ -8,3 +8,5 @@ include adapters/codex/hooks.json
 include adapters/opencode/semantic-linefeeds.ts
 include adapters/agentsmd/SNIPPET.md
 include skills/semantic-linefeeds/SKILL.md
+include skills/setup-semlf/SKILL.md
+include adapters/opencode/setup-semlf.md

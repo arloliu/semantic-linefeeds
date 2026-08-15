@@ -65,6 +65,93 @@ def test_named_target_is_consent_and_applies(tmp_path):
     assert str(data_root(tmp_path) / "README.md") in body
 
 
+def setup_skill_paths(tmp_path):
+    """The three setup destinations: Codex's skill, opencode's skill, opencode's command."""
+    return (
+        tmp_path / "home" / ".agents" / "skills" / "setup-semlf" / "SKILL.md",
+        tmp_path / "xdg" / "opencode" / "skills" / "setup-semlf" / "SKILL.md",
+        tmp_path / "xdg" / "opencode" / "commands" / "setup-semlf.md",
+    )
+
+
+def test_installing_codex_writes_only_its_own_setup_skill(tmp_path):
+    codex_skill, opencode_skill, opencode_command = setup_skill_paths(tmp_path)
+    r = run_semlf(["install", "codex"], isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    assert codex_skill.exists()
+    assert not opencode_skill.exists()
+    assert not opencode_command.exists()
+
+
+def test_installing_opencode_leaves_no_reference_to_a_codex_owned_file(tmp_path):
+    """The defect that sank the shared-root design, pinned.
+
+    The judgment skill is rendered with absolute paths into the neutral data root,
+    and the rows that publish that root are owned by codex.
+    A setup skill installed for opencode must therefore cite no payload at all:
+    if it ever gains one, this fails here rather than in a user's install,
+    where the symptom would be a skill pointing at files that install never wrote.
+    """
+    codex_skill, opencode_skill, opencode_command = setup_skill_paths(tmp_path)
+    r = run_semlf(["install", "opencode"], isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    assert opencode_skill.exists()
+    assert opencode_command.exists()
+    assert not codex_skill.exists()
+
+    # The neutral root is codex-owned, so an opencode-only install never creates it.
+    assert not data_root(tmp_path).exists()
+    body = opencode_skill.read_text(encoding="utf-8")
+    assert str(data_root(tmp_path)) not in body
+    assert "check_linefeeds.py" not in body
+
+
+def test_both_targets_install_the_same_setup_skill_bytes(tmp_path):
+    codex_skill, opencode_skill, _ = setup_skill_paths(tmp_path)
+    r = run_semlf(["install", "codex", "opencode"], isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    source = (REPO / "skills" / "setup-semlf" / "SKILL.md").read_bytes()
+    assert codex_skill.read_bytes() == source
+    assert opencode_skill.read_bytes() == source
+
+
+def test_the_opencode_command_delegates_rather_than_restating(tmp_path):
+    """A command that copied the procedure would be a second place to update."""
+    _, _, opencode_command = setup_skill_paths(tmp_path)
+    run_semlf(["install", "opencode"], isolated_env(tmp_path))
+    body = opencode_command.read_text(encoding="utf-8")
+    assert "setup-semlf" in body
+    assert "uv tool install" not in body
+    assert "pipx install" not in body
+
+
+def test_uninstall_removes_each_targets_own_setup_artifacts(tmp_path):
+    codex_skill, opencode_skill, opencode_command = setup_skill_paths(tmp_path)
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex", "opencode"], env)
+
+    r = run_semlf(["uninstall", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert not opencode_skill.exists()
+    assert not opencode_command.exists()
+    assert codex_skill.exists(), (
+        "uninstalling one target must not remove another's copy"
+    )
+
+    r = run_semlf(["uninstall", "codex"], env)
+    assert r.returncode == 0, r.stderr
+    assert not codex_skill.exists()
+
+
+def test_status_reports_the_setup_artifacts(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex", "opencode"], env)
+    out = run_semlf(["status"], env).stdout
+    assert "codex setup skill" in out
+    assert "opencode setup skill" in out
+    assert "opencode setup command" in out
+
+
 def test_apply_order_puts_neutral_payloads_first(tmp_path):
     r = run_semlf(["install", "codex"], isolated_env(tmp_path))
     out = r.stdout

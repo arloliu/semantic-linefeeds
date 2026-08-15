@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **A setup skill, so you can just ask your agent to install `semlf`.**
+  Ask Claude Code, Codex CLI, or opencode to "install semlf",
+  and it now follows a fixed procedure instead of guessing at package names or editing your config by hand.
+  It installs the CLI if it is missing, repairs an install that went stale after an upgrade,
+  and offers to write the project's `.semlf.ini`.
+  It shows you every command before running it,
+  and it will not overwrite one of your files or add an `exclude` line on its own —
+  it shows you the difference and asks.
+- **`/setup-semlf` in opencode.**
+  opencode offers skills to the model and commands to you,
+  so the same procedure is installed both ways and you can start it yourself by typing the command.
+
 ## [0.7.0] - 2026-08-14
 
 `semlf` is now installable straight from PyPI.

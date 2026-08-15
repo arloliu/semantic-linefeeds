@@ -34,6 +34,11 @@ PayloadRow = namedtuple(
 
 CHECKER_NAME = "check_linefeeds.py"
 
+# Two rows install this one file, to two different roots.
+# Naming it once keeps them provably the same source:
+# a second spelled-out path is how one destination silently keeps shipping last release's skill.
+SETUP_SKILL_SOURCE = "skills/setup-semlf/SKILL.md"
+
 
 def _in(base, name):
     """base / name, or None when the base itself does not resolve."""
@@ -114,12 +119,52 @@ ROWS = (
         lambda: _in(manifest.opencode_plugins_dir(), CHECKER_NAME),
         lambda data_dir: payload_bytes("opencode-checker"),
     ),
+    # The setup skill ships once per target rather than to one shared root.
+    # It cites no published payload — no checker path, no README link —
+    # so each destination is self-contained,
+    # and installing it for one agent never depends on a file another agent's target owns.
+    PayloadRow(
+        "codex-setup-skill",
+        SETUP_SKILL_SOURCE,
+        "semlf/payloads/codex-setup-skill",
+        "codex",
+        6,
+        True,
+        False,
+        manifest.codex_setup_skill_dest,
+        lambda data_dir: payload_bytes("codex-setup-skill"),
+    ),
+    PayloadRow(
+        "opencode-setup-skill",
+        SETUP_SKILL_SOURCE,
+        "semlf/payloads/opencode-setup-skill",
+        "opencode",
+        7,
+        True,
+        False,
+        manifest.opencode_setup_skill_dest,
+        lambda data_dir: payload_bytes("opencode-setup-skill"),
+    ),
+    # opencode advertises a skill to the model and loads it only when the model calls the skill tool;
+    # a command file is the one thing a user can type.
+    # Its body delegates to the skill instead of restating it, so the procedure keeps exactly one home.
+    PayloadRow(
+        "opencode-setup-command",
+        "adapters/opencode/setup-semlf.md",
+        "semlf/payloads/opencode-setup-command",
+        "opencode",
+        8,
+        True,
+        False,
+        manifest.opencode_setup_command_dest,
+        lambda data_dir: payload_bytes("opencode-setup-command"),
+    ),
     PayloadRow(
         "agentsmd-snippet",
         "adapters/agentsmd/SNIPPET.md",
         "semlf/payloads/agentsmd-snippet",
         "agentsmd",
-        6,
+        9,
         False,
         False,
         None,

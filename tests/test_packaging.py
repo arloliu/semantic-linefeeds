@@ -140,6 +140,26 @@ def test_the_wheel_embeds_every_registry_member(tmp_path):
     assert not (REPO / "cli" / "semlf" / "payloads").exists()
 
 
+def test_manifest_in_lists_every_registry_source():
+    """The same gap the sdist test catches, named directly.
+
+    That test proves the consequence by building an sdist and a wheel from it,
+    which is slow and reports a MANIFEST.in omission as a wall of pip output.
+    This one names the missing path,
+    so a new registry row whose source was never packaged fails as one readable line instead.
+    """
+    sys.path.insert(0, str(REPO / "cli"))
+    from semlf import registry
+
+    included = {
+        line.split(None, 1)[1].strip()
+        for line in (REPO / "MANIFEST.in").read_text(encoding="utf-8").splitlines()
+        if line.startswith("include ")
+    }
+    missing = sorted({row.source for row in registry.ROWS} - included)
+    assert not missing, f"MANIFEST.in omits registry sources: {missing}"
+
+
 @WHEEL_PREREQS
 def test_a_wheel_built_from_the_sdist_carries_the_members(tmp_path):
     """MANIFEST.in must put every canonical payload source into the sdist,

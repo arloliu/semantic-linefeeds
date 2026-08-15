@@ -9,7 +9,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "cli"))
 sys.path.insert(0, str(REPO / "scripts"))
 
-from semlf import registry
+from semlf import manifest, registry
 
 EXPECTED_IDS = [
     "checker",
@@ -18,6 +18,9 @@ EXPECTED_IDS = [
     "codex-skill",
     "opencode-plugin",
     "opencode-checker",
+    "codex-setup-skill",
+    "opencode-setup-skill",
+    "opencode-setup-command",
     "agentsmd-snippet",
 ]
 
@@ -41,8 +44,28 @@ def test_owners_match_the_design_table():
         "codex-skill": "codex",
         "opencode-plugin": "opencode",
         "opencode-checker": "opencode",
+        "codex-setup-skill": "codex",
+        "opencode-setup-skill": "opencode",
+        "opencode-setup-command": "opencode",
         "agentsmd-snippet": "agentsmd",
     }
+
+
+def test_the_setup_skill_ships_once_per_target_from_one_source():
+    """Per-target rows, single source: the property that keeps them from drifting.
+
+    Two destinations exist because uninstalling one target must not remove the other target's file.
+    They must nonetheless install identical bytes,
+    so the source path is asserted equal rather than merely present —
+    a second spelled-out path here is exactly how one root would keep shipping last release's skill.
+    """
+    setup_skills = [row for row in registry.ROWS if row.id.endswith("-setup-skill")]
+    assert {row.id for row in setup_skills} == {
+        "codex-setup-skill",
+        "opencode-setup-skill",
+    }
+    assert {row.source for row in setup_skills} == {registry.SETUP_SKILL_SOURCE}
+    assert len({row.member for row in setup_skills}) == 2
 
 
 def test_the_two_no_record_rows_are_marked():
@@ -58,9 +81,23 @@ def test_identity_marks_exactly_the_digest_compared_payloads():
     }
 
 
+def test_known_provenance_names_are_exactly_the_recorded_rows_plus_cli():
+    """The drift channel between the two lists, closed.
+
+    A recorded row without a `manifest.KNOWN` entry installs but cannot record provenance,
+    and a KNOWN name without a row is a provenance slot nothing ever writes.
+    Neither shows up as a test failure anywhere else,
+    so adding a row and forgetting the other list is caught here rather than in the field.
+    `cli` is the one deliberate asymmetry: it is installed by building a zipapp, not by copying a payload row.
+    """
+    recorded = {row.id for row in registry.ROWS if row.recorded}
+    assert set(manifest.KNOWN) == {"cli"} | recorded
+
+
 def test_every_consumer_field_is_complete(monkeypatch, tmp_path):
-    """The no-second-mapping invariant: every recorded single-file row
-    resolves a destination and renders bytes from the one table."""
+    """The no-second-mapping invariant:
+    every recorded single-file row resolves a destination and renders bytes from the one table.
+    """
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
