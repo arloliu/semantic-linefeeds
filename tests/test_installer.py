@@ -2560,3 +2560,36 @@ def test_checkout_door_uninstall_removes_the_setup_artifacts(tmp_path):
     assert run_install(["--codex", "--opencode", "--uninstall"], env).returncode == 0
     assert not setup_skill.exists()
     assert not opencode_command.exists()
+
+
+def test_checkout_door_reports_the_retained_payloads(tmp_path):
+    """Both doors retain the shared payloads, so both must say so.
+
+    Only the package door printed this note before, and only for codex,
+    which left a user who uninstalled through the checkout with no pointer to the files still on disk.
+    """
+    env = isolated_env(tmp_path)
+    assert run_install(["--opencode"], env).returncode == 0
+    r = run_install(["--uninstall", "--opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert "retained" in r.stdout
+    assert "semlf status" in r.stdout
+
+
+def test_checkout_door_cli_uninstall_leaves_the_shared_skills(tmp_path):
+    """--cli names no agent target, so it removes no shared skill.
+
+    Both doors reach plan_remove_targets with an empty target set,
+    so the guard has to hold on this one too.
+    """
+    env = isolated_env(tmp_path)
+    assert run_install(["--codex"], env).returncode == 0
+    codex_hooks_path(tmp_path).write_text(
+        '{"hooks": {"PostToolUse": []}}', encoding="utf-8"
+    )
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    assert skill.is_file()
+
+    r = run_install(["--uninstall", "--cli", "--force"], env)
+    assert r.returncode == 0, r.stderr
+    assert skill.is_file(), "--cli removed a global skill it never installed"

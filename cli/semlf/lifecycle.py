@@ -1546,6 +1546,53 @@ def plan_remove_agentsmd(target, planned, refusals):
     )
 
 
+def plan_shared_removal(targets, force, planned, refusals):
+    """Remove the shared skills when this request covers every target still present.
+
+    A shared skill is removed when, for every agent target,
+    either the target is named in this request
+    or the conservative predicate finds no artifacts for it.
+    Anything else retains them, and status names them.
+
+    checker and readme keep the retain-and-report precedent instead.
+    The asymmetry is behavioral:
+    a checker left behind does nothing until something calls it,
+    while a skill left behind is advertised to every model that scans the root,
+    and the checker path in its body may by then point at nothing.
+
+    A request naming no agent target removes no shared skill.
+    This is `selects` seen from the removal end, and it is written against the same tuple
+    so install and removal cannot come to answer that question differently:
+    `agentsmd` is a paragraph of prose with no checker and no skill behind it,
+    so a request that names it alone neither publishes nor removes one.
+    Without the guard, `uninstall agentsmd PATH` on a machine with no agent installed would unlink a global skill the request never mentioned,
+    and `--force` — a valid flag on this verb — would remove the refusal
+    that otherwise protects a hand-patched copy.
+    Convergence is untouched:
+    naming an agent target is what makes a request cover every target,
+    so orphaned skills are still collected by `uninstall codex` on a machine holding nothing else.
+    """
+    if not any(t in targets for t in AGENT_TARGETS):
+        return
+    snapshot = manifest.load()
+    remaining = [
+        t for t in AGENT_TARGETS if t not in targets and target_present(t, snapshot)
+    ]
+    if remaining:
+        return
+    destinations = payload_destinations()
+    for name, label in (("skill", "skill"), ("setup-skill", "setup skill")):
+        plan_remove_file(
+            label,
+            destinations[name],
+            name,
+            force,
+            planned,
+            refusals,
+            prune_parent=True,
+        )
+
+
 def plan_remove_targets(targets, force, planned, refusals):
     """Every artifact removal the named targets imply, for both doors.
 
@@ -1559,29 +1606,6 @@ def plan_remove_targets(targets, force, planned, refusals):
     destinations = payload_destinations()
     if "codex" in targets:
         plan_remove_codex_hook(planned, refusals)
-        # The two skills are shared rows now,
-        # so removing them with codex is a holdover:
-        # it keeps `uninstall codex` removing what it has always removed.
-        # A last-consumer rule — remove them only when no target still has artifacts —
-        # replaces both legs.
-        plan_remove_file(
-            "skill",
-            destinations["skill"],
-            "skill",
-            force,
-            planned,
-            refusals,
-            prune_parent=True,
-        )
-        plan_remove_file(
-            "setup skill",
-            destinations["setup-skill"],
-            "setup-skill",
-            force,
-            planned,
-            refusals,
-            prune_parent=True,
-        )
     if "opencode" in targets:
         plan_remove_file(
             "opencode plugin",
@@ -1609,6 +1633,9 @@ def plan_remove_targets(targets, force, planned, refusals):
             planned,
             refusals,
         )
+    # Last, because apply_plan stops at the first error:
+    # a shared removal placed earlier would strand a target with its own artifacts installed and its skill gone.
+    plan_shared_removal(targets, force, planned, refusals)
 
 
 def uninstall_command(argv):
@@ -1642,7 +1669,7 @@ def uninstall_command(argv):
             print(refusal, file=sys.stderr)
         return 1
     rc = apply_plan(planned)
-    if "codex" in targets and rc == 0:
+    if targets and rc == 0:
         print(
             f"note: the published payloads under "
             f"{manifest.semlf_data_dir()} are shared and retained; "

@@ -484,7 +484,14 @@ def uninstall(args):
         for refusal in refusals:
             print(refusal, file=sys.stderr)
         return 1
-    return lifecycle.apply_plan(planned)
+    rc = lifecycle.apply_plan(planned)
+    if targets and rc == 0:
+        print(
+            f"note: the published payloads under "
+            f"{manifest.semlf_data_dir()} are shared and retained; "
+            "`semlf status` reports leftovers."
+        )
+    return rc
 
 
 def _run_request(targets, agentsmd_path, cli, dry, force):

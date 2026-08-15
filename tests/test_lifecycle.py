@@ -656,7 +656,7 @@ def test_a_dangling_symlink_destination_does_not_equal_itself(tmp_path):
     assert "is a symlink" in verdict.detail
 
 
-def install_opencode(home_dir):
+def install_opencode():
     """Apply a real opencode install, so records and files agree."""
     planned, refusals = lifecycle.plan_install(["opencode"], None, False)
     assert refusals == []
@@ -677,7 +677,7 @@ def test_a_never_installed_target_is_absent(home, capsys):
 
 
 def test_a_present_destination_makes_a_target_present(home, capsys):
-    install_opencode(home)
+    install_opencode()
     assert lifecycle.target_present("opencode", manifest.load()) is True
 
 
@@ -689,7 +689,7 @@ def test_a_record_outside_the_current_environment_still_counts(
     The destinations this environment derives are all absent,
     and only the record still names the path the files were installed to.
     """
-    install_opencode(home)
+    install_opencode()
     snapshot = manifest.load()
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "elsewhere"))
     assert lifecycle.payload_destinations()["opencode-plugin"].exists() is False
@@ -702,7 +702,7 @@ def test_a_record_whose_file_is_proven_gone_counts_absent(home, capsys):
     A valid record is not permanent presence:
     the shared skills would be retained forever on a machine the user cleaned up by hand.
     """
-    install_opencode(home)
+    install_opencode()
     for name in ("opencode-plugin", "opencode-checker", "opencode-setup-command"):
         lifecycle.payload_destinations()[name].unlink()
     snapshot = manifest.load()
