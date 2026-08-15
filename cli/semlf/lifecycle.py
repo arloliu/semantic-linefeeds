@@ -771,17 +771,88 @@ def plan_forget_retired(name, planned):
     )
 
 
+# Each pre-change artifact, and the live destination it must not be confused with.
+LEGACY_ARTIFACTS = (
+    ("opencode-skill", "semantic-linefeeds", "skill"),
+    ("opencode-setup-skill", "setup-semlf", "setup-skill"),
+)
+
+
+def plan_legacy_cleanup(planned, refusals):
+    """Remove pre-change copies that would compete with the shared skill.
+
+    opencode reads its own skills root as well as the shared one,
+    and a copy there usually wins the name race,
+    so leaving these behind means opencode keeps loading last release's skill.
+    Stopping writing them is not enough.
+
+    The guard compares PARENT DIRECTORIES, not the files.
+    The question is whether unlinking would destroy the shared file's own directory entry,
+    and only the parents answer that:
+    joined roots share a parent,
+    while a hard link or a leaf symlink has its own,
+    and unlinking those removes just that entry.
+    Comparing the files instead would spare a hard link,
+    which then strands on the old inode the next time the shared file is published.
+    """
+    skills_dir = manifest.opencode_skills_dir()
+    destinations = payload_destinations()
+    if skills_dir is None:
+        return
+    for retired, folder, live in LEGACY_ARTIFACTS:
+        legacy = skills_dir / folder / "SKILL.md"
+        if not os.path.lexists(str(legacy)):
+            continue
+        shared = destinations.get(live)
+        if shared is not None and manifest.same_file(
+            legacy.parent, Path(shared).parent, missing=False
+        ):
+            # A joined root: this path is the shared file by another spelling.
+            # The record is carried forward by project_retired, not cleared here.
+            continue
+        entry = manifest.retired_entry(retired)
+        if entry is None or manifest.classify_entry(entry, legacy) != "managed":
+            refusals.append(
+                f"refusing to remove {legacy}: this kit cannot prove it wrote it; "
+                "move it aside and re-run"
+            )
+            continue
+
+        def _do(legacy=legacy, retired=retired):
+            os.unlink(legacy)
+            note = _forget_note(legacy, retired)
+            _prune_empty_parent(legacy)
+            return note
+
+        planned.append(
+            Planned(str(legacy), retired, legacy, None, _do, done=f"removed {legacy}")
+        )
+
+
 def plan_install(targets, agentsmd_path, force):
     """The whole request's plan, walked in the registry's own order.
 
     The apply order comes from the rows' order field —
     the neutral checker and readme first, then each integration's own files —
     never from a hand-maintained call sequence here.
+
+    Legacy cleanup is CLASSIFIED early, before the row loop,
+    purely so the loop can tell which retired names it already owns.
+    Preflight is read-only,
+    so nothing between the two points changes what it would see.
+    Its removal step still APPLIES last, appended after every row,
+    so a competing copy is never gone before the shared file that replaces it has actually been written.
+    A retired name the cleanup step owns is skipped in the row loop's own alias-forget:
+    the cleanup's `_do` already forgets it, but only after its unlink succeeds,
+    so forgetting it here first would let a later unlink failure leave the file behind with no record left to prove it.
     """
     planned, refusals = [], []
     # Checked before any per-row planning: a collision is a property of the request,
     # not of one artifact, and --force cannot make it safe.
     refusals.extend(colliding_destinations(targets))
+    legacy_planned, legacy_refusals = [], []
+    plan_legacy_cleanup(legacy_planned, legacy_refusals)
+    legacy_owned = {item.name for item in legacy_planned}
     snapshot = manifest.load()
     destinations = payload_destinations()
     try:
@@ -792,11 +863,15 @@ def plan_install(targets, agentsmd_path, force):
         if row.recorded and selects(row, targets):
             plan_file(row.id, force, snapshot, destinations, planned, refusals)
             for retired in aliases.get(row.id, ()):
+                if retired in legacy_owned:
+                    continue
                 plan_forget_retired(retired, planned)
         elif row.id == "codex-hook-template" and "codex" in targets:
             plan_codex_hook(planned, refusals)
         elif row.id == "agentsmd-snippet" and agentsmd_path is not None:
             plan_agentsmd(agentsmd_path, planned, refusals)
+    planned.extend(legacy_planned)
+    refusals.extend(legacy_refusals)
     return planned, refusals
 
 

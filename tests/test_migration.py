@@ -384,6 +384,158 @@ def test_disagreeing_retired_records_refuse_and_name_both(tmp_path):
     assert "opencode-skill" in r.stderr
 
 
+def legacy_opencode_skill(tmp_path, name="semantic-linefeeds"):
+    d = tmp_path / "xdg" / "opencode" / "skills" / name
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "SKILL.md"
+
+
+def test_migration_removes_a_proven_legacy_opencode_skill(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    legacy = legacy_opencode_skill(tmp_path)
+    body = "---\nname: semantic-linefeeds\n---\n\nold\n"
+    legacy.write_text(body, encoding="utf-8")
+    records = tmp_path / "state" / "semlf" / "artifacts"
+    (records / "opencode-skill.json").write_text(
+        json.dumps(
+            {
+                "path": str(legacy),
+                "sha256": hashlib.sha256(body.encode()).hexdigest(),
+                "version": check_linefeeds.__version__,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert not legacy.exists()
+    assert not legacy.parent.exists()
+    assert not (records / "opencode-skill.json").exists()
+
+
+def test_migration_never_removes_the_shared_file_through_a_joined_root(tmp_path):
+    """The trap: on a joined root the legacy record's path IS the shared file."""
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+
+    skills = tmp_path / "xdg" / "opencode" / "skills"
+    skills.parent.mkdir(parents=True, exist_ok=True)
+    skills.symlink_to(
+        tmp_path / "home" / ".agents" / "skills", target_is_directory=True
+    )
+
+    records = tmp_path / "state" / "semlf" / "artifacts"
+    entry = json.loads((records / "skill.json").read_text())
+    (records / "opencode-skill.json").write_text(
+        json.dumps(dict(entry, path=str(skills / "semantic-linefeeds" / "SKILL.md"))),
+        encoding="utf-8",
+    )
+
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert shared.is_file(), "the shared skill was deleted through the joined root"
+
+
+def test_migration_removes_a_hard_linked_legacy_skill(tmp_path):
+    """A hard link reads as the same file but must go.
+
+    Sparing it leaves it in place until the shared file is next published:
+    publish_bytes stages a temp file and replaces it,
+    the shared path gets a new inode,
+    and the spared link is stranded serving last release's bytes.
+    """
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    legacy = legacy_opencode_skill(tmp_path)
+    os.link(shared, legacy)
+
+    records = tmp_path / "state" / "semlf" / "artifacts"
+    entry = json.loads((records / "skill.json").read_text())
+    (records / "opencode-skill.json").write_text(
+        json.dumps(dict(entry, path=str(legacy))), encoding="utf-8"
+    )
+
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert not legacy.exists()
+    assert shared.is_file()
+
+
+def test_a_failed_hard_link_unlink_leaves_its_record_intact(tmp_path, monkeypatch):
+    """A failed unlink must not lose the only proof a re-run can use.
+
+    project_retired also proves opencode-skill through the hard link,
+    since a hard link shares an inode with the shared file same_file compares against.
+    Before the fix that alias-forget ran during the row loop,
+    ahead of plan_legacy_cleanup's own removal step,
+    so a failed unlink left the record cleared and the file stranded —
+    unprovable on the very next run.
+    The fix skips that early forget for a retired name the cleanup step owns,
+    so only the cleanup's own step ever clears it,
+    and only after its unlink actually succeeds.
+
+    This drives plan_install and apply_plan in-process,
+    rather than through the subprocess-based run_semlf,
+    so os.unlink can be monkeypatched to fail on exactly this one path without touching any other artifact's real unlink.
+    """
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    legacy = legacy_opencode_skill(tmp_path)
+    os.link(shared, legacy)
+
+    records = tmp_path / "state" / "semlf" / "artifacts"
+    entry = json.loads((records / "skill.json").read_text())
+    (records / "opencode-skill.json").write_text(
+        json.dumps(dict(entry, path=str(legacy))), encoding="utf-8"
+    )
+
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    from semlf import lifecycle
+
+    real_unlink = os.unlink
+
+    def failing_unlink(path, *a, **kw):
+        if str(path) == str(legacy):
+            raise OSError("simulated failure")
+        return real_unlink(path, *a, **kw)
+
+    monkeypatch.setattr(os, "unlink", failing_unlink)
+
+    planned, refusals = lifecycle.plan_install(["opencode"], None, False)
+    assert refusals == []
+    rc = lifecycle.apply_plan(planned)
+    assert rc == 1
+
+    assert legacy.exists(), "the failed unlink should have left the file in place"
+    assert (records / "opencode-skill.json").exists(), (
+        "the record must survive an unlink it cannot prove happened"
+    )
+
+
+def test_migration_refuses_an_unproven_legacy_file(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    legacy = legacy_opencode_skill(tmp_path)
+    legacy.write_text("hand written\n", encoding="utf-8")
+
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 1
+    assert str(legacy) in r.stderr
+    assert legacy.exists()
+
+
 def _pip_and_setuptools_ok():
     try:
         import setuptools
