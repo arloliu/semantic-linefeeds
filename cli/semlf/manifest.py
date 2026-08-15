@@ -105,6 +105,32 @@ def read_regular_bytes(path, limit):
         return None
 
 
+def same_file(a, b, missing=False):
+    """Whether two paths name one file, by device and inode.
+
+    `os.path.realpath` cannot answer this:
+    a bind mount joins two paths it still reports as different,
+    and every guard keyed on it would then admit a removal and unlink the shared copy.
+    `os.path.samefile` compares st_dev and st_ino, so it is correct through symlinks,
+    bind mounts, and hard links alike.
+
+    It follows symlinks, unlike `read_regular_bytes`, which carries O_NOFOLLOW on purpose.
+    Following is right here: the question is "are these one file",
+    not "may I read this path safely".
+
+    `missing` is the answer when either side does not exist or cannot be inspected.
+    It has no safe default across callers —
+    a removal guard that assumes "same" strands a legacy file forever,
+    and one that assumes "different" can delete the shared copy —
+    so every caller states its own.
+    """
+    try:
+        return os.path.samefile(str(a), str(b))
+    except (OSError, ValueError):
+        # ValueError covers a NUL-carrying path, which raises rather than classifying.
+        return missing
+
+
 def read_state_json(path, limit=65536):
     """Parsed JSON from a state file, or None for any trouble at all.
 

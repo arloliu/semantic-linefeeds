@@ -320,3 +320,46 @@ def test_owned_codex_hooks_is_total_over_hostile_shapes():
         {"hooks": {"PostToolUse": [None, {"hooks": "x"}]}},
     ):
         assert manifest.owned_codex_hooks(data) == []
+
+
+def test_same_file_is_true_for_one_path_twice(tmp_path):
+    p = tmp_path / "a.txt"
+    p.write_text("x", encoding="utf-8")
+    assert manifest.same_file(p, p) is True
+
+
+def test_same_file_follows_a_symlink(tmp_path):
+    target = tmp_path / "real.txt"
+    target.write_text("x", encoding="utf-8")
+    link = tmp_path / "link.txt"
+    link.symlink_to(target)
+    assert manifest.same_file(link, target) is True
+
+
+def test_same_file_is_true_for_a_hard_link(tmp_path):
+    target = tmp_path / "real.txt"
+    target.write_text("x", encoding="utf-8")
+    hard = tmp_path / "hard.txt"
+    os.link(target, hard)
+    assert manifest.same_file(hard, target) is True
+
+
+def test_same_file_is_false_for_two_distinct_files(tmp_path):
+    a = tmp_path / "a.txt"
+    b = tmp_path / "b.txt"
+    a.write_text("x", encoding="utf-8")
+    b.write_text("x", encoding="utf-8")
+    assert manifest.same_file(a, b) is False
+
+
+def test_same_file_returns_the_missing_default_when_a_side_is_absent(tmp_path):
+    p = tmp_path / "a.txt"
+    p.write_text("x", encoding="utf-8")
+    gone = tmp_path / "gone.txt"
+    assert manifest.same_file(p, gone) is False
+    assert manifest.same_file(p, gone, missing=True) is True
+    assert manifest.same_file(gone, gone, missing=True) is True
+
+
+def test_same_file_returns_the_missing_default_on_a_hostile_path(tmp_path):
+    assert manifest.same_file(tmp_path / "a", "\x00bad") is False
