@@ -173,13 +173,24 @@ So the rule throughout is:
 - **`os.path.samefile`, or `st_dev` and `st_ino` compared directly, whenever both paths exist.**
   It is correct through symlinks, bind mounts, and hard links alike.
   It raises when either side is missing, so every caller handles that rather than letting it propagate.
-- **`os.path.realpath` only as the fallback when a path does not exist yet.**
-  A path that has never been created has no inode to compare,
-  and there is nothing to delete there either, so the weaker test is sound there.
-  `colliding_destinations` needs both:
-  it compares destinations that may not exist, and, since it now also compares against installed rows,
-  destinations that do.
-  Using realpath alone there would miss precisely the bind-mounted collision this rule exists to catch.
+- **When a path does not exist yet, the comparison climbs to what does.**
+  A path that has never been created has no inode, so `samefile` cannot answer for it directly.
+  `realpath` alone is not the answer either.
+  On a fresh machine whose `~/.config/opencode/plugins` is bind-mounted onto the payload root,
+  neither checker destination exists,
+  `realpath` reports two different paths, no collision is detected,
+  and the request half-applies:
+  the first write creates the file and the second fails as "appeared after classification".
+
+  So each side is reduced to its **nearest existing ancestor plus the unresolved suffix below it**.
+  Two paths are the same destination when those ancestors are `samefile`
+  and the suffixes are equal.
+  That answers correctly for a bind mount, a symlinked parent, and an ordinary distinct path alike,
+  and it degrades to a plain comparison when both leaves already exist.
+
+`colliding_destinations` is where both halves meet:
+it compares destinations that may not exist, and, since it now also compares against installed rows,
+destinations that do.
 
 ### The removal guard compares parent directories, not files
 
@@ -220,7 +231,7 @@ Getting one backwards either strands a file forever or deletes the shared copy.
 | legacy removal, and migration | the legacy path does not exist | **admit** — there is nothing to unlink, and admitting is what lets the stale record be cleared |
 | `doctor`'s competitor check | the opencode path does not exist | healthy, and silent |
 | `doctor`'s competitor check | the shared file does not exist | report that install has not run under this layout, not that something is shadowed |
-| `colliding_destinations` | either destination does not exist | fall back to `realpath` |
+| `colliding_destinations` | either destination does not exist | compare nearest existing ancestors with `samefile`, and require the unresolved suffixes to be equal |
 
 Two properties of `samefile` are worth naming rather than discovering later.
 It goes through `os.stat`, so it **follows symlinks** —
