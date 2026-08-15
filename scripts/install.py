@@ -463,6 +463,10 @@ def uninstall(args):
         name for name, on in (("codex", args.codex), ("opencode", args.opencode)) if on
     }
     lifecycle.plan_remove_targets(targets, args.force, planned, refusals)
+    # Both of these follow the shared removal plan_remove_targets ends with, deliberately.
+    # "Shared removals go last" protects an integration from losing the skill it still needs;
+    # neither the zipapp nor the AGENTS.md snippet is an artifact an integration reads.
+    # A failed shared removal stops apply_plan with both still in place, and a re-run converges.
     if args.cli:
         _plan_cli(planned, refusals, args.force)
     if args.agentsmd is not None:

@@ -9,12 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **opencode now gets the judgment layer, not just the hook.**
-  Until now `semlf install opencode` set up the checker and the plugin but no skill,
-  while the hook still told the model to go read one.
-  opencode installs its own skill from this release,
-  so the advice it acts on is the same advice Codex gets:
+- **One skill, read by both Codex CLI and opencode.**
+  `semlf install` publishes the `semantic-linefeeds` skill once, into `~/.agents/skills`,
+  and both agents load it from there — no second copy, and no per-agent copy to keep in step.
+  opencode had none at all before this release:
+  it got the checker and the plugin, and its hook then told the model to go read a skill nobody had installed for it.
+  It now acts on the same advice Codex does:
   which `and` is a real clause boundary, what never to break, and when to stop and ask you.
+  opencode 1.18.18 or newer is needed to see it,
+  and setting `OPENCODE_DISABLE_EXTERNAL_SKILLS` hides it from opencode entirely.
 
 - **A setup skill, so you can just ask your agent to install `semlf`.**
   Ask Claude Code, Codex CLI, or opencode to "install semlf",
@@ -30,23 +33,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **The `semantic-linefeeds` and `setup-semlf` skills now install once, not once per agent.**
-  `semlf install codex` and `semlf install opencode` both publish the same copy to `~/.agents/skills`,
-  which Codex CLI and opencode both read.
-  opencode 1.18.18 or newer is required;
-  setting `OPENCODE_DISABLE_EXTERNAL_SKILLS` hides the shared skill from opencode entirely.
-- **Installing for opencode alone now also publishes the checker and README to the shared install location.**
-  The one skill copy points there, so `semlf install opencode` writes them even on a machine with no Codex CLI.
-  Uninstalling opencode leaves them behind, and `semlf status` names them if you want them gone.
-- **Installing no longer refuses when your agents already share one skills folder.**
-  Pointing several agents' skills directories at the same shared folder —
-  a common setup for anyone running more than one agent — used to make install refuse outright.
-  It is now the arrangement install expects.
-- **Upgrading clears out the old per-agent skill copies.**
-  A copy left behind in opencode's own directory used to keep loading after an upgrade instead of the shared one;
-  upgrading now removes it.
-- **`semlf doctor` now reports a leftover skill file that competes with the shared copy.**
-  If one is still sitting in opencode's own directory, `doctor` names it instead of missing it.
+- **Installing for opencode alone now also writes the checker and the README.**
+  They used to arrive only when you installed for Codex CLI.
+  The skill points at both, so `semlf install opencode` writes them even on a machine that never had Codex CLI.
+- **The skill is removed only when the last agent that reads it goes.**
+  Because one copy now serves both agents, uninstalling one of two leaves it in place for the other,
+  and it is taken only by the uninstall that leaves you with no agent using it.
+  The checker and the README are always kept, as before;
+  `semlf status` lists them if you want them gone.
+- **`semlf doctor` now looks inside opencode's own skills folder.**
+  A skill file sitting there usually wins over the shared one,
+  so opencode would quietly answer with it instead.
+  `doctor` names the file rather than passing the machine as healthy.
+- **A skill file you put in opencode's skills folder yourself is now refused, not replaced.**
+  The old by-hand instructions told you to copy the skill into `~/.config/opencode/skills/`.
+  That copy competes with the one shared skill, so `semlf install opencode` wants it gone —
+  but `semlf` cannot tell your file from one it wrote, and it will not delete a file it cannot account for.
+  It stops and names the path instead of touching it.
+  If you set opencode up by hand, this is the first thing you will hit rather than a corner case:
+  move that file aside, then run `semlf install opencode` again.
 
 ## [0.7.0] - 2026-08-14
 

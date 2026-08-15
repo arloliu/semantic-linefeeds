@@ -266,6 +266,11 @@ def _opencode_competitor_check():
 
     "Competes" rather than "shadows": precedence is a race, so a second copy usually wins but is not guaranteed to,
     and a message promising determinism would describe a rule opencode does not publish.
+
+    A hard link to the shared file reads healthy here and is still removed by install,
+    because the two verbs are answering different questions:
+    this one asks whether opencode would load different content today, and through a hard link it would not,
+    while migration asks whether the entry survives the next republish, and a hard link does not.
     """
     skills_dir = manifest.opencode_skills_dir()
     if skills_dir is None:

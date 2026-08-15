@@ -391,6 +391,111 @@ def legacy_opencode_skill(tmp_path, name="semantic-linefeeds"):
     return d / "SKILL.md"
 
 
+def prove_legacy(tmp_path, path, retired, body):
+    """Write a legacy file and the record that proves this kit wrote it."""
+    path.write_text(body, encoding="utf-8")
+    records = tmp_path / "state" / "semlf" / "artifacts"
+    records.mkdir(parents=True, exist_ok=True)
+    (records / f"{retired}.json").write_text(
+        json.dumps(
+            {
+                "path": str(path),
+                "sha256": hashlib.sha256(body.encode()).hexdigest(),
+                "version": check_linefeeds.__version__,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return records / f"{retired}.json"
+
+
+def pre_change_opencode_machine(tmp_path):
+    """Both pre-change opencode skill copies, each proven, and nothing else installed."""
+    env = isolated_env(tmp_path)
+    copies = []
+    for folder, retired in (
+        ("semantic-linefeeds", "opencode-skill"),
+        ("setup-semlf", "opencode-setup-skill"),
+    ):
+        legacy = legacy_opencode_skill(tmp_path, folder)
+        prove_legacy(tmp_path, legacy, retired, f"---\nname: {folder}\n---\n\nold\n")
+        copies.append(legacy)
+    return env, copies
+
+
+def test_a_request_naming_no_agent_target_never_clears_the_legacy_copies(tmp_path):
+    """The install side of the guard `plan_remove_targets` already applies to removals.
+
+    Legacy cleanup only ever unlinks under opencode's own skills root,
+    so a request that does not name opencode has no business running it.
+    agentsmd is the sharpest case: it is a paragraph of prose with no skill behind it,
+    so it publishes nothing that could replace what the cleanup would take,
+    and ungated it leaves the machine with no judgment skill at all.
+    """
+    env, copies = pre_change_opencode_machine(tmp_path)
+    agents_md = tmp_path / "AGENTS.md"
+
+    r = run_semlf(["install", "agentsmd", str(agents_md)], env)
+    assert r.returncode == 0, r.stderr
+    for legacy in copies:
+        assert legacy.is_file(), f"a request naming no agent target removed {legacy}"
+    assert "semantic-linefeeds" in agents_md.read_text(encoding="utf-8")
+
+
+def test_an_unproven_opencode_file_does_not_refuse_a_codex_install(tmp_path):
+    """The refusal belongs to opencode's request, not to every request.
+
+    This project's own pre-change manual install instructions produced exactly such a file,
+    so released users have one at that path.
+    Ungated it aborted the whole request, and `semlf install codex` —
+    which touches nothing under that root — could not run at all until the file was moved aside.
+    """
+    env = isolated_env(tmp_path)
+    legacy = legacy_opencode_skill(tmp_path)
+    legacy.write_text("hand written\n", encoding="utf-8")
+
+    r = run_semlf(["install", "codex"], env)
+    assert r.returncode == 0, r.stderr
+    assert legacy.read_text(encoding="utf-8") == "hand written\n"
+    assert (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    ).is_file()
+
+    # opencode's own request still refuses it, which is the behavior the guard protects.
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 1
+    assert str(legacy) in r.stderr
+    assert legacy.is_file()
+
+
+def test_migration_refuses_an_edited_legacy_file(tmp_path):
+    """A record that names the path is not proof; the bytes are.
+
+    This is the state a user reaches by editing a skill this kit once wrote,
+    and it is the reason removal asks the classifier rather than merely asking whether a record exists.
+    """
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex"], env)
+    legacy = legacy_opencode_skill(tmp_path)
+    record = prove_legacy(
+        tmp_path,
+        legacy,
+        "opencode-skill",
+        "---\nname: semantic-linefeeds\n---\n\nold\n",
+    )
+    legacy.write_text(
+        "---\nname: semantic-linefeeds\n---\n\nmy own notes\n", encoding="utf-8"
+    )
+
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 1
+    assert str(legacy) in r.stderr
+    assert legacy.read_text(encoding="utf-8").endswith("my own notes\n")
+    assert record.exists(), (
+        "a refused removal must keep the record that proves the path"
+    )
+
+
 def test_migration_removes_a_proven_legacy_opencode_skill(tmp_path):
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex"], env)

@@ -395,6 +395,22 @@ The fifth rule is what stops the opposite failure.
 so a machine the user had cleaned up by hand would retain the shared skills forever
 if every valid record counted as permanent presence.
 
+**Known carve-out: rule 2 reaches opencode and not codex,
+and the implementation matches the carve-out rather than the rule.**
+`codex-hook-template` is the only codex-owned row and it is not recorded,
+so codex has no entry for rule 2 to read and no recorded path for it to probe.
+For codex the predicate rests on rule 1 alone — `$CODEX_HOME/hooks.json` in the current environment.
+The consequence is real and is not claimed to be safe:
+a Codex installed under one `CODEX_HOME` and operated without it reads as absent,
+so `uninstall opencode` on that machine removes the shared skills while that Codex is still using them,
+and `install codex` publishes them again.
+
+The exit that would close it — giving the codex hook a recorded row — was considered and declined.
+It changes the registry, both doors' plans and provenance handling at once.
+Precision over recall rules out a change of that reach for one narrow environment mismatch.
+So this is recorded as a carve-out and stated in `target_present`'s own docstring,
+rather than left as a rule the code appears to implement and does not.
+
 ### 3. Last-consumer uninstall
 
 **Decision: the two shared skills are removed only when this request covers every target that still has artifacts.**
@@ -521,8 +537,10 @@ Nothing refuses, because the row it would have collided with was not in the requ
 
 From there every removal path deletes a file another integration depends on.
 `uninstall opencode` unlinks `opencode-checker`'s destination,
-migration unlinks a proven `opencode-readme`,
-and both are the shared copies a surviving Codex hook still points at.
+which is the shared checker a surviving Codex hook still points at.
+A retired `opencode-readme` is the same collision one step milder:
+migration never unlinks it, but it does name the shared README under a second name,
+so the same-file guard below has to hold for it too.
 
 So the comparison widens on both axes:
 
@@ -650,7 +668,7 @@ so its bytes differ from the shared rendering by construction.
 | the same, recorded as `codex-setup-skill` | the same, onto `setup-skill` |
 | a real `…/opencode/skills/…/SKILL.md` whose record proves it, whose parent directory is **not** the shared file's parent | remove it, prune its now-empty directory, forget the record |
 | the same, but whose parent directory **is** the shared file's parent | project the record onto `skill` or `setup-skill`; never remove the file |
-| `…/opencode/plugins/README.md` whose record proves it, and which is **not** the `readme` destination | remove it, forget the record |
+| `…/opencode/plugins/README.md` whose record proves it, and which is **not** the `readme` destination | keep the file, clear only the redundant record |
 | the same, but which **is** the `readme` destination | keep the file, clear only the redundant record |
 | any of those paths holding content no record proves | refuse, naming the path |
 
@@ -669,6 +687,20 @@ The third row prunes the emptied directory.
 The old layout created `…/opencode/skills/semantic-linefeeds/` as a real directory holding `SKILL.md`,
 and leaving an empty directory behind in another agent's config is untidy rather than harmful,
 so the prune is the same one-level, only-when-empty prune `plan_remove_file` already performs.
+
+**The two README rows are retain-and-report, and an earlier draft of this table said the first one was a removal.**
+The correction is deliberate.
+A leftover README under opencode's plugins directory competes for nothing:
+no file under `adapters/opencode/` reads a README,
+so it does nothing at all until something calls it,
+which is exactly the case the retain-and-report precedent already covers for `checker` and `readme`.
+The skills are the opposite case and stay removals, because opencode scans its skills root and loads what it finds there.
+The leftover is also reachable only on a machine built from a checkout:
+no released version ever wrote that file,
+so no upgrade path produces one.
+The retirement machinery still names `opencode-readme`,
+because a record under that name must be able to prove the shared README on a joined root;
+what it never gains is a delete path.
 
 ### Ordering, and the states that have no rollback
 
@@ -756,9 +788,11 @@ Pinned by the suite:
   removing the last one takes the shared skills and retains the checker and README.
 - The conservative removal predicate, one case per rule:
   an unreadable `hooks.json` retains;
-  a target installed under a different `XDG_CONFIG_HOME` or `CODEX_HOME` retains,
+  a target installed under a different `XDG_CONFIG_HOME` retains,
   because its recorded path still proves readable bytes;
   a record whose file is proven gone counts as absent and is forgotten rather than retaining forever.
+  The `CODEX_HOME` half of that case is **not** pinned, because it is not implemented:
+  codex records no row for the predicate to read, per the carve-out above.
 - A collision assembled across two requests:
   install codex, join the plugins directory to the data root, install opencode.
   The second install refuses rather than adopting the shared checker under a second name,

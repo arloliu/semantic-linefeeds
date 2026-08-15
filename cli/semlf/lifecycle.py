@@ -772,6 +772,13 @@ def plan_forget_retired(name, planned):
 
 
 # Each pre-change artifact, and the live destination it must not be confused with.
+#
+# The two skills, and deliberately not the readme, while `manifest.RETIRED_FOR` names all three.
+# A retired `opencode-readme` still has to be able to PROVE the shared readme on a joined root,
+# which is what RETIRED_FOR is for, but a leftover README under opencode's plugins directory is never removed:
+# nothing under `adapters/opencode/` reads a README, so the file does nothing until something calls it,
+# which is the retain-and-report case rather than the competes-for-the-name case the skills are.
+# It is also reachable only on a machine built from a checkout, since no released version ever wrote it.
 LEGACY_ARTIFACTS = (
     ("opencode-skill", "semantic-linefeeds", "skill"),
     ("opencode-setup-skill", "setup-semlf", "setup-skill"),
@@ -785,6 +792,11 @@ def plan_legacy_cleanup(planned, refusals):
     and a copy there usually wins the name race,
     so leaving these behind means opencode keeps loading last release's skill.
     Stopping writing them is not enough.
+
+    Both callers gate this on the request naming opencode —
+    `plan_remove_targets` on the removal door, `plan_install` on the install door —
+    because every path reachable from here is opencode's own,
+    and a request that never mentions opencode has no business unlinking under that root or refusing on its behalf.
 
     The guard compares PARENT DIRECTORIES, not the files.
     The question is whether unlinking would destroy the shared file's own directory entry,
@@ -845,13 +857,30 @@ def plan_install(targets, agentsmd_path, force):
     A retired name the cleanup step owns is skipped in the row loop's own alias-forget:
     the cleanup's `_do` already forgets it, but only after its unlink succeeds,
     so forgetting it here first would let a later unlink failure leave the file behind with no record left to prove it.
+
+    Legacy cleanup is gated on this request naming opencode,
+    which is the same question `plan_remove_targets` asks before calling it on the removal door.
+    Install and removal must answer it the same way, and the answer follows from what the step touches:
+    every path it can unlink lives under opencode's own skills root and belongs to no other target.
+    Ungated, `install agentsmd PATH` unlinks those copies while publishing nothing to replace them —
+    the design's ordering invariant with nothing left on the other side of it —
+    and a hand-placed file under that root refuses the whole request, `install codex` included.
+
+    The shared skills are scoped differently, on both doors:
+    any agent target rather than one, which is where `selects` and `plan_shared_removal` ask their own version of this.
+    The two scopes are not interchangeable,
+    and `plan_shared_removal`'s wider guard is not the mirror of this one.
+
+    When the gate skips, `legacy_owned` is empty and the alias-forget below behaves exactly as on a machine
+    that never carried a pre-change copy.
     """
     planned, refusals = [], []
     # Checked before any per-row planning: a collision is a property of the request,
     # not of one artifact, and --force cannot make it safe.
     refusals.extend(colliding_destinations(targets))
     legacy_planned, legacy_refusals = [], []
-    plan_legacy_cleanup(legacy_planned, legacy_refusals)
+    if "opencode" in targets:
+        plan_legacy_cleanup(legacy_planned, legacy_refusals)
     legacy_owned = {item.name for item in legacy_planned}
     snapshot = manifest.load()
     destinations = payload_destinations()
@@ -1034,6 +1063,17 @@ def target_present(target, snapshot):
     A record whose file is proven gone counts absent.
     Treating every valid record as permanent presence would retain the shared skills forever on a machine the user cleaned up by hand,
     since plan_remove_file leaves a vanished destination's record in place.
+
+    KNOWN CARVE-OUT, codex only.
+    For codex the answer rests on the current environment's hook entry alone.
+    `codex-hook-template` is the one codex-owned row and it is not recorded,
+    so no codex row ever reaches the loop below and no recorded path is ever probed for this target.
+    The "a machine installed under one root may be operated under another" rule above therefore holds for
+    XDG_CONFIG_HOME, which opencode's recorded rows carry, and not for CODEX_HOME, which nothing records.
+    A Codex installed under one CODEX_HOME and operated without it reads as absent here.
+    On such a machine `semlf uninstall opencode` removes the shared skills while that Codex is still using them,
+    and `semlf install codex` publishes them again.
+    That is a gap in the evidence this predicate can reach, not a case it has decided is safe.
     """
     if target == "codex":
         home = manifest.codex_home()
@@ -1655,6 +1695,11 @@ def uninstall_command(argv):
     planned, refusals = [], []
     plan_remove_targets(targets, flags["force"], planned, refusals)
     if agentsmd_path is not None:
+        # After the shared removal that plan_remove_targets ends with, deliberately.
+        # "Shared removals go last" is a rule about the artifacts an integration needs to keep working,
+        # and the snippet is not one of them: it is prose in the user's own file that names no skill.
+        # The order that matters is the one that can strand a machine, and this leg cannot.
+        # A shared removal that fails stops apply_plan with the snippet still in place, which re-runs cleanly.
         plan_remove_agentsmd(agentsmd_path, planned, refusals)
     if flags["dry_run"]:
         # Dry-run dominates everything: it reports the would-be refusals instead of taking them, and exits 0 (the design's fixed precedence covers the whole command surface).
