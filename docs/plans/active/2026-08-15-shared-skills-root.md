@@ -168,6 +168,33 @@ So the rule throughout is:
   A path that has never been created has no inode to compare,
   and there is nothing to delete there either, so the weaker test is sound in that one place.
 
+Two properties of `samefile` are worth naming rather than discovering later.
+It goes through `os.stat`, so it **follows symlinks** —
+the opposite of `read_regular_bytes`, which carries `O_NOFOLLOW` on purpose.
+Following is right here, because the question is "are these one file" rather than "may I read this path safely",
+but the difference is deliberate on both sides and neither primitive should drift toward the other.
+And it raises when either path is missing.
+So every caller states what absence means for its own question, instead of letting the exception escape.
+
+### Provenance identity keeps its own test, and that is stated rather than unified
+
+`manifest.classify_entry` already answers a version of the same-file question,
+comparing a queried path against a recorded one with `realpath` (`manifest.py:210`),
+and `doctor` uses the same comparison to explain *why* an entry reads as unrecorded (`doctor.py:204`).
+This design does not change them.
+
+So the repository ends with two tests for one-looking question, and that is intentional.
+They answer different questions:
+`classify_entry` asks whether a record describes the path in front of it, and fails closed to `unrecorded`;
+the new guards ask whether a removal would destroy the shared copy, and fail closed to retaining it.
+
+They can disagree only where a bind mount joins two spellings of one file.
+There, `classify_entry` reads `unrecorded` and install refuses without `--force`,
+while a guard reads "same file" and declines to delete.
+Both refuse to destroy anything, which is the direction that matters,
+so unifying them would widen this change into ADR-0014's core for no safety gain.
+A reader who notices the asymmetry should find this paragraph rather than a silence.
+
 ### Removal of a file refuses anything that is not a regular file
 
 `plan_remove_file` refuses a directory and refuses a non-regular file (`lifecycle.py:988-1000`).
