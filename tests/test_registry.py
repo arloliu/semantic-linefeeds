@@ -9,7 +9,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "cli"))
 sys.path.insert(0, str(REPO / "scripts"))
 
-from semlf import manifest, registry
+from semlf import lifecycle, manifest, registry
 
 EXPECTED_IDS = [
     "checker",
@@ -40,8 +40,8 @@ def test_member_paths_follow_the_id():
 def test_owners_match_the_design_table():
     owners = {r.id: r.owner for r in registry.ROWS}
     assert owners == {
-        "checker": "codex",
-        "readme": "codex",
+        "checker": "shared",
+        "readme": "shared",
         "codex-hook-template": "codex",
         "codex-skill": "codex",
         "opencode-plugin": "opencode",
@@ -53,6 +53,25 @@ def test_owners_match_the_design_table():
         "opencode-setup-command": "opencode",
         "agentsmd-snippet": "agentsmd",
     }
+
+
+def test_selects_admits_a_shared_row_for_any_agent_target():
+    shared = registry.BY_ID["checker"]
+    assert lifecycle.selects(shared, ["codex"]) is True
+    assert lifecycle.selects(shared, ["opencode"]) is True
+    assert lifecycle.selects(shared, ["codex", "opencode"]) is True
+
+
+def test_selects_refuses_a_shared_row_when_no_agent_target_is_named():
+    shared = registry.BY_ID["checker"]
+    assert lifecycle.selects(shared, []) is False
+    assert lifecycle.selects(shared, ["agentsmd"]) is False
+
+
+def test_selects_leaves_owned_rows_alone():
+    owned = registry.BY_ID["opencode-plugin"]
+    assert lifecycle.selects(owned, ["opencode"]) is True
+    assert lifecycle.selects(owned, ["codex"]) is False
 
 
 def test_the_setup_skill_ships_once_per_target_from_one_source():

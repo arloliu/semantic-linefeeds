@@ -231,7 +231,7 @@ def _payload_identity_check():
     for row in registry.ROWS:
         if not row.identity:
             continue
-        expected = row.owner in consumers
+        expected = lifecycle.expected_by(row, consumers)
         state, line = lifecycle.payload_identity(row.id)
         if state == "missing" and not expected:
             continue

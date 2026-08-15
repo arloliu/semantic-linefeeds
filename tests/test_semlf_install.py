@@ -65,6 +65,28 @@ def test_named_target_is_consent_and_applies(tmp_path):
     assert str(data_root(tmp_path) / "README.md") in body
 
 
+def test_installing_opencode_alone_publishes_the_shared_payloads(tmp_path):
+    """The shared skill cites the neutral root, so any target must publish it.
+
+    This inverts the old assertion that an opencode-only install creates no data root:
+    under per-target skills that root was Codex's alone,
+    and citing it from opencode's copy would have referenced a file the install never wrote.
+    One shared skill body can only cite one checker, so the payloads it cites belong to every target.
+    """
+    r = run_semlf(["install", "opencode"], isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    assert (data_root(tmp_path) / "check_linefeeds.py").is_file()
+    assert (data_root(tmp_path) / "README.md").is_file()
+
+
+def test_agentsmd_alone_publishes_no_shared_payload(tmp_path):
+    target = tmp_path / "AGENTS.md"
+    target.write_text("# Agents\n", encoding="utf-8")
+    r = run_semlf(["install", "agentsmd", str(target)], isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    assert not data_root(tmp_path).exists()
+
+
 def test_symlinked_skill_roots_refuse_the_whole_request(tmp_path):
     """Per-target roots stop being separate when a symlink joins them.
 
@@ -113,8 +135,7 @@ def test_opencode_gets_a_judgment_skill_resolving_its_own_files(tmp_path):
     assert str(plugins / "README.md") in body
     assert (plugins / "README.md").exists()
 
-    # Nothing may point at the neutral root, which is codex-owned and never created here.
-    assert not data_root(tmp_path).exists()
+    # The skill still resolves its own copy, not the shared root a checker/readme row now publishes too.
     assert str(data_root(tmp_path)) not in body
     # Codex's copy is a different file with a different owner, and this install writes none of it.
     assert not (
@@ -157,14 +178,12 @@ def test_installing_codex_writes_only_its_own_setup_skill(tmp_path):
     assert not opencode_command.exists()
 
 
-def test_installing_opencode_leaves_no_reference_to_a_codex_owned_file(tmp_path):
-    """The defect that sank the shared-root design, pinned.
+def test_the_setup_skill_cites_no_payload(tmp_path):
+    """The setup skill references no published file, so it needs no payload to exist.
 
-    The judgment skill is rendered with absolute paths into the neutral data root,
-    and the rows that publish that root are owned by codex.
-    A setup skill installed for opencode must therefore cite no payload at all:
-    if it ever gains one, this fails here rather than in a user's install,
-    where the symptom would be a skill pointing at files that install never wrote.
+    The judgment skill is the opposite case and cites the shared root deliberately;
+    this one must stay self-contained,
+    because it is what an agent runs when nothing is installed yet.
     """
     codex_skill, opencode_skill, opencode_command = setup_skill_paths(tmp_path)
     r = run_semlf(["install", "opencode"], isolated_env(tmp_path))
@@ -173,10 +192,7 @@ def test_installing_opencode_leaves_no_reference_to_a_codex_owned_file(tmp_path)
     assert opencode_command.exists()
     assert not codex_skill.exists()
 
-    # The neutral root is codex-owned, so an opencode-only install never creates it.
-    assert not data_root(tmp_path).exists()
     body = opencode_skill.read_text(encoding="utf-8")
-    assert str(data_root(tmp_path)) not in body
     assert "check_linefeeds.py" not in body
 
 
@@ -419,7 +435,12 @@ def test_status_names_no_consumer_leftovers_in_one_line(tmp_path):
 
 def test_status_points_opencode_leftovers_at_their_real_path(tmp_path):
     """The leftover pointer derives from each identity row's own destination:
-    an opencode-checker leftover lives in the opencode plugins directory, never under the neutral data root."""
+    an opencode-checker leftover lives in the opencode plugins directory, not a hand-maintained path.
+
+    checker and readme are shared rows now,
+    so losing opencode's own consumer signal leaves them without a consumer too,
+    and their own destination — the neutral data root — legitimately joins the leftover list alongside it.
+    """
     env = isolated_env(tmp_path)
     run_semlf(["install", "opencode"], env)
     plugins = tmp_path / "xdg" / "opencode" / "plugins"
@@ -429,7 +450,6 @@ def test_status_points_opencode_leftovers_at_their_real_path(tmp_path):
     out = r.stdout
     assert "no remaining" in out.lower()
     assert str(plugins / "check_linefeeds.py") in out
-    assert str(data_root(tmp_path)) not in out
 
 
 def test_status_excludes_agentsmd_without_a_path(tmp_path):

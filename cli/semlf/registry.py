@@ -52,12 +52,16 @@ def _data_path(name):
 # The row lambdas reference render functions defined further down;
 # module-level names resolve at call time, so the forward references are safe,
 # and the table stays one readable block.
+#
+# An owner is a target name, or "shared" — published whenever any agent target is selected.
+# "shared" exists because one skill body can cite exactly one checker and one README,
+# so the payloads it cites cannot belong to a single target (ADR-0019).
 ROWS = (
     PayloadRow(
         "checker",
         "scripts/check_linefeeds.py",
         "semlf/payloads/checker",
-        "codex",
+        "shared",
         0,
         True,
         True,
@@ -68,7 +72,7 @@ ROWS = (
         "readme",
         "README.md",
         "semlf/payloads/readme",
-        "codex",
+        "shared",
         1,
         True,
         True,

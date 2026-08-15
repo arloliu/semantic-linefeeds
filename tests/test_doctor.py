@@ -473,7 +473,12 @@ def test_doctor_passes_on_a_machine_with_no_integrations(tmp_path):
 def test_doctor_leftover_pointer_names_each_real_path(tmp_path):
     """The leftover pointer derives from each identity row's own destination:
     an opencode-checker leftover is named by its path in the opencode plugins directory,
-    never by the neutral data root."""
+    not by a hand-maintained path.
+
+    checker and readme are shared rows now,
+    so losing opencode's own consumer signal leaves them without a consumer too,
+    and their own destination — the neutral data root — legitimately joins the leftover list alongside it.
+    """
     pyz, env = installed_pyz(tmp_path)
     _install_via_semlf(tmp_path, env, "opencode")
     plugins = Path(env["XDG_CONFIG_HOME"]) / "opencode" / "plugins"
@@ -482,4 +487,3 @@ def test_doctor_leftover_pointer_names_each_real_path(tmp_path):
     assert r.returncode == 0, r.stdout
     assert "warn" in r.stdout.lower()
     assert str(plugins / "check_linefeeds.py") in r.stdout
-    assert str(Path(env["XDG_DATA_HOME"]) / "semlf") not in r.stdout

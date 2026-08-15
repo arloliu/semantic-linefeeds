@@ -577,6 +577,33 @@ def _parse_targets(argv, verb, allowed_flags):
     return targets, agentsmd_path, flags
 
 
+AGENT_TARGETS = ("codex", "opencode")
+
+
+def selects(row, targets):
+    """Whether this request publishes this row.
+
+    One test, used by planning, collision detection, status and doctor alike,
+    so "selected" cannot come to mean different things to different verbs.
+    A shared row needs an agent target and not merely any target:
+    `agentsmd` is a paragraph of prose with no checker and no skill behind it.
+    """
+    if row.owner == "shared":
+        return any(t in targets for t in AGENT_TARGETS)
+    return row.owner in targets
+
+
+def expected_by(row, consumers):
+    """Whether an installed integration makes this row's payload expected.
+
+    A shared payload is expected as soon as anything is installed,
+    since its consumer is whichever integration is present rather than one named target.
+    """
+    if row.owner == "shared":
+        return bool(consumers)
+    return row.owner in consumers
+
+
 def colliding_destinations(targets):
     """Refusals for rows this request would install over each other, or [].
 
@@ -623,7 +650,7 @@ def plan_install(targets, agentsmd_path, force):
     snapshot = manifest.load()
     destinations = payload_destinations()
     for row in registry.ROWS:
-        if row.recorded and row.owner in targets:
+        if row.recorded and selects(row, targets):
             plan_file(row.id, force, snapshot, destinations, planned, refusals)
         elif row.id == "codex-hook-template" and "codex" in targets:
             plan_codex_hook(planned, refusals)
@@ -858,7 +885,7 @@ def status_command(argv, shim_expected=None):
         state, line = payload_identity(row.id)
         if (
             state == "missing"
-            and row.owner not in consumers
+            and not expected_by(row, consumers)
             and snapshot.get(row.id) is None
         ):
             # Only a payload with neither a consumer nor a valid provenance record is irrelevant here:
@@ -866,7 +893,7 @@ def status_command(argv, shim_expected=None):
             # so a recorded payload whose file vanished is named as missing.
             continue
         print(f"payload {line}")
-        if state != "missing" and row.owner not in consumers:
+        if state != "missing" and not expected_by(row, consumers):
             # The leftover pointer derives from the row's own destination —
             # an opencode-checker leftover lives in the opencode plugins directory, never under the data root.
             leftover_paths.append(destinations[row.id])
