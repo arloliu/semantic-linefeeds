@@ -1,7 +1,21 @@
 # Setup Skill: an install guardrail for agents, not a second installer
 
 **Date:** 2026-08-15
-**Status:** approved — implemented, unreleased
+**Status:** approved — implemented, unreleased; sections 3 and 4 superseded
+
+> **Superseded in part.**
+> Sections 3 and 4 distribute both skills as one row per target,
+> and argue against a single shared destination.
+> [ADR-0019](../../decisions/0019-one-skill-in-the-shared-root.md) decided the opposite,
+> and [the shared skills root](../done/2026-08-15-shared-skills-root.md) is what shipped:
+> one `shared`-owned row publishes each skill once into `~/.agents/skills`,
+> and both agents read it there.
+>
+> The findings below are a snapshot taken on 2026-08-15 and are left as written.
+> Two of them no longer describe the code.
+> "opencode users get no skill today" was the gap the shared root closed.
+> "`status` reports a hard-coded list" still holds,
+> but that list now carries both skills and lives at `cli/semlf/lifecycle.py:1285`.
 
 ## Purpose
 
