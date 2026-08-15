@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -114,6 +115,78 @@ def test_symlinked_skill_roots_refuse_the_whole_request(tmp_path):
     assert not data_root(tmp_path).exists()
     assert not (tmp_path / "codex" / "hooks.json").exists()
     assert not any(agents.iterdir())
+
+
+def test_a_collision_assembled_across_two_requests_is_refused(tmp_path):
+    """Two requests, one file, two owners — the state the old check could not see.
+
+    Install codex, point opencode's plugins directory at the payload root,
+    then install opencode.
+    Naming opencode selects both the shared `checker` row and opencode's own `opencode-checker` row in that same request,
+    and the symlink makes their destinations name one file,
+    so the selected-against-selected comparison catches it.
+    The old owner-keyed check missed this:
+    `checker`'s owner is "shared", not "opencode",
+    so it was never compared against `opencode-checker` at all.
+    """
+    env = isolated_env(tmp_path)
+    r = run_semlf(["install", "codex"], env)
+    assert r.returncode == 0, r.stderr
+
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    plugins.parent.mkdir(parents=True, exist_ok=True)
+    plugins.symlink_to(data_root(tmp_path), target_is_directory=True)
+
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 1, r.stdout
+    assert "resolve to" in r.stderr
+    assert "opencode-checker" in r.stderr
+
+
+def test_a_collision_between_two_destinations_that_do_not_exist_yet_is_refused(
+    tmp_path,
+):
+    """Nothing installed, both roots joined, both leaves absent.
+
+    realpath reports two different paths here,
+    so a fallback keyed on it finds no collision,
+    both rows are planned,
+    the first write creates the file and the second fails as "appeared after classification" — a half-applied request,
+    which preflight exists to make impossible.
+    """
+    env = isolated_env(tmp_path)
+    data = data_root(tmp_path)
+    data.mkdir(parents=True, exist_ok=True)
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    plugins.parent.mkdir(parents=True, exist_ok=True)
+    plugins.symlink_to(data, target_is_directory=True)
+
+    r = run_semlf(["install", "codex", "opencode"], env)
+    assert r.returncode == 1, r.stdout
+    assert "checker" in r.stderr
+    assert not (data / "check_linefeeds.py").exists(), "half-applied"
+
+
+def test_an_installed_but_unselected_row_is_checked_for_collision(tmp_path):
+    """The population `colliding_destinations` gained: rows this request never selects.
+
+    Install opencode first, so its own checker copy is recorded and written under the opencode plugins directory.
+    Delete that directory and symlink it onto the payload root, then install codex.
+    codex's request never selects `opencode-checker` — its owner is "opencode", not "codex" or "shared" —
+    so only the pass over already-installed rows can see that the symlink now makes its destination name the same file as the shared `checker` row codex's request does select.
+    """
+    env = isolated_env(tmp_path)
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    shutil.rmtree(plugins)
+    plugins.symlink_to(data_root(tmp_path), target_is_directory=True)
+
+    r = run_semlf(["install", "codex"], env)
+    assert r.returncode == 1, r.stdout
+    assert "resolve to" in r.stderr
+    assert "opencode-checker" in r.stderr
 
 
 def test_opencode_gets_a_judgment_skill_resolving_its_own_files(tmp_path):

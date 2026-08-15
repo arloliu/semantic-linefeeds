@@ -580,3 +580,79 @@ def test_status_reports_a_transform_error_without_a_traceback(
     out = capsys.readouterr().out
     assert rc == 0
     assert "cannot render" in out
+
+
+@pytest.mark.parametrize(
+    "build, expected",
+    [
+        # joined parents, neither leaf created yet — the half-apply case
+        (lambda d: (d / "data" / "c.py", d / "link" / "c.py"), True),
+        # distinct parents, neither leaf created
+        (lambda d: (d / "data" / "c.py", d / "other" / "c.py"), False),
+        # one directory, two different names
+        (lambda d: (d / "data" / "c.py", d / "data" / "R.md"), False),
+        # joined parents, one leaf already written
+        (lambda d: (d / "data" / "have.py", d / "link" / "have.py"), True),
+        # distinct parents, one leaf already written
+        (lambda d: (d / "data" / "have.py", d / "other" / "have.py"), False),
+        # several missing levels below the joined parents
+        (
+            lambda d: (
+                d / "data" / "a" / "b" / "c.py",
+                d / "link" / "a" / "b" / "c.py",
+            ),
+            True,
+        ),
+        # the same destination spelled through an existing directory and ".."
+        (lambda d: (d / "data" / "c.py", d / "link" / "sub" / ".." / "c.py"), True),
+        # ".." through a directory that does not exist is not resolvable at all
+        (lambda d: (d / "data" / "c.py", d / "link" / "gone" / ".." / "c.py"), False),
+    ],
+)
+def test_one_file_over_every_path_shape(tmp_path, build, expected):
+    """The comparison that decides whether preflight refuses.
+
+    A false "different" half-applies the request:
+    the first write creates the file and the second fails as "appeared after classification".
+    A false "same" refuses an install that was fine.
+    Both directions are wrong in ways a user feels,
+    so the shapes are enumerated rather than argued about.
+    """
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "sub").mkdir()
+    (tmp_path / "other").mkdir()
+    (tmp_path / "data" / "have.py").write_text("x", encoding="utf-8")
+    (tmp_path / "other" / "have.py").write_text("x", encoding="utf-8")
+    (tmp_path / "link").symlink_to(tmp_path / "data", target_is_directory=True)
+    a, b = build(tmp_path)
+    assert lifecycle._one_file(a, b) is expected
+
+
+def test_one_file_is_false_for_a_dangling_symlink_against_a_missing_path(tmp_path):
+    (tmp_path / "data").mkdir()
+    (tmp_path / "other").mkdir()
+    (tmp_path / "data" / "c.py").symlink_to(tmp_path / "nope")
+    assert (
+        lifecycle._one_file(tmp_path / "data" / "c.py", tmp_path / "other" / "c.py")
+        is False
+    )
+
+
+def test_a_dangling_symlink_destination_does_not_equal_itself(tmp_path):
+    """A known limit, pinned so it is a decision rather than a surprise.
+
+    lexists says the path is there,
+    samefile follows the link,
+    and stat raises on the missing target,
+    so the comparison cannot see a collision on this destination.
+    Nothing is lost:
+    the object-state axis refuses a symlink destination before any write,
+    and --force cannot widen that.
+    """
+    dead = tmp_path / "dead"
+    dead.symlink_to(tmp_path / "nowhere")
+    assert lifecycle._one_file(dead, dead) is False
+
+    verdict = classify.classify_artifact(None, dead, b"payload", "1.0.0", force=True)
+    assert verdict.action == "refuse"
+    assert "is a symlink" in verdict.detail

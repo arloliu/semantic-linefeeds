@@ -605,35 +605,94 @@ def expected_by(row, consumers):
 
 
 def colliding_destinations(targets):
-    """Refusals for rows this request would install over each other, or [].
+    """Refusals for rows that would resolve to one file, or [].
 
-    ADR-0018 gives each target its own root so that two agents never share one file.
-    A symlink defeats that from outside:
-    point opencode's skills root at `~/.agents/skills`,
-    and two rows with different owners, different renderings, and separate provenance resolve to a single inode.
+    Two rows on one inode cannot both be installed or removed independently:
+    the second write finds a file that "appeared after classification" and errors,
+    and a later uninstall of either target deletes the file the other still records.
+    Refusing the whole request is the one outcome that leaves nothing half-written.
 
-    Left undetected the request half-applies.
-    The second write finds a file that "appeared after classification" and errors, stranding the artifacts behind it,
-    and a later `uninstall codex` deletes the file opencode still needs.
-    Preflight is where that is caught, because refusing the whole request is the one outcome that leaves nothing half-written.
+    The comparison covers two populations,
+    because a collision does not have to be assembled inside a single request.
+    A user can install opencode, join opencode's plugins directory to the payload root, and install codex:
+    the second request never selects opencode's own rows,
+    so comparing only what it selects would find nothing and let codex adopt the checker opencode already installed.
+    So every selected destination is compared against every other selected one,
+    and against every destination a valid record already proves.
+
+    Identity is `manifest.same_file` when both paths exist,
+    since a bind mount joins two paths `realpath` still reports as different.
+    A destination that has not been created yet has no inode to compare,
+    so each side reduces to its nearest existing ancestor plus the unresolved suffix below it.
     """
-    seen, refusals = {}, []
+    snapshot = manifest.load()
+    selected = []
     for row in registry.ROWS:
-        if not (row.recorded and row.owner in targets):
+        if not (row.recorded and selects(row, targets)):
             continue
         dest = row.dest()
-        if dest is None:
+        if dest is not None:
+            selected.append((row.id, dest))
+
+    installed = []
+    for row in registry.ROWS:
+        if not row.recorded or selects(row, targets):
             continue
-        key = os.path.realpath(str(dest))
-        if key in seen:
-            refusals.append(
-                f"refusing: {row.id} and {seen[key]} both resolve to {key}; "
-                "a symlink has joined two roots this kit keeps separate, "
-                "so neither could be installed or removed independently"
-            )
-        else:
-            seen[key] = row.id
+        entry = snapshot.get(row.id)
+        dest = row.dest()
+        if dest is None or entry is None:
+            continue
+        if classify.object_state(dest) == "regular":
+            installed.append((row.id, dest))
+
+    refusals = []
+    for i, (name, dest) in enumerate(selected):
+        for other_name, other in selected[i + 1 :] + installed:
+            if _one_file(dest, other):
+                refusals.append(
+                    f"refusing: {name} and {other_name} both resolve to "
+                    f"{os.path.realpath(str(dest))}; a symlink or bind mount has "
+                    "joined two roots this kit keeps separate, so neither could be "
+                    "installed or removed independently"
+                )
     return refusals
+
+
+def _anchor(path):
+    """(nearest existing ancestor, the unresolved suffix below it)."""
+    probe = Path(path)
+    suffix = []
+    while not os.path.lexists(str(probe)):
+        if probe.parent == probe:
+            return None, tuple(suffix)
+        suffix.append(probe.name)
+        probe = probe.parent
+    return probe, tuple(reversed(suffix))
+
+
+def _one_file(a, b):
+    """Whether two destinations name one file, even before either exists.
+
+    Both existing is the easy case and `same_file` answers it.
+
+    Neither existing is the case realpath gets wrong.
+    On a fresh machine whose opencode plugins directory is bind-mounted onto the payload root, no checker destination exists yet,
+    realpath reports two different paths,
+    nothing refuses,
+    and the request half-applies:
+    the first write creates the file and the second fails as "appeared after classification".
+
+    So each side reduces to its nearest existing ancestor plus the unresolved suffix below it.
+    Equal suffixes under one directory mean one destination,
+    whether that directory is shared by a bind mount, a symlink, or by being literally the same path.
+    """
+    if os.path.lexists(str(a)) and os.path.lexists(str(b)):
+        return manifest.same_file(a, b)
+    anchor_a, suffix_a = _anchor(a)
+    anchor_b, suffix_b = _anchor(b)
+    if anchor_a is None or anchor_b is None or suffix_a != suffix_b:
+        return False
+    return manifest.same_file(anchor_a, anchor_b)
 
 
 def plan_install(targets, agentsmd_path, force):
