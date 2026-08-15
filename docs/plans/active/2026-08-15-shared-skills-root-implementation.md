@@ -488,6 +488,58 @@ which reaches the same code path:
 both leaves are absent, so the comparison climbs to the parents.
 The bind-mount case is covered by the same branch and is verified by hand rather than in CI.
 
+Add the rule's own table, in `tests/test_lifecycle.py`:
+
+```python
+@pytest.mark.parametrize(
+    "build, expected",
+    [
+        # joined parents, neither leaf created yet — the half-apply case
+        (lambda d: (d / "data" / "c.py", d / "link" / "c.py"), True),
+        # distinct parents, neither leaf created
+        (lambda d: (d / "data" / "c.py", d / "other" / "c.py"), False),
+        # one directory, two different names
+        (lambda d: (d / "data" / "c.py", d / "data" / "R.md"), False),
+        # joined parents, one leaf already written
+        (lambda d: (d / "data" / "have.py", d / "link" / "have.py"), True),
+        # distinct parents, one leaf already written
+        (lambda d: (d / "data" / "have.py", d / "other" / "have.py"), False),
+        # several missing levels below the joined parents
+        (lambda d: (d / "data" / "a" / "b" / "c.py", d / "link" / "a" / "b" / "c.py"), True),
+        # the same destination spelled through an existing directory and ".."
+        (lambda d: (d / "data" / "c.py", d / "link" / "sub" / ".." / "c.py"), True),
+        # ".." through a directory that does not exist is not resolvable at all
+        (lambda d: (d / "data" / "c.py", d / "link" / "gone" / ".." / "c.py"), False),
+    ],
+)
+def test_one_file_over_every_path_shape(tmp_path, build, expected):
+    """The comparison that decides whether preflight refuses.
+
+    A false "different" half-applies the request: the first write creates the file
+    and the second fails as "appeared after classification". A false "same" refuses
+    an install that was fine. Both directions are wrong in ways a user feels, so the
+    shapes are enumerated rather than argued about.
+    """
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "sub").mkdir()
+    (tmp_path / "other").mkdir()
+    (tmp_path / "data" / "have.py").write_text("x", encoding="utf-8")
+    (tmp_path / "other" / "have.py").write_text("x", encoding="utf-8")
+    (tmp_path / "link").symlink_to(tmp_path / "data", target_is_directory=True)
+    a, b = build(tmp_path)
+    assert lifecycle._one_file(a, b) is expected
+
+
+def test_one_file_is_false_for_a_dangling_symlink_against_a_missing_path(tmp_path):
+    (tmp_path / "data").mkdir()
+    (tmp_path / "other").mkdir()
+    (tmp_path / "data" / "c.py").symlink_to(tmp_path / "nope")
+    assert lifecycle._one_file(tmp_path / "data" / "c.py", tmp_path / "other" / "c.py") is False
+```
+
+Every row of that table was run against a prototype of `_anchor` and `_one_file` before this plan was written.
+The expectations above are the observed results rather than predictions.
+
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `python3 -m pytest tests/test_semlf_install.py -k collision_assembled -q`
