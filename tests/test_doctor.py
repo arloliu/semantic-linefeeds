@@ -99,6 +99,8 @@ def test_doctor_survives_hostile_state(tmp_path):
     (artifacts / "cli.json").write_text(
         json.dumps(["not", "a", "dict"]), encoding="utf-8"
     )
+    # A live name and a retired one: doctor reads the first and must survive either.
+    (artifacts / "skill.json").write_text("7", encoding="utf-8")
     (artifacts / "codex-skill.json").write_text("7", encoding="utf-8")
     r = run_doctor(pyz, env, tmp_path)
     assert r.returncode == 0
@@ -473,7 +475,12 @@ def test_doctor_passes_on_a_machine_with_no_integrations(tmp_path):
 def test_doctor_leftover_pointer_names_each_real_path(tmp_path):
     """The leftover pointer derives from each identity row's own destination:
     an opencode-checker leftover is named by its path in the opencode plugins directory,
-    never by the neutral data root."""
+    not by a hand-maintained path.
+
+    checker and readme are shared rows now,
+    so losing opencode's own consumer signal leaves them without a consumer too,
+    and their own destination — the neutral data root — legitimately joins the leftover list alongside it.
+    """
     pyz, env = installed_pyz(tmp_path)
     _install_via_semlf(tmp_path, env, "opencode")
     plugins = Path(env["XDG_CONFIG_HOME"]) / "opencode" / "plugins"
@@ -482,4 +489,64 @@ def test_doctor_leftover_pointer_names_each_real_path(tmp_path):
     assert r.returncode == 0, r.stdout
     assert "warn" in r.stdout.lower()
     assert str(plugins / "check_linefeeds.py") in r.stdout
-    assert str(Path(env["XDG_DATA_HOME"]) / "semlf") not in r.stdout
+
+
+def test_doctor_is_quiet_when_the_opencode_path_is_the_shared_file(tmp_path):
+    """A joined root is the supported topology, not a fault.
+
+    Enumerating opencode's skills root and failing on whatever is there would fail every joined-root machine,
+    since that root holds the shared skills by construction plus every other tool's.
+    """
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    skills = tmp_path / "xdg" / "opencode" / "skills"
+    skills.parent.mkdir(parents=True, exist_ok=True)
+    skills.symlink_to(
+        tmp_path / "home" / ".agents" / "skills", target_is_directory=True
+    )
+    # A dangling symlink would make lexists(candidate) false,
+    # and the check would `continue` at the first gate, never reaching same_file.
+    # This confirms the link is live before doctor runs,
+    # so a quiet result below actually proves the joined-root branch, not an early skip.
+    assert (skills / "semantic-linefeeds" / "SKILL.md").is_file()
+
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert "competes" not in r.stdout
+
+
+def test_doctor_fails_on_a_competing_file_with_different_bytes(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    d = tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "SKILL.md").write_text(
+        "---\nname: semantic-linefeeds\n---\n\nold\n", encoding="utf-8"
+    )
+
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 1
+    assert "competes" in r.stdout
+    assert str(d / "SKILL.md") in r.stdout
+
+
+def test_doctor_warns_on_a_competing_file_with_identical_bytes(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    d = tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "SKILL.md").write_bytes(shared.read_bytes())
+
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "warn" in r.stdout
+    assert "competes" in r.stdout
+
+
+def test_doctor_is_quiet_when_opencodes_skills_root_is_absent(tmp_path):
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert "competes" not in r.stdout

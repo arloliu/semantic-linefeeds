@@ -59,7 +59,7 @@ def rendered_bytes(name):
     Callers refuse a None destination before rendering,
     and every row whose rendering needs the data root has a destination
     that resolves exactly when the data root does,
-    so the ValueError the codex-skill renderer raises on a None data root marks a caller bug, not a user-facing path.
+    so the ValueError the skill renderer raises on a None data root marks a caller bug, not a user-facing path.
     """
     return registry.BY_ID[name].render(manifest.semlf_data_dir())
 
@@ -577,36 +577,268 @@ def _parse_targets(argv, verb, allowed_flags):
     return targets, agentsmd_path, flags
 
 
-def colliding_destinations(targets):
-    """Refusals for rows this request would install over each other, or [].
+AGENT_TARGETS = ("codex", "opencode")
 
-    ADR-0018 gives each target its own root so that two agents never share one file.
-    A symlink defeats that from outside:
-    point opencode's skills root at `~/.agents/skills`,
-    and two rows with different owners, different renderings, and separate provenance resolve to a single inode.
 
-    Left undetected the request half-applies.
-    The second write finds a file that "appeared after classification" and errors, stranding the artifacts behind it,
-    and a later `uninstall codex` deletes the file opencode still needs.
-    Preflight is where that is caught, because refusing the whole request is the one outcome that leaves nothing half-written.
+def selects(row, targets):
+    """Whether this request publishes this row.
+
+    One test, used by planning, collision detection, status and doctor alike,
+    so "selected" cannot come to mean different things to different verbs.
+    A shared row needs an agent target and not merely any target:
+    `agentsmd` is a paragraph of prose with no checker and no skill behind it.
     """
-    seen, refusals = {}, []
+    if row.owner == "shared":
+        return any(t in targets for t in AGENT_TARGETS)
+    return row.owner in targets
+
+
+def expected_by(row, consumers):
+    """Whether an installed integration makes this row's payload expected.
+
+    A shared payload is expected as soon as anything is installed,
+    since its consumer is whichever integration is present rather than one named target.
+    """
+    if row.owner == "shared":
+        return bool(consumers)
+    return row.owner in consumers
+
+
+def colliding_destinations(targets):
+    """Refusals for rows that would resolve to one file, or [].
+
+    Two rows on one inode cannot both be installed or removed independently:
+    the second write finds a file that "appeared after classification" and errors,
+    and a later uninstall of either target deletes the file the other still records.
+    Refusing the whole request is the one outcome that leaves nothing half-written.
+
+    The comparison covers two populations,
+    because a collision does not have to be assembled inside a single request.
+    A user can install opencode, join opencode's plugins directory to the payload root, and install codex:
+    the second request never selects opencode's own rows,
+    so comparing only what it selects would find nothing and let codex adopt the checker opencode already installed.
+    So every selected destination is compared against every other selected one,
+    and against every destination a valid record already proves.
+
+    Identity is `manifest.same_file` when both paths exist,
+    since a bind mount joins two paths `realpath` still reports as different.
+    A destination that has not been created yet has no inode to compare,
+    so each side reduces to its nearest existing ancestor plus the unresolved suffix below it.
+    """
+    snapshot = manifest.load()
+    selected = []
     for row in registry.ROWS:
-        if not (row.recorded and row.owner in targets):
+        if not (row.recorded and selects(row, targets)):
             continue
         dest = row.dest()
+        if dest is not None:
+            selected.append((row.id, dest))
+
+    installed = []
+    for row in registry.ROWS:
+        if not row.recorded or selects(row, targets):
+            continue
+        entry = snapshot.get(row.id)
+        dest = row.dest()
+        if dest is None or entry is None:
+            continue
+        if classify.object_state(dest) == "regular":
+            installed.append((row.id, dest))
+
+    refusals = []
+    for i, (name, dest) in enumerate(selected):
+        for other_name, other in selected[i + 1 :] + installed:
+            if _one_file(dest, other):
+                refusals.append(
+                    f"refusing: {name} and {other_name} both resolve to "
+                    f"{os.path.realpath(str(dest))}; a symlink or bind mount has "
+                    "joined two roots this kit keeps separate, so neither could be "
+                    "installed or removed independently"
+                )
+    return refusals
+
+
+def _anchor(path):
+    """(nearest existing ancestor, the unresolved suffix below it)."""
+    probe = Path(path)
+    suffix = []
+    while not os.path.lexists(str(probe)):
+        if probe.parent == probe:
+            return None, tuple(suffix)
+        suffix.append(probe.name)
+        probe = probe.parent
+    return probe, tuple(reversed(suffix))
+
+
+def _one_file(a, b):
+    """Whether two destinations name one file, even before either exists.
+
+    Both existing is the easy case and `same_file` answers it.
+
+    Neither existing is the case realpath gets wrong.
+    On a fresh machine whose opencode plugins directory is bind-mounted onto the payload root, no checker destination exists yet,
+    realpath reports two different paths,
+    nothing refuses,
+    and the request half-applies:
+    the first write creates the file and the second fails as "appeared after classification".
+
+    So each side reduces to its nearest existing ancestor plus the unresolved suffix below it.
+    Equal suffixes under one directory mean one destination,
+    whether that directory is shared by a bind mount, a symlink, or by being literally the same path.
+    """
+    if os.path.lexists(str(a)) and os.path.lexists(str(b)):
+        return manifest.same_file(a, b)
+    anchor_a, suffix_a = _anchor(a)
+    anchor_b, suffix_b = _anchor(b)
+    if anchor_a is None or anchor_b is None or suffix_a != suffix_b:
+        return False
+    return manifest.same_file(anchor_a, anchor_b)
+
+
+class RetiredRecordConflict(ValueError):
+    """Two retired records prove one file with different digests."""
+
+
+def project_retired(snapshot, destinations):
+    """(snapshot with retired records presented under their new names, aliases).
+
+    Preflight is read-only so that --dry-run describes exactly what apply would do,
+    and one snapshot is taken before any row is classified.
+    A rename performed during planning would break the first property;
+    performed at apply time it would be too late to affect a classification that already happened.
+    Projecting into the snapshot satisfies both:
+    classification sees a managed artifact, the dry run says so, and only apply rewrites state.
+
+    A live row can have more than one retired alias —
+    a joined root leaves both codex-skill and opencode-skill proving one file —
+    so every alias that proves the row's own destination is collected.
+    Agreeing proofs project one and mark the rest for removal.
+    Disagreeing proofs raise,
+    because choosing between two digests for one file is exactly the guess this project does not make.
+    """
+    projected = dict(snapshot)
+    aliases = {}
+    for live, retired_names in manifest.RETIRED_FOR.items():
+        dest = destinations.get(live)
         if dest is None:
             continue
-        key = os.path.realpath(str(dest))
-        if key in seen:
-            refusals.append(
-                f"refusing: {row.id} and {seen[key]} both resolve to {key}; "
-                "a symlink has joined two roots this kit keeps separate, "
-                "so neither could be installed or removed independently"
+        proving = []
+        for retired in retired_names:
+            entry = manifest.retired_entry(retired)
+            if entry is None:
+                continue
+            if manifest.same_file(entry["path"], dest):
+                proving.append((retired, entry))
+        if not proving:
+            continue
+        digests = {entry["sha256"] for _, entry in proving}
+        if len(digests) > 1:
+            named = " and ".join(name for name, _ in proving)
+            raise RetiredRecordConflict(
+                f"refusing to migrate {live}: {named} both record "
+                f"{dest} with different digests; remove the stale one by hand"
             )
-        else:
-            seen[key] = row.id
-    return refusals
+        aliases[live] = [name for name, _ in proving]
+        if live not in projected:
+            projected[live] = proving[0][1]
+    return projected, aliases
+
+
+def plan_forget_retired(name, planned):
+    """Clear one retired record, after the row that absorbed it is published.
+
+    Ordering is the whole point:
+    a retired record cleared before the new one is written leaves a file with no proof at all,
+    and apply_plan has no rollback.
+    """
+
+    def _do(name=name):
+        try:
+            manifest.forget(name)
+        except OSError as exc:
+            return f"published, but could not clear the {name} record: {exc}"
+        return None
+
+    planned.append(
+        Planned(
+            f"{name}: clear the superseded record",
+            name,
+            None,
+            None,
+            _do,
+            done=f"cleared the superseded {name} record",
+        )
+    )
+
+
+# Each pre-change artifact, and the live destination it must not be confused with.
+#
+# The two skills, and deliberately not the readme, while `manifest.RETIRED_FOR` names all three.
+# A retired `opencode-readme` still has to be able to PROVE the shared readme on a joined root,
+# which is what RETIRED_FOR is for, but a leftover README under opencode's plugins directory is never removed:
+# nothing under `adapters/opencode/` reads a README, so the file does nothing until something calls it,
+# which is the retain-and-report case rather than the competes-for-the-name case the skills are.
+# It is also reachable only on a machine built from a checkout, since no released version ever wrote it.
+LEGACY_ARTIFACTS = (
+    ("opencode-skill", "semantic-linefeeds", "skill"),
+    ("opencode-setup-skill", "setup-semlf", "setup-skill"),
+)
+
+
+def plan_legacy_cleanup(planned, refusals):
+    """Remove pre-change copies that would compete with the shared skill.
+
+    opencode reads its own skills root as well as the shared one,
+    and a copy there usually wins the name race,
+    so leaving these behind means opencode keeps loading last release's skill.
+    Stopping writing them is not enough.
+
+    Both callers gate this on the request naming opencode —
+    `plan_remove_targets` on the removal door, `plan_install` on the install door —
+    because every path reachable from here is opencode's own,
+    and a request that never mentions opencode has no business unlinking under that root or refusing on its behalf.
+
+    The guard compares PARENT DIRECTORIES, not the files.
+    The question is whether unlinking would destroy the shared file's own directory entry,
+    and only the parents answer that:
+    joined roots share a parent,
+    while a hard link or a leaf symlink has its own,
+    and unlinking those removes just that entry.
+    Comparing the files instead would spare a hard link,
+    which then strands on the old inode the next time the shared file is published.
+    """
+    skills_dir = manifest.opencode_skills_dir()
+    destinations = payload_destinations()
+    if skills_dir is None:
+        return
+    for retired, folder, live in LEGACY_ARTIFACTS:
+        legacy = skills_dir / folder / "SKILL.md"
+        if not os.path.lexists(str(legacy)):
+            continue
+        shared = destinations.get(live)
+        if shared is not None and manifest.same_file(
+            legacy.parent, Path(shared).parent, missing=False
+        ):
+            # A joined root: this path is the shared file by another spelling.
+            # The record is carried forward by project_retired, not cleared here.
+            continue
+        entry = manifest.retired_entry(retired)
+        if entry is None or manifest.classify_entry(entry, legacy) != "managed":
+            refusals.append(
+                f"refusing to remove {legacy}: this kit cannot prove it wrote it; "
+                "move it aside and re-run"
+            )
+            continue
+
+        def _do(legacy=legacy, retired=retired):
+            os.unlink(legacy)
+            note = _forget_note(legacy, retired)
+            _prune_empty_parent(legacy)
+            return note
+
+        planned.append(
+            Planned(str(legacy), retired, legacy, None, _do, done=f"removed {legacy}")
+        )
 
 
 def plan_install(targets, agentsmd_path, force):
@@ -615,20 +847,72 @@ def plan_install(targets, agentsmd_path, force):
     The apply order comes from the rows' order field —
     the neutral checker and readme first, then each integration's own files —
     never from a hand-maintained call sequence here.
+
+    Legacy cleanup is CLASSIFIED early, before the row loop,
+    purely so the loop can tell which retired names it already owns.
+    Preflight is read-only,
+    so nothing between the two points changes what it would see.
+    Its removal step still APPLIES last, appended after every row,
+    so a competing copy is never gone before the shared file that replaces it has actually been written.
+    A retired name the cleanup step owns is skipped in the row loop's own alias-forget:
+    the cleanup's `_do` already forgets it, but only after its unlink succeeds,
+    so forgetting it here first would let a later unlink failure leave the file behind with no record left to prove it.
+
+    Legacy cleanup's OUTCOME is gated on this request naming opencode,
+    which is the same question `plan_remove_targets` asks before calling it on the removal door.
+    Install and removal must answer it the same way, and the answer follows from what the step touches:
+    every path it can unlink lives under opencode's own skills root and belongs to no other target.
+    Ungated, `install agentsmd PATH` unlinks those copies while publishing nothing to replace them —
+    the design's ordering invariant with nothing left on the other side of it —
+    and a hand-placed file under that root refuses the whole request, `install codex` included.
+
+    The shared skills are scoped differently, on both doors:
+    any agent target rather than one, which is where `selects` and `plan_shared_removal` ask their own version of this.
+    The two scopes are not interchangeable,
+    and `plan_shared_removal`'s wider guard is not the mirror of this one.
+
+    The CLASSIFICATION runs on every request, and only its planned removals and refusals are discarded.
+    Running it is safe because nothing in it mutates:
+    it reads the skills root, the destinations, the records and the filesystem,
+    and everything that writes lives in a `_do` this path never appends.
+    Running it is necessary because `legacy_owned` must name exactly the files a skipped cleanup COULD have removed.
+    A hard-linked pre-change copy is that case.
+    It shares an inode with the shared destination,
+    so `project_retired` collects `opencode-skill` as an alias on any request that publishes the skill,
+    while the parent-directory guard here still reports a removable file.
+    Forgetting the record on a request that cannot unlink it strands the file for good,
+    so the alias-forget below defers to the request that can.
+    Claiming the retired names unconditionally instead would also defer records whose files do not exist,
+    where nothing could ever have been unlinked and there is no stranding to prevent.
     """
     planned, refusals = [], []
     # Checked before any per-row planning: a collision is a property of the request,
     # not of one artifact, and --force cannot make it safe.
     refusals.extend(colliding_destinations(targets))
+    legacy_planned, legacy_refusals = [], []
+    plan_legacy_cleanup(legacy_planned, legacy_refusals)
+    legacy_owned = {item.name for item in legacy_planned}
+    if "opencode" not in targets:
+        legacy_planned, legacy_refusals = [], []
     snapshot = manifest.load()
     destinations = payload_destinations()
+    try:
+        snapshot, aliases = project_retired(snapshot, destinations)
+    except RetiredRecordConflict as exc:
+        return planned, refusals + [str(exc)]
     for row in registry.ROWS:
-        if row.recorded and row.owner in targets:
+        if row.recorded and selects(row, targets):
             plan_file(row.id, force, snapshot, destinations, planned, refusals)
+            for retired in aliases.get(row.id, ()):
+                if retired in legacy_owned:
+                    continue
+                plan_forget_retired(retired, planned)
         elif row.id == "codex-hook-template" and "codex" in targets:
             plan_codex_hook(planned, refusals)
         elif row.id == "agentsmd-snippet" and agentsmd_path is not None:
             plan_agentsmd(agentsmd_path, planned, refusals)
+    planned.extend(legacy_planned)
+    refusals.extend(legacy_refusals)
     return planned, refusals
 
 
@@ -731,9 +1015,17 @@ def install_command(argv):
 def installed_consumers():
     """Integrations whose own artifacts are present on this machine.
 
-    codex counts as installed when EITHER its hook entry or its installed skill file is present:
-    the skill references the neutral checker and README too,
-    so removing only the hook must not downgrade required payloads to leftovers.
+    Codex is inferred from its owned hook entry alone, and opencode from its plugin file:
+    each target is proved by an artifact that target alone owns (ADR-0019).
+
+    The skill used to prove codex as well,
+    because it referenced the neutral checker and README
+    and removing only the hook must not downgrade those payloads to leftovers.
+    Making them shared rows dissolves that reason.
+    The skill is a shared row too now, so its presence proves some agent rather than codex specifically,
+    and counting it would let an opencode-only machine invent a codex consumer.
+    That machine would then report the retained checker and README as expected,
+    on the very machine that has no consumer left for them.
     """
     found = set()
     home = manifest.codex_home()
@@ -741,13 +1033,85 @@ def installed_consumers():
         data = manifest.read_state_json(home / "hooks.json")
         if manifest.owned_codex_hooks(data):
             found.add("codex")
-    skill = manifest.codex_skill_dest()
-    if skill is not None and os.path.lexists(str(skill)):
-        found.add("codex")
     d = manifest.opencode_plugins_dir()
     if d is not None and os.path.lexists(str(d / "semantic-linefeeds.ts")):
         found.add("opencode")
     return found
+
+
+def _probe(path):
+    """'present', 'absent', or 'unknown' for one path.
+
+    Tri-state on purpose.
+    A boolean forces every inspection failure into one of the two answers,
+    and for a predicate that authorises a delete the wrong one loses data.
+    """
+    if path is None:
+        return "unknown"
+    try:
+        if not os.path.lexists(str(path)):
+            return "absent"
+    except (OSError, ValueError):
+        return "unknown"
+    return "present"
+
+
+def target_present(target, snapshot):
+    """Whether target still has artifacts here, answered conservatively.
+
+    installed_consumers is the reporting predicate and must not decide this.
+    It probes only destinations derived from the current environment,
+    and it fails closed to absent on every kind of trouble —
+    harmless when the result is a warning, destructive when it authorises an unlink.
+
+    Every ambiguity resolves to present,
+    and the places examined are stated rather than implied:
+    a path never looked at is not a path found empty.
+    Both the current environment's destinations and every path a valid record names are probed,
+    since a machine installed under one XDG_CONFIG_HOME may be operated under another.
+    A row with no record names no path, so there is nothing there to examine —
+    reading its absence as could-not-inspect would make every uninstalled target permanently present.
+
+    A record whose file is proven gone counts absent.
+    Treating every valid record as permanent presence would retain the shared skills forever on a machine the user cleaned up by hand,
+    since plan_remove_file leaves a vanished destination's record in place.
+
+    KNOWN CARVE-OUT, codex only.
+    For codex the answer rests on the current environment's hook entry alone.
+    `codex-hook-template` is the one codex-owned row and it is not recorded,
+    so no codex row ever reaches the loop below and no recorded path is ever probed for this target.
+    The "a machine installed under one root may be operated under another" rule above therefore holds for
+    XDG_CONFIG_HOME, which opencode's recorded rows carry, and not for CODEX_HOME, which nothing records.
+    A Codex installed under one CODEX_HOME and operated without it reads as absent here.
+    On such a machine `semlf uninstall opencode` removes the shared skills while that Codex is still using them,
+    and `semlf install codex` publishes them again.
+    That is a gap in the evidence this predicate can reach, not a case it has decided is safe.
+    """
+    if target == "codex":
+        home = manifest.codex_home()
+        if home is not None:
+            hooks = home / "hooks.json"
+            if os.path.lexists(str(hooks)):
+                data = manifest.read_state_json(hooks)
+                if data is None:
+                    return True  # unreadable is could-not-inspect, never absent
+                if manifest.owned_codex_hooks(data):
+                    return True
+    seen_any = False
+    for row in registry.ROWS:
+        if row.owner != target or not row.recorded:
+            continue
+        entry = snapshot.get(row.id)
+        paths = [row.dest()]
+        if entry is not None:
+            paths.append(entry.get("path"))
+        for path in paths:
+            state = _probe(path)
+            if state == "unknown":
+                return True
+            if state == "present":
+                seen_any = True
+    return seen_any
 
 
 def payload_identity(name):
@@ -858,7 +1222,7 @@ def status_command(argv, shim_expected=None):
         state, line = payload_identity(row.id)
         if (
             state == "missing"
-            and row.owner not in consumers
+            and not expected_by(row, consumers)
             and snapshot.get(row.id) is None
         ):
             # Only a payload with neither a consumer nor a valid provenance record is irrelevant here:
@@ -866,7 +1230,7 @@ def status_command(argv, shim_expected=None):
             # so a recorded payload whose file vanished is named as missing.
             continue
         print(f"payload {line}")
-        if state != "missing" and row.owner not in consumers:
+        if state != "missing" and not expected_by(row, consumers):
             # The leftover pointer derives from the row's own destination —
             # an opencode-checker leftover lives in the opencode plugins directory, never under the data root.
             leftover_paths.append(destinations[row.id])
@@ -906,11 +1270,9 @@ def status_command(argv, shim_expected=None):
     # The skill and the plugin are integration artifacts, not identity payloads:
     # they report the classifier state verbatim (the one manifest snapshot and destinations above serve this loop too).
     for name, label in (
-        ("codex-skill", "codex skill"),
-        ("codex-setup-skill", "codex setup skill"),
+        ("skill", "skill"),
+        ("setup-skill", "setup skill"),
         ("opencode-plugin", "opencode plugin"),
-        ("opencode-skill", "opencode skill"),
-        ("opencode-setup-skill", "opencode setup skill"),
         ("opencode-setup-command", "opencode setup command"),
     ):
         dest = destinations[name]
@@ -964,7 +1326,7 @@ def _forget_note(dest, name):
 def plan_remove_file(label, dest, name, force, planned, refusals, prune_parent=False):
     """Plan removal of one installer-owned file, or a refusal.
 
-    Shared by the codex skill and both opencode files.
+    Shared by the two shared skills and the opencode files.
     """
     if dest is None:
         refusals.append(
@@ -1236,6 +1598,53 @@ def plan_remove_agentsmd(target, planned, refusals):
     )
 
 
+def plan_shared_removal(targets, force, planned, refusals):
+    """Remove the shared skills when this request covers every target still present.
+
+    A shared skill is removed when, for every agent target,
+    either the target is named in this request
+    or the conservative predicate finds no artifacts for it.
+    Anything else retains them, and status names them.
+
+    checker and readme keep the retain-and-report precedent instead.
+    The asymmetry is behavioral:
+    a checker left behind does nothing until something calls it,
+    while a skill left behind is advertised to every model that scans the root,
+    and the checker path in its body may by then point at nothing.
+
+    A request naming no agent target removes no shared skill.
+    This is `selects` seen from the removal end, and it is written against the same tuple
+    so install and removal cannot come to answer that question differently:
+    `agentsmd` is a paragraph of prose with no checker and no skill behind it,
+    so a request that names it alone neither publishes nor removes one.
+    Without the guard, `uninstall agentsmd PATH` on a machine with no agent installed would unlink a global skill the request never mentioned,
+    and `--force` — a valid flag on this verb — would remove the refusal
+    that otherwise protects a hand-patched copy.
+    Convergence is untouched:
+    naming an agent target is what makes a request cover every target,
+    so orphaned skills are still collected by `uninstall codex` on a machine holding nothing else.
+    """
+    if not any(t in targets for t in AGENT_TARGETS):
+        return
+    snapshot = manifest.load()
+    remaining = [
+        t for t in AGENT_TARGETS if t not in targets and target_present(t, snapshot)
+    ]
+    if remaining:
+        return
+    destinations = payload_destinations()
+    for name, label in (("skill", "skill"), ("setup-skill", "setup skill")):
+        plan_remove_file(
+            label,
+            destinations[name],
+            name,
+            force,
+            planned,
+            refusals,
+            prune_parent=True,
+        )
+
+
 def plan_remove_targets(targets, force, planned, refusals):
     """Every artifact removal the named targets imply, for both doors.
 
@@ -1249,24 +1658,6 @@ def plan_remove_targets(targets, force, planned, refusals):
     destinations = payload_destinations()
     if "codex" in targets:
         plan_remove_codex_hook(planned, refusals)
-        plan_remove_file(
-            "codex skill",
-            destinations["codex-skill"],
-            "codex-skill",
-            force,
-            planned,
-            refusals,
-            prune_parent=True,
-        )
-        plan_remove_file(
-            "codex setup skill",
-            destinations["codex-setup-skill"],
-            "codex-setup-skill",
-            force,
-            planned,
-            refusals,
-            prune_parent=True,
-        )
     if "opencode" in targets:
         plan_remove_file(
             "opencode plugin",
@@ -1284,34 +1675,8 @@ def plan_remove_targets(targets, force, planned, refusals):
             planned,
             refusals,
         )
-        plan_remove_file(
-            "opencode readme",
-            destinations["opencode-readme"],
-            "opencode-readme",
-            force,
-            planned,
-            refusals,
-        )
-        plan_remove_file(
-            "opencode skill",
-            destinations["opencode-skill"],
-            "opencode-skill",
-            force,
-            planned,
-            refusals,
-            prune_parent=True,
-        )
-        # The skill sits in a directory of its own, so removing it prunes that directory;
-        # the command shares the commands directory with the user's own, so it never does.
-        plan_remove_file(
-            "opencode setup skill",
-            destinations["opencode-setup-skill"],
-            "opencode-setup-skill",
-            force,
-            planned,
-            refusals,
-            prune_parent=True,
-        )
+        # The command shares the commands directory with the user's own files,
+        # so removing it never prunes that directory.
         plan_remove_file(
             "opencode setup command",
             destinations["opencode-setup-command"],
@@ -1320,6 +1685,12 @@ def plan_remove_targets(targets, force, planned, refusals):
             planned,
             refusals,
         )
+        # An upgraded machine can be uninstalled before it is ever installed under this layout,
+        # and the pre-change copies would otherwise survive an uninstall that reported success.
+        plan_legacy_cleanup(planned, refusals)
+    # Last, because apply_plan stops at the first error:
+    # a shared removal placed earlier would strand a target with its own artifacts installed and its skill gone.
+    plan_shared_removal(targets, force, planned, refusals)
 
 
 def uninstall_command(argv):
@@ -1336,6 +1707,11 @@ def uninstall_command(argv):
     planned, refusals = [], []
     plan_remove_targets(targets, flags["force"], planned, refusals)
     if agentsmd_path is not None:
+        # After the shared removal that plan_remove_targets ends with, deliberately.
+        # "Shared removals go last" is a rule about the artifacts an integration needs to keep working,
+        # and the snippet is not one of them: it is prose in the user's own file that names no skill.
+        # The order that matters is the one that can strand a machine, and this leg cannot.
+        # A shared removal that fails stops apply_plan with the snippet still in place, which re-runs cleanly.
         plan_remove_agentsmd(agentsmd_path, planned, refusals)
     if flags["dry_run"]:
         # Dry-run dominates everything: it reports the would-be refusals instead of taking them, and exits 0 (the design's fixed precedence covers the whole command surface).
@@ -1353,7 +1729,7 @@ def uninstall_command(argv):
             print(refusal, file=sys.stderr)
         return 1
     rc = apply_plan(planned)
-    if "codex" in targets and rc == 0:
+    if targets and rc == 0:
         print(
             f"note: the published payloads under "
             f"{manifest.semlf_data_dir()} are shared and retained; "

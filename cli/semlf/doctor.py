@@ -175,6 +175,7 @@ def run(argv, artifact=None):
 
     failures += _codex_hook_check()
     failures += _payload_identity_check()
+    failures += _opencode_competitor_check()
 
     if failures:
         print(f"doctor: {failures} check(s) failed")
@@ -231,7 +232,7 @@ def _payload_identity_check():
     for row in registry.ROWS:
         if not row.identity:
             continue
-        expected = row.owner in consumers
+        expected = lifecycle.expected_by(row, consumers)
         state, line = lifecycle.payload_identity(row.id)
         if state == "missing" and not expected:
             continue
@@ -247,6 +248,65 @@ def _payload_identity_check():
     if leftover_paths:
         listed = ", ".join(str(p) for p in leftover_paths)
         print(f"payload: warn — remove {listed} by hand if unwanted")
+    return failures
+
+
+def _opencode_competitor_check():
+    """Report a file at opencode's own skill path that is not the shared file.
+
+    opencode scans its own skills root as well as the shared one, and a copy there usually wins the name race,
+    so this is the state that makes it answer with last release's skill.
+    Nothing else doctor runs can see it.
+
+    Four rules, each a way to get this wrong:
+    it compares two specific paths rather than enumerating a root, because a joined root holds the shared skills by construction;
+    resolving to the shared file is healthy and silent;
+    identical bytes are a warning, since that file competes for the name but serves the same content and is residue for migration to clear;
+    and when the shared file is absent nothing is being competed with, so the report says install has not run instead.
+
+    "Competes" rather than "shadows": precedence is a race, so a second copy usually wins but is not guaranteed to,
+    and a message promising determinism would describe a rule opencode does not publish.
+
+    A hard link to the shared file reads healthy here and is still removed by install,
+    because the two verbs are answering different questions:
+    this one asks whether opencode would load different content today, and through a hard link it would not,
+    while migration asks whether the entry survives the next republish, and a hard link does not.
+    """
+    skills_dir = manifest.opencode_skills_dir()
+    if skills_dir is None:
+        return 0
+    destinations = lifecycle.payload_destinations()
+    failures = 0
+    for folder, live in (
+        ("semantic-linefeeds", "skill"),
+        ("setup-semlf", "setup-skill"),
+    ):
+        candidate = skills_dir / folder / "SKILL.md"
+        if not os.path.lexists(str(candidate)):
+            continue
+        shared = destinations.get(live)
+        if shared is None or not os.path.lexists(str(shared)):
+            print(
+                f"opencode skills: FAIL — {candidate} exists but no shared "
+                f"{live} is published; run `semlf install`"
+            )
+            failures += 1
+            continue
+        if manifest.same_file(candidate, shared):
+            continue
+        here = manifest.read_regular_bytes(candidate, manifest.CLASSIFY_LIMIT)
+        there = manifest.read_regular_bytes(shared, manifest.CLASSIFY_LIMIT)
+        if here is not None and here == there:
+            print(
+                f"opencode skills: warn — {candidate} competes with the shared "
+                "copy but carries the same bytes; `semlf install` clears it"
+            )
+            continue
+        print(
+            f"opencode skills: FAIL — {candidate} competes with the shared copy "
+            "and differs from it; `semlf install` clears it"
+        )
+        failures += 1
     return failures
 
 

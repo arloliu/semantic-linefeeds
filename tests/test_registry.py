@@ -9,19 +9,16 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "cli"))
 sys.path.insert(0, str(REPO / "scripts"))
 
-from semlf import manifest, registry
+from semlf import lifecycle, manifest, registry
 
 EXPECTED_IDS = [
     "checker",
     "readme",
     "codex-hook-template",
-    "codex-skill",
+    "skill",
     "opencode-plugin",
     "opencode-checker",
-    "opencode-readme",
-    "opencode-skill",
-    "codex-setup-skill",
-    "opencode-setup-skill",
+    "setup-skill",
     "opencode-setup-command",
     "agentsmd-snippet",
 ]
@@ -40,36 +37,51 @@ def test_member_paths_follow_the_id():
 def test_owners_match_the_design_table():
     owners = {r.id: r.owner for r in registry.ROWS}
     assert owners == {
-        "checker": "codex",
-        "readme": "codex",
+        "checker": "shared",
+        "readme": "shared",
         "codex-hook-template": "codex",
-        "codex-skill": "codex",
+        "skill": "shared",
         "opencode-plugin": "opencode",
         "opencode-checker": "opencode",
-        "opencode-readme": "opencode",
-        "opencode-skill": "opencode",
-        "codex-setup-skill": "codex",
-        "opencode-setup-skill": "opencode",
+        "setup-skill": "shared",
         "opencode-setup-command": "opencode",
         "agentsmd-snippet": "agentsmd",
     }
 
 
-def test_the_setup_skill_ships_once_per_target_from_one_source():
-    """Per-target rows, single source: the property that keeps them from drifting.
+def test_selects_admits_a_shared_row_for_any_agent_target():
+    shared = registry.BY_ID["checker"]
+    assert lifecycle.selects(shared, ["codex"]) is True
+    assert lifecycle.selects(shared, ["opencode"]) is True
+    assert lifecycle.selects(shared, ["codex", "opencode"]) is True
 
-    Two destinations exist because uninstalling one target must not remove the other target's file.
-    They must nonetheless install identical bytes,
-    so the source path is asserted equal rather than merely present —
-    a second spelled-out path here is exactly how one root would keep shipping last release's skill.
+
+def test_selects_refuses_a_shared_row_when_no_agent_target_is_named():
+    shared = registry.BY_ID["checker"]
+    assert lifecycle.selects(shared, []) is False
+    assert lifecycle.selects(shared, ["agentsmd"]) is False
+
+
+def test_selects_leaves_owned_rows_alone():
+    owned = registry.BY_ID["opencode-plugin"]
+    assert lifecycle.selects(owned, ["opencode"]) is True
+    assert lifecycle.selects(owned, ["codex"]) is False
+
+
+def test_each_skill_ships_exactly_once():
+    """One row per skill, which is what makes any symlink arrangement safe.
+
+    Two rows on one inode was the collision the old layout kept refusing.
+    A single row cannot collide with itself, so a root symlink, a leaf symlink,
+    an intermediate symlink and a bind mount all resolve to the same destination
+    and none of them needs a rule.
     """
-    setup_skills = [row for row in registry.ROWS if row.id.endswith("-setup-skill")]
-    assert {row.id for row in setup_skills} == {
-        "codex-setup-skill",
-        "opencode-setup-skill",
+    skills = [r for r in registry.ROWS if r.id in ("skill", "setup-skill")]
+    assert len(skills) == 2
+    assert {r.source for r in skills} == {
+        "skills/semantic-linefeeds/SKILL.md",
+        registry.SETUP_SKILL_SOURCE,
     }
-    assert {row.source for row in setup_skills} == {registry.SETUP_SKILL_SOURCE}
-    assert len({row.member for row in setup_skills}) == 2
 
 
 def test_the_two_no_record_rows_are_marked():
@@ -82,7 +94,6 @@ def test_identity_marks_exactly_the_digest_compared_payloads():
         "checker",
         "readme",
         "opencode-checker",
-        "opencode-readme",
     }
 
 
@@ -97,6 +108,20 @@ def test_known_provenance_names_are_exactly_the_recorded_rows_plus_cli():
     """
     recorded = {row.id for row in registry.ROWS if row.recorded}
     assert set(manifest.KNOWN) == {"cli"} | recorded
+
+
+def test_retired_names_stay_out_of_the_live_population():
+    """The same drift channel, on the retired side.
+
+    A retired name that crept back into `KNOWN` would enter the ordinary snapshot
+    and be classified as if a row still published it.
+    A `RETIRED_FOR` entry naming a row that no longer exists,
+    or an alias that is not retired, would project a record onto nothing.
+    """
+    assert set(manifest.KNOWN).isdisjoint(manifest.RETIRED)
+    assert set(manifest.RETIRED_FOR) <= set(manifest.KNOWN)
+    aliases = {name for names in manifest.RETIRED_FOR.values() for name in names}
+    assert aliases <= set(manifest.RETIRED)
 
 
 def test_every_consumer_field_is_complete(monkeypatch, tmp_path):
@@ -123,7 +148,7 @@ def test_every_consumer_field_is_complete(monkeypatch, tmp_path):
 
 def test_render_refuses_a_none_data_dir():
     with pytest.raises(ValueError):
-        registry.render_codex_skill(None)
+        registry.render_skill(None)
     with pytest.raises(ValueError):
         registry.render_codex_hook_entry(None)
 
@@ -180,9 +205,9 @@ def test_render_codex_hook_entry_substitutes_exactly_once(tmp_path):
     assert "__CHECKER__" not in command
 
 
-def test_render_codex_skill_pins_all_three_rewrites(tmp_path):
+def test_render_skill_pins_all_three_rewrites(tmp_path):
     data_dir = tmp_path / "data" / "semlf"
-    body = registry.render_codex_skill(data_dir)
+    body = registry.render_skill(data_dir)
     assert ('python3 "%s" --file <files>' % (data_dir / "check_linefeeds.py")) in body
     assert str(data_dir / "README.md") in body
     assert "CLAUDE_PLUGIN_ROOT" not in body

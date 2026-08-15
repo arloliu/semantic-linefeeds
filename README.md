@@ -133,18 +133,19 @@ Use the Quickstart above, or the [checkout door](#air-gapped-and-mirror-installs
 
 | Component | Location | Purpose | Who needs it |
 |---|---|---|---|
-| Checker | `${XDG_DATA_HOME:-~/.local/share}/semlf/check_linefeeds.py` | The enforcement core every installed hook and skill runs | Codex CLI (the hook's target) |
-| README | published beside the checker, at the same neutral root | Resolves the installed skill's suppression-rules link, even on an air-gapped machine | Codex CLI |
+| Checker | `${XDG_DATA_HOME:-~/.local/share}/semlf/check_linefeeds.py` | The enforcement core every installed hook and skill runs | Codex CLI, opencode |
+| README | published beside the checker, at the same neutral root | Resolves the installed skill's suppression-rules link, even on an air-gapped machine | Codex CLI, opencode |
 | Codex hook entry | `$CODEX_HOME/hooks.json` (default `~/.codex/hooks.json`) | Runs the checker after every edit; blocks `fused`, reports `wrap`/`long` as advice | Codex CLI |
-| Codex skill | `~/.agents/skills/semantic-linefeeds/SKILL.md` | The judgment layer: clause-boundary calls, suppression syntax, the disagreement rule | Codex CLI |
-| Codex setup skill | `~/.agents/skills/setup-semlf/SKILL.md` | Lets an agent install, repair, or configure `semlf` without improvising the commands | Codex CLI |
+| Judgment skill | `~/.agents/skills/semantic-linefeeds/SKILL.md` | The judgment layer: clause-boundary calls, suppression syntax, the disagreement rule | Codex CLI, opencode |
+| Setup skill | `~/.agents/skills/setup-semlf/SKILL.md` | Lets an agent install, repair, or configure `semlf` without improvising the commands | Codex CLI, opencode |
 | opencode plugin | the opencode plugins directory (`$XDG_CONFIG_HOME/opencode/plugins`, default `~/.config/opencode/plugins`) | Wires the checker into opencode's edit/write/apply_patch tool output | opencode |
 | opencode's checker copy | the same opencode plugins directory, beside the plugin | The plugin resolves its checker next to itself, not at the neutral root | opencode |
-| opencode's README copy | the same opencode plugins directory, beside the checker | Resolves the opencode skill's suppression-rules link without a neutral root | opencode |
-| opencode skill | `$XDG_CONFIG_HOME/opencode/skills/semantic-linefeeds/SKILL.md` (default `~/.config/...`) | The same judgment layer Codex gets, resolving opencode's own checker and README | opencode |
-| opencode setup skill | `$XDG_CONFIG_HOME/opencode/skills/setup-semlf/SKILL.md` (default `~/.config/...`) | The same setup procedure, in opencode's own skills root so each agent owns its copy | opencode |
 | opencode setup command | `$XDG_CONFIG_HOME/opencode/commands/setup-semlf.md` (default `~/.config/...`) | Makes `/setup-semlf` typeable: opencode offers skills to the model, commands to you | opencode |
 | AGENTS.md snippet | the file you name with `semlf install agentsmd PATH` | The judgment layer for any agent with no native skill mechanism | Any AGENTS.md-reading agent |
+
+The skill is published once, to `~/.agents/skills`, which Codex CLI and opencode both read.
+opencode 1.18.18 or newer is required, and `OPENCODE_DISABLE_EXTERNAL_SKILLS` disables that scan —
+with it set, opencode sees no skill regardless of where it is installed.
 
 On the package channel, the `semlf` package is the installer and cannot be skipped —
 but its check commands (`semlf check`, `semlf --staged`, and so on) stay optional after that.
@@ -176,8 +177,8 @@ So this kit backs the rule with three layers instead of trusting the model to re
    judge a finding before rewriting, and a believed false positive
    or a finding that survives one repair goes to the user instead of another rewrite.
    Claude Code ships it as a plugin skill;
-   `semlf install codex` writes a native copy for Codex CLI;
-   other agents fall back to the AGENTS.md snippet.
+   `semlf install codex` and `semlf install opencode` publish the same native copy to a root both agents read;
+   an agent with no native skill mechanism falls back to the AGENTS.md snippet.
    Hook feedback names the skill only when a usable copy is present at a location
    Codex resolves skills from.
 3. **Detector** —

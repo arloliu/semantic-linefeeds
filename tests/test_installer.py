@@ -26,6 +26,16 @@ def run_install(args, env_overrides, cwd=None, timeout=20):
     )
 
 
+def has_line(out, prefix):
+    """Whether some output line starts exactly with prefix.
+
+    The judgment skill's label is bare `skill`,
+    which is a substring of `setup skill` and of the `setup-skill` row id,
+    so a plain `in` check on these lines would pass on the wrong artifact.
+    """
+    return any(line.startswith(prefix) for line in out.splitlines())
+
+
 def isolated_env(tmp_path):
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
@@ -389,7 +399,7 @@ def test_status_reports_all_targets_and_claude_guidance(tmp_path):
     assert r.returncode == 0
     out = r.stdout
     assert "codex hook: not installed" in out
-    assert "codex skill: not installed" in out
+    assert has_line(out, "skill: not installed")
     assert "opencode plugin: not installed" in out
     assert "agentsmd:" not in out
     assert "claude plugin" in out
@@ -404,7 +414,7 @@ def test_status_sees_installed_targets(tmp_path):
     )
     out = run_install([], env, cwd=tmp_path).stdout
     assert "codex hook: installed" in out
-    assert "codex skill: exact" in out
+    assert has_line(out, "skill: exact")
     assert "opencode plugin: exact" in out
     assert "agentsmd:" not in out
 
@@ -476,7 +486,7 @@ def test_install_sh_clone_installs_the_native_skill(tmp_path):
         ["--repo", str(src), "--home", str(home), "--codex"], isolated_env(tmp_path)
     )
     assert r.returncode == 0, r.stderr
-    skill = codex_skill_path(tmp_path)
+    skill = skill_path(tmp_path)
     assert skill.exists()
     assert "CLAUDE_PLUGIN_ROOT" not in skill.read_text(encoding="utf-8")
 
@@ -531,7 +541,7 @@ def test_install_sh_home_flag_selects_the_checkout_with_an_isolated_home(tmp_pat
     # Proves --home controls where install.sh clones/reuses the checkout,
     # independent of $HOME --
     # not that $HOME can safely be absent entirely
-    # (a codex skill install now always resolves Path.home(),
+    # (a skill install now always resolves Path.home(),
     # so HOME is set here to an isolated directory the way every other installer test isolates it, rather than removed).
     src = make_source_repo(tmp_path)
     home = tmp_path / "sembr-home"
@@ -582,7 +592,7 @@ def test_install_sh_status_mode_is_safe_with_home_truly_unset(tmp_path):
         env=env,
     )
     assert r.returncode == 0, r.stderr
-    assert "codex skill:" in r.stdout
+    assert has_line(r.stdout, "skill: ")
     assert (home / "scripts" / "install.py").exists()
 
 
@@ -683,18 +693,18 @@ def test_install_sh_self_checkout_honors_ref(tmp_path):
         encoding="utf-8"
     )
     assert "MARKER_AFTER_V1" not in installed
-    installed_skill = codex_skill_path(tmp_path).read_text(encoding="utf-8")
+    installed_skill = skill_path(tmp_path).read_text(encoding="utf-8")
     assert "SKILL_MARKER_AFTER_V1" not in installed_skill
 
 
-def codex_skill_path(tmp_path):
+def skill_path(tmp_path):
     return tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
 
 
 def test_codex_install_writes_the_native_skill(tmp_path):
     r = run_install(["--codex"], isolated_env(tmp_path))
     assert r.returncode == 0
-    skill = codex_skill_path(tmp_path)
+    skill = skill_path(tmp_path)
     assert skill.exists()
     text = skill.read_text(encoding="utf-8")
     data_root = tmp_path / "data" / "semlf"
@@ -702,20 +712,20 @@ def test_codex_install_writes_the_native_skill(tmp_path):
     assert "CLAUDE_PLUGIN_ROOT" not in text
 
 
-def test_codex_skill_rerun_is_a_noop(tmp_path):
+def test_skill_rerun_is_a_noop(tmp_path):
     env = isolated_env(tmp_path)
     run_install(["--codex"], env)
-    before = codex_skill_path(tmp_path).read_text(encoding="utf-8")
+    before = skill_path(tmp_path).read_text(encoding="utf-8")
     r = run_install(["--codex"], env)
     assert r.returncode == 0
-    assert "codex-skill: up to date" in r.stdout
-    assert codex_skill_path(tmp_path).read_text(encoding="utf-8") == before
+    assert has_line(r.stdout, "skill: up to date")
+    assert skill_path(tmp_path).read_text(encoding="utf-8") == before
 
 
-def test_codex_skill_hand_edit_requires_force(tmp_path):
+def test_skill_hand_edit_requires_force(tmp_path):
     env = isolated_env(tmp_path)
     run_install(["--codex"], env)
-    skill = codex_skill_path(tmp_path)
+    skill = skill_path(tmp_path)
     skill.write_text("# hand-patched\n", encoding="utf-8")
     r = run_install(["--codex"], env)
     assert r.returncode == 1
@@ -723,10 +733,10 @@ def test_codex_skill_hand_edit_requires_force(tmp_path):
     assert skill.read_text(encoding="utf-8") == "# hand-patched\n"
 
 
-def test_codex_skill_force_overwrites_and_backs_up(tmp_path):
+def test_skill_force_overwrites_and_backs_up(tmp_path):
     env = isolated_env(tmp_path)
     run_install(["--codex"], env)
-    skill = codex_skill_path(tmp_path)
+    skill = skill_path(tmp_path)
     skill.write_text("# hand-patched\n", encoding="utf-8")
     r = run_install(["--codex", "--force"], env)
     assert r.returncode == 0
@@ -739,10 +749,10 @@ def test_codex_skill_force_overwrites_and_backs_up(tmp_path):
     assert backup.read_text(encoding="utf-8") == "# hand-patched\n"
 
 
-def test_codex_skill_dry_run_writes_nothing(tmp_path):
+def test_skill_dry_run_writes_nothing(tmp_path):
     r = run_install(["--codex", "--dry-run"], isolated_env(tmp_path))
     assert r.returncode == 0
-    assert not codex_skill_path(tmp_path).exists()
+    assert not skill_path(tmp_path).exists()
 
 
 def test_dry_run_reports_a_diverged_skill_at_exit_zero(tmp_path):
@@ -751,28 +761,28 @@ def test_dry_run_reports_a_diverged_skill_at_exit_zero(tmp_path):
     assert r.returncode == 0
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     skill.write_text("hand-patched", encoding="utf-8")
-    (tmp_path / "state" / "semlf" / "artifacts" / "codex-skill.json").unlink()
+    (tmp_path / "state" / "semlf" / "artifacts" / "skill.json").unlink()
     r = run_install(["--codex", "--dry-run"], env)
     assert r.returncode == 0
     assert "would refuse" in r.stdout
     assert skill.read_text(encoding="utf-8") == "hand-patched"
 
 
-def test_status_reports_codex_skill_states(tmp_path):
+def test_status_reports_skill_states(tmp_path):
     env = isolated_env(tmp_path)
     r = run_install([], env, cwd=tmp_path)
-    assert "codex skill: not installed" in r.stdout
+    assert has_line(r.stdout, "skill: not installed")
     run_install(["--codex"], env)
     r = run_install([], env, cwd=tmp_path)
-    assert "codex skill: exact" in r.stdout
-    codex_skill_path(tmp_path).write_text("# hand-patched\n", encoding="utf-8")
+    assert has_line(r.stdout, "skill: exact")
+    skill_path(tmp_path).write_text("# hand-patched\n", encoding="utf-8")
     r = run_install([], env, cwd=tmp_path)
-    assert "codex skill: edited" in r.stdout
+    assert has_line(r.stdout, "skill: edited")
     # A recordless hand-made copy is unrecorded, not diverged/edited --
     # the classifier only calls a mismatch "edited" when a provenance record proves this kit once installed a different set of bytes there.
-    entry_file(tmp_path, "codex-skill").unlink()
+    entry_file(tmp_path, "skill").unlink()
     r = run_install([], env, cwd=tmp_path)
-    assert "codex skill: unrecorded" in r.stdout
+    assert has_line(r.stdout, "skill: unrecorded")
 
 
 def test_status_and_rerun_detect_a_crlf_converted_skill(tmp_path):
@@ -781,13 +791,13 @@ def test_status_and_rerun_detect_a_crlf_converted_skill(tmp_path):
     # exactly the gap the hook probe's own byte-level read does not have.
     env = isolated_env(tmp_path)
     run_install(["--codex"], env)
-    skill = codex_skill_path(tmp_path)
+    skill = skill_path(tmp_path)
     skill.write_bytes(
         skill.read_text(encoding="utf-8").replace("\n", "\r\n").encode("utf-8")
     )
 
     r = run_install([], env, cwd=tmp_path)
-    assert "codex skill: edited" in r.stdout
+    assert has_line(r.stdout, "skill: edited")
 
     r = run_install(["--codex"], env)
     assert r.returncode == 1
@@ -798,8 +808,10 @@ def test_help_mentions_the_skill_and_the_widened_force_scope(tmp_path):
     r = run_install(["--help"], isolated_env(tmp_path))
     assert r.returncode == 0
     normalized = " ".join(r.stdout.split())
-    assert "native semantic-linefeeds skill" in normalized
-    assert "codex-skill" in normalized
+    # One skill, published by either agent target — so the help says shared, not native to codex.
+    assert "shared semantic-linefeeds skill" in normalized
+    assert "native semantic-linefeeds skill" not in normalized
+    assert "overwrite opencode, skill, or cli files" in normalized
 
 
 import install as install_module  # noqa: E402 -- unit-style access to the module itself
@@ -808,16 +820,16 @@ from semlf import (
 )
 
 
-def test_codex_skill_dest_is_none_when_home_is_unresolvable(monkeypatch):
+def test_skill_dest_is_none_when_home_is_unresolvable(monkeypatch):
     # os.path.expanduser("~") returns its input unchanged when it cannot resolve a home directory;
     # Path.home() raises instead.
     # A real account with no resolvable home is not something a test can set up hermetically,
     # so the failure is simulated by monkeypatching the same expansion the core's own probe (_judgment_layer_present) already treats this way.
     monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
-    assert install_module.codex_skill_dest() is None
+    assert install_module.skill_dest() is None
 
 
-def test_install_codex_skill_refuses_without_a_resolvable_home(monkeypatch, tmp_path):
+def test_install_skill_refuses_without_a_resolvable_home(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
     planned, refusals = lifecycle.plan_install(["codex"], None, False)
@@ -835,7 +847,7 @@ def test_status_reports_no_home_to_check(monkeypatch, capsys, tmp_path):
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
     install_module.status()
-    assert "codex skill: no home to check" in capsys.readouterr().out
+    assert has_line(capsys.readouterr().out, "skill: no home to check")
 
 
 def test_status_reports_no_home_on_every_path_without_env_overrides(
@@ -843,7 +855,7 @@ def test_status_reports_no_home_on_every_path_without_env_overrides(
 ):
     # No CODEX_HOME/XDG_CONFIG_HOME override here, unlike the test above --
     # this reaches codex_home()'s and opencode_plugins_dir()'s own guards,
-    # not just codex_skill_dest()'s, and must not crash on the way.
+    # not just skill_dest()'s, and must not crash on the way.
     monkeypatch.delenv("CODEX_HOME", raising=False)
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     monkeypatch.setattr(install_module.os.path, "expanduser", lambda p: p)
@@ -852,7 +864,7 @@ def test_status_reports_no_home_on_every_path_without_env_overrides(
     assert rc == 0
     assert "codex hook: no home to check" in out
     assert "opencode plugin: no home to check" in out
-    assert "codex skill: no home to check" in out
+    assert has_line(out, "skill: no home to check")
     assert "cli: no home to check" in out
 
 
@@ -887,19 +899,19 @@ LOOP_STOP_SENTENCE = (
 )
 
 
-def test_codex_skill_install_carries_the_bounded_disagreement_text(tmp_path):
+def test_skill_install_carries_the_bounded_disagreement_text(tmp_path):
     r = run_install(["--codex"], isolated_env(tmp_path))
     assert r.returncode == 0
-    text = codex_skill_path(tmp_path).read_text(encoding="utf-8")
+    text = skill_path(tmp_path).read_text(encoding="utf-8")
     assert "## Bounded disagreement" in text
     assert AGENT_SUPPRESSION_NOTE in text
     assert LOOP_STOP_SENTENCE in text
 
 
-def test_codex_skill_install_has_no_relative_links(tmp_path):
+def test_skill_install_has_no_relative_links(tmp_path):
     r = run_install(["--codex"], isolated_env(tmp_path))
     assert r.returncode == 0
-    text = codex_skill_path(tmp_path).read_text(encoding="utf-8")
+    text = skill_path(tmp_path).read_text(encoding="utf-8")
     assert "../" not in text
 
 
@@ -911,7 +923,7 @@ def test_the_installed_skill_is_visible_to_the_codex_hint(tmp_path, monkeypatch)
     env = isolated_env(tmp_path)
     r = run_install(["--codex"], env)
     assert r.returncode == 0
-    installed = codex_skill_path(tmp_path)
+    installed = skill_path(tmp_path)
     assert len(installed.read_bytes()) > 1025
 
     # Run from a skill-free directory
@@ -1671,14 +1683,14 @@ def test_corrupt_state_means_unrecorded_not_a_crash(tmp_path):
     assert "--force" in r.stderr
 
 
-def test_codex_skill_install_records_provenance(tmp_path):
+def test_skill_install_records_provenance(tmp_path):
     env = isolated_env(tmp_path)
     r = run_install(["--codex"], env)
     assert r.returncode == 0
-    entry = read_entry(tmp_path, "codex-skill")
+    entry = read_entry(tmp_path, "skill")
     import hashlib
 
-    dest = codex_skill_path(tmp_path)
+    dest = skill_path(tmp_path)
     assert entry["sha256"] == hashlib.sha256(dest.read_bytes()).hexdigest()
 
 
@@ -1704,15 +1716,15 @@ def test_opencode_install_records_both_files(tmp_path):
 def test_managed_older_skill_upgrades_without_force(tmp_path):
     env = isolated_env(tmp_path)
     run_install(["--codex"], env)
-    skill = codex_skill_path(tmp_path)
+    skill = skill_path(tmp_path)
     older = b"# an older skill body\n"
     skill.write_bytes(older)
     import hashlib
 
-    entry = read_entry(tmp_path, "codex-skill")
+    entry = read_entry(tmp_path, "skill")
     entry["sha256"] = hashlib.sha256(older).hexdigest()
     entry["version"] = "0.5.0"
-    entry_file(tmp_path, "codex-skill").write_text(json.dumps(entry), encoding="utf-8")
+    entry_file(tmp_path, "skill").write_text(json.dumps(entry), encoding="utf-8")
     r = run_install(["--codex"], env)
     assert r.returncode == 0
     assert skill.read_bytes() != older
@@ -1742,7 +1754,7 @@ def test_managed_older_opencode_plugin_upgrades_without_force(tmp_path):
 def test_occupied_backup_slot_refuses_the_skill_uniformly(tmp_path):
     env = isolated_env(tmp_path)
     run_install(["--codex"], env)
-    skill = codex_skill_path(tmp_path)
+    skill = skill_path(tmp_path)
     skill.write_text("# hand-patched\n", encoding="utf-8")
     bak = skill.with_name(skill.name + ".bak")
     bak.write_bytes(b"occupied")
@@ -1907,7 +1919,7 @@ def test_status_reports_unreadable_for_a_fifo_skill_destination(tmp_path):
     os.mkfifo(dest)
     r = run_install([], env, timeout=10)
     assert r.returncode == 0
-    assert "codex skill: special" in r.stdout
+    assert has_line(r.stdout, "skill: special")
 
 
 @pytest.mark.parametrize("mode", ["--codex", "--opencode"])
@@ -2116,7 +2128,7 @@ def test_uninstall_codex_removes_only_our_entries(tmp_path):
     assert commands == ["echo hi"]
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     assert not skill.exists()
-    assert not entry_file(tmp_path, "codex-skill").exists()
+    assert not entry_file(tmp_path, "skill").exists()
 
 
 def test_uninstall_codex_when_absent_is_a_noop(tmp_path):
@@ -2149,12 +2161,12 @@ def test_an_edited_skill_refuses_the_whole_codex_request(tmp_path):
         skill.read_text(encoding="utf-8") + "\nlocal note\n", encoding="utf-8"
     )
     hooks_before = codex_hooks_path(tmp_path).read_bytes()
-    state_before = entry_file(tmp_path, "codex-skill").read_bytes()
+    state_before = entry_file(tmp_path, "skill").read_bytes()
     r = run_install(["--uninstall", "--codex"], env)
     assert r.returncode == 1
     assert skill.exists()
     assert codex_hooks_path(tmp_path).read_bytes() == hooks_before
-    assert entry_file(tmp_path, "codex-skill").read_bytes() == state_before
+    assert entry_file(tmp_path, "skill").read_bytes() == state_before
     r = run_install(["--uninstall", "--codex", "--force"], env)
     assert r.returncode == 0
     assert not skill.exists()
@@ -2503,10 +2515,9 @@ def test_auto_rejects_uninstall(tmp_path):
 
 
 def setup_artifacts(tmp_path):
-    """Codex's setup skill, opencode's setup skill, opencode's setup command."""
+    """The shared setup skill and opencode's setup command."""
     return (
         tmp_path / "home" / ".agents" / "skills" / "setup-semlf" / "SKILL.md",
-        tmp_path / "xdg" / "opencode" / "skills" / "setup-semlf" / "SKILL.md",
         tmp_path / "xdg" / "opencode" / "commands" / "setup-semlf.md",
     )
 
@@ -2517,13 +2528,21 @@ def test_checkout_door_installs_the_setup_artifacts(tmp_path):
     The setup skill tells an agent to fall back to `install.sh ... --auto`,
     which execs this installer:
     a door that skipped these rows would leave the very skill that recommended it uninstalled.
+    Either agent target publishes the shared skill now,
+    so both single-target runs are checked for it.
     """
-    codex_skill, opencode_skill, opencode_command = setup_artifacts(tmp_path)
+    setup_skill, opencode_command = setup_artifacts(tmp_path)
     assert run_install(["--codex"], isolated_env(tmp_path)).returncode == 0
-    assert codex_skill.exists()
-    assert run_install(["--opencode"], isolated_env(tmp_path)).returncode == 0
-    assert opencode_skill.exists()
-    assert opencode_command.exists()
+    assert setup_skill.exists()
+
+    # A separate root: isolated_env derives every path from what it is given,
+    # so reusing tmp_path would let the --codex run's own files satisfy these assertions.
+    solo = tmp_path / "opencode-only"
+    solo.mkdir()
+    solo_skill, solo_command = setup_artifacts(solo)
+    assert run_install(["--opencode"], isolated_env(solo)).returncode == 0
+    assert solo_skill.exists()
+    assert solo_command.exists()
 
 
 def test_checkout_door_uninstall_removes_the_setup_artifacts(tmp_path):
@@ -2533,12 +2552,44 @@ def test_checkout_door_uninstall_removes_the_setup_artifacts(tmp_path):
     Adding a row updated the package door and silently left this one removing the older set,
     which orphaned an artifact that `uninstall` reported as gone.
     """
-    codex_skill, opencode_skill, opencode_command = setup_artifacts(tmp_path)
+    setup_skill, opencode_command = setup_artifacts(tmp_path)
     env = isolated_env(tmp_path)
     run_install(["--codex", "--opencode"], env)
-    assert codex_skill.exists() and opencode_skill.exists()
+    assert setup_skill.exists() and opencode_command.exists()
 
     assert run_install(["--codex", "--opencode", "--uninstall"], env).returncode == 0
-    assert not codex_skill.exists()
-    assert not opencode_skill.exists()
+    assert not setup_skill.exists()
     assert not opencode_command.exists()
+
+
+def test_checkout_door_reports_the_retained_payloads(tmp_path):
+    """Both doors retain the shared payloads, so both must say so.
+
+    Only the package door printed this note before, and only for codex,
+    which left a user who uninstalled through the checkout with no pointer to the files still on disk.
+    """
+    env = isolated_env(tmp_path)
+    assert run_install(["--opencode"], env).returncode == 0
+    r = run_install(["--uninstall", "--opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert "retained" in r.stdout
+    assert "semlf status" in r.stdout
+
+
+def test_checkout_door_cli_uninstall_leaves_the_shared_skills(tmp_path):
+    """--cli names no agent target, so it removes no shared skill.
+
+    Both doors reach plan_remove_targets with an empty target set,
+    so the guard has to hold on this one too.
+    """
+    env = isolated_env(tmp_path)
+    assert run_install(["--codex"], env).returncode == 0
+    codex_hooks_path(tmp_path).write_text(
+        '{"hooks": {"PostToolUse": []}}', encoding="utf-8"
+    )
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    assert skill.is_file()
+
+    r = run_install(["--uninstall", "--cli", "--force"], env)
+    assert r.returncode == 0, r.stderr
+    assert skill.is_file(), "--cli removed a global skill it never installed"

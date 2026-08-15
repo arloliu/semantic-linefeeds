@@ -1,7 +1,7 @@
 # Handoff: neutral ownership for the shared skills root
 
 **Date:** 2026-08-15
-**Status:** ready to implement — no code written yet
+**Status:** implemented
 **Predecessor:** [the setup-skill design](2026-08-15-setup-skill-design.md), shipped on `feat/setup-semlf-skill`
 
 ## Why this exists

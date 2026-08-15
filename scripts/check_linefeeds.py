@@ -1736,7 +1736,10 @@ def _judgment_layer_present(transport):
     the skill ships inside the plugin that runs this hook.
     Codex has one only when a candidate at a location standalone skills resolve from (ADR-0006) reads back as this skill:
     a repository `.agents/skills` directory, `$HOME/.agents/skills` when `$HOME` actually resolves to something (`os.path.expanduser("~")` returns its input unchanged when it cannot), or opencode's own skills root.
-    opencode belongs in that list because its plugin declares this transport too, while keeping its copy under its config root (ADR-0018).
+    opencode belongs in that list because its plugin declares this transport too.
+    Since ADR-0019 the skill it loads is the single copy published to the shared `~/.agents/skills` root,
+    which the second candidate already covers;
+    its own config root stays on the list only for a machine that still holds a pre-change copy there.
     """
     if transport == "claude":
         return True
@@ -1751,9 +1754,11 @@ def _judgment_layer_present(transport):
                     home, ".agents", "skills", "semantic-linefeeds", "SKILL.md"
                 )
             )
-        # opencode's plugin declares this transport for an apply_patch-shaped payload,
-        # and installs its own copy under its config root rather than sharing Codex's (ADR-0018).
-        # Without this candidate the layer reads as absent on an opencode-only machine that has one,
+        # opencode's plugin declares this transport for an apply_patch-shaped payload.
+        # Since ADR-0019 the skill it loads is the one copy published to the shared root above,
+        # and nothing is written under opencode's own skills root any more.
+        # This candidate is kept for a machine that still holds a pre-change copy there:
+        # without it the layer reads as absent on an opencode-only machine that has one,
         # and the feedback goes quiet about a skill sitting right there.
         config = os.environ.get("XDG_CONFIG_HOME") or (
             os.path.join(home, ".config") if home != "~" else None

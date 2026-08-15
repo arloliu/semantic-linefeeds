@@ -435,7 +435,7 @@ def test_agentsmd_up_to_date_note_prints_at_plan_time(
 
 
 @pytest.mark.parametrize(
-    "name", ["checker", "readme", "codex-skill", "opencode-plugin", "opencode-checker"]
+    "name", ["checker", "readme", "skill", "opencode-plugin", "opencode-checker"]
 )
 def test_every_registry_row_reaches_the_classifier(home, name, capsys):
     """Each recorded row classifies through its own registry destination and rendering —
@@ -493,10 +493,10 @@ def test_a_transform_error_during_rendering_becomes_a_refusal(home, monkeypatch)
     def boom(data_dir):
         raise registry.TransformError("boom")
 
-    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    monkeypatch.setattr(registry, "render_skill", boom)
     planned, refusals = lifecycle.plan_install(["codex"], None, False)
-    assert any("codex-skill" in r and "boom" in r for r in refusals)
-    assert not any(item.name == "codex-skill" for item in planned)
+    assert any("refusing to install skill:" in r and "boom" in r for r in refusals)
+    assert not any(item.name == "skill" for item in planned)
 
 
 def test_dry_run_reports_a_transform_error_as_a_would_be_refusal(
@@ -505,7 +505,7 @@ def test_dry_run_reports_a_transform_error_as_a_would_be_refusal(
     def boom(data_dir):
         raise registry.TransformError("boom")
 
-    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    monkeypatch.setattr(registry, "render_skill", boom)
     rc = lifecycle.install_command(["codex", "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0
@@ -517,19 +517,17 @@ def test_uninstall_transform_error_during_removal_becomes_a_refusal(home, monkey
 
     The removal-side mirror of test_a_transform_error_during_rendering_becomes_a_refusal.
     """
-    dest = lifecycle.payload_destinations()["codex-skill"]
+    dest = lifecycle.payload_destinations()["skill"]
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(b"anything")
 
     def boom(data_dir):
         raise registry.TransformError("boom")
 
-    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    monkeypatch.setattr(registry, "render_skill", boom)
     planned, refusals = [], []
-    lifecycle.plan_remove_file(
-        "codex skill", dest, "codex-skill", False, planned, refusals
-    )
-    assert any("codex-skill" in r and "boom" in r for r in refusals)
+    lifecycle.plan_remove_file("skill", dest, "skill", False, planned, refusals)
+    assert any("refusing to remove skill:" in r and "boom" in r for r in refusals)
     assert not planned
 
 
@@ -575,8 +573,166 @@ def test_status_reports_a_transform_error_without_a_traceback(
     def boom(data_dir):
         raise registry.TransformError("boom")
 
-    monkeypatch.setattr(registry, "render_codex_skill", boom)
+    monkeypatch.setattr(registry, "render_skill", boom)
     rc = lifecycle.status_command([])
     out = capsys.readouterr().out
     assert rc == 0
     assert "cannot render" in out
+
+
+@pytest.mark.parametrize(
+    "build, expected",
+    [
+        # joined parents, neither leaf created yet — the half-apply case
+        (lambda d: (d / "data" / "c.py", d / "link" / "c.py"), True),
+        # distinct parents, neither leaf created
+        (lambda d: (d / "data" / "c.py", d / "other" / "c.py"), False),
+        # one directory, two different names
+        (lambda d: (d / "data" / "c.py", d / "data" / "R.md"), False),
+        # joined parents, one leaf already written
+        (lambda d: (d / "data" / "have.py", d / "link" / "have.py"), True),
+        # distinct parents, one leaf already written
+        (lambda d: (d / "data" / "have.py", d / "other" / "have.py"), False),
+        # several missing levels below the joined parents
+        (
+            lambda d: (
+                d / "data" / "a" / "b" / "c.py",
+                d / "link" / "a" / "b" / "c.py",
+            ),
+            True,
+        ),
+        # the same destination spelled through an existing directory and ".."
+        (lambda d: (d / "data" / "c.py", d / "link" / "sub" / ".." / "c.py"), True),
+        # ".." through a directory that does not exist is not resolvable at all
+        (lambda d: (d / "data" / "c.py", d / "link" / "gone" / ".." / "c.py"), False),
+    ],
+)
+def test_one_file_over_every_path_shape(tmp_path, build, expected):
+    """The comparison that decides whether preflight refuses.
+
+    A false "different" half-applies the request:
+    the first write creates the file and the second fails as "appeared after classification".
+    A false "same" refuses an install that was fine.
+    Both directions are wrong in ways a user feels,
+    so the shapes are enumerated rather than argued about.
+    """
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "sub").mkdir()
+    (tmp_path / "other").mkdir()
+    (tmp_path / "data" / "have.py").write_text("x", encoding="utf-8")
+    (tmp_path / "other" / "have.py").write_text("x", encoding="utf-8")
+    (tmp_path / "link").symlink_to(tmp_path / "data", target_is_directory=True)
+    a, b = build(tmp_path)
+    assert lifecycle._one_file(a, b) is expected
+
+
+def test_one_file_is_false_for_a_dangling_symlink_against_a_missing_path(tmp_path):
+    (tmp_path / "data").mkdir()
+    (tmp_path / "other").mkdir()
+    (tmp_path / "data" / "c.py").symlink_to(tmp_path / "nope")
+    assert (
+        lifecycle._one_file(tmp_path / "data" / "c.py", tmp_path / "other" / "c.py")
+        is False
+    )
+
+
+def test_a_dangling_symlink_destination_does_not_equal_itself(tmp_path):
+    """A known limit, pinned so it is a decision rather than a surprise.
+
+    lexists says the path is there,
+    samefile follows the link,
+    and stat raises on the missing target,
+    so the comparison cannot see a collision on this destination.
+    Nothing is lost:
+    the object-state axis refuses a symlink destination before any write,
+    and --force cannot widen that.
+    """
+    dead = tmp_path / "dead"
+    dead.symlink_to(tmp_path / "nowhere")
+    assert lifecycle._one_file(dead, dead) is False
+
+    verdict = classify.classify_artifact(None, dead, b"payload", "1.0.0", force=True)
+    assert verdict.action == "refuse"
+    assert "is a symlink" in verdict.detail
+
+
+def install_opencode():
+    """Apply a real opencode install, so records and files agree."""
+    planned, refusals = lifecycle.plan_install(["opencode"], None, False)
+    assert refusals == []
+    assert lifecycle.apply_plan(planned) == 0
+
+
+def test_a_never_installed_target_is_absent(home, capsys):
+    """The answer the whole rule turns on: nothing here, so nothing holds the skills.
+
+    Every recorded opencode row is examined and proven missing,
+    and a row with no record names no path to examine,
+    so the predicate has looked everywhere it can and found nothing.
+    Reading an unrecorded row as could-not-inspect would be the opposite mistake:
+    the shared skills would be retained forever on every machine that never installed opencode.
+    """
+    assert lifecycle.target_present("opencode", manifest.load()) is False
+    assert lifecycle.target_present("codex", manifest.load()) is False
+
+
+def test_a_present_destination_makes_a_target_present(home, capsys):
+    install_opencode()
+    assert lifecycle.target_present("opencode", manifest.load()) is True
+
+
+def test_a_record_outside_the_current_environment_still_counts(
+    home, capsys, monkeypatch
+):
+    """A machine installed under one XDG_CONFIG_HOME may be operated under another.
+
+    The destinations this environment derives are all absent,
+    and only the record still names the path the files were installed to.
+    """
+    install_opencode()
+    snapshot = manifest.load()
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "elsewhere"))
+    assert lifecycle.payload_destinations()["opencode-plugin"].exists() is False
+    assert lifecycle.target_present("opencode", snapshot) is True
+
+
+def test_a_record_whose_file_is_proven_gone_counts_absent(home, capsys):
+    """plan_remove_file leaves a vanished destination's record in place.
+
+    A valid record is not permanent presence:
+    the shared skills would be retained forever on a machine the user cleaned up by hand.
+    """
+    install_opencode()
+    for name in ("opencode-plugin", "opencode-checker", "opencode-setup-command"):
+        lifecycle.payload_destinations()[name].unlink()
+    snapshot = manifest.load()
+    assert snapshot["opencode-plugin"]["path"]
+    assert lifecycle.target_present("opencode", snapshot) is False
+
+
+def test_an_unresolvable_destination_counts_present(home, capsys, monkeypatch):
+    """A path never looked at is not a path found empty."""
+    monkeypatch.setattr(manifest, "opencode_plugins_dir", lambda: None)
+    monkeypatch.setattr(manifest, "opencode_setup_command_dest", lambda: None)
+    assert lifecycle.target_present("opencode", {}) is True
+
+
+def test_an_unreadable_hooks_json_counts_codex_present(home, capsys):
+    """The state a user is in exactly when they reach for uninstall.
+
+    installed_consumers reads the same file and fails closed to absent,
+    which is harmless in a warning and destructive here.
+    """
+    hooks = manifest.codex_home() / "hooks.json"
+    hooks.parent.mkdir(parents=True, exist_ok=True)
+    hooks.write_text("{ not json", encoding="utf-8")
+    assert lifecycle.installed_consumers() == set()
+    assert lifecycle.target_present("codex", manifest.load()) is True
+
+
+def test_a_foreign_hooks_json_leaves_codex_absent(home, capsys):
+    """Presence is this kit's own artifacts, not any hooks.json at all."""
+    hooks = manifest.codex_home() / "hooks.json"
+    hooks.parent.mkdir(parents=True, exist_ok=True)
+    hooks.write_text('{"hooks": {"PostToolUse": []}}', encoding="utf-8")
+    assert lifecycle.target_present("codex", manifest.load()) is False

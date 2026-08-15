@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -65,18 +66,38 @@ def test_named_target_is_consent_and_applies(tmp_path):
     assert str(data_root(tmp_path) / "README.md") in body
 
 
-def test_symlinked_skill_roots_refuse_the_whole_request(tmp_path):
-    """Per-target roots stop being separate when a symlink joins them.
+def test_installing_opencode_alone_publishes_the_shared_payloads(tmp_path):
+    """The shared skill cites the neutral root, so any target must publish it.
 
-    ADR-0018 gives each target its own root so two agents never share a file.
-    A user can defeat that from outside by pointing opencode's skills root at `~/.agents/skills`,
-    which is a reasonable thing to do and which opencode does not need,
-    since it already reads that directory natively.
+    This inverts the old assertion that an opencode-only install creates no data root:
+    under per-target skills that root was Codex's alone,
+    and citing it from opencode's copy would have referenced a file the install never wrote.
+    One shared skill body can only cite one checker, so the payloads it cites belong to every target.
+    """
+    r = run_semlf(["install", "opencode"], isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    assert (data_root(tmp_path) / "check_linefeeds.py").is_file()
+    assert (data_root(tmp_path) / "README.md").is_file()
 
-    Undetected, the request half-applies.
-    The second write finds a file that appeared after classification, errors, and strands every artifact behind it,
-    and a later `uninstall codex` then deletes the file opencode still needs.
-    Refusing the whole request is the only outcome that leaves nothing half-written.
+
+def test_agentsmd_alone_publishes_no_shared_payload(tmp_path):
+    target = tmp_path / "AGENTS.md"
+    target.write_text("# Agents\n", encoding="utf-8")
+    r = run_semlf(["install", "agentsmd", str(target)], isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    assert not data_root(tmp_path).exists()
+
+
+def test_symlinked_skill_roots_install_cleanly(tmp_path):
+    """The refusal this arrangement used to earn, retired with the second copy.
+
+    Pointing opencode's skills root at `~/.agents/skills` is a reasonable thing to do,
+    and opencode does not even need it, since it already reads that directory natively.
+    Under per-target rows it joined two skill destinations onto one file
+    and the whole request had to be refused.
+    One row publishes each skill now,
+    and a single row cannot collide with itself,
+    so the arrangement needs no rule and the install simply succeeds.
     """
     env = isolated_env(tmp_path)
     agents = tmp_path / "home" / ".agents" / "skills"
@@ -85,113 +106,193 @@ def test_symlinked_skill_roots_refuse_the_whole_request(tmp_path):
     (tmp_path / "xdg" / "opencode" / "skills").symlink_to(agents)
 
     r = run_semlf(["install", "codex", "opencode"], env)
-    assert r.returncode == 1
-    assert "both resolve to" in r.stdout + r.stderr
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "both resolve to" not in r.stdout + r.stderr
 
-    # Nothing at all may be written: the collision is a property of the request.
-    assert not data_root(tmp_path).exists()
-    assert not (tmp_path / "codex" / "hooks.json").exists()
-    assert not any(agents.iterdir())
+    # One skill, written once, reachable through both names for the one directory.
+    skill = agents / "semantic-linefeeds" / "SKILL.md"
+    assert skill.is_file()
+    via_opencode = tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds"
+    assert (via_opencode / "SKILL.md").read_bytes() == skill.read_bytes()
+    assert sorted(p.name for p in agents.iterdir()) == [
+        "semantic-linefeeds",
+        "setup-semlf",
+    ]
 
 
-def test_opencode_gets_a_judgment_skill_resolving_its_own_files(tmp_path):
-    """ADR-0006 for opencode, on ADR-0018's terms.
+def test_a_collision_assembled_across_two_requests_is_refused(tmp_path):
+    """Two requests, one file, two owners — the state the old check could not see.
 
-    opencode used to receive a plugin and a checker and no skill,
-    while the hook told the model to load one anyway.
-    It now installs its own copy,
-    and every path in that copy points at a file the same install wrote.
-    That is the property a single shared copy at `~/.agents/skills` could not have.
+    Install codex, point opencode's plugins directory at the payload root,
+    then install opencode.
+    Naming opencode selects both the shared `checker` row and opencode's own `opencode-checker` row in that same request,
+    and the symlink makes their destinations name one file,
+    so the selected-against-selected comparison catches it.
+    The old owner-keyed check missed this:
+    `checker`'s owner is "shared", not "opencode",
+    so it was never compared against `opencode-checker` at all.
+    """
+    env = isolated_env(tmp_path)
+    r = run_semlf(["install", "codex"], env)
+    assert r.returncode == 0, r.stderr
+
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    plugins.parent.mkdir(parents=True, exist_ok=True)
+    plugins.symlink_to(data_root(tmp_path), target_is_directory=True)
+
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 1, r.stdout
+    assert "resolve to" in r.stderr
+    assert "opencode-checker" in r.stderr
+
+
+def test_a_collision_between_two_destinations_that_do_not_exist_yet_is_refused(
+    tmp_path,
+):
+    """Nothing installed, both roots joined, both leaves absent.
+
+    realpath reports two different paths here,
+    so a fallback keyed on it finds no collision,
+    both rows are planned,
+    the first write creates the file and the second fails as "appeared after classification" — a half-applied request,
+    which preflight exists to make impossible.
+    """
+    env = isolated_env(tmp_path)
+    data = data_root(tmp_path)
+    data.mkdir(parents=True, exist_ok=True)
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    plugins.parent.mkdir(parents=True, exist_ok=True)
+    plugins.symlink_to(data, target_is_directory=True)
+
+    r = run_semlf(["install", "codex", "opencode"], env)
+    assert r.returncode == 1, r.stdout
+    assert "checker" in r.stderr
+    assert not (data / "check_linefeeds.py").exists(), "half-applied"
+
+
+def test_an_installed_but_unselected_row_is_checked_for_collision(tmp_path):
+    """The population `colliding_destinations` gained: rows this request never selects.
+
+    Install opencode first, so its own checker copy is recorded and written under the opencode plugins directory.
+    Delete that directory and symlink it onto the payload root, then install codex.
+    codex's request never selects `opencode-checker` — its owner is "opencode", not "codex" or "shared" —
+    so only the pass over already-installed rows can see that the symlink now makes its destination name the same file as the shared `checker` row codex's request does select.
+    """
+    env = isolated_env(tmp_path)
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    shutil.rmtree(plugins)
+    plugins.symlink_to(data_root(tmp_path), target_is_directory=True)
+
+    r = run_semlf(["install", "codex"], env)
+    assert r.returncode == 1, r.stdout
+    assert "resolve to" in r.stderr
+    assert "opencode-checker" in r.stderr
+
+
+def test_opencode_gets_the_shared_judgment_skill(tmp_path):
+    """ADR-0006 for opencode, discharged by the shared row (ADR-0019).
+
+    opencode reads `~/.agents/skills` natively,
+    so the copy it once received under its own config root bought nothing.
+    Installing opencode alone now publishes the one skill there,
+    and every path that skill cites is published by a shared row the same install wrote.
     """
     r = run_semlf(["install", "opencode"], isolated_env(tmp_path))
     assert r.returncode == 0, r.stderr
-    plugins = tmp_path / "xdg" / "opencode" / "plugins"
-    skill = tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     body = skill.read_text(encoding="utf-8")
 
-    assert str(plugins / "check_linefeeds.py") in body
-    assert str(plugins / "README.md") in body
-    assert (plugins / "README.md").exists()
+    assert str(data_root(tmp_path) / "check_linefeeds.py") in body
+    assert str(data_root(tmp_path) / "README.md") in body
+    assert (data_root(tmp_path) / "README.md").exists()
 
-    # Nothing may point at the neutral root, which is codex-owned and never created here.
-    assert not data_root(tmp_path).exists()
-    assert str(data_root(tmp_path)) not in body
-    # Codex's copy is a different file with a different owner, and this install writes none of it.
-    assert not (
-        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
-    ).exists()
+    # Nothing is written under opencode's own skills root any more.
+    assert not (tmp_path / "xdg" / "opencode" / "skills").exists()
+    # The plugin directory carries the plugin and its checker, and no README.
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    assert (plugins / "semantic-linefeeds.ts").exists()
+    assert not (plugins / "README.md").exists()
 
 
-def test_uninstalling_one_agent_leaves_the_others_judgment_skill(tmp_path):
-    codex_skill = (
-        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
-    )
-    opencode_skill = (
-        tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds" / "SKILL.md"
-    )
+def test_uninstalling_codex_keeps_the_skill_opencode_still_uses(tmp_path):
+    """The codex direction of the last-consumer rule.
+
+    There is one skill now, so removing it with codex would take it away from opencode too.
+    The removal legs travelled with codex as a holdover while the rows were renamed;
+    the rule that replaced them removes the shared skill only when no target still has artifacts.
+    opencode's own artifacts are untouched either way.
+    """
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex", "opencode"], env)
-    assert codex_skill.exists() and opencode_skill.exists()
+    assert skill.exists()
 
     assert run_semlf(["uninstall", "codex"], env).returncode == 0
-    assert not codex_skill.exists()
-    assert opencode_skill.exists(), "per-target copies make this removal unambiguous"
-    assert (tmp_path / "xdg" / "opencode" / "plugins" / "README.md").exists()
+    assert skill.exists(), "opencode is still installed and reads this skill"
+    assert (plugins / "semantic-linefeeds.ts").exists()
+    assert (plugins / "check_linefeeds.py").exists()
 
 
 def setup_skill_paths(tmp_path):
-    """The three setup destinations: Codex's skill, opencode's skill, opencode's command."""
+    """The two setup destinations: the shared skill, and opencode's command.
+
+    opencode's own copy of the skill is gone —
+    it read the shared root all along, so the second copy was never reachable prose.
+    """
     return (
         tmp_path / "home" / ".agents" / "skills" / "setup-semlf" / "SKILL.md",
-        tmp_path / "xdg" / "opencode" / "skills" / "setup-semlf" / "SKILL.md",
         tmp_path / "xdg" / "opencode" / "commands" / "setup-semlf.md",
     )
 
 
-def test_installing_codex_writes_only_its_own_setup_skill(tmp_path):
-    codex_skill, opencode_skill, opencode_command = setup_skill_paths(tmp_path)
+def test_installing_codex_writes_the_shared_setup_skill_and_no_command(tmp_path):
+    setup_skill, opencode_command = setup_skill_paths(tmp_path)
     r = run_semlf(["install", "codex"], isolated_env(tmp_path))
     assert r.returncode == 0, r.stderr
-    assert codex_skill.exists()
-    assert not opencode_skill.exists()
+    assert setup_skill.exists()
+    # The command is opencode's own artifact, so naming codex must not write it.
     assert not opencode_command.exists()
 
 
-def test_installing_opencode_leaves_no_reference_to_a_codex_owned_file(tmp_path):
-    """The defect that sank the shared-root design, pinned.
+def test_the_setup_skill_cites_no_payload(tmp_path):
+    """The setup skill references no published file, so it needs no payload to exist.
 
-    The judgment skill is rendered with absolute paths into the neutral data root,
-    and the rows that publish that root are owned by codex.
-    A setup skill installed for opencode must therefore cite no payload at all:
-    if it ever gains one, this fails here rather than in a user's install,
-    where the symptom would be a skill pointing at files that install never wrote.
+    The judgment skill is the opposite case and cites the shared root deliberately;
+    this one must stay self-contained,
+    because it is what an agent runs when nothing is installed yet.
     """
-    codex_skill, opencode_skill, opencode_command = setup_skill_paths(tmp_path)
+    setup_skill, opencode_command = setup_skill_paths(tmp_path)
     r = run_semlf(["install", "opencode"], isolated_env(tmp_path))
     assert r.returncode == 0, r.stderr
-    assert opencode_skill.exists()
+    assert setup_skill.exists()
     assert opencode_command.exists()
-    assert not codex_skill.exists()
 
-    # The neutral root is codex-owned, so an opencode-only install never creates it.
-    assert not data_root(tmp_path).exists()
-    body = opencode_skill.read_text(encoding="utf-8")
-    assert str(data_root(tmp_path)) not in body
+    body = setup_skill.read_text(encoding="utf-8")
     assert "check_linefeeds.py" not in body
 
 
-def test_both_targets_install_the_same_setup_skill_bytes(tmp_path):
-    codex_skill, opencode_skill, _ = setup_skill_paths(tmp_path)
+def test_the_setup_skill_installs_its_canonical_bytes(tmp_path):
+    """One row, one source, no transform: the installed file is the repository's.
+
+    There is nothing left to drift against now that a second destination is gone,
+    so what this pins is that the row still ships bytes rather than a rendering.
+    """
+    setup_skill, _ = setup_skill_paths(tmp_path)
     r = run_semlf(["install", "codex", "opencode"], isolated_env(tmp_path))
     assert r.returncode == 0, r.stderr
-    source = (REPO / "skills" / "setup-semlf" / "SKILL.md").read_bytes()
-    assert codex_skill.read_bytes() == source
-    assert opencode_skill.read_bytes() == source
+    assert (
+        setup_skill.read_bytes()
+        == (REPO / "skills" / "setup-semlf" / "SKILL.md").read_bytes()
+    )
 
 
 def test_the_opencode_command_delegates_rather_than_restating(tmp_path):
     """A command that copied the procedure would be a second place to update."""
-    _, _, opencode_command = setup_skill_paths(tmp_path)
+    _, opencode_command = setup_skill_paths(tmp_path)
     run_semlf(["install", "opencode"], isolated_env(tmp_path))
     body = opencode_command.read_text(encoding="utf-8")
     assert "setup-semlf" in body
@@ -199,31 +300,38 @@ def test_the_opencode_command_delegates_rather_than_restating(tmp_path):
     assert "pipx install" not in body
 
 
-def test_uninstall_removes_each_targets_own_setup_artifacts(tmp_path):
-    codex_skill, opencode_skill, opencode_command = setup_skill_paths(tmp_path)
+def test_uninstall_removes_the_setup_artifacts_each_target_owns(tmp_path):
+    """Uninstalling opencode takes its command; the shared skill is not its to remove.
+
+    opencode owned a setup skill of its own before the shared root,
+    and this test asserted its removal.
+    That row is gone, so what remains true is the narrower claim:
+    a target's uninstall removes the artifacts that target owns,
+    and the shared skill leaves with the removal legs that still carry it.
+    """
+    setup_skill, opencode_command = setup_skill_paths(tmp_path)
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex", "opencode"], env)
 
     r = run_semlf(["uninstall", "opencode"], env)
     assert r.returncode == 0, r.stderr
-    assert not opencode_skill.exists()
     assert not opencode_command.exists()
-    assert codex_skill.exists(), (
-        "uninstalling one target must not remove another's copy"
-    )
+    assert setup_skill.exists(), "the shared skill is not opencode's to remove"
 
     r = run_semlf(["uninstall", "codex"], env)
     assert r.returncode == 0, r.stderr
-    assert not codex_skill.exists()
+    assert not setup_skill.exists()
 
 
 def test_status_reports_the_setup_artifacts(tmp_path):
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex", "opencode"], env)
     out = run_semlf(["status"], env).stdout
-    assert "codex setup skill" in out
-    assert "opencode setup skill" in out
-    assert "opencode setup command" in out
+    # Anchored on the line start: "skill:" is a substring of "setup skill:".
+    lines = out.splitlines()
+    assert any(line.startswith("skill: ") for line in lines), out
+    assert any(line.startswith("setup skill: ") for line in lines), out
+    assert any(line.startswith("opencode setup command: ") for line in lines), out
 
 
 def test_apply_order_puts_neutral_payloads_first(tmp_path):
@@ -419,7 +527,12 @@ def test_status_names_no_consumer_leftovers_in_one_line(tmp_path):
 
 def test_status_points_opencode_leftovers_at_their_real_path(tmp_path):
     """The leftover pointer derives from each identity row's own destination:
-    an opencode-checker leftover lives in the opencode plugins directory, never under the neutral data root."""
+    an opencode-checker leftover lives in the opencode plugins directory, not a hand-maintained path.
+
+    checker and readme are shared rows now,
+    so losing opencode's own consumer signal leaves them without a consumer too,
+    and their own destination — the neutral data root — legitimately joins the leftover list alongside it.
+    """
     env = isolated_env(tmp_path)
     run_semlf(["install", "opencode"], env)
     plugins = tmp_path / "xdg" / "opencode" / "plugins"
@@ -429,7 +542,6 @@ def test_status_points_opencode_leftovers_at_their_real_path(tmp_path):
     out = r.stdout
     assert "no remaining" in out.lower()
     assert str(plugins / "check_linefeeds.py") in out
-    assert str(data_root(tmp_path)) not in out
 
 
 def test_status_excludes_agentsmd_without_a_path(tmp_path):
@@ -478,17 +590,57 @@ def test_status_names_a_recorded_payload_whose_file_vanished(tmp_path):
     assert "checker" in r.stdout and "missing" in r.stdout.lower()
 
 
-def test_a_skill_only_machine_keeps_payloads_expected(tmp_path):
-    """Removing only the hook must not downgrade the neutral payloads to leftovers —
-    the installed skill still references them."""
+def test_a_skill_only_machine_reports_the_payloads_as_leftovers(tmp_path):
+    """A skill-only machine no longer proves codex, so its payloads read as leftovers.
+
+    The skill used to count as codex's, because it referenced the neutral checker and README
+    and removing only the hook must not downgrade those payloads.
+    They are shared rows now, so that reason is gone
+    and the skill proves some agent rather than codex specifically (ADR-0019).
+
+    This is the reporting direction the design chose.
+    A false "absent" costs a harmless leftover warning and a manual-removal pointer,
+    which is the cheap side of a predicate that fails closed;
+    the expensive side would be an opencode-only machine inventing a codex consumer
+    and reporting genuinely orphaned payloads as expected.
+    """
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex"], env)
     (tmp_path / "codex" / "hooks.json").write_text(
         '{"hooks": {"PostToolUse": []}}', encoding="utf-8"
     )
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    assert skill.exists(), "the skill is what used to keep the payloads expected"
+
     r = run_semlf(["status"], env)
     assert r.returncode == 0
-    assert "no remaining" not in r.stdout.lower()
+    assert "no remaining" in r.stdout.lower()
+    assert str(data_root(tmp_path)) in r.stdout
+
+
+def test_an_uninstalled_opencode_machine_reports_its_orphaned_payloads(tmp_path):
+    """The payloads are retained and reported; the skills are not.
+
+    opencode was the last consumer here,
+    so its uninstall takes the shared skills with it —
+    a skill left behind is advertised to every model that scans the root.
+    The payloads keep the retain-and-report precedent instead,
+    which is what leaves this machine carrying orphaned files that status must name.
+    """
+    env = isolated_env(tmp_path)
+    assert run_semlf(["install", "opencode"], env).returncode == 0
+    assert run_semlf(["uninstall", "opencode"], env).returncode == 0
+
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    assert not skill.exists(), "opencode was the last consumer of the shared skill"
+    assert (data_root(tmp_path) / "check_linefeeds.py").exists()
+
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0
+    out = r.stdout
+    assert "no remaining consumer" in out.lower()
+    assert str(data_root(tmp_path) / "check_linefeeds.py") in out
+    assert str(data_root(tmp_path) / "README.md") in out
 
 
 def test_uninstall_without_a_target_is_a_usage_error(tmp_path):
@@ -517,7 +669,7 @@ def test_uninstall_refuses_an_edited_skill_without_force(tmp_path):
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     skill.write_text("hand-patched", encoding="utf-8")
     # Clear its record so admission can only come from byte identity.
-    (tmp_path / "state" / "semlf" / "artifacts" / "codex-skill.json").unlink()
+    (tmp_path / "state" / "semlf" / "artifacts" / "skill.json").unlink()
     r = run_semlf(["uninstall", "codex"], env)
     assert r.returncode == 1
     assert skill.exists()
@@ -557,8 +709,144 @@ def test_uninstall_dry_run_reports_a_would_be_refusal_at_exit_zero(tmp_path):
     run_semlf(["install", "codex"], env)
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     skill.write_text("hand-patched", encoding="utf-8")
-    (tmp_path / "state" / "semlf" / "artifacts" / "codex-skill.json").unlink()
+    (tmp_path / "state" / "semlf" / "artifacts" / "skill.json").unlink()
     r = run_semlf(["uninstall", "codex", "--dry-run"], env)
     assert r.returncode == 0
     assert "would refuse" in r.stdout
     assert skill.read_text(encoding="utf-8") == "hand-patched"
+
+
+def test_a_target_recorded_under_another_config_home_counts_present(tmp_path):
+    """The reporting predicate probes only the current environment.
+
+    Install opencode under one XDG_CONFIG_HOME, then operate under another:
+    the plugin is not where this environment looks,
+    but its record still proves bytes at the path it was installed to.
+    Counting it absent would delete shared skills a live installation still uses.
+    """
+    env = isolated_env(tmp_path)
+    r = run_semlf(["install", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+
+    moved = dict(env, XDG_CONFIG_HOME=str(tmp_path / "elsewhere"))
+    r = run_semlf(["uninstall", "codex"], moved)
+    assert r.returncode == 0, r.stderr
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    assert shared.is_file(), "shared skill removed while opencode is still installed"
+
+
+def test_an_unreadable_hooks_json_retains_the_shared_skills(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex", "opencode"], env)
+    (tmp_path / "codex" / "hooks.json").write_text("{ not json", encoding="utf-8")
+
+    run_semlf(["uninstall", "opencode"], env)
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    assert shared.is_file(), "an unreadable hooks.json must not authorise a delete"
+
+
+def test_a_record_whose_file_is_gone_counts_absent(tmp_path):
+    """Otherwise a hand-cleaned machine can never converge."""
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex", "opencode"], env)
+    plugin = tmp_path / "xdg" / "opencode" / "plugins" / "semantic-linefeeds.ts"
+    plugin.unlink()
+
+    r = run_semlf(["uninstall", "codex", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    assert not shared.exists()
+
+
+def test_removing_one_target_keeps_the_shared_skills(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex", "opencode"], env)
+    r = run_semlf(["uninstall", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    assert shared.is_file()
+
+
+def test_removing_the_last_target_takes_them_and_keeps_the_payloads(tmp_path):
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex", "opencode"], env)
+    run_semlf(["uninstall", "opencode"], env)
+    r = run_semlf(["uninstall", "codex"], env)
+    assert r.returncode == 0, r.stderr
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    assert not shared.exists()
+    assert (data_root(tmp_path) / "check_linefeeds.py").is_file()
+    assert "retained" in r.stdout
+
+
+def test_shared_removals_are_planned_after_every_target_artifact(tmp_path):
+    """apply_plan stops at the first error and has no rollback.
+
+    A shared removal placed early would strand a target with its own artifacts installed and its skill gone;
+    planned last, the same failure leaves the skills intact and a re-run converges.
+    """
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "opencode"], env)
+    r = run_semlf(["uninstall", "opencode", "--dry-run"], env)
+    assert r.returncode == 0, r.stderr
+    lines = [ln for ln in r.stdout.splitlines() if "would remove" in ln]
+    plugin = next(i for i, ln in enumerate(lines) if "semantic-linefeeds.ts" in ln)
+    skill = next(i for i, ln in enumerate(lines) if "skills" in ln and "SKILL.md" in ln)
+    assert plugin < skill
+
+
+def orphaned_skill_machine(tmp_path):
+    """A machine whose shared skills are installed and whose agents are not.
+
+    Installing codex writes the skills,
+    and blanking the hook by hand is the state a user reaches without ever running uninstall.
+    The skills are the only thing left, which is what makes them removable at all.
+    """
+    env = isolated_env(tmp_path)
+    assert run_semlf(["install", "codex"], env).returncode == 0
+    (tmp_path / "codex" / "hooks.json").write_text(
+        '{"hooks": {"PostToolUse": []}}', encoding="utf-8"
+    )
+    agents_md = tmp_path / "AGENTS.md"
+    assert run_semlf(["install", "agentsmd", str(agents_md)], env).returncode == 0
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    assert skill.is_file()
+    return env, agents_md, skill
+
+
+def test_a_request_naming_no_agent_target_never_removes_the_shared_skills(tmp_path):
+    """The removal side of the rule `selects` already applies to installs.
+
+    agentsmd is a paragraph of prose with no checker and no skill behind it,
+    so a request that names it and no agent target neither publishes nor removes a skill.
+    --force is the reason this needs a guard rather than a mitigation:
+    it is a valid flag on this verb and it removes the refusal
+    that would otherwise protect a hand-patched skill.
+    """
+    env, agents_md, skill = orphaned_skill_machine(tmp_path)
+    r = run_semlf(["uninstall", "agentsmd", str(agents_md), "--force"], env)
+    assert r.returncode == 0, r.stderr
+    assert skill.is_file(), "a request naming no agent target removed a global skill"
+    assert "semantic-linefeeds" not in agents_md.read_text(encoding="utf-8")
+
+
+def test_naming_an_agent_target_still_collects_the_orphaned_skills(tmp_path):
+    """The guard costs no convergence.
+
+    Naming codex on a machine where nothing is installed is still a request that covers every agent target,
+    so the orphaned skills it once wrote still go.
+    """
+    env, _, skill = orphaned_skill_machine(tmp_path)
+    r = run_semlf(["uninstall", "codex"], env)
+    assert r.returncode == 0, r.stderr
+    assert not skill.exists()
