@@ -63,6 +63,14 @@ uv add --dev ruff pytest pre-commit
 This appends a `[dependency-groups]` table with `dev = [...]` to `pyproject.toml` and writes `uv.lock`.
 Do not hand-edit version pins — let `uv` resolve them.
 
+**What actually landed:** `uv add --dev` initially resolved the dev venv to Python 3.9.25, the lowest version satisfying `requires-python = ">=3.9"`.
+That silently skipped 6 of `test_packaging.py`'s 9 tests, since `pytest.importorskip("tomllib")` degrades rather than fails under 3.9.
+The fix was `uv python pin 3.12` (writing `.python-version`) plus `uv sync`,
+and the dev group grew two names beyond the three above:
+`pip` and `setuptools`, because `test_packaging.py`'s `WHEEL_PREREQS` gate (`_pip_available()`, `_setuptools_at_least_61()`) needs both actually importable to run the wheel-build tests rather than skip them.
+`requires-python = ">=3.9"` in `[project]` stayed untouched throughout —
+the dev venv's interpreter and the distributed package's floor are separate concerns.
+
 - [ ] **Step 3: Verify the packaging contract is untouched**
 
 Run: `uv run python3 -m pytest tests/test_packaging.py -q`
@@ -215,7 +223,7 @@ Run `uv run ruff check .` — expect exactly these 9 remaining findings, then fi
 ```
 
 ```python
-# line ~139, inner except inside repo_root()'s HEAD-resolution branch
+# line ~139, inner except inside _head_or_empty_tree()'s HEAD-resolution branch
         except SourceError:
             raise SourceError("semlf: cannot resolve HEAD in this repository") from None
 ```
@@ -232,7 +240,7 @@ Run `uv run ruff check .` — expect exactly these 9 remaining findings, then fi
             raise SourceError(f"semlf: cannot read {display}: {exc}") from exc
 ```
 
-The two `repo_root()` sites use `from None`: the new message fully replaces the original error rather than incorporating its detail, so chaining would only show a redundant stacked `SourceError`.
+The two `_head_or_empty_tree()` sites use `from None`: the new message fully replaces the original error rather than incorporating its detail, so chaining would only show a redundant stacked `SourceError`.
 The other three use `from exc` because the new message embeds `{exc}` directly.
 
 **`tests/corpus/calibration/draw.py`** and **`tests/corpus/holdout/draw.py`** — unused loop variable (`B007`), one site each:
