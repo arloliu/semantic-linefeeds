@@ -102,8 +102,12 @@ That is a constraint on the rule, not a reason it cannot exist.
 - The design depends on both targets reading `~/.agents/skills`.
   Codex and opencode 1.18.18 do, verified directly.
   An older opencode would lose the skill with no error, so a minimum version is documented.
-- A project-level `.opencode/skill` or `.opencode/skills` copy outranks the shared root.
+- A project-level `.opencode/skill` or `.opencode/skills` copy usually wins over the shared root,
+  by the same scan-order race that decides the global roots rather than by any published rule.
   That is a stated carve-out; nothing inspects those paths.
+- `OPENCODE_DISABLE_EXTERNAL_SKILLS` turns off the scan the shared copy depends on.
+  It is documented beside the version floor, for the same reason:
+  both produce a machine that has lost the skill and reports nothing.
 - `doctor` gains a check for a competing file at opencode's own skill path,
   which is the state that was previously invisible to every check it ran.
 

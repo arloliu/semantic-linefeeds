@@ -64,15 +64,22 @@ with no opencode skills directory present at all,
 `opencode debug skill` still resolves the skill from `~/.agents/skills` and reports that path.
 The scan is unconditional rather than opted into, and `skills.paths` only appends to it.
 
-One user opt-out is acknowledged rather than claimed away.
-A per-agent configuration can disable the `skill` tool, or disable an individual skill,
+Two opt-outs are acknowledged rather than claimed away.
+
+`OPENCODE_DISABLE_EXTERNAL_SKILLS` turns off the external scan itself,
+which is the one setting that makes the shared copy unreachable while everything else looks healthy.
+It produces exactly the silent failure the version floor guards against,
+so it is named in the README beside that floor rather than left to be discovered.
+`OPENCODE_DISABLE_PROJECT_CONFIG` does the same for project-level directories.
+
+Separately, a per-agent configuration can disable the `skill` tool, or disable an individual skill,
 and that hides the shared copy wherever it lives.
-That is a choice a user makes, not a gap in this design.
+Both are choices a user makes, not gaps in this design.
 
 ### Precedence is a race, and it covers only the global roots
 
 "Own root wins" is an observed outcome, not a rule opencode publishes.
-`loadSkills` adds every discovered match with unbounded concurrency, so the last add to complete wins,
+Every discovered match is added with unbounded concurrency into a name-keyed store, so the last add to complete wins,
 and config directories are scanned after external ones, which is why their adds tend to land last.
 Rather than documenting a precedence,
 opencode's own troubleshooting page tells users to keep skill names unique across locations.
@@ -90,7 +97,8 @@ and removing it is the answer either way.
 ### Writing nothing to opencode's own root also costs nothing
 
 opencode does not silently deduplicate.
-`add` overwrites the name-keyed record and logs `duplicate skill name` each time the same name arrives from another path.
+The name-keyed record is overwritten,
+and `duplicate skill name` is logged each time the same name arrives from another path.
 Measured on this machine:
 2586 such warnings across 53 runs, between 30 and 57 per run.
 
@@ -99,7 +107,8 @@ this machine's opencode skills root is a symlink to the shared root,
 so every skill there is discovered twice by two spellings, and most belong to another tool.
 
 An earlier draft of this design installed a symlink in each agent's own root, pointing at the shared copy.
-That would have added one such warning per linked skill per session on any machine whose roots are not already joined.
+That would have added one such warning per linked skill at every process start,
+on any machine whose roots are not already joined.
 It is dropped.
 The reason it existed was to occupy the slot that wins,
 and precedence turns out to be a race between two paths that resolve to the same bytes,
