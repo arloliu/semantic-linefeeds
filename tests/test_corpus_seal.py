@@ -92,8 +92,7 @@ def test_a_unit_one_pass_never_answered_stops_the_seal(tmp_path):
 def test_a_unit_recorded_as_a_defect_leaves_the_sample_instead(tmp_path):
     """The escape hatch costs a boundary and records why, which is the point.
 
-    A defect that silently dropped the unit would let a labeler's failure
-    shrink the denominator without anyone signing for it.
+    A defect that silently dropped the unit would let a labeler's failure shrink the denominator without anyone signing for it.
     """
     units = [unit("h-0001"), unit("h-0002")]
     units[1]["labeling_defect"] = "one pass would not answer this unit on four runs"

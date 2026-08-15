@@ -108,8 +108,7 @@ def _parse_raw(out):
 def _raw_records(root, *selector):
     """One raw enumeration per snapshot: status, mode, and oid travel together.
 
-    --no-renames keeps the record shape independent of host
-    diff.renames/diff.copies configuration —
+    --no-renames keeps the record shape independent of host diff.renames/diff.copies configuration —
     a rename arrives as an addition of the new path,
     which is the checkable post-image either way.
     """
@@ -133,8 +132,7 @@ def _head_or_empty_tree(root):
     Absence is probed with rev-parse --verify --quiet on the target,
     whose contract is exit 1 with empty stderr for a missing ref —
     a broken ref emits a diagnostic instead, and stays loud,
-    because silently diffing against the empty tree would report
-    every file changed.
+    because silently diffing against the empty tree would report every file changed.
     """
     try:
         _git(root, "rev-parse", "--verify", "--quiet", "HEAD")
@@ -172,8 +170,7 @@ def _selected(root, records):
     """The checkable, non-excluded, regular-file subset of a raw listing.
 
     The mode gate is git's recorded post-image type —
-    under core.symlinks=false a symlink materializes as a plain file
-    holding link text, and only the recorded type can tell —
+    under core.symlinks=false a symlink materializes as a plain file holding link text, and only the recorded type can tell —
     so symlinks (120000) and gitlinks (160000) never reach a reader.
     """
     kept = []

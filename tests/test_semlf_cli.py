@@ -149,8 +149,7 @@ def test_state_is_restored_after_an_injected_crash(tmp_path, monkeypatch):
     before_limit = check_linefeeds.CLI_LONG_LIMIT
 
     def boom(prog=None):
-        # Same signature as the seam, or the TypeError would fire
-        # before the injected crash and prove nothing.
+        # Same signature as the seam, or the TypeError would fire before the injected crash and prove nothing.
         raise RuntimeError("injected")
 
     monkeypatch.setattr(check_linefeeds, "main", boom)
@@ -278,10 +277,9 @@ def test_git_mode_flags_are_never_abbreviated(capsys):
 
 
 def test_git_mode_without_a_mode_flag_is_a_usage_error(capsys):
-    # Unreachable through main()'s routing, which only dispatches here
-    # when a mode flag is present; required=True is the defense that
-    # keeps the provider ternary from silently defaulting if a future
-    # caller arrives without one.
+    # Unreachable through main()'s routing,
+    # which only dispatches here when a mode flag is present;
+    # required=True is the defense that keeps the provider ternary from silently defaulting if a future caller arrives without one.
     from semlf.cli import _git_mode
 
     assert _git_mode(["--json"]) == 64

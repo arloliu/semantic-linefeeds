@@ -224,8 +224,7 @@ def test_direct_diagnose_sees_config_changes_without_any_reset(tmp_path, monkeyp
     """Freshness is the contract: direct callers never manage hidden state.
 
     diagnose() is called straight from tests and adapters,
-    so creating, changing, or removing .semlf.ini between two calls
-    must take effect with no reset hook in between.
+    so creating, changing, or removing .semlf.ini between two calls must take effect with no reset hook in between.
     """
     monkeypatch.delenv("SEMLF_LONG_LINE", raising=False)
     monkeypatch.setattr(check_linefeeds, "CLI_LONG_LIMIT", None)
@@ -538,9 +537,8 @@ def test_excluded_is_false_for_a_path_outside_the_config_root(tmp_path):
 def test_policy_survives_a_vanished_directory(tmp_path):
     """A ghost path is governed by the nearest existing ancestor's config.
 
-    This is the worktree-policy anchor for staged files whose parent
-    directory was removed from the worktree: policy must not lapse
-    just because the directory is index-only now.
+    This is the worktree-policy anchor for staged files whose parent directory was removed from the worktree:
+    policy must not lapse just because the directory is index-only now.
     """
     (tmp_path / ".git").mkdir()
     write(tmp_path / ".semlf.ini", "[semlf]\nexclude = generated/\n")
@@ -561,8 +559,7 @@ def test_excluded_is_false_for_an_escaping_symlink(tmp_path):
     """The outside-root guard acts on the resolved path, not the spelling.
 
     The catch-all pattern makes this mutation-sensitive:
-    without the ../-guard the component glob would match the resolved
-    path's basename and wrongly exclude it.
+    without the ../-guard the component glob would match the resolved path's basename and wrongly exclude it.
     """
     project = tmp_path / "project"
     (project / ".git").mkdir(parents=True)

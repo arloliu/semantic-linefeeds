@@ -58,8 +58,7 @@ def active_long_limit(path=None):
     so a path whose directory vanished from the worktree keeps its policy.
     Discovery runs fresh on every call — no memo —
     because diagnose() and check() are called directly by tests and adapters,
-    and a hidden cache a caller must know to reset would trade
-    a few stat calls for a correctness trap.
+    and a hidden cache a caller must know to reset would trade a few stat calls for a correctness trap.
     """
     if CLI_LONG_LIMIT is not None:
         return CLI_LONG_LIMIT
@@ -93,12 +92,9 @@ def _config_and_root(start_dir):
     A start_dir that is not an existing directory returns ({}, None)
     without walking.
     No section supplies a key through defaults inheritance:
-    every parser default is stripped through the public API right after
-    the file is read, before any section is consulted,
-    because ConfigParser.defaults() would otherwise inherit into [semlf]
-    from a default section whose name hostile input can always spell.
-    File-level trouble — unreadable, undecodable, parser error —
-    drops the whole file;
+    every parser default is stripped through the public API right after the file is read, before any section is consulted.
+    ConfigParser.defaults() would otherwise inherit into [semlf] from a default section whose name hostile input can always spell.
+    File-level trouble — unreadable, undecodable, parser error — drops the whole file;
     an invalid value drops only its own key,
     so one bad long-limit cannot silence a good exclude beside it
     (and, per ADR-0017, a malformed experimental-wrap cannot silence either).
@@ -171,12 +167,11 @@ def load_config(start_dir):
 def _existing_start(path):
     """The nearest existing ancestor directory of path.
 
-    The worktree-policy anchor: a staged file whose parent directory
-    was removed from the worktree is still governed by the configs
-    that do exist above it (ADR-0013's one-policy-source ruling).
-    load_config keeps its own contract — a nonexistent start_dir handed
-    to it directly returns {} without walking; the ascent lives here,
-    in the callers that own a path rather than a directory.
+    The worktree-policy anchor (ADR-0013's one-policy-source ruling):
+    a staged file whose parent directory was removed from the worktree is still governed by the configs that do exist above it.
+    load_config keeps its own contract —
+    a nonexistent start_dir handed to it directly returns {} without walking.
+    The ascent lives here, in the callers that own a path rather than a directory.
     """
     cur = os.path.dirname(os.path.abspath(path))
     while cur and not os.path.isdir(cur):
@@ -202,16 +197,14 @@ def _exclude_match(rel, patterns):
     so every comparison is per path segment, never whole-string
     (raw fnmatch would let * roam across separators).
     A trailing "/" names folders:
-    with an inner "/" the segment chain is anchored at the config
-    root and matches only what lives under it — never a plain file
-    whose own path spells the chain;
+    with an inner "/" the segment chain is anchored at the config root
+    and matches only what lives under it — never a plain file whose own path spells the chain;
     without one the folder name excludes at any depth.
     A pattern without a trailing "/" is a glob:
     with a "/" it must match the whole relative path segment-by-segment,
     without one it may match any single path component.
-    fnmatchcase everywhere: a rule that changed meaning between
-    platforms would make the same commit clean on one machine
-    and flagged on another.
+    fnmatchcase everywhere:
+    a rule that changed meaning between platforms would make the same commit clean on one machine and flagged on another.
     """
     parts = rel.split("/")
     for pattern in patterns:
@@ -235,13 +228,12 @@ def _exclude_match(rel, patterns):
 def excluded(path):
     """Whether the project config excludes path from discovery.
 
-    Discovery-only: hook mode and the semlf git modes consult this
-    filter; an explicitly named --file path never does — naming a path
-    is the judgment call excludes exist to encode (ADR-0010's
-    principle), and overriding it silently would hide a finding the
-    user asked for.
-    Fails open like every config path: no config, a config the parser
-    rejects, or a path outside the config's tree excludes nothing.
+    Discovery-only: hook mode and the semlf git modes consult this filter.
+    An explicitly named --file path never does —
+    naming a path is the judgment call excludes exist to encode (ADR-0010's principle),
+    and overriding it silently would hide a finding the user asked for.
+    Fails open like every config path:
+    no config, a config the parser rejects, or a path outside the config's tree excludes nothing.
     A false exclusion is a missed finding — the acceptable direction;
     a crash or a changed finding kind is not.
     """
@@ -279,8 +271,7 @@ LICENSE_RE = re.compile(
 DOC_OPEN_RE = re.compile(r"^[rRuUbB]{0,2}(\"\"\"|''')")
 SIG_RE = re.compile(r"^(async\s+def|def|class)\b")
 
-# A line may legitimately end without terminal punctuation when the break
-# lands before a conjunction or relative/subordinate clause on the next line.
+# A line may legitimately end without terminal punctuation when the break lands before a conjunction or relative/subordinate clause on the next line.
 CONNECTORS = {
     "and",
     "but",
@@ -348,9 +339,8 @@ CLOSING_EMPHASIS_RE = re.compile(r"(\*{1,3}|_{1,3}|~{1,2})$")
 TRAILING_CODE_SPAN_RE = re.compile(r"`[^`]+`$")
 
 # A comment line holding nothing but code punctuation.
-# Commented-out code written as line comments rather than as an indented block
-# reaches the extractor as prose, and a lone closing brace then forms a boundary
-# with whatever line follows it.
+# Commented-out code written as line comments rather than as an indented block reaches the extractor as prose,
+# and a lone closing brace then forms a boundary with whatever line follows it.
 # The set is deliberately narrow: no English sentence is built from these alone,
 # so nothing that reads as prose can match.
 CODE_PUNCTUATION_RE = re.compile(r"^[{}()\[\];,\s]+$")
@@ -385,8 +375,8 @@ FENCE_RE = re.compile(r"^(`{3,}|~{3,})")
 # and without a state the lines under it are read as prose.
 PRE_OPEN_RE = re.compile(r"<pre\b|<pre>", re.IGNORECASE)
 
-# A bare "and" is usually a compound object (not a boundary); require the
-# comma-led form, or strong punctuation, before advising a split.
+# A bare "and" is usually a compound object (not a boundary);
+# require the comma-led form, or strong punctuation, before advising a split.
 BOUNDARY_HINT_RE = re.compile(r"[;:—]|\s–\s|, (?:and|but|so|which|that|where)\b")
 
 Language = collections.namedtuple(
@@ -545,8 +535,8 @@ def _after_directive_preamble(lines, lang):
     """The index where the leading comment region starts, past any build directives.
 
     A build constraint is not a comment scope of its own.
-    Reading it as one ends the region at the blank line the language requires
-    under a Go build tag, which leaves the licence below it judged as prose.
+    Reading it as one ends the region at the blank line the language requires under a Go build tag,
+    which leaves the licence below it judged as prose.
     Only a run that actually opens with a directive is stepped over,
     so a file whose first line is a blank or a comment is read exactly as before.
     """
@@ -567,13 +557,10 @@ def _after_directive_preamble(lines, lang):
 def license_header_extent(text, lang):
     """Return the last lineno of a leading license comment region, else 0.
 
-    The region is the file's leading comment scope: consecutive line
-    comments (blank-bodied ones included) OR one block comment — never
-    both.  It ends at the first blank line outside a block, the first
-    code line, the block comment's close, or a style transition (a block
-    opener after line comments), whichever comes first.  A multi-
-    paragraph license separated by truly blank lines keeps only its
-    first chunk — a documented precision tradeoff.
+    The region is the file's leading comment scope:
+    consecutive line comments (blank-bodied ones included) OR one block comment — never both.
+    It ends at the first blank line outside a block, the first code line, the block comment's close, or a style transition (a block opener after line comments), whichever comes first.
+    A multi-paragraph license separated by truly blank lines keeps only its first chunk — a documented precision tradeoff.
     """
     end = 0
     licensey = False
@@ -688,11 +675,10 @@ def line_ending(prose):
 
 
 # A changed span is where an edit landed in the after-state text.
-# Half-open over code points, except that a deleted newline leaves no
-# after-state text at all, so a boundary is carried as a zero-width span.
-# "mapping" records whether the adapter located the edit exactly or fell
-# back to something coarser; the hook, not the core, decides what a
-# degraded mapping forfeits.
+# Half-open over code points, except that a deleted newline leaves no after-state text at all,
+# so a boundary is carried as a zero-width span.
+# "mapping" records whether the adapter located the edit exactly or fell back to something coarser;
+# the hook, not the core, decides what a degraded mapping forfeits.
 def normalize_span(span):
     if not isinstance(span, dict):
         raise ValueError(f"span must be a mapping: {span!r}")
@@ -721,8 +707,8 @@ def normalize_span(span):
 def touches(rng, span):
     """Strict overlap for ranges; a zero-width boundary touches on an edge.
 
-    Two half-open ranges must share a code point: an edit that stops
-    exactly where the accused text begins changed nothing inside it,
+    Two half-open ranges must share a code point:
+    an edit that stops exactly where the accused text begins changed nothing inside it,
     and reporting there is a false positive.
     A deleted newline leaves no after-state text at all,
     so a zero-width boundary counts when it lies anywhere on the range, edges included.
@@ -812,8 +798,8 @@ def prose_lines_markdown(text):
             yield i, None, None
             continue
         if in_table:
-            # The block runs to the first blank line or the next block-level
-            # structure, which is where a table ends for a reader too.
+            # The block runs to the first blank line or the next block-level structure,
+            # which is where a table ends for a reader too.
             if stripped and not stripped.startswith(("#", "```", "~~~")):
                 yield i, None, None
                 continue
@@ -868,13 +854,11 @@ def prose_lines_markdown(text):
             carrier_content = comment.group(1).strip(" \t")
             parsed = parse_directive(carrier_content)
             if parsed is not None and parsed is not MALFORMED:
-                # A directive-only HTML comment is the one markup line the
-                # stream keeps: recognition happens downstream, after the
-                # licence cut has had its say (ADR-0010).
+                # A directive-only HTML comment is the one markup line the stream keeps:
+                # recognition happens downstream, after the licence cut has had its say (ADR-0010).
                 yield i, raw, carrier_content
                 continue
-        # A malformed or non-directive comment falls through to the
-        # exclusion below and stays markup.
+        # A malformed or non-directive comment falls through to the exclusion below and stays markup.
         if (
             not stripped
             or stripped.startswith("#")
@@ -898,13 +882,10 @@ def prose_lines_code(text, lang):
 
     Yields (lineno, None, None) for lines that break paragraph continuity.
 
-    Consecutive line comments continue one paragraph only when they start at
-    the same indentation column (Vale's coalescing rule); a column change
-    emits a break before the new line's prose.  Fence (```), <pre>, and
-    doctest state is scoped to one comment run and resets at EVERY scope
-    exit, including one-line scopes; every block-comment exit also emits a
-    paragraph break so prose on a closing line can never coalesce with a
-    following comment.
+    Consecutive line comments continue one paragraph only when they start at the same indentation column (Vale's coalescing rule);
+    a column change emits a break before the new line's prose.
+    Fence (```), <pre>, and doctest state is scoped to one comment run and resets at EVERY scope exit, including one-line scopes;
+    every block-comment exit also emits a paragraph break so prose on a closing line can never coalesce with a following comment.
     """
     in_block = False
     block_close = ""
@@ -925,9 +906,8 @@ def prose_lines_code(text, lang):
         fence = pre = doctest = False
 
     def body_prose(body):
-        # Stateful never-flag layer: doctest regions, markdown fences, and
-        # HTML <pre> blocks inside doc comments, then indented example
-        # code, then the stateless comment_body rules.
+        # Stateful never-flag layer:
+        # doctest regions, markdown fences, and HTML <pre> blocks inside doc comments, then indented example code, then the stateless comment_body rules.
         nonlocal fence, pre, doctest
         s = body.strip()
         if s.startswith(">>>"):
@@ -1008,8 +988,8 @@ def prose_lines_code(text, lang):
             if lang.block_prefix and s.startswith(lang.block_prefix):
                 body = s[len(lang.block_prefix) :]
             else:
-                # Undecorated block: keep indentation relative to the block
-                # opener so indented example code stays recognizable.
+                # Undecorated block:
+                # keep indentation relative to the block opener so indented example code stays recognizable.
                 lead = len(body) - len(body.lstrip())
                 body = body[min(lead, block_base) :]
             prose = body_prose(body)
@@ -1104,8 +1084,8 @@ def header_comment_text(text, lang):
 
     A generator writes its marker under whatever licence it emits,
     so a fixed number of leading lines misses the marker exactly when a licence stands first.
-    The first line of code ends the header, which is what keeps the scan
-    from reading a `DO NOT EDIT` written in prose further down as one.
+    The first line of code ends the header,
+    which is what keeps the scan from reading a `DO NOT EDIT` written in prose further down as one.
     """
     header = []
     in_block = False
@@ -1147,9 +1127,9 @@ def prose_stream(text, path):
     lang = lang_for_path(path)
     if lang is None:
         return None
-    # Two reaches, and the header is added to the first five lines rather than
-    # replacing them: narrowing the older rule would start checking files it
-    # now skips, and a change that adds findings is not one this corpus can score.
+    # Two reaches, and the header is added to the first five lines rather than replacing them:
+    # narrowing the older rule would start checking files it now skips,
+    # and a change that adds findings is not one this corpus can score.
     head = "\n".join(text.splitlines()[:5])
     if GENERATED_RE.search(head) or GENERATED_RE.search(
         header_comment_text(text, lang)
@@ -1182,8 +1162,7 @@ def without_license_text(lines, text, path):
     which reaches the licence block a carbon-lang file opens inside an HTML comment.
 
     Both readers of the extractor cut here, and that is the point of the function.
-    A sampling frame that enumerated a boundary the checker refuses to judge
-    would hold a violation no predicate could ever reach.
+    A sampling frame that enumerated a boundary the checker refuses to judge would hold a violation no predicate could ever reach.
     """
     lang = None if is_markdown(path) else lang_for_path(path)
     cut = license_header_extent(text, lang) if lang else 0
@@ -1211,40 +1190,27 @@ def _line_range(text, offsets, lineno):
 
 
 # The repeatable line leaders a suggestion's prefix may be built from:
-# whitespace, then zero or more of #, //, ;, or a blockquote >, each
-# optionally followed by more whitespace.
-# A list marker, a docstring's opening quotes, and a block comment's
-# opening /* all fail this whitelist on purpose.
-# * is deliberately absent even though it is also a legitimate
-# block-comment continuation marker: the Markdown extractor also treats
-# a leading * as a list bullet and strips it from prose while keeping
-# it in raw, so admitting it here would duplicate that bullet and split
-# one list item into two.
-# Losing the suggestion on a real block-comment continuation is the
-# accepted missed-suggestion cost of closing that hole.
+# whitespace, then zero or more of #, //, ;, or a blockquote >, each optionally followed by more whitespace.
+# A list marker, a docstring's opening quotes, and a block comment's opening /* all fail this whitelist on purpose.
+# * is deliberately absent even though it is also a legitimate block-comment continuation marker:
+# the Markdown extractor also treats a leading * as a list bullet and strips it from prose while keeping it in raw,
+# so admitting it here would duplicate that bullet and split one list item into two.
+# Losing the suggestion on a real block-comment continuation is the accepted missed-suggestion cost of closing that hole.
 _SUGGESTION_PREFIX_RE = re.compile(r"^[ \t]*(?:(?:#|//|;|>)[ \t]*)*$")
 
-# The suggestion's tail may carry only trailing whitespace; nothing may
-# move across the break.
+# The suggestion's tail may carry only trailing whitespace;
+# nothing may move across the break.
 _SUGGESTION_TAIL_RE = re.compile(r"^[ \t]*$")
 
 
 def _fused_suggestion(prose, raw, match):
     """A two-line suggested replacement for an automatic-class fused finding, or None.
 
-    Maximally conservative rather than a real protected-span engine: no
-    suggestion unless FUSED_RE matches exactly once, the terminator sits
-    with nothing between it and a single ASCII space, `prose` has no
-    backtick/`<`/`>` anywhere on the line, `raw` contains `prose`
-    exactly once, and the prefix/tail around `prose` in `raw` both pass
-    the structural whitelist above.
-    Any closing quote, bracket, paren, or emphasis mark between the
-    terminator and the space withholds the suggestion instead of trying
-    to reattach it.
-    `raw` cannot carry an embedded `\\r` on any current entry path
-    (every extractor reaches it through `str.splitlines()`), so that
-    check is a belt over an already-fastened suspender, kept for a
-    future entry path that might skip it.
+    Maximally conservative rather than a real protected-span engine:
+    no suggestion unless FUSED_RE matches exactly once, the terminator sits with nothing between it and a single ASCII space, `prose` has no backtick/`<`/`>` anywhere on the line, `raw` contains `prose` exactly once, and the prefix/tail around `prose` in `raw` both pass the structural whitelist above.
+    Any closing quote, bracket, paren, or emphasis mark between the terminator and the space withholds the suggestion instead of trying to reattach it.
+    `raw` cannot carry an embedded `\\r` on any current entry path (every extractor reaches it through `str.splitlines()`),
+    so that check is a belt over an already-fastened suspender, kept for a future entry path that might skip it.
     """
     if "\r" in raw:
         return None
@@ -1303,19 +1269,16 @@ def diagnose(text, path, spans=None):
             prev = None
             continue
 
-        # Checked against the still-unrebound raw line: the trailing-carrier
-        # block below this one reassigns `raw` later in the same iteration.
+        # Checked against the still-unrebound raw line:
+        # the trailing-carrier block below this one reassigns `raw` later in the same iteration.
         parsed = parse_directive(prose)
         if (
             parsed is not None
             and parsed is not MALFORMED
             and _standalone_carrier_is_ascii(raw, prose)
         ):
-            # A well-formed standalone directive line is a paragraph boundary,
-            # not prose (ADR-0010).
-            # A MALFORMED line, or one whose carrier whitespace is not
-            # ASCII (ADR-0010's WS grammar), falls through and stays
-            # visible prose.
+            # A well-formed standalone directive line is a paragraph boundary, not prose (ADR-0010).
+            # A MALFORMED line, or one whose carrier whitespace is not ASCII (ADR-0010's WS grammar), falls through and stays visible prose.
             offset, kinds = parsed
             suppressions.setdefault(lineno + offset, set()).update(kinds)
             prev = None
@@ -1588,11 +1551,11 @@ MD_STANDALONE_RE = re.compile(r"^<!--([^<>]*)-->$")
 def trailing_carrier(line, is_md, lang):
     """The parsed directive, judged prefix, and carrier suffix, or None.
 
-    ADR-0010: the carrier is the rightmost leader-to-line-end suffix
-    after the end trim, and a malformed tail is wholly inert —
+    ADR-0010: the carrier is the rightmost leader-to-line-end suffix after the end trim,
+    and a malformed tail is wholly inert —
     it neither suppresses nor is stripped from the judged text.
-    The returned carrier is the exact suffix the caller must also
-    strip from the extracted prose, so raw and prose never diverge.
+    The returned carrier is the exact suffix the caller must also strip from the extracted prose,
+    so raw and prose never diverge.
     """
     trimmed = line.rstrip(" \t")
     if is_md:
@@ -1622,9 +1585,9 @@ def trailing_carrier(line, is_md, lang):
 # and a kind that misfires on correct prose cannot be the one that refuses an edit.
 BLOCKING_KINDS = frozenset({"fused"})
 
-# ADR-0006: the bounded disagreement rule, carried by every judgment-layer
-# surface; appended after the degraded-position note and before the
-# suppression instruction, which ADR-0010 pins as the report's final text.
+# ADR-0006: the bounded disagreement rule, carried by every judgment-layer surface;
+# appended after the degraded-position note and before the suppression instruction,
+# which ADR-0010 pins as the report's final text.
 AGENT_JUDGMENT_NOTE = (
     "Judge a finding before rewriting: if you consider it a false positive, or "
     "the same finding survives one repair attempt, stop retrying and surface "
@@ -1700,12 +1663,10 @@ def _identity(stat):
 def _read_snapshot(path):
     """One stable snapshot of path, or None when it cannot be trusted.
 
-    Strict decoding: a replacement character would shift offsets while
-    the mapping still claimed to be exact.
-    The descriptor is stat'd before and after the read (an in-place
-    change moves size or mtime), and the path is stat'd after it (an
-    atomic replacement moves the inode), so bytes from a file the path
-    no longer names degrade instead of being labeled exact.
+    Strict decoding:
+    a replacement character would shift offsets while the mapping still claimed to be exact.
+    The descriptor is stat'd before and after the read (an in-place change moves size or mtime), and the path is stat'd after it (an atomic replacement moves the inode),
+    so bytes from a file the path no longer names degrade instead of being labeled exact.
     """
     try:
         with open(path, encoding="utf-8") as f:
@@ -1723,8 +1684,8 @@ def _read_snapshot(path):
 def _locate_unique(text, needle):
     """The span of needle's only occurrence, or None.
 
-    Overlapping repeats count as ambiguous, so the second search starts
-    one code point after the first hit rather than after its end.
+    Overlapping repeats count as ambiguous,
+    so the second search starts one code point after the first hit rather than after its end.
     """
     if not needle:
         return None
@@ -1737,22 +1698,13 @@ def _locate_unique(text, needle):
 def _looks_like_the_skill(path):
     """Whether path is a readable file whose frontmatter names this skill.
 
-    A bare existence check, or a bare substring search, would send an
-    agent to load a corrupt or unrelated file at the same path -- a
-    file whose *body* happens to mention the skill's name is not the
-    skill.
-    Requiring the exact name line to sit inside an opened and
-    closed `---` block rules that out without parsing YAML.
+    A bare existence check, or a bare substring search, would send an agent to load a corrupt or unrelated file at the same path --
+    a file whose *body* happens to mention the skill's name is not the skill.
+    Requiring the exact name line to sit inside an opened and closed `---` block rules that out without parsing YAML.
 
-    Reads 1025 bytes so a closing delimiter can never be confused with
-    end of file: if fewer than 1025 came back, the buffer already is
-    the whole file, so a trailing `\\n---` at the end of it is a true
-    close.
-    If exactly 1025 came back, the file continues past the
-    probe, so only a closing delimiter followed by `\\n` fully inside
-    the first 1024 decoded characters counts -- the 1025th byte itself
-    never enters the match, since its only job is telling truncated
-    from whole.
+    Reads 1025 bytes so a closing delimiter can never be confused with end of file:
+    if fewer than 1025 came back, the buffer already is the whole file, so a trailing `\\n---` at the end of it is a true close.
+    If exactly 1025 came back, the file continues past the probe, so only a closing delimiter followed by `\\n` fully inside the first 1024 decoded characters counts -- the 1025th byte itself never enters the match, since its only job is telling truncated from whole.
     """
     try:
         with open(path, "rb") as f:
@@ -1780,13 +1732,11 @@ def _looks_like_the_skill(path):
 def _judgment_layer_present(transport):
     """Whether hook feedback may tell the model to load a judgment-layer skill.
 
-    Claude Code always has one: the skill ships inside the plugin that runs
-    this hook.
-    Codex has one only when a candidate at either location Codex resolves
-    standalone skills from (ADR-0006) reads back as this skill: a
-    repository `.agents/skills` directory, or `$HOME/.agents/skills` when
-    `$HOME` actually resolves to something (`os.path.expanduser("~")`
-    returns its input unchanged when it cannot).
+    Claude Code always has one:
+    the skill ships inside the plugin that runs this hook.
+    Codex has one only when a candidate at a location standalone skills resolve from (ADR-0006) reads back as this skill:
+    a repository `.agents/skills` directory, `$HOME/.agents/skills` when `$HOME` actually resolves to something (`os.path.expanduser("~")` returns its input unchanged when it cannot), or opencode's own skills root.
+    opencode belongs in that list because its plugin declares this transport too, while keeping its copy under its config root (ADR-0018).
     """
     if transport == "claude":
         return True
@@ -1799,6 +1749,19 @@ def _judgment_layer_present(transport):
             candidates.append(
                 os.path.join(
                     home, ".agents", "skills", "semantic-linefeeds", "SKILL.md"
+                )
+            )
+        # opencode's plugin declares this transport for an apply_patch-shaped payload,
+        # and installs its own copy under its config root rather than sharing Codex's (ADR-0018).
+        # Without this candidate the layer reads as absent on an opencode-only machine that has one,
+        # and the feedback goes quiet about a skill sitting right there.
+        config = os.environ.get("XDG_CONFIG_HOME") or (
+            os.path.join(home, ".config") if home != "~" else None
+        )
+        if config:
+            candidates.append(
+                os.path.join(
+                    config, "opencode", "skills", "semantic-linefeeds", "SKILL.md"
                 )
             )
         return any(_looks_like_the_skill(p) for p in candidates)
@@ -1815,19 +1778,13 @@ def deliver(reports, transport, note=None):
     Claude Code files it under its debug log,
     and Codex reads non-blocking feedback only from JSON on stdout.
 
-    `reports` is a sequence of (path, findings, snippet) triples rather
-    than one pair, since a single Codex patch can touch several files,
-    each report carries its own snippet flag per ADR-0005's span-source
-    table, and the non-blocking transport is one JSON object.
+    `reports` is a sequence of (path, findings, snippet) triples rather than one pair, since a single Codex patch can touch several files, each report carries its own snippet flag per ADR-0005's span-source table, and the non-blocking transport is one JSON object.
     Both hosts accept the same object shape,
     so the transport does not vary by agent.
     `transport` is `"claude"` or `"codex"`;
-    it decides whether the closing "load the semantic-linefeeds skill"
-    sentence is included (ADR-0006):
+    it decides whether the closing "load the semantic-linefeeds skill" sentence is included (ADR-0006):
     Claude always has the skill, Codex only when a usable copy is present.
-    A finding that carries a `suggestion` (the automatic `!`/`?` class ADR-0007 restricts
-    delivery to) gets its own block after the report bodies, labeled with the same line-number
-    phrasing the body uses.
+    A finding that carries a `suggestion` (the automatic `!`/`?` class ADR-0007 restricts delivery to) gets its own block after the report bodies, labeled with the same line-number phrasing the body uses.
     A single-file delivery keeps that line-number label as-is, since the report body right above it already names the one file in play;
     once a second report is present, each label also names its file, or two findings sharing a line number across files would read as the same one.
     """
@@ -1904,9 +1861,9 @@ def run_hook_claude():
     new_string = tool_input.get("new_string")
     if isinstance(new_string, str):
         if not new_string:
-            # A deletion: its zero-width boundary has no locatable text
-            # without a preimage, and a guess would own text the edit
-            # never touched.
+            # A deletion:
+            # its zero-width boundary has no locatable text without a preimage,
+            # and a guess would own text the edit never touched.
             # A missed finding is the accepted cost.
             return 0
         snapshot = None if tool_input.get("replace_all") else _read_snapshot(path)
@@ -1918,9 +1875,9 @@ def run_hook_claude():
         return deliver([(path, diagnose(new_string, path), True)], "claude")
     content = tool_input.get("content")
     if isinstance(content, str) and content:
-        # A Write hands over the whole file: content is both the context
-        # and one whole-file span (ADR-0005), so degraded ownership is
-        # withheld rather than guessed.
+        # A Write hands over the whole file:
+        # content is both the context and one whole-file span (ADR-0005),
+        # so degraded ownership is withheld rather than guessed.
         spans = [{"start": 0, "end": len(content)}]
         return deliver([(path, diagnose(content, path, spans=spans), False)], "claude")
     return 0
@@ -2009,8 +1966,8 @@ def run_hook_codex():
     if isinstance(tool_input, str):
         patch = tool_input
     elif isinstance(tool_input, dict):
-        # "command" is the current stable contract; "input"/"patch" are
-        # best-effort fallbacks for older payload shapes.
+        # "command" is the current stable contract;
+        # "input"/"patch" are best-effort fallbacks for older payload shapes.
         patch = (
             tool_input.get("command")
             or tool_input.get("input")
@@ -2150,8 +2107,8 @@ def main(prog=None):
         "(default agent: claude)",
     )
     # Zero or more, with a trailing catch-all, so that `--file --json PATH` parses.
-    # With `nargs="+"`, an option word standing where a path belongs left `--file` with
-    # nothing to consume, which turned a common ordering into a usage error.
+    # With `nargs="+"`, an option word standing where a path belongs left `--file` with nothing to consume,
+    # which turned a common ordering into a usage error.
     mode.add_argument(
         "--file",
         nargs="*",

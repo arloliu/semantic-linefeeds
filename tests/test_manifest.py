@@ -269,8 +269,7 @@ def test_record_preflight_refuses_a_file_blocking_the_parent(monkeypatch, tmp_pa
     hasattr(os, "geteuid") and os.geteuid() == 0, reason="root ignores permission bits"
 )
 def test_record_preflight_refuses_an_unwritable_state_tree(monkeypatch, tmp_path):
-    """A writable destination plus a read-only artifacts directory must
-    refuse at preflight, not publish and then fail the record write."""
+    """A writable destination plus a read-only artifacts directory must refuse at preflight, not publish and then fail the record write."""
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     artifacts = tmp_path / "state" / "semlf" / "artifacts"
     artifacts.mkdir(parents=True)

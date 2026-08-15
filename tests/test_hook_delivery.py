@@ -170,8 +170,7 @@ def test_the_opt_in_brings_wrap_back_without_blocking(agent):
 def test_the_opt_in_asks_for_a_judgment_rather_than_a_rewrite(agent):
     """`wrap` is under evaluation, and the wording has to say so.
 
-    A false positive becomes a change to correct prose
-    exactly when the model is told to fix a finding this release could not trust.
+    A false positive becomes a change to correct prose exactly when the model is told to fix a finding this release could not trust.
     """
     context = advisory(deliver(agent, WRAP_ONLY, env=OPT_IN))
     assert "Fix these" not in context
@@ -307,9 +306,9 @@ def test_an_advisory_report_ends_with_the_instruction():
 
 
 def test_a_degraded_codex_note_comes_before_the_instruction():
-    # The delivery-test Codex payloads name files absent on disk, so the
-    # report is degraded and carries the approximate-position note; the
-    # instruction must still be the report's last text.
+    # The delivery-test Codex payloads name files absent on disk,
+    # so the report is degraded and carries the approximate-position note;
+    # the instruction must still be the report's last text.
     result = deliver("codex", LONG_ONLY)
     body = advisory(result)
     assert "approximate positions" in body
@@ -317,10 +316,9 @@ def test_a_degraded_codex_note_comes_before_the_instruction():
 
 
 def test_the_agent_instruction_wording_is_pinned():
-    # The endswith/placement tests above import AGENT_SUPPRESSION_NOTE and
-    # assert against the constant itself, so a rewording keeps them green.
-    # This pins the literal text (scripts/check_linefeeds.py) so a
-    # rewording is caught here instead.
+    # The endswith/placement tests above import AGENT_SUPPRESSION_NOTE and assert against the constant itself,
+    # so a rewording keeps them green.
+    # This pins the literal text (scripts/check_linefeeds.py) so a rewording is caught here instead.
     assert AGENT_SUPPRESSION_NOTE == (
         "An agent never adds a suppression directive on its own authority: "
         "if you judge a finding to be a false positive, leave the text as it is "
@@ -359,26 +357,24 @@ def test_claude_advisory_always_names_the_skill(tmp_path):
 def test_codex_advisory_omits_the_skill_hint_without_an_installed_skill(
     tmp_path, monkeypatch
 ):
-    # The probe also checks a cwd-relative candidate; chdir into the
-    # empty tmp_path so that branch cannot accidentally see this repo's
-    # own working tree instead of the fixture being tested.
+    # The probe also checks a cwd-relative candidate;
+    # chdir into the empty tmp_path so that branch cannot accidentally see this repo's own working tree instead of the fixture being tested.
     monkeypatch.chdir(tmp_path)
     r = deliver("codex", LONG_ONLY, env={"HOME": str(tmp_path)})
     assert "load the semantic-linefeeds skill" not in advisory(r)
 
 
 def test_codex_advisory_names_the_skill_when_one_is_installed(tmp_path, monkeypatch):
-    # An installed-shape fixture, not a bare placeholder: the probe
-    # requires real frontmatter naming the skill, so a file that merely
-    # exists at the right path is not enough to satisfy it.
+    # An installed-shape fixture, not a bare placeholder:
+    # the probe requires real frontmatter naming the skill,
+    # so a file that merely exists at the right path is not enough to satisfy it.
     skill = tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     skill.parent.mkdir(parents=True)
     skill.write_text(
         "---\nname: semantic-linefeeds\ndescription: test fixture\n---\n\nBody.\n",
         encoding="utf-8",
     )
-    # Run from a skill-free directory so this positive result comes from
-    # the HOME probe, not from an incidental cwd-relative match.
+    # Run from a skill-free directory so this positive result comes from the HOME probe, not from an incidental cwd-relative match.
     elsewhere = tmp_path / "elsewhere"
     elsewhere.mkdir()
     monkeypatch.chdir(elsewhere)

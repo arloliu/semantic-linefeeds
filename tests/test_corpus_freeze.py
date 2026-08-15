@@ -58,8 +58,7 @@ def holdout(unsealed):
 def test_sealing_against_an_unfrozen_predicate_is_refused(unsealed):
     """The ordering the first round kept by hand.
 
-    A bundle that can be sealed before its predicate is frozen
-    lets the freeze be written once the prose is already in the working tree,
+    A bundle that can be sealed before its predicate is frozen lets the freeze be written once the prose is already in the working tree,
     and a freeze written then predicts nothing.
     """
     with pytest.raises(ScoringRefused, match="freeze it before drawing"):
@@ -70,8 +69,8 @@ def test_sealing_against_an_unfrozen_predicate_is_refused(unsealed):
 def test_a_predicate_tuned_after_its_freeze_cannot_be_sealed_against(unsealed):
     """Freezing something else does not count.
 
-    The record names a digest, so editing the predicate afterwards
-    leaves a ledger that is full and still does not name what is about to be sealed.
+    The record names a digest,
+    so editing the predicate afterwards leaves a ledger that is full and still does not name what is about to be sealed.
     """
     unsealed.freeze_predicate("a predicate that is about to change")
     unsealed.predicate.write_text(

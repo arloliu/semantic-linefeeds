@@ -20,8 +20,7 @@ FUSED = "One sentence here. Another sentence follows."
 
 @pytest.fixture
 def hook_dir():
-    # Not under the platform temp directory and free of SKIP_DIRS
-    # components, so skip_path can never silently blank these tests.
+    # Not under the platform temp directory and free of SKIP_DIRS components, so skip_path can never silently blank these tests.
     scratch = REPO / f"hookscratch-{uuid.uuid4().hex}"
     scratch.mkdir()
     assert not skip_path(str(scratch / "doc.md"))
@@ -194,8 +193,8 @@ def test_read_snapshot_degrades_when_the_file_changes_mid_read(hook_dir, monkeyp
 
 
 def test_read_snapshot_degrades_on_an_atomic_replacement(hook_dir, monkeypatch):
-    # The final path stat names a different inode: the file was swapped
-    # with one of identical size and restored mtime.
+    # The final path stat names a different inode:
+    # the file was swapped with one of identical size and restored mtime.
     import check_linefeeds
 
     doc = hook_dir / "doc.md"
@@ -244,8 +243,7 @@ def test_a_located_patch_reports_real_line_numbers_without_the_note(hook_dir):
 
 
 def test_a_move_to_rename_reports_the_destination_path(hook_dir):
-    # A `*** Move to:` rename must re-key the hunk to the destination
-    # path, both for language dispatch and for what the report names.
+    # A `*** Move to:` rename must re-key the hunk to the destination path, both for language dispatch and for what the report names.
     old_doc = hook_dir / "orig.md"
     new_doc = hook_dir / "renamed.md"
     new_doc.write_text("filler\n" * 10 + FUSED + "\n")
@@ -548,8 +546,8 @@ def test_a_question_fused_edit_reports_a_suggested_replacement(hook_dir):
 
 
 def test_a_degraded_claude_edit_still_carries_the_suggestion(hook_dir):
-    # Claude, degraded: the edit's text occurs twice in the file, so the
-    # mapped branch cannot pick one and the snippet fallback fires.
+    # Claude, degraded: the edit's text occurs twice in the file,
+    # so the mapped branch cannot pick one and the snippet fallback fires.
     doc = hook_dir / "doc.md"
     fused = "Stop now? Go on."
     doc.write_text(fused + "\n\nmiddle prose\n\n" + fused + "\n")
@@ -574,8 +572,8 @@ def test_a_mapped_codex_patch_carries_the_suggestion(hook_dir):
 
 
 def test_a_degraded_codex_patch_still_carries_the_suggestion(hook_dir):
-    # Codex, degraded: the added text occurs twice, so the hunk cannot
-    # locate exactly and the joined-added-runs fallback fires.
+    # Codex, degraded: the added text occurs twice,
+    # so the hunk cannot locate exactly and the joined-added-runs fallback fires.
     doc = hook_dir / "doc.md"
     fused = "Stop now? Go on."
     doc.write_text(fused + "\n\nmiddle prose here\n\n" + fused + "\n")
@@ -621,6 +619,23 @@ def test_judgment_layer_present_true_for_a_valid_home_skill(tmp_path, monkeypatc
     assert _judgment_layer_present("codex") is True
 
 
+def test_judgment_layer_present_finds_opencodes_own_skill(tmp_path, monkeypatch):
+    """opencode keeps its copy under its config root, not beside Codex's (ADR-0018).
+
+    Its plugin declares the codex transport for an apply_patch-shaped payload,
+    so a probe that only looked under `.agents/skills` would report no judgment layer on a machine where one is installed and loadable,
+    and the feedback would stay silent about a skill sitting right there.
+    """
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.chdir(tmp_path)
+    assert _judgment_layer_present("codex") is False
+    _write_skill_frontmatter(
+        tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    assert _judgment_layer_present("codex") is True
+
+
 def test_judgment_layer_present_false_for_a_wrong_name_file(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.chdir(tmp_path)
@@ -634,9 +649,9 @@ def test_judgment_layer_present_false_for_a_wrong_name_file(tmp_path, monkeypatc
 def test_judgment_layer_present_false_for_a_name_line_with_no_frontmatter(
     tmp_path, monkeypatch
 ):
-    # The exact name line is present in the file's body, but the file
-    # carries no frontmatter block at all -- a bare substring search
-    # would wrongly accept this file.
+    # The exact name line is present in the file's body,
+    # but the file carries no frontmatter block at all --
+    # a bare substring search would wrongly accept this file.
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.chdir(tmp_path)
     skill = tmp_path / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
@@ -685,11 +700,8 @@ def test_judgment_layer_present_false_with_no_skill_anywhere(tmp_path, monkeypat
 def test_judgment_layer_present_skips_the_home_probe_when_expanduser_is_unresolved(
     tmp_path, monkeypatch
 ):
-    # `os.path.expanduser("~")` returns its input unchanged when it cannot
-    # resolve a home directory (no $HOME and no usable pwd entry); simulate
-    # that directly rather than trying to reproduce it via the environment,
-    # since an unset $HOME still resolves through the passwd database on
-    # most systems this suite runs on.
+    # `os.path.expanduser("~")` returns its input unchanged when it cannot resolve a home directory (no $HOME and no usable pwd entry);
+    # simulate that directly rather than trying to reproduce it via the environment, since an unset $HOME still resolves through the passwd database on most systems this suite runs on.
     import check_linefeeds
 
     monkeypatch.chdir(tmp_path)
@@ -699,8 +711,8 @@ def test_judgment_layer_present_skips_the_home_probe_when_expanduser_is_unresolv
 
 def test_looks_like_the_skill_rejects_a_truncated_closing_delimiter(tmp_path):
     # Byte 1024 completes "\n---", but byte 1025 is "X", not a newline:
-    # the file reads "---X...", not a closing delimiter, and the helper
-    # must not mistake the edge of its own read buffer for end of file.
+    # the file reads "---X...", not a closing delimiter,
+    # and the helper must not mistake the edge of its own read buffer for end of file.
     prefix = b"---\nname: semantic-linefeeds\n"
     pad = 1024 - len(prefix) - len(b"\n---")
     body = prefix + (b"a" * pad) + b"\n---" + b"X" + b"\ndescription: after\n---\n"

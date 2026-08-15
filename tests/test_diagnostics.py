@@ -310,9 +310,8 @@ def test_a_two_boundary_line_gets_no_suggestion():
 
 
 def test_fused_suggestion_byte_identity_holds_with_a_duplicated_prefix():
-    # The suggestion replaces the single inter-sentence ASCII space with
-    # a line break followed by the repeated line leader; outside that
-    # one insertion the bytes are identical to raw.
+    # The suggestion replaces the single inter-sentence ASCII space with a line break followed by the repeated line leader;
+    # outside that one insertion the bytes are identical to raw.
     # Compute the prefix exactly as the helper does: raw up to where the excerpt starts.
     cases = [
         ("   Is this right? Yes it is.\n", "doc.md"),  # indented
@@ -364,10 +363,9 @@ def test_a_terminator_before_closing_emphasis_gets_no_suggestion():
 
 
 def test_a_carrier_stripped_line_gets_no_suggestion():
-    # The trailing carrier suppresses "long" only, so the fused finding
-    # survives; the carrier strip still withholds the suggestion (design
-    # condition 8), since the two-line shape has nowhere to put the
-    # carrier text back.
+    # The trailing carrier suppresses "long" only,
+    # so the fused finding survives;
+    # the carrier strip still withholds the suggestion (design condition 8), since the two-line shape has nowhere to put the carrier text back.
     text = "Stop now? Go on. <!-- semlf-ignore long -->\n"
     (d,) = diags(text)
     assert d["kind"] == "fused"
@@ -375,9 +373,8 @@ def test_a_carrier_stripped_line_gets_no_suggestion():
 
 
 def test_inline_html_markup_gets_no_suggestion():
-    # FUSED_RE still matches inside the quoted attribute value, and the
-    # line does not start with "<" so the Markdown extractor still reads
-    # it as ordinary prose (design condition 4).
+    # FUSED_RE still matches inside the quoted attribute value,
+    # and the line does not start with "<" so the Markdown extractor still reads it as ordinary prose (design condition 4).
     text = 'Use <span title="stop! Go">x</span>.\n'
     (d,) = diags(text)
     assert d["kind"] == "fused"
@@ -385,9 +382,8 @@ def test_inline_html_markup_gets_no_suggestion():
 
 
 def test_a_list_item_gets_no_suggestion():
-    # The list marker is stripped from prose but stays in raw, so the
-    # prefix "- " fails the repeatable-leader whitelist (design
-    # condition 6).
+    # The list marker is stripped from prose but stays in raw,
+    # so the prefix "- " fails the repeatable-leader whitelist (design condition 6).
     text = "- Stop now? Go on.\n"
     (d,) = diags(text)
     assert d["kind"] == "fused"
@@ -402,11 +398,8 @@ def test_an_ordered_list_item_gets_no_suggestion():
 
 
 def test_an_asterisk_list_item_gets_no_suggestion():
-    # `*` is a list bullet to the Markdown extractor (stripped from
-    # prose, kept in raw) exactly like "-"; it is deliberately absent
-    # from the prefix whitelist for that reason (design condition 6),
-    # even though it would otherwise also read as a valid block-comment
-    # continuation marker.
+    # `*` is a list bullet to the Markdown extractor (stripped from prose, kept in raw) exactly like "-";
+    # it is deliberately absent from the prefix whitelist for that reason (design condition 6), even though it would otherwise also read as a valid block-comment continuation marker.
     text = "* Stop now? Go on.\n"
     (d,) = diags(text)
     assert d["kind"] == "fused"
@@ -414,9 +407,8 @@ def test_an_asterisk_list_item_gets_no_suggestion():
 
 
 def test_a_one_line_python_docstring_gets_no_suggestion():
-    # The prefix carries the opening triple quote and the tail carries
-    # the closing one; both the prefix and tail gates reject this shape
-    # (design conditions 6 and 7).
+    # The prefix carries the opening triple quote and the tail carries the closing one;
+    # both the prefix and tail gates reject this shape (design conditions 6 and 7).
     text = 'def f():\n    """Stop now? Go on."""\n'
     (d,) = diags(text, path="x.py")
     assert d["kind"] == "fused"
@@ -445,9 +437,9 @@ def test_a_double_space_separator_gets_no_suggestion():
 
 
 def test_a_non_breaking_space_separator_gets_no_suggestion():
-    # FUSED_RE's `\s+` matches a non-breaking space under Python's
-    # default Unicode mode, so this still fuses; the exact-one-space
-    # gate (design condition 3) is what withholds it.
+    # FUSED_RE's `\s+` matches a non-breaking space under Python's default Unicode mode,
+    # so this still fuses;
+    # the exact-one-space gate (design condition 3) is what withholds it.
     # A literal non-breaking space is visually indistinguishable from an
     # ASCII one, so the escape below is deliberate.
     text = "Stop now?" + "\u00a0" + "Go on.\n"

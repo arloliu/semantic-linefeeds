@@ -12,8 +12,8 @@ PAYLOADS = Path(__file__).resolve().parent / "payloads"
 
 sys.path.insert(0, str(REPO / "scripts"))
 
-# The full set of extensions the fixture corpus may use; anything else in
-# tests/fixtures/ is a mistake and fails test_fixture_corpus_is_intentional.
+# The full set of extensions the fixture corpus may use;
+# anything else in tests/fixtures/ is a mistake and fails test_fixture_corpus_is_intentional.
 ALLOWED_SUFFIXES = {
     ".go",
     ".md",
@@ -36,9 +36,9 @@ ALLOWED_SUFFIXES = {
     ".zig",
 }
 
-# A marker like "{fused}" on a line asserts one finding of that kind on that
-# line; markers are stripped before the text is checked.  A line may carry
-# several markers.
+# A marker like "{fused}" on a line asserts one finding of that kind on that line;
+# markers are stripped before the text is checked.
+# A line may carry several markers.
 MARKER_RE = re.compile(r"\s*\{(fused|wrap|long)\}")
 
 
@@ -107,8 +107,7 @@ def isolate_git_env(monkeypatch):
     """Pin git subprocesses against host config, env injection, and selectors.
 
     Config files are nulled, GIT_CONFIG_COUNT injection is zeroed,
-    the init template is pointed at a nonexistent directory so no host
-    hook or template file reaches a test repository,
+    the init template is pointed at a nonexistent directory so no host hook or template file reaches a test repository,
     and every repository-selector variable is cleared.
     """
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)

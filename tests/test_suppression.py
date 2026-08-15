@@ -259,8 +259,8 @@ def test_a_bare_directive_inside_a_licence_paragraph_is_inert():
 
 def test_an_html_directive_inside_a_licence_paragraph_is_inert():
     # The directive-only comment now travels the stream as prose,
-    # so the licence cut silences it with its paragraph and diagnose
-    # never sees a carrier — the ordering ADR-0010 requires.
+    # so the licence cut silences it with its paragraph
+    # and diagnose never sees a carrier — the ordering ADR-0010 requires.
     md = (
         "opening prose stands alone\n\n"
         "Copyright (c) 2026 Example\n"
@@ -319,8 +319,9 @@ def test_long_measures_the_judged_prefix_not_the_carrier():
 
 
 def test_a_standalone_html_directive_amid_prose_is_a_boundary():
-    # Task 3 made this line prose; until this task recognizes it, a wrap
-    # is manufactured across it.  Recognition makes it a boundary again.
+    # Task 3 made this line prose;
+    # until this task recognizes it, a wrap is manufactured across it.
+    # Recognition makes it a boundary again.
     md = (
         "This is the first sentence of a paragraph\n"
         "<!-- semlf-ignore-next wrap -->\n"

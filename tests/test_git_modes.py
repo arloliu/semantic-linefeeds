@@ -723,9 +723,9 @@ def test_matrix_crlf_codex_hook_payload_still_blocks(tmp_path):
 def test_matrix_staged_nested_path_keeps_worktree_policy(tmp_path, monkeypatch, capsys):
     """A vanished worktree parent must not cost the file its policy.
 
-    Both halves of the ruling: the root worktree exclude still
-    suppresses the staged nested file, and the root worktree
-    long-limit still governs its diagnosis.
+    Both halves of the ruling:
+    the root worktree exclude still suppresses the staged nested file,
+    and the root worktree long-limit still governs its diagnosis.
     """
     root = repo(tmp_path)
     commit_file(root, "doc.md", CLEAN)

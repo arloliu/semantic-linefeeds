@@ -248,8 +248,8 @@ def paragraphs(text, path):
             and check_linefeeds._standalone_carrier_is_ascii(raw, prose)
         )
         if prose is None or is_directive:
-            # A well-formed standalone directive is a paragraph boundary
-            # to the checker, so the frame must not sample it as prose.
+            # A well-formed standalone directive is a paragraph boundary to the checker,
+            # so the frame must not sample it as prose.
             if len(current) > 1:
                 runs.append(current)
             current = []

@@ -137,8 +137,8 @@ def test_nothing_else_is_peeled(line):
 def test_a_line_ending_in_a_code_span_is_now_read_by_what_precedes_it():
     """The exemption cost four fifths of the stratum it covers.
 
-    A backtick ends a line legitimately, so the clause the span was attached to
-    was never examined at all.
+    A backtick ends a line legitimately,
+    so the clause the span was attached to was never examined at all.
     """
     assert kinds(
         "the compiler will assume all functions provide an `ABIInternal`\n"
@@ -738,8 +738,7 @@ def test_the_sole_blocking_kind_no_longer_misfires_on_an_abbreviation(abbreviati
     """The withdrawal and the exclusions have to arrive together.
 
     Withdrawing `wrap` leaves `fused` as the only kind that can refuse an edit.
-    A `fused` still firing on "vs." would then be the whole distance
-    between correct prose and a blocked write.
+    A `fused` still firing on "vs." would then be the whole distance between correct prose and a blocked write.
     """
     assert check_linefeeds.BLOCKING_KINDS == frozenset({"fused"})
     assert (
