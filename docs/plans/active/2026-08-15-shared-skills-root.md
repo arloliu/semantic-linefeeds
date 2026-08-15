@@ -188,17 +188,50 @@ So the rule throughout is:
   That answers correctly for a bind mount, a symlinked parent, and an ordinary distinct path alike,
   and it degrades to a plain comparison when both leaves already exist.
 
-  Comparing the suffixes as plain strings is safe rather than lucky.
+  The suffixes are compared as exact strings, and that has a stated limit rather than a guarantee.
+
   A suffix only ever holds components below the deepest directory that exists,
   and those come from this project's own registry literals.
   Everything a user can spell differently — `$HOME`, `XDG_CONFIG_HOME`, a differently-cased path —
   sits at or above the anchor.
   There `samefile` resolves it against the filesystem's own rules rather than by string comparison.
-  So a case-insensitive filesystem cannot turn one destination into two here.
+
+  What that does **not** cover is two components that do not exist yet
+  and differ only by case, or only by Unicode normalization,
+  on a filesystem that treats them as one name.
+  Creating either would create the other, so they are one destination and this test calls them two.
+  No pair of rows can reach it today:
+  the suffixes below any shared anchor differ by literal name — `semlf` against `opencode`,
+  `skills` against `plugins` — never by case alone.
+  It is written down because that is a property of the current row set rather than of the rule,
+  and a future row whose destination differed from another's only in case would need this revisited.
 
 `colliding_destinations` is where both halves meet:
 it compares destinations that may not exist, and, since it now also compares against installed rows,
 destinations that do.
+
+### Where a dangling symlink defeats the comparison, and why nothing is lost
+
+Two cases exist, both real, and neither ends in a lost file.
+
+A destination that is itself a dangling symlink does not compare equal even to itself:
+`lexists` says the path is there, `samefile` follows the link, and `stat` raises on the missing target.
+So the collision goes undetected.
+It does not matter, because the object-state axis refuses that destination before anything is written —
+`classify_artifact` reports "is a symlink" and says `--force` never overrides it.
+The request refuses instead of colliding.
+
+A dangling symlink partway down one path's uncreated portion is the other case.
+`lexists` stops the walk on the link itself, so that side's anchor sits deeper than the other's,
+the suffixes differ in length, and the comparison says "different".
+Creating the missing directory later would make both paths one file.
+This ends in an ordinary apply error rather than an overwrite:
+publishing creates the destination's parent first, and `mkdir` on a dangling symlink raises,
+so the row fails loudly and `apply_plan` reports exactly what was and was not applied.
+
+Both are recorded rather than fixed.
+Detecting them would mean resolving paths that deliberately have no resolution,
+and the outcomes — a refusal and a named error — are the two this project already treats as acceptable.
 
 ### The removal guard compares parent directories, not files
 

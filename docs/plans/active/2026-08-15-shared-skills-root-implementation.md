@@ -535,7 +535,26 @@ def test_one_file_is_false_for_a_dangling_symlink_against_a_missing_path(tmp_pat
     (tmp_path / "other").mkdir()
     (tmp_path / "data" / "c.py").symlink_to(tmp_path / "nope")
     assert lifecycle._one_file(tmp_path / "data" / "c.py", tmp_path / "other" / "c.py") is False
+
+
+def test_a_dangling_symlink_destination_does_not_equal_itself(tmp_path):
+    """A known limit, pinned so it is a decision rather than a surprise.
+
+    lexists says the path is there, samefile follows the link, and stat raises on the
+    missing target, so the comparison cannot see a collision on this destination.
+    Nothing is lost: the object-state axis refuses a symlink destination before any
+    write, and --force cannot widen that.
+    """
+    dead = tmp_path / "dead"
+    dead.symlink_to(tmp_path / "nowhere")
+    assert lifecycle._one_file(dead, dead) is False
+
+    verdict = classify.classify_artifact(None, dead, b"payload", "1.0.0", force=True)
+    assert verdict.action == "refuse"
+    assert "is a symlink" in verdict.detail
 ```
+
+`tests/test_lifecycle.py` needs `from semlf import classify` for the second test.
 
 Every row of that table was run against a prototype of `_anchor` and `_one_file` before this plan was written.
 The expectations above are the observed results rather than predictions.
