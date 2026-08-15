@@ -871,17 +871,28 @@ def plan_install(targets, agentsmd_path, force):
     The two scopes are not interchangeable,
     and `plan_shared_removal`'s wider guard is not the mirror of this one.
 
-    When the gate skips, `legacy_owned` is empty and the alias-forget below behaves exactly as on a machine
-    that never carried a pre-change copy.
+    When the gate skips, the cleanup's retired names are claimed as owned anyway,
+    because a request that cannot unlink the file must not clear the record that proves it.
+    A hard-linked pre-change copy is exactly that case:
+    it satisfies `same_file` against the shared destination, so `project_retired` collects it as an alias,
+    while the parent-directory guard the cleanup uses would still have removed it.
+    The alias-forget below therefore defers to the request that can also remove the file.
+    Its cost is accepted:
+    on a joined root, `install codex` leaves a stale `opencode-skill` record for a later `install opencode` to clear.
     """
     planned, refusals = [], []
     # Checked before any per-row planning: a collision is a property of the request,
     # not of one artifact, and --force cannot make it safe.
     refusals.extend(colliding_destinations(targets))
     legacy_planned, legacy_refusals = [], []
-    if "opencode" in targets:
+    gated_in = "opencode" in targets
+    if gated_in:
         plan_legacy_cleanup(legacy_planned, legacy_refusals)
-    legacy_owned = {item.name for item in legacy_planned}
+    legacy_owned = (
+        {item.name for item in legacy_planned}
+        if gated_in
+        else {retired for retired, _, _ in LEGACY_ARTIFACTS}
+    )
     snapshot = manifest.load()
     destinations = payload_destinations()
     try:

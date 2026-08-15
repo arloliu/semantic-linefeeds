@@ -1756,7 +1756,7 @@ def _judgment_layer_present(transport):
             )
         # opencode's plugin declares this transport for an apply_patch-shaped payload.
         # Since ADR-0019 the skill it loads is the one copy published to the shared root above,
-        # and nothing is written under opencode's own config root any more.
+        # and nothing is written under opencode's own skills root any more.
         # This candidate is kept for a machine that still holds a pre-change copy there:
         # without it the layer reads as absent on an opencode-only machine that has one,
         # and the feedback goes quiet about a skill sitting right there.

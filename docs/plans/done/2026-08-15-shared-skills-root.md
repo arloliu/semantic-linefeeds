@@ -668,7 +668,7 @@ so its bytes differ from the shared rendering by construction.
 | the same, recorded as `codex-setup-skill` | the same, onto `setup-skill` |
 | a real `…/opencode/skills/…/SKILL.md` whose record proves it, whose parent directory is **not** the shared file's parent | remove it, prune its now-empty directory, forget the record |
 | the same, but whose parent directory **is** the shared file's parent | project the record onto `skill` or `setup-skill`; never remove the file |
-| `…/opencode/plugins/README.md` whose record proves it, and which is **not** the `readme` destination | keep the file, clear only the redundant record |
+| `…/opencode/plugins/README.md` whose record proves it, and which is **not** the `readme` destination | keep the file and its record |
 | the same, but which **is** the `readme` destination | keep the file, clear only the redundant record |
 | any of those paths holding content no record proves | refuse, naming the path |
 

@@ -33,8 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Installing for opencode alone now also writes the checker and the README.**
-  They used to arrive only when you installed for Codex CLI.
+- **Installing for opencode alone now also writes the checker and the README to the shared install location.**
+  They used to arrive there only when you installed for Codex CLI;
+  installing for opencode alone put a second checker beside its plugin instead.
   The skill points at both, so `semlf install opencode` writes them even on a machine that never had Codex CLI.
 - **The skill is removed only when the last agent that reads it goes.**
   Because one copy now serves both agents, uninstalling one of two leaves it in place for the other,
