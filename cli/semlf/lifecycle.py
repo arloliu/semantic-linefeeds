@@ -874,6 +874,7 @@ def status_command(argv, shim_expected=None):
         ("codex-skill", "codex skill"),
         ("codex-setup-skill", "codex setup skill"),
         ("opencode-plugin", "opencode plugin"),
+        ("opencode-skill", "opencode skill"),
         ("opencode-setup-skill", "opencode setup skill"),
         ("opencode-setup-command", "opencode setup command"),
     ):
@@ -1247,6 +1248,23 @@ def plan_remove_targets(targets, force, planned, refusals):
             force,
             planned,
             refusals,
+        )
+        plan_remove_file(
+            "opencode readme",
+            destinations["opencode-readme"],
+            "opencode-readme",
+            force,
+            planned,
+            refusals,
+        )
+        plan_remove_file(
+            "opencode skill",
+            destinations["opencode-skill"],
+            "opencode-skill",
+            force,
+            planned,
+            refusals,
+            prune_parent=True,
         )
         # The skill sits in a directory of its own, so removing it prunes that directory;
         # the command shares the commands directory with the user's own, so it never does.

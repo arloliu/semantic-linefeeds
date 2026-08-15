@@ -29,6 +29,8 @@ KNOWN = (
     "codex-skill",
     "opencode-plugin",
     "opencode-checker",
+    "opencode-readme",
+    "opencode-skill",
     "codex-setup-skill",
     "opencode-setup-skill",
     "opencode-setup-command",
@@ -301,6 +303,17 @@ def _opencode_config_dir():
     if home == "~":
         return None
     return Path(home) / ".config" / "opencode"
+
+
+def opencode_skill_dest():
+    """opencode's own copy of the judgment skill, or None when no config dir resolves.
+
+    Codex's copy at `~/.agents/skills` is a different file with a different owner (ADR-0018),
+    even though opencode scans that directory too:
+    one file read by two targets cannot be uninstalled correctly by either.
+    """
+    base = _opencode_config_dir()
+    return None if base is None else base / "skills" / "semantic-linefeeds" / "SKILL.md"
 
 
 def opencode_setup_skill_dest():

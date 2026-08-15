@@ -110,6 +110,8 @@ A zipapp left at `~/.local/bin/semlf` and a `uv tool install`/`pipx install` shi
 | Codex setup skill | `~/.agents/skills/setup-semlf/SKILL.md` | Lets an agent install, repair, or configure `semlf` without improvising the commands | Codex CLI |
 | opencode plugin | the opencode plugins directory (`$XDG_CONFIG_HOME/opencode/plugins`, default `~/.config/opencode/plugins`) | Wires the checker into opencode's edit/write/apply_patch tool output | opencode |
 | opencode's checker copy | the same opencode plugins directory, beside the plugin | The plugin resolves its checker next to itself, not at the neutral root | opencode |
+| opencode's README copy | the same opencode plugins directory, beside the checker | Resolves the opencode skill's suppression-rules link without a neutral root | opencode |
+| opencode skill | `$XDG_CONFIG_HOME/opencode/skills/semantic-linefeeds/SKILL.md` (default `~/.config/...`) | The same judgment layer Codex gets, resolving opencode's own checker and README | opencode |
 | opencode setup skill | `$XDG_CONFIG_HOME/opencode/skills/setup-semlf/SKILL.md` (default `~/.config/...`) | The same setup procedure, in opencode's own skills root so each agent owns its copy | opencode |
 | opencode setup command | `$XDG_CONFIG_HOME/opencode/commands/setup-semlf.md` (default `~/.config/...`) | Makes `/setup-semlf` typeable: opencode offers skills to the model, commands to you | opencode |
 | AGENTS.md snippet | the file you name with `semlf install agentsmd PATH` | The judgment layer for any agent with no native skill mechanism | Any AGENTS.md-reading agent |

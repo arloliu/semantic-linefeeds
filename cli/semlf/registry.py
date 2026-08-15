@@ -119,6 +119,31 @@ ROWS = (
         lambda: _in(manifest.opencode_plugins_dir(), CHECKER_NAME),
         lambda data_dir: payload_bytes("opencode-checker"),
     ),
+    # opencode's judgment layer, discharging ADR-0006 for it (ADR-0018).
+    # The README joins the checker beside the plugin for the same reason the checker is there:
+    # the skill's suppression link must resolve on a machine where no other agent is installed.
+    PayloadRow(
+        "opencode-readme",
+        "README.md",
+        "semlf/payloads/opencode-readme",
+        "opencode",
+        6,
+        True,
+        True,
+        lambda: _in(manifest.opencode_plugins_dir(), "README.md"),
+        lambda data_dir: payload_bytes("opencode-readme"),
+    ),
+    PayloadRow(
+        "opencode-skill",
+        "skills/semantic-linefeeds/SKILL.md",
+        "semlf/payloads/opencode-skill",
+        "opencode",
+        7,
+        True,
+        False,
+        manifest.opencode_skill_dest,
+        lambda data_dir: render_opencode_skill().encode("utf-8"),
+    ),
     # The setup skill ships once per target rather than to one shared root.
     # It cites no published payload — no checker path, no README link —
     # so each destination is self-contained,
@@ -128,7 +153,7 @@ ROWS = (
         SETUP_SKILL_SOURCE,
         "semlf/payloads/codex-setup-skill",
         "codex",
-        6,
+        8,
         True,
         False,
         manifest.codex_setup_skill_dest,
@@ -139,7 +164,7 @@ ROWS = (
         SETUP_SKILL_SOURCE,
         "semlf/payloads/opencode-setup-skill",
         "opencode",
-        7,
+        9,
         True,
         False,
         manifest.opencode_setup_skill_dest,
@@ -153,7 +178,7 @@ ROWS = (
         "adapters/opencode/setup-semlf.md",
         "semlf/payloads/opencode-setup-command",
         "opencode",
-        8,
+        10,
         True,
         False,
         manifest.opencode_setup_command_dest,
@@ -164,7 +189,7 @@ ROWS = (
         "adapters/agentsmd/SNIPPET.md",
         "semlf/payloads/agentsmd-snippet",
         "agentsmd",
-        9,
+        11,
         False,
         False,
         None,
@@ -257,28 +282,51 @@ SKILL_FALLBACK_LINE = (
 SKILL_README_LINK_OLD = "../../README.md"
 
 
-def render_codex_skill(data_dir):
-    """The installed skill body, pinned to the neutral root."""
-    if data_dir is None:
-        raise ValueError("data_dir cannot be None: no data root resolves here")
-    data_dir = Path(data_dir)
-    text = payload_bytes("codex-skill").decode("utf-8")
-    checker = data_dir / CHECKER_NAME
+def render_skill(row_id, root):
+    """The installed skill body, pinned to the root its own target owns (ADR-0018).
+
+    Both installed copies come through here, differing only in which root they resolve against:
+    Codex reads the neutral data root, opencode its own plugins directory.
+    A skill may only cite paths its target installs,
+    so the root is the caller's to supply and never defaults to the neutral one —
+    that default is precisely how an opencode copy would come to reference a codex-owned file.
+    """
+    if root is None:
+        raise ValueError("root cannot be None: no destination resolves here")
+    root = Path(root)
+    text = payload_bytes(row_id).decode("utf-8")
+    checker = root / CHECKER_NAME
     text = _replace_exactly_once(
         text,
         SKILL_COMMAND_OLD,
         f'python3 "{checker}" --file <files>',
-        "codex-skill command",
+        f"{row_id} command",
     )
     text = _replace_exactly_once(
-        text, SKILL_FALLBACK_LINE, "", "codex-skill fallback line"
+        text, SKILL_FALLBACK_LINE, "", f"{row_id} fallback line"
     )
     return _replace_exactly_once(
         text,
         SKILL_README_LINK_OLD,
-        str(data_dir / "README.md"),
-        "codex-skill readme link",
+        str(root / "README.md"),
+        f"{row_id} readme link",
     )
+
+
+def render_codex_skill(data_dir):
+    """The Codex copy, pinned to the neutral root."""
+    if data_dir is None:
+        raise ValueError("data_dir cannot be None: no data root resolves here")
+    return render_skill("codex-skill", data_dir)
+
+
+def render_opencode_skill():
+    """The opencode copy, pinned to opencode's own plugins directory.
+
+    It resolves the checker and README that `opencode-checker` and `opencode-readme` publish beside the plugin,
+    so an opencode-only machine installs a skill whose every reference its own install wrote.
+    """
+    return render_skill("opencode-skill", manifest.opencode_plugins_dir())
 
 
 def render_codex_hook_entry(data_dir):

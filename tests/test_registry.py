@@ -18,6 +18,8 @@ EXPECTED_IDS = [
     "codex-skill",
     "opencode-plugin",
     "opencode-checker",
+    "opencode-readme",
+    "opencode-skill",
     "codex-setup-skill",
     "opencode-setup-skill",
     "opencode-setup-command",
@@ -44,6 +46,8 @@ def test_owners_match_the_design_table():
         "codex-skill": "codex",
         "opencode-plugin": "opencode",
         "opencode-checker": "opencode",
+        "opencode-readme": "opencode",
+        "opencode-skill": "opencode",
         "codex-setup-skill": "codex",
         "opencode-setup-skill": "opencode",
         "opencode-setup-command": "opencode",
@@ -78,6 +82,7 @@ def test_identity_marks_exactly_the_digest_compared_payloads():
         "checker",
         "readme",
         "opencode-checker",
+        "opencode-readme",
     }
 
 

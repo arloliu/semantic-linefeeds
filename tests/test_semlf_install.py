@@ -65,6 +65,51 @@ def test_named_target_is_consent_and_applies(tmp_path):
     assert str(data_root(tmp_path) / "README.md") in body
 
 
+def test_opencode_gets_a_judgment_skill_resolving_its_own_files(tmp_path):
+    """ADR-0006 for opencode, on ADR-0018's terms.
+
+    opencode used to receive a plugin and a checker and no skill,
+    while the hook told the model to load one anyway.
+    It now installs its own copy,
+    and every path in that copy points at a file the same install wrote.
+    That is the property a single shared copy at `~/.agents/skills` could not have.
+    """
+    r = run_semlf(["install", "opencode"], isolated_env(tmp_path))
+    assert r.returncode == 0, r.stderr
+    plugins = tmp_path / "xdg" / "opencode" / "plugins"
+    skill = tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    body = skill.read_text(encoding="utf-8")
+
+    assert str(plugins / "check_linefeeds.py") in body
+    assert str(plugins / "README.md") in body
+    assert (plugins / "README.md").exists()
+
+    # Nothing may point at the neutral root, which is codex-owned and never created here.
+    assert not data_root(tmp_path).exists()
+    assert str(data_root(tmp_path)) not in body
+    # Codex's copy is a different file with a different owner, and this install writes none of it.
+    assert not (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    ).exists()
+
+
+def test_uninstalling_one_agent_leaves_the_others_judgment_skill(tmp_path):
+    codex_skill = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    opencode_skill = (
+        tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    env = isolated_env(tmp_path)
+    run_semlf(["install", "codex", "opencode"], env)
+    assert codex_skill.exists() and opencode_skill.exists()
+
+    assert run_semlf(["uninstall", "codex"], env).returncode == 0
+    assert not codex_skill.exists()
+    assert opencode_skill.exists(), "per-target copies make this removal unambiguous"
+    assert (tmp_path / "xdg" / "opencode" / "plugins" / "README.md").exists()
+
+
 def setup_skill_paths(tmp_path):
     """The three setup destinations: Codex's skill, opencode's skill, opencode's command."""
     return (

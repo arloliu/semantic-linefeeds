@@ -1,7 +1,7 @@
 # Setup Skill: an install guardrail for agents, not a second installer
 
 **Date:** 2026-08-15
-**Status:** draft
+**Status:** approved — implemented, unreleased
 
 ## Purpose
 
@@ -278,24 +278,30 @@ Per-target rows avoid the dependency instead of managing it.
 They also cost less: no owner semantics change, so `plan_install`, the `doctor` and `status` comparisons,
 `installed_consumers()`, and the target-branched `uninstall` all keep working unchanged.
 
-## 4. Deferred: neutral ownership and the opencode judgment layer
+## 4. The opencode judgment layer — done, and cheaper than this spec predicted
 
-Discharging [ADR-0006](../../decisions/0006-judgment-layer-for-every-agent.md) for opencode is still worth doing,
-and it is deliberately not done here.
-The setup skill can reach opencode users without it,
-so bundling the two would delay the cheaper half behind the harder one.
+This section deferred the opencode gap in
+[ADR-0006](../../decisions/0006-judgment-layer-for-every-agent.md) to a separate spec,
+one that would change ADR-0016's owner model,
+and it listed four questions that spec would have to answer first.
 
-That work is its own spec, and it changes ADR-0016's owner model, so it carries a decision record.
-`docs/decisions/README.md` states that an accepted record is not edited and that a changed decision supersedes the old one,
-so it lands as ADR-0018 superseding ADR-0016 in part rather than as an amendment.
+It shipped in the same branch instead, and answered none of them, because per-target rows dissolve all four.
+The judgment skill now installs twice from one source:
+Codex's copy resolves the neutral root, and opencode's resolves its own plugins directory,
+where a README joins the checker that already lived there.
+Neither copy cites a file its own target did not install, so:
 
-It has to answer all of the following, which is why it is not a paragraph in this spec:
+- The checker and README need no new ownership — opencode reads the copies beside its plugin.
+- `installed_consumers()` is untouched, because the two skills are different files at different paths.
+- Uninstall stays per target with no last-consumer rule, because neither target shares a file.
+- Migration is the same benign case as the setup skill's, and is covered by the same test.
 
-- Whether the checker and README become neutral too, or whether skills stop referencing them by absolute path.
-- How "a shared skill is present" stops implying "Codex is installed" in `installed_consumers()`.
-- Last-consumer uninstall: today `uninstall codex` would remove a shared skill that opencode still needs,
-  and an opencode-only uninstall would leave shared skills behind.
-- Migration for machines installed before the change, where a re-run makes a new file appear in `$HOME`.
+The decision record is [ADR-0018](../../decisions/0018-skills-ship-per-target.md),
+and it turned out **not** to supersede ADR-0016:
+the owner field still means exactly one target, which is what made the change small.
+The prediction above is left standing rather than edited away,
+because the gap between it and the outcome is the useful part —
+the expensive redesign was avoided by applying to the judgment skill the same shape that had just worked for the setup skill.
 
 ## 5. Safety rules the skill states explicitly
 
@@ -319,21 +325,34 @@ It has to answer all of the following, which is why it is not a paragraph in thi
 
 ## Testing
 
+What the suite covers:
+
 - `python3 -m pytest tests/ -q` stays green, including the new `KNOWN`-versus-registry coupling test.
-- Per-target install coverage:
+- Per-target install:
   `semlf install codex` alone writes the Codex skill,
   and `semlf install opencode` alone writes the opencode skill and command.
-  Neither target's install references a file the other target owns.
-- `status` reports all three new artifacts, and `uninstall` removes each target's own.
-- A stale-artifact test: after a version bump, an installed setup skill at old bytes is repaired by re-running install,
-  and the test records that `doctor` alone does not report it.
-- Non-TTY application: with agreement already obtained, `semlf install --yes` applies where bare `semlf install` exits 1.
-- Shadowing: an existing zipapp at `~/.local/bin/semlf` ahead of a newly installed shim is detected and reported, not used.
-- `.semlf.ini` handling: an existing file is preserved on decline, a malformed file is surfaced rather than overwritten,
-  and no path produces an agent-authored `exclude`.
-- `python3 scripts/check_linefeeds.py --file skills/setup-semlf/SKILL.md docs/plans/active/2026-08-15-setup-skill-design.md` reports no `fused` or `wrap` findings.
-- Manual: on a machine with the CLI absent, the ladder's first rung installs and `semlf doctor` passes;
-  on this machine, where a stale install already exists, step 2 reproduces the repair path.
+  The opencode case also asserts the negative that sank the shared-root design —
+  no neutral data root is created, and the installed body cites no checker path.
+- Both targets install identical bytes, from the one source path.
+- `status` reports all three, and `uninstall` removes each target's own while leaving the other's.
+- Both doors, not just the package door.
+  The checkout door is what the skill's own last rung runs,
+  so it has its own install and uninstall coverage.
+- Migration: a machine predating these rows reports them as `not installed` and is not reported broken.
+- `python3 scripts/check_linefeeds.py --file` on every Markdown file this branch touches reports no `fused` or `wrap` findings.
+
+What the suite deliberately does not cover.
+Most of the skill is prose instructing a model — the ladder's rung order, the show-then-ask gate,
+the classification of a `doctor` failure into repairable and not,
+and the `.semlf.ini` interview.
+None of that is reachable from pytest, because none of it is code in this repository;
+listing it as a test plan would claim a guarantee the suite cannot make.
+It is verified by running the skill against a real agent, and by the reviews recorded above.
+
+One item in that group is code-testable and worth adding when the next version bump lands:
+an installed setup skill left at old bytes is refreshed by re-running install,
+while `doctor` alone stays silent about it.
+That pair is the evidence behind step 2 repairing on the strength of an upgrade rather than on a health check.
 
 ## Out of scope
 

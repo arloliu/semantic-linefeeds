@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **opencode now gets the judgment layer, not just the hook.**
+  Until now `semlf install opencode` set up the checker and the plugin but no skill,
+  while the hook still told the model to go read one.
+  opencode installs its own skill from this release,
+  so the advice it acts on is the same advice Codex gets:
+  which `and` is a real clause boundary, what never to break, and when to stop and ask you.
+
 - **A setup skill, so you can just ask your agent to install `semlf`.**
   Ask Claude Code, Codex CLI, or opencode to "install semlf",
   and it now follows a fixed procedure instead of guessing at package names or editing your config by hand.
