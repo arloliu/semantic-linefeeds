@@ -267,6 +267,11 @@ def _opencode_competitor_check():
     "Competes" rather than "shadows": precedence is a race, so a second copy usually wins but is not guaranteed to,
     and a message promising determinism would describe a rule opencode does not publish.
 
+    The remedy is worded from `legacy_provable`, the same predicate the cleanup acts on,
+    because whether the file differs from the shared one and whether a record proves it are independent.
+    Install clears only what it can prove it wrote and refuses the whole run otherwise,
+    so naming it for an unprovable copy would hand the user a command that fails.
+
     A hard link to the shared file reads healthy here and is still removed by install,
     because the two verbs are answering different questions:
     this one asks whether opencode would load different content today, and through a hard link it would not,
@@ -277,10 +282,7 @@ def _opencode_competitor_check():
         return 0
     destinations = lifecycle.payload_destinations()
     failures = 0
-    for folder, live in (
-        ("semantic-linefeeds", "skill"),
-        ("setup-semlf", "setup-skill"),
-    ):
+    for retired, folder, live in lifecycle.LEGACY_ARTIFACTS:
         candidate = skills_dir / folder / "SKILL.md"
         if not os.path.lexists(str(candidate)):
             continue
@@ -294,17 +296,24 @@ def _opencode_competitor_check():
             continue
         if manifest.same_file(candidate, shared):
             continue
+        if lifecycle.legacy_provable(retired, candidate):
+            remedy = "`semlf install` clears it"
+        else:
+            remedy = (
+                "this kit cannot prove it wrote it, so `semlf install` refuses "
+                "the whole run rather than clearing it; move it aside"
+            )
         here = manifest.read_regular_bytes(candidate, manifest.CLASSIFY_LIMIT)
         there = manifest.read_regular_bytes(shared, manifest.CLASSIFY_LIMIT)
         if here is not None and here == there:
             print(
                 f"opencode skills: warn — {candidate} competes with the shared "
-                "copy but carries the same bytes; `semlf install` clears it"
+                f"copy but carries the same bytes; {remedy}"
             )
             continue
         print(
             f"opencode skills: FAIL — {candidate} competes with the shared copy "
-            "and differs from it; `semlf install` clears it"
+            f"and differs from it; {remedy}"
         )
         failures += 1
     return failures

@@ -550,3 +550,82 @@ def test_doctor_is_quiet_when_opencodes_skills_root_is_absent(tmp_path):
     _install_via_semlf(tmp_path, env)
     r = run_doctor(pyz, env, cwd=str(tmp_path))
     assert "competes" not in r.stdout
+
+
+def _place_competing_skill(tmp_path, body):
+    """A copy under opencode's own skills root, competing for the skill's name."""
+    d = tmp_path / "xdg" / "opencode" / "skills" / "semantic-linefeeds"
+    d.mkdir(parents=True, exist_ok=True)
+    competing = d / "SKILL.md"
+    competing.write_bytes(body)
+    return competing
+
+
+def _record_retired(tmp_path, name, path):
+    """Prove `path` under a retired record, the way a pre-change install left one."""
+    import hashlib
+
+    state = tmp_path / "state" / "semlf" / "artifacts"
+    state.mkdir(parents=True, exist_ok=True)
+    (state / f"{name}.json").write_text(
+        json.dumps(
+            {
+                "path": str(path),
+                "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
+                "version": "0.7.0",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_doctor_does_not_promise_install_clears_an_unprovable_copy(tmp_path):
+    """Install refuses a copy it cannot prove it wrote, and a refusal aborts the run.
+
+    Naming `semlf install` here sends the user to a command that fails
+    and takes the rest of their install down with it.
+    """
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    competing = _place_competing_skill(
+        tmp_path, b"---\nname: semantic-linefeeds\n---\n\nhand written\n"
+    )
+
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 1
+    assert str(competing) in r.stdout
+    assert "`semlf install` clears it" not in r.stdout
+    assert "move it aside" in r.stdout
+
+
+def test_doctor_still_promises_install_clears_a_recorded_copy(tmp_path):
+    """A copy a retired record proves is exactly what install does clear."""
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    competing = _place_competing_skill(
+        tmp_path, b"---\nname: semantic-linefeeds\n---\n\nlast release\n"
+    )
+    _record_retired(tmp_path, "opencode-skill", competing)
+
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 1
+    assert "`semlf install` clears it" in r.stdout
+
+
+def test_doctor_does_not_promise_install_clears_an_unprovable_twin(tmp_path):
+    """The same-bytes warning carries the same advice and the same defect.
+
+    Matching the new shared bytes is not proof this kit wrote the file,
+    so install refuses this one too.
+    """
+    pyz, env = installed_pyz(tmp_path)
+    _install_via_semlf(tmp_path, env)
+    shared = (
+        tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    )
+    _place_competing_skill(tmp_path, shared.read_bytes())
+
+    r = run_doctor(pyz, env, cwd=str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "competes" in r.stdout
+    assert "`semlf install` clears it" not in r.stdout

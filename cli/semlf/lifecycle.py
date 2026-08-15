@@ -785,6 +785,20 @@ LEGACY_ARTIFACTS = (
 )
 
 
+def legacy_provable(retired, legacy):
+    """Whether this kit can prove it wrote the pre-change copy at `legacy`.
+
+    The one answer to "would cleanup remove this file, or refuse it".
+    `plan_legacy_cleanup` acts on it and `doctor` words its advice from it,
+    because a second copy of the condition is how a verb comes to promise what the other refuses:
+    doctor asks whether the file differs from the shared one,
+    which is an independent question from whether a record proves it,
+    and a file can differ and still be provable, or match and not be.
+    """
+    entry = manifest.retired_entry(retired)
+    return entry is not None and manifest.classify_entry(entry, legacy) == "managed"
+
+
 def plan_legacy_cleanup(planned, refusals):
     """Remove pre-change copies that would compete with the shared skill.
 
@@ -822,8 +836,7 @@ def plan_legacy_cleanup(planned, refusals):
             # A joined root: this path is the shared file by another spelling.
             # The record is carried forward by project_retired, not cleared here.
             continue
-        entry = manifest.retired_entry(retired)
-        if entry is None or manifest.classify_entry(entry, legacy) != "managed":
+        if not legacy_provable(retired, legacy):
             refusals.append(
                 f"refusing to remove {legacy}: this kit cannot prove it wrote it; "
                 "move it aside and re-run"
