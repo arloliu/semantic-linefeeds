@@ -1,4 +1,4 @@
-# One skill, one copy, and a link in every agent's own root
+# One skill, one copy, in the root every agent already reads
 
 **Date:** 2026-08-15
 **Status:** in review — revised after one round of external review, no code written yet
@@ -7,8 +7,8 @@
 
 ## What this changes
 
-A skill is published **once**, to `~/.agents/skills`,
-and each agent that keeps its own skills root gets a **symlink** there pointing at that one copy.
+A skill is published **once**, to `~/.agents/skills`.
+Both targets read that directory natively, so nothing is written under `~/.config/opencode/skills` at all.
 
 Today a skill ships once per target.
 `semlf install codex opencode` writes two `semantic-linefeeds` skills and two `setup-semlf` skills,
@@ -28,20 +28,24 @@ it is what a developer running several agents does so that one skill store serve
 and it is what `mattpocock/skills` produces automatically —
 that tool installs into `~/.agents/skills` and symlinks each skill directory into every agent's own root.
 
-**opencode's own root wins, so a stale copy shadows a fresh one.**
-This is measured, not assumed (see the findings below).
+**A copy in opencode's own root can shadow the shared one.**
+Measured, not assumed (see the findings below).
 A machine that installed opencode's skill under the old layout,
 and then upgrades to a layout that publishes only the shared copy,
-would keep loading last release's skill forever.
+can keep loading last release's skill.
 
 **Duplication with nothing to show for it.**
 Two identical setup skills on every dual-agent machine, from one source, indefinitely.
+
+This design fixes all three by removing the second destination rather than by managing it.
+There is one skill row, so two rows cannot collide,
+whatever the user has symlinked to whatever.
 
 ## Verified findings
 
 Each was checked on 2026-08-15 against the installed binary or the source, and each one shaped the design.
 
-### opencode deduplicates skills by name, and its own root wins
+### opencode reads the shared root, and reports one skill per name
 
 `opencode debug skill` lists every skill opencode resolves, as JSON.
 On a machine whose `~/.config/opencode/skills` is a symlink to `~/.agents/skills`,
@@ -52,16 +56,8 @@ Precedence was measured in isolation rather than inferred from that machine, whe
 With a distinct `ztest` skill placed in each of two separate roots,
 opencode reports exactly one, and it is the copy under its own root.
 
-Two consequences.
-A link in opencode's own root does not double-advertise anything, so the link is safe.
-And a stale real file in that root silently defeats a correct shared copy,
-which is why migration must remove those files rather than merely stop writing them.
-
-### A leaf symlink resolves correctly
-
-`~/.config/opencode/skills/<name>` pointing at `~/.agents/skills/<name>` was tested directly:
-opencode resolves it, reports the canonical location, and still counts it once.
-This is the exact shape this design installs.
+That is what makes a stale copy in opencode's own root dangerous,
+and it is why migration must remove those files rather than merely stop writing them.
 
 ### Precedence is a race, and it covers only the global roots
 
@@ -77,28 +73,29 @@ so a project-level copy outranks the shared one, and nothing in this design look
 That is a stated carve-out rather than a case this design handles,
 and it is the same blind spot `_judgment_layer_present` already has.
 
-The migration reasoning does not depend on the distinction.
-Whether a stale copy in opencode's own root shadows the shared one deterministically or by winning a race,
-it is a hazard, and removing it is the answer either way.
+Nothing here depends on the distinction.
+Whether a stale copy shadows the shared one deterministically or by winning a race, it is a hazard,
+and removing it is the answer either way.
 
-### A second discovery path costs a warning per session
+### Writing nothing to opencode's own root also costs nothing
 
 opencode does not silently deduplicate.
 `add` overwrites the name-keyed record and logs `duplicate skill name` each time the same name arrives from another path.
-
 Measured on this machine:
-2586 such warnings across 53 runs, between 30 and 57 per run,
-of which 1074 have exactly the shape a link produces —
-`existing=~/.agents/skills/<name>/SKILL.md duplicate=~/.config/opencode/skills/<name>/SKILL.md`.
+2586 such warnings across 53 runs, between 30 and 57 per run.
 
-Those particular warnings are not this design's doing.
-This machine's opencode skills root is already a symlink to the shared root,
-so every skill there is discovered twice by two spellings, and 29 of them belong to another tool.
+Those are the user's own arrangement, not semlf's —
+this machine's opencode skills root is a symlink to the shared root,
+so every skill there is discovered twice by two spellings, and most belong to another tool.
 
-What this design adds is narrower, and it is worth stating exactly.
-On a machine whose roots are **not** joined, each installed link creates a second discovery path for one skill,
-so opencode logs two extra warnings per session — one per linked skill.
-On a machine whose roots **are** joined, no link is created at all, so it adds none.
+An earlier draft of this design installed a symlink in each agent's own root, pointing at the shared copy.
+That would have added one such warning per linked skill per session on any machine whose roots are not already joined.
+It is dropped.
+The reason it existed was to occupy the slot that wins,
+and precedence turns out to be a race between two paths that resolve to the same bytes,
+so the slot is not worth owning.
+`doctor` still watches that slot for a file that would shadow the shared copy,
+which is the protection that mattered, and it needs no artifact of ours to sit there.
 
 ### `mattpocock/skills` does not prune the shared root
 
@@ -112,7 +109,7 @@ temp-directory management, the canonical directory it is itself about to write,
 the link path inside `createSymlink`, a flat-file install for one specific agent,
 and two sites reached only by an explicit `skills remove`.
 Nothing enumerates the directory looking for entries absent from the lock.
-The canonical copies are therefore safe from another tool's sync.
+The shared copies are therefore safe from another tool's sync.
 
 The remaining exposure is a name collision:
 that tool's own canonical write lands over ours
@@ -120,32 +117,15 @@ when a user runs `skills add` for something named `semantic-linefeeds` or `setup
 That is user-initiated and out of this design's reach;
 `semlf doctor` reports the resulting mismatch, which is the right outcome.
 
-### The reference implementation confirms two rules and contradicts one
-
-`createSymlink` in that same bundle is this design's mechanism, arrived at independently.
-It returns early when the real target and the real link path are equal,
-and again when their parent-symlink resolutions are equal —
-the "already resolves to canonical, do nothing" rule.
-Its removal path detects installed agents, excludes the ones being removed,
-and deletes the canonical copy only when none remain — the last-consumer rule.
-
-It diverges in two ways this design does not follow.
-It writes a relative link, where this design writes an absolute one (the reason is below).
-And when something else occupies the link path it deletes that recursively,
-where this design refuses.
-
-It also demonstrates why the realpath guard here is not hypothetical.
-Its per-agent cleanup skips the canonical path by **string equality**,
-so an agent path that resolves to the canonical directory by a different spelling is not recognised,
-and is removed recursively.
-
 ### The hook's judgment-layer probe needs no change
 
 `_judgment_layer_present` in `scripts/check_linefeeds.py` already probes `$HOME/.agents/skills/semantic-linefeeds/SKILL.md`,
-which is the canonical destination,
-and `_looks_like_the_skill` opens candidates with `open()`, which follows symlinks.
-So opencode's candidate keeps answering `True` through the installed link,
-and no detector behavior changes.
+which is the shared destination.
+Its opencode candidate keeps working too:
+`_looks_like_the_skill` opens candidates with `open()`, which follows symlinks,
+so a joined root answers `True` through the user's own arrangement.
+On a machine with separate roots that candidate simply stops matching, and the shared one carries the answer.
+No detector behavior changes.
 
 ### `opencode-readme` has no consumer other than the opencode skill
 
@@ -162,11 +142,10 @@ A dual-agent machine therefore carries two checkers.
 ### Removal of a file refuses anything that is not a regular file
 
 `plan_remove_file` refuses a directory and refuses a non-regular file (`lifecycle.py:988-1000`).
-A link therefore needs its own planner rather than a flag on that one.
-
 That function also unlinks its destination unconditionally once `--force` admits it.
-On a machine whose opencode skills root is joined to the canonical root,
-that path is the canonical file, so a forced removal would delete it through the parent symlink.
+On a machine whose opencode skills root is joined to the shared root,
+the legacy opencode skill path is the shared file,
+so a forced removal would delete it through the parent symlink.
 Today that is unreachable, because install refuses on such a machine before anything is written.
 This design makes such machines installable, so it must not re-open that door.
 
@@ -191,7 +170,7 @@ a read-time fallback is prose instructing a model, untestable from pytest and vi
 while a shared row is a registry field with types and tests behind it.
 
 A variant was considered and rejected:
-publish the checker inside the skill directory and cite it relatively, so it travels through the same link.
+publish the checker inside the skill directory and cite it relatively.
 The Codex hook still needs the copy under the data root,
 so a dual-agent machine would carry three checkers instead of two.
 
@@ -274,25 +253,25 @@ Covered in its own section below.
 `owner` gains one value, `shared`:
 the row publishes when **any** agent target is selected, and never for `agentsmd` alone.
 
-| id | owner | destination | kind |
-|---|---|---|---|
-| `checker` | `shared` (was `codex`) | `~/.local/share/semlf/check_linefeeds.py` | file |
-| `readme` | `shared` (was `codex`) | `~/.local/share/semlf/README.md` | file |
-| `skill` (was `codex-skill`) | `shared` (was `codex`) | `~/.agents/skills/semantic-linefeeds/SKILL.md` | file |
-| `setup-skill` (was `codex-setup-skill`) | `shared` (was `codex`) | `~/.agents/skills/setup-semlf/SKILL.md` | file |
-| `codex-hook-template` | `codex` | `$CODEX_HOME/hooks.json` | hook merge |
-| `opencode-plugin` | `opencode` | `…/opencode/plugins/semantic-linefeeds.ts` | file |
-| `opencode-checker` | `opencode` | `…/opencode/plugins/check_linefeeds.py` | file |
-| `opencode-skill-link` | `opencode` | `…/opencode/skills/semantic-linefeeds` | link |
-| `opencode-setup-skill-link` | `opencode` | `…/opencode/skills/setup-semlf` | link |
-| `opencode-setup-command` | `opencode` | `…/opencode/commands/setup-semlf.md` | file |
-| `agentsmd-snippet` | `agentsmd` | user-named | snippet |
+| id | owner | destination |
+|---|---|---|
+| `checker` | `shared` (was `codex`) | `~/.local/share/semlf/check_linefeeds.py` |
+| `readme` | `shared` (was `codex`) | `~/.local/share/semlf/README.md` |
+| `skill` (was `codex-skill`) | `shared` (was `codex`) | `~/.agents/skills/semantic-linefeeds/SKILL.md` |
+| `setup-skill` (was `codex-setup-skill`) | `shared` (was `codex`) | `~/.agents/skills/setup-semlf/SKILL.md` |
+| `codex-hook-template` | `codex` | `$CODEX_HOME/hooks.json` |
+| `opencode-plugin` | `opencode` | `…/opencode/plugins/semantic-linefeeds.ts` |
+| `opencode-checker` | `opencode` | `…/opencode/plugins/check_linefeeds.py` |
+| `opencode-setup-command` | `opencode` | `…/opencode/commands/setup-semlf.md` |
+| `agentsmd-snippet` | `agentsmd` | user-named |
 
-Rows removed: `opencode-skill` and `opencode-setup-skill`, replaced by the canonical copy plus a link;
+Rows removed: `opencode-skill` and `opencode-setup-skill`, replaced by the shared copy;
 `opencode-readme`, which has no consumer left.
 
-Codex gets no link row.
-The canonical root is the directory Codex already reads, so it holds the real file.
+Every row still describes a payload with a source, a member, and a rendering,
+so `registry.stage_payloads`, the zipapp builder, the wheel build hook,
+and the packaging tests that assert each row's member is present all keep working by construction.
+Row renames alone are carried by those paths automatically.
 
 `opencode-checker` stays for the reason in the findings,
 and teaching the plugin to read the neutral checker is not part of this work.
@@ -319,115 +298,22 @@ and only a machine with no integrations at all reports one as a leftover.
 
 The registry's owner-map test (`tests/test_registry.py:40-55`) pins the current mapping and changes with it.
 
-### Link rows are not payload rows
+## The collision refusal
 
-`PayloadRow` describes a payload: a source file, an embedded member path, and a rendering.
-A link has none of those, and every packaging consumer assumes they exist:
+`colliding_destinations` keeps its purpose but not its selection test, which is covered above.
 
-- `registry.stage_payloads` reads `row.source` and writes `row.member` for every row.
-- The zipapp builder and the wheel build hook both call it,
-  and `tests/test_packaging.py` asserts each row's member is present in the built artifact.
-- `tests/test_installer.py`'s checkout fixtures assume every row has a real source file.
-- `payload_destinations()` and `plan_install` both filter on `row.recorded`.
+The collision it was originally written for stops existing:
+there is one skill row, and one row cannot collide with itself.
+That is the whole answer to arbitrary symlink topologies —
+not a smarter refusal, and not a rule about any particular arrangement.
+Every arrangement leads to the same single destination:
+a root symlink, a per-skill leaf symlink, an intermediate symlink, or a shared root that is itself a symlink.
 
-So link rows are represented explicitly as non-payload rows and excluded from the payload paths,
-rather than added to the table and left to break staging.
-The registry test that pins ids, owners, members, the unrecorded set, and the identity set changes with them.
-
-## The link
-
-**A link points at the canonical directory, by absolute path.**
-
-Directory rather than `SKILL.md`:
-one link then covers whatever else a skill directory grows,
-and opencode was measured resolving exactly this shape.
-
-Absolute rather than the relative form `mattpocock/skills` writes.
-A relative link is always computable, so that is not the reason;
-the reason is consistency with the rest of the installer,
-which records absolute destinations and writes absolute paths into the hook and the skill body.
-A relative link would survive a moved home directory,
-but nothing else semlf installs would, so the property buys nothing on its own.
-
-### The states a link destination can be in, in this order
-
-The order matters, and getting it wrong breaks the design's own headline case.
-
-1. **Its real path equals the canonical directory's real path** — do nothing.
-2. **Absent** — create the symlink.
-3. **A file this kit installed under the old layout, provable from its record** — migrate it (see below).
-4. **Anything else** — refuse, naming the path.
-
-Testing equality before absence is not a style choice.
-On a joined root, before anything is installed,
-`os.path.lexists` on the link path is false, because the leaf does not exist yet.
-Absence would be read first, a symlink would be planned,
-and by the time it applied the canonical row would already have created that same directory through the parent symlink —
-so `os.symlink` would raise `FileExistsError` mid-apply.
-`os.path.realpath` resolves a parent symlink even when the final component is missing,
-so testing it first sees the truth and plans nothing.
-
-The comparison is `realpath` on **both** sides.
-A canonical root that is itself a symlink — `~/.agents/skills` pointing at `/opt/skills`, say —
-is a valid arrangement, and comparing a resolved link against an unresolved canonical string would refuse it.
-
-This is what makes every symlink topology work rather than one named pattern:
-`realpath` collapses a root symlink, a leaf symlink, and any intermediate symlink alike.
-A user who has already arranged their roots gets a no-op, not a refusal and not a second copy.
-
-Bind mounts are the stated exception.
-`realpath` does not cross a bind mount, so a bind-mounted skills root reads as unrelated and is refused.
-Detecting it would need device and inode comparison, which is a different mechanism;
-refusing is the safe outcome and the refusal names the path.
-
-The fourth state is the precision rule.
-`--force` does not widen it into permission to delete a directory of someone else's files.
-Backup-and-replace is deliberately not offered there:
-the thing to back up is a directory, and `exclusive_backup` is a single-file byte-level primitive.
-
-### Links are recorded
-
-An earlier draft left links out of the provenance manifest,
-arguing that a symlink carries its own evidence.
-That argument is wrong, and the review that found it is worth restating:
-`lstat` and `readlink` prove *what* a path currently is, not *who* created it.
-
-The failure is concrete.
-A user, or `mattpocock/skills`, creates exactly the leaf link this design would create.
-Install sees state 1 and correctly does nothing.
-`semlf uninstall opencode` then deletes a link semlf never made.
-
-So a link row gets a record like every other artifact,
-in a link-shaped variant of the existing entry: the link's own path, the target it was created with, and the version.
-`manifest._valid_entry` gains that shape beside the digest shape,
-and a link classifies as managed when the path is a symlink whose recorded target still matches.
-
-Removal then requires all three:
-the path is itself a symlink, its record proves semlf created it, and it resolves to the canonical directory.
-Without a record it is left alone, which is the correct answer for a link the user made.
-
-Install's state 1 writes the record when the existing link already matches what we would have created,
-which is the same adoption `classify_artifact` performs for a file whose bytes already equal the rendering.
-A link that resolves to canonical only through a parent symlink is not adopted and not recorded:
-there is no leaf link there to own.
-
-### A machine that cannot create symlinks is not a failed install
-
-`os.symlink` fails without privilege on Windows.
-The reference implementation sidesteps this by creating a directory junction, which needs no privilege;
-Python's standard library has no junction API, and the CLI stays stdlib-only,
-so that route would mean shelling out to `mklink` and is not taken.
-
-The link rows therefore print a note and the install continues, with a zero exit code.
-Both targets read the canonical root natively,
-so an install without the links is correct and usable;
-the link buys the shadowing protection, not the skill's reachability.
-
-Two mechanisms have to cooperate for that to actually be true.
-`apply_plan` treats a returned note as an error and exits 1 (`lifecycle.py:247-249`),
-so the link's own apply step must catch the `OSError`, print its note, and return `None`.
-And `doctor` must not fail the machine for the absent link,
-which the link states below handle.
+What the check still covers is `checker` against `opencode-checker`,
+joined when someone points the plugins directory at the data root.
+That still deserves a refusal:
+the bytes match, but two provenance records would name one file,
+and `uninstall opencode` would delete the copy the other integration depends on.
 
 ## Install
 
@@ -441,20 +327,7 @@ It is a paragraph of text with no checker and no skill behind it.
 
 ## Uninstall
 
-Per-target removal keeps its shape, with three additions.
-
-**Links** get their own planner, because `plan_remove_file` refuses any non-regular destination.
-Removing `opencode` inspects each link path:
-
-- the path is itself a symlink, its record proves semlf created it,
-  and it resolves to the canonical directory — remove it;
-- the path resolves to the canonical directory but is not itself a symlink, because a parent is —
-  do nothing, since removing it would delete the canonical directory's contents;
-- anything else, including a matching link with no record — leave it alone.
-
-The new planner must not inherit `plan_remove_file`'s forced unlink.
-`--force` widens which provenance states are admissible;
-it never makes it acceptable to unlink a path that resolves into the canonical directory.
+Per-target removal keeps its shape, with two additions.
 
 **Last consumer**, by the conservative rule stated earlier, with those removals planned last.
 
@@ -462,32 +335,20 @@ it never makes it acceptable to unlink a path that resolves into the canonical d
 Uninstall must remove the pre-change artifacts too, not only the new ones.
 Upgrading the package and immediately running `semlf uninstall opencode` is a reachable path,
 and it never runs an install under the new layout.
-Without this, the old judgment skill, the old setup skill, and the plugin README survive an uninstall that reported success —
-and because opencode's own root wins, the stale skill stays advertised.
+Without this, the old judgment skill, the old setup skill, and the plugin README survive an uninstall that reported success,
+and a stale skill in opencode's own root stays advertised.
 The converse holds for Codex:
 a legacy skill proven only by a `codex-skill` record must not refuse removal because the new plan asks for `skill`.
 `tests/test_migration.py` already pins direct uninstall of an old recorded skill, and that contract is kept.
+
+Removing a legacy opencode skill carries the same guard migration does, for the same reason:
+on a joined root that path resolves to the shared file, and `plan_remove_file` under `--force` would unlink it.
+A legacy removal is admissible only when its real path differs from the shared destination.
 
 `checker` and `readme` are retained and named by `status`, as they are today.
 The closing note about retained shared payloads now prints whenever any were retained, not only for `codex`,
 and it must print from **both** doors —
 `scripts/install.py`'s uninstall returns straight from `apply_plan` today and has no such note.
-
-## The collision refusal
-
-`colliding_destinations` keeps its purpose but not its selection test, which is covered above.
-
-The collision it was originally written for stops existing:
-there is one skill row, and one row cannot collide with itself.
-A link row cannot trip it either —
-a link's destination is a directory and the canonical row's destination is a file inside that directory,
-so their real paths are never equal.
-
-What it still covers is `checker` against `opencode-checker`,
-joined when someone points the plugins directory at the data root.
-That still deserves a refusal:
-the bytes match, but two provenance records would name one file,
-and `uninstall opencode` would delete the copy the other integration depends on.
 
 ## Migration
 
@@ -524,7 +385,7 @@ Without this, an ordinary upgrade stops at a wall.
 so a machine whose `SKILL.md` is unchanged would survive anyway;
 a release that changed `SKILL.md` would classify the file as unrecorded and refuse without `--force`.
 That case is not hypothetical on a joined root:
-the canonical path there may hold the **opencode** rendering, which cites the plugins directory,
+the shared path there may hold the **opencode** rendering, which cites the plugins directory,
 so its bytes differ from the shared rendering by construction.
 
 ### What migration does to each pre-change state
@@ -533,27 +394,28 @@ so its bytes differ from the shared rendering by construction.
 |---|---|
 | `~/.agents/skills/…/SKILL.md` recorded as `codex-skill` | project the record onto `skill`, publish normally, then forget the retired record |
 | the same, recorded as `codex-setup-skill` | the same, onto `setup-skill` |
-| a real `…/opencode/skills/…/SKILL.md` whose record proves it, whose real path differs from the canonical file | remove it, prune its now-empty directory, forget the record, create the link |
-| the same, but whose real path **equals** the canonical file | project the record onto `skill` or `setup-skill`; never remove the file |
+| a real `…/opencode/skills/…/SKILL.md` whose record proves it, whose real path differs from the shared file | remove it, prune its now-empty directory, forget the record |
+| the same, but whose real path **equals** the shared file | project the record onto `skill` or `setup-skill`; never remove the file |
 | `…/opencode/plugins/README.md` whose record proves it | remove it, forget the record |
 | any of those paths holding content no record proves | refuse, naming the path |
 
 The fourth row is the trap this whole design has to survive.
 On a machine whose opencode skills root is a symlink into `~/.agents/skills`,
-the old `opencode-skill` record's path resolves to the canonical file itself.
-A migration that removes whatever provenance proves is ours would delete the canonical copy.
-So the condition is provable **and** not the canonical file,
+the old `opencode-skill` record's path resolves to the shared file itself.
+A migration that removes whatever provenance proves is ours would delete the shared copy.
+So the condition is provable **and** not the shared file,
 and the record is carried forward rather than merely forgotten.
 
-The third row must prune the emptied directory.
-The old layout created `…/opencode/skills/semantic-linefeeds/` as a real directory holding `SKILL.md`;
-removing only the file leaves the directory, and `os.symlink` cannot create a link where a directory already sits.
+The third row prunes the emptied directory.
+The old layout created `…/opencode/skills/semantic-linefeeds/` as a real directory holding `SKILL.md`,
+and leaving an empty directory behind in another agent's config is untidy rather than harmful,
+so the prune is the same one-level, only-when-empty prune `plan_remove_file` already performs.
 
 ### Ordering, and the states that have no rollback
 
-Publication of the canonical file and its new record comes **before** any destructive legacy cleanup.
+Publication of the shared file and its new record comes **before** any destructive legacy cleanup.
 `apply_plan` has no rollback: it stops at the first error and reports what was and was not applied,
-so the only safe order is the one where an interruption leaves the canonical copy present.
+so the only safe order is the one where an interruption leaves the shared copy present.
 
 These partial states are reachable and each must converge on a re-run rather than refuse:
 
@@ -561,36 +423,31 @@ These partial states are reachable and each must converge on a re-run rather tha
 - the legacy file is gone but clearing its record failed;
 - both a retired and a new record exist;
 - a new record exists while the retired one remains;
-- the legacy file was removed before canonical publication, or before link creation, succeeded.
+- the legacy file was removed before the shared publication succeeded.
 
-### `--force` loses a recovery path, and that is a contract change
+### `--force` on a legacy skill
 
-Today a legacy `SKILL.md` whose record is missing or corrupt can still be repaired:
+Today a legacy `SKILL.md` whose record is missing or corrupt can be repaired in place:
 `classify_artifact` backs it up and replaces it under `--force`.
-Under this design the same machine meets a refusal instead,
-because the object at the link path is a directory and directories are not backed up.
+Under this design that file is not replaced, it is removed,
+and a removal whose provenance cannot be proven is refused rather than forced.
 
-That is the intended precision trade, but it is user-visible,
+That is the intended precision trade, and it is user-visible,
 so it is stated here rather than left under an out-of-scope claim that install's force behavior is unchanged.
+`--force` still widens which provenance states are admissible;
+what it never does is authorise unlinking a path that resolves into the shared destination.
 
 ## Status and doctor
 
-The literal `(name, label)` loop `status_command` walks gains `skill`, `setup-skill`,
-and the two link rows, and loses the removed rows.
-A link cannot go through the file path in that loop:
-it renders no bytes, and `object_state` would report a correct link as a non-regular file.
-Link rows report their own states.
+The literal `(name, label)` loop `status_command` walks gains `skill` and `setup-skill`,
+and loses the removed rows.
 
-`doctor` needs the same vocabulary, with three distinct outcomes,
-because "doctor exits clean" is not a contract about corrupted states:
-
-- **link absent** — informational, never a failure.
-  This is what an unprivileged Windows machine looks like, and that install is correct.
-- **link present and resolving to the canonical directory** — healthy.
-- **link path occupied by something else, or a real directory shadowing the canonical copy** — a failure with the path named.
-
-The third case is the one `doctor` is blind to today,
-and it is the exact state that makes opencode load last release's skill.
+`doctor` gains one check it does not have today:
+**a file in opencode's own skills root that would shadow the shared copy is a failure, with the path named.**
+This is the state that makes opencode load last release's skill,
+and it is invisible to every check `doctor` currently runs.
+It needs no artifact of ours at that path — it is an inspection, not an ownership claim.
+An empty or absent opencode skills root is the healthy case and reports nothing.
 
 Shared payload expectedness in both verbs changes as described in the registry section.
 
@@ -600,30 +457,24 @@ Pinned by the suite:
 
 - Both topologies, each with both targets and with one target alone:
   a root-directory symlink, and a per-skill leaf symlink.
-- A joined root on a machine with nothing installed —
-  the case where testing absence before real-path equality would fail mid-apply.
-- A canonical root that is itself a symlink.
+  Neither produces a refusal, and both leave exactly one skill file.
+- A shared root that is itself a symlink.
 - Sequential installs — `install codex` today, `install opencode` tomorrow.
   Every existing case installs both in one command,
   so the path where the second install meets the first one's files has no coverage.
-- A user-created leaf link is adopted by install and **not** removed by uninstall when no record proves it.
 - An opencode-only install now **does** create the neutral root,
   which inverts the assertion at `tests/test_semlf_install.py:160`,
   and the checker the installed skill cites is present.
 - Removing one target leaves the other's install whole;
-  removing the last one takes the canonical skills and retains the checker and README.
+  removing the last one takes the shared skills and retains the checker and README.
 - The conservative removal predicate: an unreadable `hooks.json` retains the shared skills.
-- `uninstall opencode` on a joined root deletes nothing through the link path, with and without `--force`.
+- `uninstall opencode` on a joined root deletes nothing through the legacy opencode path, with and without `--force`.
 - Uninstall of a legacy machine that never ran an install under the new layout.
 - Migration from the pre-change layout, in both the separate-roots and joined-root variants,
-  including the joined-root machine whose canonical file holds the old opencode rendering.
+  including the joined-root machine whose shared file holds the old opencode rendering.
 - Each partial migration state converges on a re-run.
-- `prune_parent` prunes only the skill's own directory and only when it is empty.
-  A shared root routinely holds other tools' skills, so an over-eager prune is a large loss.
-- A failing `os.symlink` prints its note and leaves the exit code at zero.
-- `doctor` reports the three link states distinctly, and fails on a shadowing directory.
+- `doctor` fails on a shadowing file in opencode's own skills root and is quiet when that root is empty.
 - The registry coupling tests, covering ids, owners, members, and the unrecorded and identity sets.
-- Packaging's per-row member assertions, which link rows must not break.
 
 Not reachable from pytest, and verified by running the real agents:
 installing from the checkout and asking a real Codex and a real opencode to load the skill and quote a rule back.
@@ -632,10 +483,7 @@ installing from the checkout and asking a real Codex and a real opencode to load
 
 - **ADR-0019** supersedes ADR-0018 and answers its objections.
 - It amends [ADR-0016](../../decisions/0016-one-entry-point-and-the-payload-registry.md):
-  `owner` may be `shared`, meaning any selected agent target,
-  and a row may describe a link rather than a payload.
-- It extends [ADR-0014](../../decisions/0014-lifecycle-verbs-and-the-provenance-manifest.md)
-  with the link-shaped record, and records why self-evidence was not enough.
+  `owner` may be `shared`, meaning any selected agent target.
 - The README section listing install destinations is updated.
 - `scripts/install.py`'s help text still describes Codex as the owner of the skill, checker, and README,
   and still exports `codex_skill_dest` for compatibility; both are updated.
@@ -664,7 +512,7 @@ which is the signal that actually means "Codex has an integration installed".
 The removal question is answered by a second, conservative predicate rather than by that one.
 
 **"It makes uninstall unresolvable."**
-The refcounting it feared is one comparison, and the review confirmed it converges in either order.
+The refcounting it feared is one comparison, and review confirmed it converges in either order.
 What ADR-0018 did not foresee is that the comparison must be conservative rather than merely correct,
 because it now authorises a delete.
 That is a constraint on the rule, not a reason the rule cannot exist.
@@ -674,11 +522,14 @@ The cost ADR-0018 accepted — two copies of every skill on every dual-agent mac
 ## Out of scope
 
 - Claude Code, which the marketplace owns and `semlf` never touches.
-  A user who symlinks `~/.claude/skills/semantic-linefeeds` into the shared root gets the canonical copy;
+  A user who symlinks `~/.claude/skills/semantic-linefeeds` into the shared root gets the shared copy;
   that is their arrangement, and this design neither creates nor removes it.
+- Creating symlinks in any agent's own skills root.
+  An earlier draft did; the findings above record why it was dropped.
+- Project-level `.opencode/skill` and `.opencode/skills`, which outrank the shared root and are not inspected.
 - The opencode command file, which is not a skill and collides with nothing.
 - Teaching the opencode plugin to read the neutral checker instead of its own.
 - Any change to what the hook reports, or to detector behavior.
 - Any change to how install preflights, refuses, backs up, or records ordinary file artifacts,
   with the one exception named above:
-  a legacy skill directory that no record proves is refused rather than backed up and replaced.
+  a legacy skill file that no record proves is refused rather than forcibly removed.
