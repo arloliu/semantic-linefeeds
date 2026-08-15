@@ -1,7 +1,7 @@
-# One skill, one copy, in the root every agent already reads
+# One skill, one copy, in the root both targets already read
 
 **Date:** 2026-08-15
-**Status:** in review — revised after one round of external review, no code written yet
+**Status:** in review — revised after two rounds of external review, no code written yet
 **Answers:** [the neutral-ownership handoff](2026-08-15-neutral-ownership-handoff.md)
 **Supersedes:** [ADR-0018](../../decisions/0018-skills-ship-per-target.md), whose objections are answered at the end
 
@@ -58,6 +58,16 @@ opencode reports exactly one, and it is the copy under its own root.
 
 That is what makes a stale copy in opencode's own root dangerous,
 and it is why migration must remove those files rather than merely stop writing them.
+
+The design's load-bearing assumption was then tested on its own:
+with no opencode skills directory present at all,
+`opencode debug skill` still resolves the skill from `~/.agents/skills` and reports that path.
+The scan is unconditional rather than opted into, and `skills.paths` only appends to it.
+
+One user opt-out is acknowledged rather than claimed away.
+A per-agent configuration can disable the `skill` tool, or disable an individual skill,
+and that hides the shared copy wherever it lives.
+That is a choice a user makes, not a gap in this design.
 
 ### Precedence is a race, and it covers only the global roots
 
@@ -139,6 +149,25 @@ Once one shared skill cites the neutral README, the row is an orphan.
 so the copy beside the plugin is load-bearing and stays.
 A dual-agent machine therefore carries two checkers.
 
+### Two paths are the same file, and `realpath` cannot always tell
+
+Several rules below turn on one question:
+does this path and that path name the same file?
+
+`os.path.realpath` answers it for symlinks and it is what the current collision check uses,
+but it does not resolve a bind mount.
+A user who joins two roots with `mount --bind` gets two different real paths for one inode.
+Every guard keyed on realpath would then read "different file", admit a removal, and unlink the shared copy.
+
+So the rule throughout is:
+
+- **`os.path.samefile`, or `st_dev` and `st_ino` compared directly, whenever both paths exist.**
+  It is correct through symlinks, bind mounts, and hard links alike.
+  It raises when either side is missing, so every caller handles that rather than letting it propagate.
+- **`os.path.realpath` only where a destination need not exist yet**, which is `colliding_destinations`.
+  A path that has never been created has no inode to compare,
+  and there is nothing to delete there either, so the weaker test is sound in that one place.
+
 ### Removal of a file refuses anything that is not a regular file
 
 `plan_remove_file` refuses a directory and refuses a non-regular file (`lifecycle.py:988-1000`).
@@ -203,10 +232,35 @@ Promoting it to a deletion predicate would turn each of those into data loss.
 
 **A second, deliberately conservative predicate decides whether a shared skill may be removed.**
 It answers "does this target still have artifacts on this machine",
-and every ambiguity resolves to *yes*:
-an unreadable or unparseable `hooks.json` counts as Codex present, not absent.
+and every ambiguity resolves to *yes*.
 `plan_remove_codex_hook` already draws that line for the hook itself (`lifecycle.py:1067`),
 and this is the same discipline applied to the question that now authorises a delete.
+
+"Ambiguity resolves to yes" is a principle, not an algorithm, and stated alone it is not enough.
+The predicate must also say **which places it looks**.
+A place it never examined is not the same as a place it found empty.
+The reporting predicate probes only destinations derived from the current environment (`lifecycle.py:731-750`),
+so a machine that installed opencode under one `XDG_CONFIG_HOME`
+and runs `uninstall codex` under another would report opencode absent
+and delete shared skills that a live opencode installation still uses.
+
+The algorithm is therefore:
+
+1. Probe every target-owned destination derived from the current environment,
+   with a **tri-state** result — present, absent, or could-not-inspect — never a boolean.
+2. Read every valid target-owned entry in the one manifest snapshot,
+   and probe the path each entry records, which may differ from the current environment's.
+3. A target counts as **present** when any of its current or recorded paths proves readable bytes,
+   and equally when any of them is could-not-inspect.
+4. A target counts as **absent** only when every one of its paths was examined and proven missing.
+5. A record whose file is proven gone is a stale record, not evidence of presence.
+   It counts as absent, and it is forgotten when that target is named in the request.
+
+The fifth rule is what stops the opposite failure.
+`plan_remove_file` reports a vanished destination as "not installed" and leaves its record in place
+(`lifecycle.py:976-982`),
+so a machine the user had cleaned up by hand would retain the shared skills forever
+if every valid record counted as permanent presence.
 
 ### 3. Last-consumer uninstall
 
@@ -315,6 +369,41 @@ That still deserves a refusal:
 the bytes match, but two provenance records would name one file,
 and `uninstall opencode` would delete the copy the other integration depends on.
 
+### It must also compare against what is already installed
+
+Fixing the owner test is necessary and not sufficient.
+`colliding_destinations` compares only the rows **this request selects**,
+so a collision assembled across two separate requests is invisible to it.
+
+The reachable sequence is three ordinary steps:
+
+1. `semlf install codex`, which publishes `checker` and `readme` under the data root.
+2. Point opencode's plugins directory at that data root.
+3. `semlf install opencode`, a request that selects no shared row for comparison.
+
+Step 3 finds bytes that already match its own rendering.
+`checker` and `opencode-checker` carry the same canonical source, as do `readme` and `opencode-readme`,
+so it adopts them and writes a second provenance record naming the same file.
+Nothing refuses, because the row it would have collided with was not in the request.
+
+From there every removal path deletes a file another integration depends on.
+`uninstall opencode` unlinks `opencode-checker`'s destination,
+migration unlinks a proven `opencode-readme`,
+and both are the shared copies a surviving Codex hook still points at.
+
+So the comparison widens on both axes:
+
+- **Every selected destination is compared against every other selected destination**, as today.
+- **And against every already-installed destination that a valid record proves**,
+  whether or not its row is part of this request.
+- The same-file guard extends to those pairs:
+  `opencode-checker` against `checker`, and a retired `opencode-readme` against `readme`.
+  When two names resolve to one file, the file is preserved and only the redundant record is cleared.
+
+This is a pre-existing hole rather than one this design opens —
+the current check has always been request-scoped.
+It becomes reachable here because shared rows make the data root exist on machines that never had one.
+
 ## Install
 
 Selection becomes:
@@ -342,8 +431,27 @@ a legacy skill proven only by a `codex-skill` record must not refuse removal bec
 `tests/test_migration.py` already pins direct uninstall of an old recorded skill, and that contract is kept.
 
 Removing a legacy opencode skill carries the same guard migration does, for the same reason:
-on a joined root that path resolves to the shared file, and `plan_remove_file` under `--force` would unlink it.
-A legacy removal is admissible only when its real path differs from the shared destination.
+on a joined root that path is the shared file, and `plan_remove_file` under `--force` would unlink it.
+A legacy removal is admissible only when it is not the same file as the shared destination.
+
+**That guard cannot be expressed as an admission verdict.**
+`plan_remove_file` reaches its unlink through `if not (admit or force)` (`lifecycle.py:1025`),
+so a guard that merely withholds admission is overridden by `--force` and the unlink runs anyway.
+It belongs either in `plan_remove_targets`, so `plan_remove_file` is never called for that artifact,
+or as a refusal inside it that ignores `force` entirely.
+The precedent is `classify_artifact`,
+where a non-regular destination is refused with "`--force` never overrides this" (`classify.py:62-68`):
+the object axis is decided before provenance is consulted, and force widens only the provenance axis.
+
+When that guard refuses the unlink, **the retired record is kept, not forgotten.**
+Forgetting it is what a successful removal does, and this removal did not happen.
+On a joined root with another consumer still installed —
+upgrade the package, then `uninstall opencode` while Codex remains —
+the shared file survives correctly, but its only proof is that retired record.
+Forgetting it would leave a file no record proves, whose bytes differ from the new rendering by construction,
+so the next `semlf install codex` would refuse without `--force`:
+a dead end reached by ordinary steps on the exact topology this design exists to support.
+The record is instead projected onto `skill` or `setup-skill`, the same treatment migration gives it.
 
 `checker` and `readme` are retained and named by `status`, as they are today.
 The closing note about retained shared payloads now prints whenever any were retained, not only for `codex`,
@@ -374,11 +482,24 @@ performed at apply time it would be too late to affect the classification that a
 
 So the snapshot handed to classification is **projected**:
 when a new row has no record of its own,
-and a retired record proves a file at the same resolved path,
+and a retired record proves the same file as the new row's destination,
 the projection presents that record under the new name.
 Classification then sees a managed artifact and plans a normal replace,
 `--dry-run` describes it truthfully,
 and apply writes the new record and forgets the retired one.
+
+A new row can have **more than one** retired alias.
+On a joined root both `codex-skill` and `opencode-skill` record the same file,
+so "project the retired record" is ambiguous as written.
+Migration therefore collects **every** retired record that proves the new row's file, and then:
+
+- projects one of them when they agree, since they prove the same bytes at the same file;
+- refuses, naming both, when two proofs disagree about the digest of one file,
+  because guessing which is authoritative is exactly the guess this project does not make;
+- forgets **all** redundant retired names, and only after the new record is established.
+
+That ordering matters for the partial states below.
+A retired record cleared before the new one is written leaves a file with no proof at all.
 
 Without this, an ordinary upgrade stops at a wall.
 `classify_artifact` adopts only when the bytes already equal the rendering,
@@ -394,14 +515,19 @@ so its bytes differ from the shared rendering by construction.
 |---|---|
 | `~/.agents/skills/…/SKILL.md` recorded as `codex-skill` | project the record onto `skill`, publish normally, then forget the retired record |
 | the same, recorded as `codex-setup-skill` | the same, onto `setup-skill` |
-| a real `…/opencode/skills/…/SKILL.md` whose record proves it, whose real path differs from the shared file | remove it, prune its now-empty directory, forget the record |
-| the same, but whose real path **equals** the shared file | project the record onto `skill` or `setup-skill`; never remove the file |
-| `…/opencode/plugins/README.md` whose record proves it | remove it, forget the record |
+| a real `…/opencode/skills/…/SKILL.md` whose record proves it, and which is **not** the shared file | remove it, prune its now-empty directory, forget the record |
+| the same, but which **is** the shared file | project the record onto `skill` or `setup-skill`; never remove the file |
+| `…/opencode/plugins/README.md` whose record proves it, and which is **not** the `readme` destination | remove it, forget the record |
+| the same, but which **is** the `readme` destination | keep the file, clear only the redundant record |
 | any of those paths holding content no record proves | refuse, naming the path |
 
-The fourth row is the trap this whole design has to survive.
+"Is the shared file" is `os.path.samefile`, for the reason given in the findings:
+a bind mount joins two paths that `realpath` still reports as different,
+and the guard's failure mode is deleting the shared copy.
+
+The second row is the trap this whole design has to survive.
 On a machine whose opencode skills root is a symlink into `~/.agents/skills`,
-the old `opencode-skill` record's path resolves to the shared file itself.
+the old `opencode-skill` record's path is the shared file itself.
 A migration that removes whatever provenance proves is ours would delete the shared copy.
 So the condition is provable **and** not the shared file,
 and the record is carried forward rather than merely forgotten.
@@ -422,8 +548,10 @@ These partial states are reachable and each must converge on a re-run rather tha
 - a retired record exists but its destination is gone;
 - the legacy file is gone but clearing its record failed;
 - both a retired and a new record exist;
-- a new record exists while the retired one remains;
-- the legacy file was removed before the shared publication succeeded.
+- a new record exists while one or more retired ones remain;
+- two retired records name one file;
+- the legacy file was removed before the shared publication succeeded;
+- a guard refused the legacy removal, so its record is deliberately still there.
 
 ### `--force` on a legacy skill
 
@@ -443,11 +571,37 @@ The literal `(name, label)` loop `status_command` walks gains `skill` and `setup
 and loses the removed rows.
 
 `doctor` gains one check it does not have today:
-**a file in opencode's own skills root that would shadow the shared copy is a failure, with the path named.**
+**a file at opencode's own skill path that is not the shared file competes with it, and is reported.**
 This is the state that makes opencode load last release's skill,
 and it is invisible to every check `doctor` currently runs.
 It needs no artifact of ours at that path — it is an inspection, not an ownership claim.
-An empty or absent opencode skills root is the healthy case and reports nothing.
+
+Four things pin its semantics, because each of them is a way to get it wrong.
+
+**It compares two specific paths; it does not enumerate a directory.**
+The question is whether `…/opencode/skills/<name>/SKILL.md` is the shared file,
+answered with `samefile`.
+Enumerating the skills root and failing on whatever is there would fail every joined-root machine outright,
+since that root is full of the shared skills by construction, plus every other tool's.
+
+**Resolving to the shared file is healthy and silent.**
+Each of these means the same file, and `samefile` says so:
+a root symlink, a leaf symlink, an intermediate symlink, a bind mount, or a hard link.
+The ordinary shared-payload identity check still reports stale or edited bytes there;
+this check has nothing to add.
+
+**Identical bytes are a warning, differing bytes are a failure.**
+A separate file whose bytes equal the shared rendering competes for the name but serves the same content,
+so it is residue for migration to clear rather than a broken machine.
+A separate file whose bytes differ is what makes opencode answer with the wrong skill.
+
+**When the shared file does not exist, the report says so instead of saying "shadow".**
+On a machine that has a legacy copy and has not migrated yet, nothing is being shadowed;
+the finding is that install has not run under this layout, and the message points there.
+
+"Competes" rather than "shadows" is deliberate.
+Precedence is a race, so a second copy usually wins but is not guaranteed to,
+and a message promising determinism would be describing a rule opencode does not publish.
 
 Shared payload expectedness in both verbs changes as described in the registry section.
 
@@ -467,17 +621,36 @@ Pinned by the suite:
   and the checker the installed skill cites is present.
 - Removing one target leaves the other's install whole;
   removing the last one takes the shared skills and retains the checker and README.
-- The conservative removal predicate: an unreadable `hooks.json` retains the shared skills.
+- The conservative removal predicate, one case per rule:
+  an unreadable `hooks.json` retains;
+  a target installed under a different `XDG_CONFIG_HOME` or `CODEX_HOME` retains,
+  because its recorded path still proves readable bytes;
+  a record whose file is proven gone counts as absent and is forgotten rather than retaining forever.
+- A collision assembled across two requests:
+  install codex, join the plugins directory to the data root, install opencode.
+  The second install refuses rather than adopting the shared checker under a second name,
+  and neither door's uninstall deletes a file the other integration still records.
+- A bind-mounted join, where `realpath` reports two different paths for one file.
+  Nothing is deleted through the second spelling.
 - `uninstall opencode` on a joined root deletes nothing through the legacy opencode path, with and without `--force`.
 - Uninstall of a legacy machine that never ran an install under the new layout.
 - Migration from the pre-change layout, in both the separate-roots and joined-root variants,
   including the joined-root machine whose shared file holds the old opencode rendering.
-- Each partial migration state converges on a re-run.
-- `doctor` fails on a shadowing file in opencode's own skills root and is quiet when that root is empty.
+- Upgrade then `uninstall opencode` on a joined root with Codex still installed:
+  the shared file survives, its retired record is projected rather than forgotten,
+  and a following `semlf install codex` succeeds without `--force`.
+- Each partial migration state converges on a re-run, including two retired records naming one file.
+- `doctor`'s four cases: quiet on a joined root and on a leaf symlink,
+  quiet on an empty or absent opencode skills root,
+  a warning for a separate file with identical bytes,
+  and a failure for a separate file with differing bytes.
 - The registry coupling tests, covering ids, owners, members, and the unrecorded and identity sets.
 
 Not reachable from pytest, and verified by running the real agents:
 installing from the checkout and asking a real Codex and a real opencode to load the skill and quote a rule back.
+opencode reads its skills into memory at start and never retracts one,
+so that check is made **after restarting opencode**;
+a run that was already alive keeps serving whatever it loaded, including a file migration has since deleted.
 
 ## Records and documentation
 
@@ -485,6 +658,17 @@ installing from the checkout and asking a real Codex and a real opencode to load
 - It amends [ADR-0016](../../decisions/0016-one-entry-point-and-the-payload-registry.md):
   `owner` may be `shared`, meaning any selected agent target.
 - The README section listing install destinations is updated.
+- **`adapters/opencode/INSTALL.md:23-24` tells a manual installer to copy the skill into `~/.config/opencode/skills/`** —
+  the state `doctor` now reports and migration deletes.
+  It is rewritten to name `~/.agents/skills`, and its claim that the skill is already visible
+  when the Claude plugin is installed is revisited at the same time.
+- The minimum opencode version is stated in the README and that INSTALL.md.
+  ADR-0018's shape worked on every opencode because it wrote into opencode's own root;
+  this one depends on opencode scanning `~/.agents/skills`, verified at 1.18.18,
+  and an older opencode would lose the skill with no error at all.
+  `doctor` does not probe for it by running `opencode debug skill`:
+  `detect_agents` holds that detection is a presence probe and never an execution,
+  and shelling into another agent's binary from a health check would break that rule for a version string.
 - `scripts/install.py`'s help text still describes Codex as the owner of the skill, checker, and README,
   and still exports `codex_skill_dest` for compatibility; both are updated.
 - The CHANGELOG entry is written in user-facing language,
