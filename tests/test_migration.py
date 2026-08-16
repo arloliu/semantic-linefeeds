@@ -217,26 +217,24 @@ def test_forced_migration_replaces_an_unrecorded_old_skill(tmp_path):
     assert skill.with_name("SKILL.md.bak").exists()
 
 
-def test_uninstall_refuses_a_pre_rename_recorded_skill(tmp_path):
-    """Install migrates a retired record; uninstall does not, so it needs --force once.
+def test_uninstall_projects_a_pre_rename_recorded_skill(tmp_path):
+    """The upgrade boundary must not need --force, and must not strand the record.
 
     The old machine's proof sits under the retired `codex-skill` name.
-    `plan_remove_file` reads the live name only,
-    so admission falls back to comparing bytes against the current rendering,
-    which a body rendered by the pre-redesign checkout door cannot match.
-    A refusal is the acceptable side of precision over recall,
-    and one `install` run converges the record to `skill.json`,
-    after which uninstall admits the file normally.
+    Reading the live name only, removal fell back to comparing bytes against the current rendering,
+    which refuses the moment a release changes the skill body.
+    It also cleared a record that never existed and left the retired one naming a path it had just deleted,
+    where nothing afterwards can read or name it.
     """
     env, hooks, skill = old_checkout_state(tmp_path)
-    r = run_semlf(["uninstall", "codex"], env)
-    assert r.returncode == 1
-    assert "content differs" in r.stderr
-    assert skill.exists()
+    state = tmp_path / "state" / "semlf" / "artifacts"
+    assert (state / "codex-skill.json").is_file()
 
-    r = run_semlf(["uninstall", "codex", "--force"], env)
+    r = run_semlf(["uninstall", "codex", "opencode"], env)
     assert r.returncode == 0, r.stderr
     assert not skill.exists()
+    assert not (state / "codex-skill.json").exists(), "the retired record was stranded"
+
     data = json.loads(hooks.read_text(encoding="utf-8"))
     from semlf import manifest
 

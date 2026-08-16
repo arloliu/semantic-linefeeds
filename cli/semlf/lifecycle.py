@@ -734,8 +734,10 @@ def project_retired(snapshot, destinations):
         digests = {entry["sha256"] for _, entry in proving}
         if len(digests) > 1:
             named = " and ".join(name for name, _ in proving)
+            # Names the conflict rather than the caller's verb:
+            # both doors project, and uninstall migrates nothing.
             raise RetiredRecordConflict(
-                f"refusing to migrate {live}: {named} both record "
+                f"refusing to act on {live}: {named} both record "
                 f"{dest} with different digests; remove the stale one by hand"
             )
         aliases[live] = [name for name, _ in proving]
@@ -1052,81 +1054,6 @@ def installed_consumers():
     return found
 
 
-def _probe(path):
-    """'present', 'absent', or 'unknown' for one path.
-
-    Tri-state on purpose.
-    A boolean forces every inspection failure into one of the two answers,
-    and for a predicate that authorises a delete the wrong one loses data.
-    """
-    if path is None:
-        return "unknown"
-    try:
-        if not os.path.lexists(str(path)):
-            return "absent"
-    except (OSError, ValueError):
-        return "unknown"
-    return "present"
-
-
-def target_present(target, snapshot):
-    """Whether target still has artifacts here, answered conservatively.
-
-    installed_consumers is the reporting predicate and must not decide this.
-    It probes only destinations derived from the current environment,
-    and it fails closed to absent on every kind of trouble —
-    harmless when the result is a warning, destructive when it authorises an unlink.
-
-    Every ambiguity resolves to present,
-    and the places examined are stated rather than implied:
-    a path never looked at is not a path found empty.
-    Both the current environment's destinations and every path a valid record names are probed,
-    since a machine installed under one XDG_CONFIG_HOME may be operated under another.
-    A row with no record names no path, so there is nothing there to examine —
-    reading its absence as could-not-inspect would make every uninstalled target permanently present.
-
-    A record whose file is proven gone counts absent.
-    Treating every valid record as permanent presence would retain the shared skills forever on a machine the user cleaned up by hand,
-    since plan_remove_file leaves a vanished destination's record in place.
-
-    KNOWN CARVE-OUT, codex only.
-    For codex the answer rests on the current environment's hook entry alone.
-    `codex-hook-template` is the one codex-owned row and it is not recorded,
-    so no codex row ever reaches the loop below and no recorded path is ever probed for this target.
-    The "a machine installed under one root may be operated under another" rule above therefore holds for
-    XDG_CONFIG_HOME, which opencode's recorded rows carry, and not for CODEX_HOME, which nothing records.
-    A Codex installed under one CODEX_HOME and operated without it reads as absent here.
-    On such a machine `semlf uninstall opencode` removes the shared skills while that Codex is still using them,
-    and `semlf install codex` publishes them again.
-    That is a gap in the evidence this predicate can reach, not a case it has decided is safe.
-    """
-    if target == "codex":
-        home = manifest.codex_home()
-        if home is not None:
-            hooks = home / "hooks.json"
-            if os.path.lexists(str(hooks)):
-                data = manifest.read_state_json(hooks)
-                if data is None:
-                    return True  # unreadable is could-not-inspect, never absent
-                if manifest.owned_codex_hooks(data):
-                    return True
-    seen_any = False
-    for row in registry.ROWS:
-        if row.owner != target or not row.recorded:
-            continue
-        entry = snapshot.get(row.id)
-        paths = [row.dest()]
-        if entry is not None:
-            paths.append(entry.get("path"))
-        for path in paths:
-            state = _probe(path)
-            if state == "unknown":
-                return True
-            if state == "present":
-                seen_any = True
-    return seen_any
-
-
 def payload_identity(name):
     """(state, human line) for one published payload.
 
@@ -1227,6 +1154,7 @@ def status_command(argv, shim_expected=None):
     snapshot = manifest.load()
     destinations = payload_destinations()
     leftover_paths = []
+    orphaned_skills = []
     # Every identity payload — both checker copies and the readme — reports through payload_identity;
     # the classifier vocabulary never appears on a payload line.
     for row in registry.ROWS:
@@ -1305,6 +1233,30 @@ def status_command(argv, shim_expected=None):
             snapshot.get(name), dest, rendered, artifact_version(), False
         )
         print(f"{label}: {verdict.state} ({dest})")
+        # A shared row with no consumer is a skill advertised to every model that scans the root.
+        # Removal retains it on purpose, so this is what keeps the retention from being silent,
+        # and it names the one command that takes it.
+        row = registry.BY_ID[name]
+        if row.owner == "shared" and not expected_by(row, consumers):
+            orphaned_skills.append(dest)
+    if orphaned_skills:
+        listed = ", ".join(str(p) for p in orphaned_skills)
+        wanted = " ".join(AGENT_TARGETS)
+        # Conditional, and deliberately so.
+        # installed_consumers reads this environment's artifacts alone,
+        # which is the same evidence gap that stopped deciding removals one commit ago:
+        # a Codex under another CODEX_HOME is invisible here.
+        # Asserting that nothing reads these would state a fact this predicate cannot establish,
+        # and it would do so while naming the command that deletes them,
+        # so the line reports what it can see and leaves the judgement with the user.
+        #
+        # Worded apart from the payloads line below on purpose:
+        # the split that matters is which of them a command can take,
+        # so each line leads with its own remedy rather than repeating the diagnosis.
+        print(
+            f"skills: no agent installed here reads these; "
+            f"if you use neither agent, `semlf uninstall {wanted}` removes {listed}."
+        )
     if leftover_paths:
         listed = ", ".join(str(p) for p in leftover_paths)
         print(f"payloads: no remaining consumer; remove {listed} by hand if unwanted.")
@@ -1328,18 +1280,44 @@ def _forget_note(dest, name):
     Returns None on a clean forget.
     On a raised OSError it returns an accurate stderr line instead —
     the caller still counts dest as removed either way.
+
+    The record is named, not just the destination.
+    One removal can clear a live name and the retired names that proved it,
+    so a line that named only the file would leave the reader unable to tell which record survived.
     """
     try:
         manifest.forget(name)
     except OSError as exc:
-        return f"removed {dest}, but could not clear its provenance record: {exc}"
+        return (
+            f"removed {dest}, but could not clear its {name} provenance record: {exc}"
+        )
     return None
 
 
-def plan_remove_file(label, dest, name, force, planned, refusals, prune_parent=False):
+def plan_remove_file(
+    label,
+    dest,
+    name,
+    force,
+    planned,
+    refusals,
+    prune_parent=False,
+    snapshot=None,
+    aliases=(),
+):
     """Plan removal of one installer-owned file, or a refusal.
 
     Shared by the two shared skills and the opencode files.
+
+    `snapshot` is the caller's one manifest snapshot when it has taken one,
+    and None when the caller wants the record looked up by name.
+    A caller that projected retired records must pass the projection:
+    the live name has no record on a machine that upgraded from an older layout,
+    so looking it up by name would refuse a file a retired record proves.
+
+    `aliases` are the retired names that proved this destination.
+    They are forgotten together with the live name, and only after the unlink succeeds,
+    because a record cleared before the file goes leaves a file nothing can prove.
     """
     if dest is None:
         refusals.append(
@@ -1389,7 +1367,11 @@ def plan_remove_file(label, dest, name, force, planned, refusals, prune_parent=F
                     f"render this artifact's payload ({exc})."
                 )
                 return
-            if current == rendered or manifest.classify(name, dest) == "managed":
+            if snapshot is None:
+                provenance = manifest.classify(name, dest)
+            else:
+                provenance = manifest.classify_entry(snapshot.get(name), dest)
+            if current == rendered or provenance == "managed":
                 admit = True
             else:
                 reason = (
@@ -1401,12 +1383,12 @@ def plan_remove_file(label, dest, name, force, planned, refusals, prune_parent=F
         refusals.append(reason + " re-run with --force to remove it anyway.")
         return
 
-    def _do(dest=dest, name=name, prune_parent=prune_parent):
+    def _do(dest=dest, name=name, prune_parent=prune_parent, aliases=tuple(aliases)):
         os.unlink(dest)
-        note = _forget_note(dest, name)
+        notes = [_forget_note(dest, n) for n in (name,) + aliases]
         if prune_parent:
             _prune_empty_parent(dest)
-        return note
+        return next((note for note in notes if note is not None), None)
 
     planned.append(Planned(str(dest), name, dest, None, _do, done=f"removed {dest}"))
 
@@ -1612,40 +1594,45 @@ def plan_remove_agentsmd(target, planned, refusals):
 
 
 def plan_shared_removal(targets, force, planned, refusals):
-    """Remove the shared skills when this request covers every target still present.
+    """Remove the shared skills only when this request names every agent target.
 
-    A shared skill is removed when, for every agent target,
-    either the target is named in this request
-    or the conservative predicate finds no artifacts for it.
-    Anything else retains them, and status names them.
+    The rule is what the request says, never what the machine seems to say.
+    The predicate this replaced asked whether each unnamed target was still present,
+    and answering that needs evidence the current environment cannot always reach:
+    a Codex installed under one CODEX_HOME and operated without it is nowhere this process looks,
+    and reading that as absent removed the skills a live installation still uses.
+    Naming every target is a statement the user makes, so nothing has to be inferred.
 
-    checker and readme keep the retain-and-report precedent instead.
+    The cost is retention, which is the safe direction and the one this project's principle asks for.
+    A machine that only ever had opencode keeps its skills until the user names both targets,
+    and `status` names them and prints that command so the user is not left guessing.
+
+    checker and readme keep the retain-and-report precedent, as before.
     The asymmetry is behavioral:
     a checker left behind does nothing until something calls it,
-    while a skill left behind is advertised to every model that scans the root,
-    and the checker path in its body may by then point at nothing.
+    while a skill left behind is advertised to every model that scans the root.
+    That is why the skills still have a removal channel at all,
+    and why `status` has to name them once nothing reads them.
 
-    A request naming no agent target removes no shared skill.
-    This is `selects` seen from the removal end, and it is written against the same tuple
-    so install and removal cannot come to answer that question differently:
+    A request naming no agent target still removes no shared skill;
+    that case is subsumed here, since it cannot name every one of them.
     `agentsmd` is a paragraph of prose with no checker and no skill behind it,
-    so a request that names it alone neither publishes nor removes one.
-    Without the guard, `uninstall agentsmd PATH` on a machine with no agent installed would unlink a global skill the request never mentioned,
-    and `--force` — a valid flag on this verb — would remove the refusal
-    that otherwise protects a hand-patched copy.
-    Convergence is untouched:
-    naming an agent target is what makes a request cover every target,
-    so orphaned skills are still collected by `uninstall codex` on a machine holding nothing else.
+    so a request naming it alone neither publishes nor removes one.
+
+    The snapshot is projected, as the install door's is.
+    A machine that upgraded from an older layout proves these files under a retired name,
+    and reading the live name alone would refuse a file this kit demonstrably wrote the moment a release changes the skill body.
+    The retired names leave with the file they proved.
     """
-    if not any(t in targets for t in AGENT_TARGETS):
-        return
-    snapshot = manifest.load()
-    remaining = [
-        t for t in AGENT_TARGETS if t not in targets and target_present(t, snapshot)
-    ]
-    if remaining:
+    if not all(t in targets for t in AGENT_TARGETS):
         return
     destinations = payload_destinations()
+    try:
+        snapshot, aliases = project_retired(manifest.load(), destinations)
+    except RetiredRecordConflict as exc:
+        # The install door refuses the same way rather than choosing between two digests for one file.
+        refusals.append(str(exc))
+        return
     for name, label in (("skill", "skill"), ("setup-skill", "setup skill")):
         plan_remove_file(
             label,
@@ -1655,6 +1642,8 @@ def plan_shared_removal(targets, force, planned, refusals):
             planned,
             refusals,
             prune_parent=True,
+            snapshot=snapshot,
+            aliases=aliases.get(name, ()),
         )
 
 

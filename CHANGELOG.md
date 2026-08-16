@@ -37,11 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   They used to arrive there only when you installed for Codex CLI;
   installing for opencode alone put a second checker beside its plugin instead.
   The skill points at both, so `semlf install opencode` writes them even on a machine that never had Codex CLI.
-- **The skill is removed only when the last agent that reads it goes.**
-  Because one copy now serves both agents, uninstalling one of two leaves it in place for the other,
-  and it is taken only by the uninstall that leaves you with no agent using it.
-  The checker and the README are always kept, as before;
-  `semlf status` lists them if you want them gone.
+- **The skill is removed only when you ask for both agents by name.**
+  One copy now serves both agents, so uninstalling one of them leaves it in place for the other.
+  `semlf uninstall codex opencode` is what takes it,
+  and nothing else does — including on a machine where you only ever used one of them.
+  That is deliberate: `semlf` cannot always see a Codex you installed somewhere unusual,
+  and it would rather leave you a file you can delete than delete one you were still using.
+  The checker and the README are always kept, as before,
+  and `semlf status` now lists the skills too when no agent is left to read them.
 - **`semlf doctor` now looks inside opencode's own skills folder.**
   A skill file sitting there usually wins over the shared one,
   so opencode would quietly answer with it instead.
