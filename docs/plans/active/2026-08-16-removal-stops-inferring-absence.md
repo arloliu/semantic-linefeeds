@@ -5,8 +5,17 @@
 > Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Date:** 2026-08-16
-**Status:** approved — not yet implemented
+**Status:** implemented, unreleased
 **Branch:** `fix/removal-stops-inferring-absence`, cut from `main` at `e512200`.
+
+> **One correction the execution earned.**
+> Task 1 named four tests to update.
+> Seventeen failed, in two files the plan never mentioned:
+> five in `tests/test_installer.py`,
+> where `--uninstall --codex` was the fixture that produced a refusal from the shared skill leg,
+> and the rest in `tests/test_semlf_install.py`.
+> Every one was the same shape — a command naming one target that has to name both to reach the skills —
+> so the plan's design held and only its enumeration was short.
 
 **Goal:**
 Stop `semlf uninstall` from deleting the shared skills on evidence it cannot actually reach,
