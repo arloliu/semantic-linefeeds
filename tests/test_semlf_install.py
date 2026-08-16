@@ -307,7 +307,7 @@ def test_uninstall_removes_the_setup_artifacts_each_target_owns(tmp_path):
     and this test asserted its removal.
     That row is gone, so what remains true is the narrower claim:
     a target's uninstall removes the artifacts that target owns,
-    and the shared skill leaves with the removal legs that still carry it.
+    and the shared skill leaves only when the request names every agent target.
     """
     setup_skill, opencode_command = setup_skill_paths(tmp_path)
     env = isolated_env(tmp_path)
@@ -318,7 +318,7 @@ def test_uninstall_removes_the_setup_artifacts_each_target_owns(tmp_path):
     assert not opencode_command.exists()
     assert setup_skill.exists(), "the shared skill is not opencode's to remove"
 
-    r = run_semlf(["uninstall", "codex"], env)
+    r = run_semlf(["uninstall", "codex", "opencode"], env)
     assert r.returncode == 0, r.stderr
     assert not setup_skill.exists()
 
@@ -619,20 +619,18 @@ def test_a_skill_only_machine_reports_the_payloads_as_leftovers(tmp_path):
 
 
 def test_an_uninstalled_opencode_machine_reports_its_orphaned_payloads(tmp_path):
-    """The payloads are retained and reported; the skills are not.
+    """Everything shared is retained and reported now, the skills included.
 
-    opencode was the last consumer here,
-    so its uninstall takes the shared skills with it —
-    a skill left behind is advertised to every model that scans the root.
-    The payloads keep the retain-and-report precedent instead,
-    which is what leaves this machine carrying orphaned files that status must name.
+    The skills used to leave with the last consumer.
+    That rule rested on proving the other target absent, which is not always reachable,
+    so retention is the answer and `status` is what keeps it from being silent.
     """
     env = isolated_env(tmp_path)
     assert run_semlf(["install", "opencode"], env).returncode == 0
     assert run_semlf(["uninstall", "opencode"], env).returncode == 0
 
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
-    assert not skill.exists(), "opencode was the last consumer of the shared skill"
+    assert skill.is_file(), "the skills are retained until the user names every target"
     assert (data_root(tmp_path) / "check_linefeeds.py").exists()
 
     r = run_semlf(["status"], env)
@@ -648,10 +646,10 @@ def test_uninstall_without_a_target_is_a_usage_error(tmp_path):
     assert r.returncode == 64
 
 
-def test_uninstall_codex_removes_hook_and_skill_but_keeps_payloads(tmp_path):
+def test_uninstall_removes_hook_and_skill_but_keeps_payloads(tmp_path):
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex"], env)
-    r = run_semlf(["uninstall", "codex"], env)
+    r = run_semlf(["uninstall", "codex", "opencode"], env)
     assert r.returncode == 0, r.stderr
     hooks = json.loads((tmp_path / "codex" / "hooks.json").read_text())
     from semlf import manifest as m  # path inserted at module top
@@ -670,10 +668,10 @@ def test_uninstall_refuses_an_edited_skill_without_force(tmp_path):
     skill.write_text("hand-patched", encoding="utf-8")
     # Clear its record so admission can only come from byte identity.
     (tmp_path / "state" / "semlf" / "artifacts" / "skill.json").unlink()
-    r = run_semlf(["uninstall", "codex"], env)
+    r = run_semlf(["uninstall", "codex", "opencode"], env)
     assert r.returncode == 1
     assert skill.exists()
-    r = run_semlf(["uninstall", "codex", "--force"], env)
+    r = run_semlf(["uninstall", "codex", "opencode", "--force"], env)
     assert r.returncode == 0
     assert not skill.exists()
 
@@ -710,19 +708,17 @@ def test_uninstall_dry_run_reports_a_would_be_refusal_at_exit_zero(tmp_path):
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     skill.write_text("hand-patched", encoding="utf-8")
     (tmp_path / "state" / "semlf" / "artifacts" / "skill.json").unlink()
-    r = run_semlf(["uninstall", "codex", "--dry-run"], env)
+    r = run_semlf(["uninstall", "codex", "opencode", "--dry-run"], env)
     assert r.returncode == 0
     assert "would refuse" in r.stdout
     assert skill.read_text(encoding="utf-8") == "hand-patched"
 
 
-def test_a_target_recorded_under_another_config_home_counts_present(tmp_path):
-    """The reporting predicate probes only the current environment.
+def test_a_target_recorded_under_another_config_home_keeps_the_skills(tmp_path):
+    """A request naming one target leaves the shared skills alone.
 
-    Install opencode under one XDG_CONFIG_HOME, then operate under another:
-    the plugin is not where this environment looks,
-    but its record still proves bytes at the path it was installed to.
-    Counting it absent would delete shared skills a live installation still uses.
+    This machine's opencode lives where this environment does not look,
+    which used to be the interesting part; it no longer decides anything.
     """
     env = isolated_env(tmp_path)
     r = run_semlf(["install", "opencode"], env)
@@ -738,6 +734,10 @@ def test_a_target_recorded_under_another_config_home_counts_present(tmp_path):
 
 
 def test_an_unreadable_hooks_json_retains_the_shared_skills(tmp_path):
+    """Retention no longer depends on reading this file at all.
+
+    The request named one target, so the shared skills stay whatever hooks.json says.
+    """
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex", "opencode"], env)
     (tmp_path / "codex" / "hooks.json").write_text("{ not json", encoding="utf-8")
@@ -775,11 +775,15 @@ def test_removing_one_target_keeps_the_shared_skills(tmp_path):
     assert shared.is_file()
 
 
-def test_removing_the_last_target_takes_them_and_keeps_the_payloads(tmp_path):
+def test_naming_every_target_takes_the_skills_and_keeps_the_payloads(tmp_path):
+    """Removing the last target is no longer what takes the skills; naming both is.
+
+    The payloads keep the retain-and-report precedent either way.
+    """
     env = isolated_env(tmp_path)
     run_semlf(["install", "codex", "opencode"], env)
     run_semlf(["uninstall", "opencode"], env)
-    r = run_semlf(["uninstall", "codex"], env)
+    r = run_semlf(["uninstall", "codex", "opencode"], env)
     assert r.returncode == 0, r.stderr
     shared = (
         tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
@@ -797,7 +801,9 @@ def test_shared_removals_are_planned_after_every_target_artifact(tmp_path):
     """
     env = isolated_env(tmp_path)
     run_semlf(["install", "opencode"], env)
-    r = run_semlf(["uninstall", "opencode", "--dry-run"], env)
+    # Both targets: the skill leg is planned only by a request naming every one of them,
+    # and this test is about where that leg sits in the order.
+    r = run_semlf(["uninstall", "codex", "opencode", "--dry-run"], env)
     assert r.returncode == 0, r.stderr
     lines = [ln for ln in r.stdout.splitlines() if "would remove" in ln]
     plugin = next(i for i, ln in enumerate(lines) if "semantic-linefeeds.ts" in ln)
@@ -840,13 +846,61 @@ def test_a_request_naming_no_agent_target_never_removes_the_shared_skills(tmp_pa
     assert "semantic-linefeeds" not in agents_md.read_text(encoding="utf-8")
 
 
-def test_naming_an_agent_target_still_collects_the_orphaned_skills(tmp_path):
-    """The guard costs no convergence.
+def test_naming_every_agent_target_still_collects_the_orphaned_skills(tmp_path):
+    """The rule costs no convergence.
 
-    Naming codex on a machine where nothing is installed is still a request that covers every agent target,
-    so the orphaned skills it once wrote still go.
+    A machine where nothing is installed still gives up the skills it once wrote,
+    as long as the request names every agent target.
     """
     env, _, skill = orphaned_skill_machine(tmp_path)
-    r = run_semlf(["uninstall", "codex"], env)
+    r = run_semlf(["uninstall", "codex", "opencode"], env)
     assert r.returncode == 0, r.stderr
     assert not skill.exists()
+
+
+def test_naming_one_agent_target_never_removes_the_shared_skills(tmp_path):
+    """Removal acts on what the request names, never on what it infers about the rest.
+
+    The old rule removed the skills as soon as every unnamed target looked absent.
+    Looking absent is not being absent, and the file is gone either way.
+    """
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    env = isolated_env(tmp_path)
+    assert run_semlf(["install", "opencode"], env).returncode == 0
+    assert skill.is_file()
+
+    r = run_semlf(["uninstall", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert skill.is_file(), "a request naming one agent target removed the shared skill"
+
+
+def test_naming_every_agent_target_removes_the_shared_skills(tmp_path):
+    """The deliberate channel, and the only one."""
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    setup_skill, _ = setup_skill_paths(tmp_path)
+    env = isolated_env(tmp_path)
+    assert run_semlf(["install", "opencode"], env).returncode == 0
+
+    r = run_semlf(["uninstall", "codex", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert not skill.exists()
+    assert not setup_skill.exists()
+
+
+def test_a_codex_under_another_home_keeps_its_skills(tmp_path):
+    """The case the deleted predicate could not decide.
+
+    Codex installs under one CODEX_HOME and is then operated without that variable,
+    so its hook entry is nowhere this environment looks.
+    The old rule read that as absent and removed the skills that Codex still reads.
+    """
+    env = isolated_env(tmp_path)
+    codex_env = dict(env, CODEX_HOME=str(tmp_path / "elsewhere-codex"))
+    assert run_semlf(["install", "codex"], codex_env).returncode == 0
+    assert run_semlf(["install", "opencode"], env).returncode == 0
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    assert skill.is_file()
+
+    r = run_semlf(["uninstall", "opencode"], env)
+    assert r.returncode == 0, r.stderr
+    assert skill.is_file(), "removed a skill a Codex under another home still reads"

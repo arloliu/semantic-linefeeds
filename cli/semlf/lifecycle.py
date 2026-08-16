@@ -1039,81 +1039,6 @@ def installed_consumers():
     return found
 
 
-def _probe(path):
-    """'present', 'absent', or 'unknown' for one path.
-
-    Tri-state on purpose.
-    A boolean forces every inspection failure into one of the two answers,
-    and for a predicate that authorises a delete the wrong one loses data.
-    """
-    if path is None:
-        return "unknown"
-    try:
-        if not os.path.lexists(str(path)):
-            return "absent"
-    except (OSError, ValueError):
-        return "unknown"
-    return "present"
-
-
-def target_present(target, snapshot):
-    """Whether target still has artifacts here, answered conservatively.
-
-    installed_consumers is the reporting predicate and must not decide this.
-    It probes only destinations derived from the current environment,
-    and it fails closed to absent on every kind of trouble —
-    harmless when the result is a warning, destructive when it authorises an unlink.
-
-    Every ambiguity resolves to present,
-    and the places examined are stated rather than implied:
-    a path never looked at is not a path found empty.
-    Both the current environment's destinations and every path a valid record names are probed,
-    since a machine installed under one XDG_CONFIG_HOME may be operated under another.
-    A row with no record names no path, so there is nothing there to examine —
-    reading its absence as could-not-inspect would make every uninstalled target permanently present.
-
-    A record whose file is proven gone counts absent.
-    Treating every valid record as permanent presence would retain the shared skills forever on a machine the user cleaned up by hand,
-    since plan_remove_file leaves a vanished destination's record in place.
-
-    KNOWN CARVE-OUT, codex only.
-    For codex the answer rests on the current environment's hook entry alone.
-    `codex-hook-template` is the one codex-owned row and it is not recorded,
-    so no codex row ever reaches the loop below and no recorded path is ever probed for this target.
-    The "a machine installed under one root may be operated under another" rule above therefore holds for
-    XDG_CONFIG_HOME, which opencode's recorded rows carry, and not for CODEX_HOME, which nothing records.
-    A Codex installed under one CODEX_HOME and operated without it reads as absent here.
-    On such a machine `semlf uninstall opencode` removes the shared skills while that Codex is still using them,
-    and `semlf install codex` publishes them again.
-    That is a gap in the evidence this predicate can reach, not a case it has decided is safe.
-    """
-    if target == "codex":
-        home = manifest.codex_home()
-        if home is not None:
-            hooks = home / "hooks.json"
-            if os.path.lexists(str(hooks)):
-                data = manifest.read_state_json(hooks)
-                if data is None:
-                    return True  # unreadable is could-not-inspect, never absent
-                if manifest.owned_codex_hooks(data):
-                    return True
-    seen_any = False
-    for row in registry.ROWS:
-        if row.owner != target or not row.recorded:
-            continue
-        entry = snapshot.get(row.id)
-        paths = [row.dest()]
-        if entry is not None:
-            paths.append(entry.get("path"))
-        for path in paths:
-            state = _probe(path)
-            if state == "unknown":
-                return True
-            if state == "present":
-                seen_any = True
-    return seen_any
-
-
 def payload_identity(name):
     """(state, human line) for one published payload.
 
@@ -1599,38 +1524,32 @@ def plan_remove_agentsmd(target, planned, refusals):
 
 
 def plan_shared_removal(targets, force, planned, refusals):
-    """Remove the shared skills when this request covers every target still present.
+    """Remove the shared skills only when this request names every agent target.
 
-    A shared skill is removed when, for every agent target,
-    either the target is named in this request
-    or the conservative predicate finds no artifacts for it.
-    Anything else retains them, and status names them.
+    The rule is what the request says, never what the machine seems to say.
+    The predicate this replaced asked whether each unnamed target was still present,
+    and answering that needs evidence the current environment cannot always reach:
+    a Codex installed under one CODEX_HOME and operated without it is nowhere this process looks,
+    and reading that as absent removed the skills a live installation still uses.
+    Naming every target is a statement the user makes, so nothing has to be inferred.
 
-    checker and readme keep the retain-and-report precedent instead.
+    The cost is retention, which is the safe direction and the one this project's principle asks for.
+    A machine that only ever had opencode keeps its skills until the user names both targets,
+    and `status` names them and prints that command so the user is not left guessing.
+
+    checker and readme keep the retain-and-report precedent, as before.
     The asymmetry is behavioral:
     a checker left behind does nothing until something calls it,
-    while a skill left behind is advertised to every model that scans the root,
-    and the checker path in its body may by then point at nothing.
+    while a skill left behind is advertised to every model that scans the root.
+    That is why the skills still have a removal channel at all,
+    and why `status` has to name them once nothing reads them.
 
-    A request naming no agent target removes no shared skill.
-    This is `selects` seen from the removal end, and it is written against the same tuple
-    so install and removal cannot come to answer that question differently:
+    A request naming no agent target still removes no shared skill;
+    that case is subsumed here, since it cannot name every one of them.
     `agentsmd` is a paragraph of prose with no checker and no skill behind it,
-    so a request that names it alone neither publishes nor removes one.
-    Without the guard, `uninstall agentsmd PATH` on a machine with no agent installed would unlink a global skill the request never mentioned,
-    and `--force` — a valid flag on this verb — would remove the refusal
-    that otherwise protects a hand-patched copy.
-    Convergence is untouched:
-    naming an agent target is what makes a request cover every target,
-    so orphaned skills are still collected by `uninstall codex` on a machine holding nothing else.
+    so a request naming it alone neither publishes nor removes one.
     """
-    if not any(t in targets for t in AGENT_TARGETS):
-        return
-    snapshot = manifest.load()
-    remaining = [
-        t for t in AGENT_TARGETS if t not in targets and target_present(t, snapshot)
-    ]
-    if remaining:
+    if not all(t in targets for t in AGENT_TARGETS):
         return
     destinations = payload_destinations()
     for name, label in (("skill", "skill"), ("setup-skill", "setup skill")):

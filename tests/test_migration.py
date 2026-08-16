@@ -229,12 +229,12 @@ def test_uninstall_refuses_a_pre_rename_recorded_skill(tmp_path):
     after which uninstall admits the file normally.
     """
     env, hooks, skill = old_checkout_state(tmp_path)
-    r = run_semlf(["uninstall", "codex"], env)
+    r = run_semlf(["uninstall", "codex", "opencode"], env)
     assert r.returncode == 1
     assert "content differs" in r.stderr
     assert skill.exists()
 
-    r = run_semlf(["uninstall", "codex", "--force"], env)
+    r = run_semlf(["uninstall", "codex", "opencode", "--force"], env)
     assert r.returncode == 0, r.stderr
     assert not skill.exists()
     data = json.loads(hooks.read_text(encoding="utf-8"))

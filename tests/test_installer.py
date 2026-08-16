@@ -2121,7 +2121,9 @@ def test_uninstall_codex_removes_only_our_entries(tmp_path):
         encoding="utf-8",
     )
     run_install(["--codex"], env)
-    r = run_install(["--uninstall", "--codex"], env)
+    # Both flags: the foreign entry survives either way,
+    # and naming every agent target is what lets this assert the shared skill went too.
+    r = run_install(["--uninstall", "--codex", "--opencode"], env)
     assert r.returncode == 0
     data = read_hooks(tmp_path)
     commands = [h["hooks"][0]["command"] for h in data["hooks"]["PostToolUse"]]
@@ -2162,12 +2164,12 @@ def test_an_edited_skill_refuses_the_whole_codex_request(tmp_path):
     )
     hooks_before = codex_hooks_path(tmp_path).read_bytes()
     state_before = entry_file(tmp_path, "skill").read_bytes()
-    r = run_install(["--uninstall", "--codex"], env)
+    r = run_install(["--uninstall", "--codex", "--opencode"], env)
     assert r.returncode == 1
     assert skill.exists()
     assert codex_hooks_path(tmp_path).read_bytes() == hooks_before
     assert entry_file(tmp_path, "skill").read_bytes() == state_before
-    r = run_install(["--uninstall", "--codex", "--force"], env)
+    r = run_install(["--uninstall", "--codex", "--opencode", "--force"], env)
     assert r.returncode == 0
     assert not skill.exists()
 
@@ -2229,18 +2231,22 @@ def test_uninstall_preserves_a_lookalike_foreign_hook(tmp_path):
 def test_a_directory_at_any_single_file_target_refuses_uninstall(tmp_path, mode, force):
     # Directories are refusal-only under every flag: removing a tree is never this verb's one-file unlink.
     # single_file_destinations is the same helper the install-side directory matrix uses.
+    # codex's entry there is the shared skill, which only a request naming every agent target plans,
+    # so that leg needs both flags to be reached at all.
     env = isolated_env(tmp_path)
     run_install([mode], env)
     dest = single_file_destinations(tmp_path)[mode]
     dest.unlink()
     dest.mkdir()
     (dest / "keep").write_text("x", encoding="utf-8")
-    r = run_install(["--uninstall", mode] + force, env)
+    reaching = ["--opencode"] if mode == "--codex" else []
+    r = run_install(["--uninstall", mode] + reaching + force, env)
     assert r.returncode == 1
     assert (dest / "keep").exists()
 
 
 def test_uninstall_refuses_a_symlinked_skill_without_force(tmp_path):
+    # Both flags: the shared skill is planned only by a request naming every agent target.
     env = isolated_env(tmp_path)
     run_install(["--codex"], env)
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
@@ -2248,10 +2254,10 @@ def test_uninstall_refuses_a_symlinked_skill_without_force(tmp_path):
     real.write_bytes(skill.read_bytes())
     skill.unlink()
     skill.symlink_to(real)
-    r = run_install(["--uninstall", "--codex"], env)
+    r = run_install(["--uninstall", "--codex", "--opencode"], env)
     assert r.returncode == 1
     assert skill.is_symlink()
-    r = run_install(["--uninstall", "--codex", "--force"], env)
+    r = run_install(["--uninstall", "--codex", "--opencode", "--force"], env)
     assert r.returncode == 0
     assert not skill.is_symlink()
     assert real.exists()  # --force unlinks the link itself, never the target
@@ -2342,7 +2348,7 @@ def test_a_refusing_mode_blocks_the_other_selected_modes(tmp_path):
     skill.write_text(
         skill.read_text(encoding="utf-8") + "\nlocal note\n", encoding="utf-8"
     )
-    r = run_install(["--uninstall", "--codex", "--cli"], env)
+    r = run_install(["--uninstall", "--codex", "--opencode", "--cli"], env)
     assert r.returncode == 1
     assert dest.exists()
     assert entry_file(tmp_path, "cli").exists()
@@ -2443,7 +2449,7 @@ def test_a_non_directory_parent_refuses_uninstall_without_touching_anything(tmp_
     skill_dir.mkdir(parents=True)
     blocker = skill_dir / "semantic-linefeeds"
     blocker.write_text("not a directory", encoding="utf-8")
-    r = run_install(["--uninstall", "--codex"], env)
+    r = run_install(["--uninstall", "--codex", "--opencode"], env)
     assert r.returncode == 1
     assert blocker.is_file()
     assert blocker.read_text(encoding="utf-8") == "not a directory"
@@ -2472,10 +2478,10 @@ def test_force_overrides_an_unreadable_skill_file(tmp_path):
     run_install(["--codex"], env)
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     skill.chmod(0o000)
-    r = run_install(["--uninstall", "--codex"], env)
+    r = run_install(["--uninstall", "--codex", "--opencode"], env)
     assert r.returncode == 1
     assert skill.exists()
-    r = run_install(["--uninstall", "--codex", "--force"], env)
+    r = run_install(["--uninstall", "--codex", "--opencode", "--force"], env)
     assert r.returncode == 0
     assert not skill.exists()
 
