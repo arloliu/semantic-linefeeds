@@ -85,14 +85,20 @@ How a round is read when one floor clears and another does not is
 
 ## Releases
 
-Five releases to 1.0, not eight.
+Two releases to 1.0.
 This is early-stage `v0.x`, so a release is a coherent theme rather than a minimal shippable unit,
 and each carries many commits.
 
 Every ordering constraint established above is preserved,
 but as **commit order inside a release** rather than as a separate tag.
 
-### v0.7 — Fixes and team integration
+The theme below kept its content while two version numbers went elsewhere.
+v0.7 became the PyPI package and the install lifecycle,
+and v0.8 the one shared skill both agents read;
+neither was planned here, and both were worth doing first,
+because a guardrail nobody can install cleanly has no team to integrate with.
+
+### v0.9 — Fixes and team integration
 
 - Hook-side mutation of the suggested replacement, gated by a content-hash check immediately before writing (ADR-0007);
   wider automatic-fix classes beyond `!`/`?`.
@@ -104,18 +110,8 @@ but as **commit order inside a release** rather than as a separate tag.
 These enter compatibility guarantees:
 CLI surface, config schema, diagnostic schema, adapter API, suppression syntax, and exit codes.
 
-## Suppression and operational contracts
-
-Suppression ships **with** the release that widens hook visibility, never after it.
-Its contract is specified before that release:
-directive syntax, scope, nesting, malformed-state behavior, protected-context handling,
-and interaction with changed spans and ownership ranges.
-Suppression is explicit, locally scoped, and user-directed.
-Repeated hook feedback neither creates a suppression nor authorizes another rewrite attempt.
-
-`uninstall` ships with the first packaged lifecycle command.
-`doctor` ships before team integration,
-and it replays a synthetic payload end to end rather than checking that files exist.
+[ADR-0011](decisions/0011-go-port-gated-on-field-evidence.md)'s Go-port gate must be settled before this tag,
+in either direction, because the freeze removes the room a port would need to correct a contract it proves wrong.
 
 ## Deferred, with reasons
 
@@ -138,9 +134,17 @@ and it replays a synthetic payload end to end rather than checking that files ex
   if added, it sits below the repo config in precedence.
 - **A prebuilt Go binary.**
   Deferred behind [ADR-0011](decisions/0011-go-port-gated-on-field-evidence.md)'s field-evidence gate:
-  it opens only if a missing Python runtime proves to be a primary adoption blocker,
-  is reviewed at the v0.6→v0.7 boundary, and is settled before v1.0.
-  v0.6 keeps the CLI contract implementation-agnostic so the option stays cheap to exercise.
+  it opens only if a missing Python runtime proves to be a primary adoption blocker.
+  Reviewed on 2026-08-14 and left closed — no field evidence of a missing-runtime adoption blocker —
+  with the next review due before v1.0, which is also the deadline for settling it either way.
+  The CLI contract stays implementation-agnostic so the option stays cheap to exercise.
+- **An `--all` flag for `uninstall`.**
+  Removing the shared skills takes `semlf uninstall codex opencode`,
+  which asks the user to name a target they may never have installed.
+  A flag would say the same thing more directly,
+  and it was declined because naming the targets needs no new command surface to learn or to keep correct.
+  Entry condition: users report the two-target form as a papercut,
+  rather than one being predicted here.
 - **Protected-span masking.**
   Masking URLs, inline code, links, and directives instead of skipping the whole line is a real improvement.
   It is a recall feature, so it follows the precision work, and it fits the v0.5 redesign.
@@ -173,9 +177,11 @@ and it replays a synthetic payload end to end rather than checking that files ex
 
 > A diff-aware prose guardrail for AI coding agents and source repositories.
 
-The README should drop its explanation of *why* models emit column-wrapped prose.
-That is a hypothesis the project does not need.
-The load-bearing claim is narrower and demonstrable:
+The load-bearing claim is narrower than an explanation of *why* models emit column-wrapped prose,
+and deliberately so:
 agents produce non-semantic line breaks,
 instructions alone do not reliably prevent it,
 and a deterministic check at the tool boundary catches it.
+Each of those is demonstrable;
+the mechanism behind the first is a hypothesis the project does not need,
+and the README no longer offers one.
