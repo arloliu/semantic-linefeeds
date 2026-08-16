@@ -1265,10 +1265,30 @@ def _forget_note(dest, name):
     return None
 
 
-def plan_remove_file(label, dest, name, force, planned, refusals, prune_parent=False):
+def plan_remove_file(
+    label,
+    dest,
+    name,
+    force,
+    planned,
+    refusals,
+    prune_parent=False,
+    snapshot=None,
+    aliases=(),
+):
     """Plan removal of one installer-owned file, or a refusal.
 
     Shared by the two shared skills and the opencode files.
+
+    `snapshot` is the caller's one manifest snapshot when it has taken one,
+    and None when the caller wants the record looked up by name.
+    A caller that projected retired records must pass the projection:
+    the live name has no record on a machine that upgraded from an older layout,
+    so looking it up by name would refuse a file a retired record proves.
+
+    `aliases` are the retired names that proved this destination.
+    They are forgotten together with the live name, and only after the unlink succeeds,
+    because a record cleared before the file goes leaves a file nothing can prove.
     """
     if dest is None:
         refusals.append(
@@ -1318,7 +1338,11 @@ def plan_remove_file(label, dest, name, force, planned, refusals, prune_parent=F
                     f"render this artifact's payload ({exc})."
                 )
                 return
-            if current == rendered or manifest.classify(name, dest) == "managed":
+            if snapshot is None:
+                provenance = manifest.classify(name, dest)
+            else:
+                provenance = manifest.classify_entry(snapshot.get(name), dest)
+            if current == rendered or provenance == "managed":
                 admit = True
             else:
                 reason = (
@@ -1330,12 +1354,12 @@ def plan_remove_file(label, dest, name, force, planned, refusals, prune_parent=F
         refusals.append(reason + " re-run with --force to remove it anyway.")
         return
 
-    def _do(dest=dest, name=name, prune_parent=prune_parent):
+    def _do(dest=dest, name=name, prune_parent=prune_parent, aliases=tuple(aliases)):
         os.unlink(dest)
-        note = _forget_note(dest, name)
+        notes = [_forget_note(dest, n) for n in (name,) + aliases]
         if prune_parent:
             _prune_empty_parent(dest)
-        return note
+        return next((note for note in notes if note is not None), None)
 
     planned.append(Planned(str(dest), name, dest, None, _do, done=f"removed {dest}"))
 
@@ -1565,10 +1589,21 @@ def plan_shared_removal(targets, force, planned, refusals):
     that case is subsumed here, since it cannot name every one of them.
     `agentsmd` is a paragraph of prose with no checker and no skill behind it,
     so a request naming it alone neither publishes nor removes one.
+
+    The snapshot is projected, as the install door's is.
+    A machine that upgraded from an older layout proves these files under a retired name,
+    and reading the live name alone would refuse a file this kit demonstrably wrote the moment a release changes the skill body.
+    The retired names leave with the file they proved.
     """
     if not all(t in targets for t in AGENT_TARGETS):
         return
     destinations = payload_destinations()
+    try:
+        snapshot, aliases = project_retired(manifest.load(), destinations)
+    except RetiredRecordConflict as exc:
+        # The install door refuses the same way rather than choosing between two digests for one file.
+        refusals.append(str(exc))
+        return
     for name, label in (("skill", "skill"), ("setup-skill", "setup skill")):
         plan_remove_file(
             label,
@@ -1578,6 +1613,8 @@ def plan_shared_removal(targets, force, planned, refusals):
             planned,
             refusals,
             prune_parent=True,
+            snapshot=snapshot,
+            aliases=aliases.get(name, ()),
         )
 
 
