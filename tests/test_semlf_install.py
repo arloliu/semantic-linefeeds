@@ -887,23 +887,43 @@ def test_naming_every_agent_target_removes_the_shared_skills(tmp_path):
     assert not setup_skill.exists()
 
 
-def test_a_codex_under_another_home_keeps_its_skills(tmp_path):
-    """The case the deleted predicate could not decide.
+def test_status_does_not_claim_a_codex_under_another_home_is_gone(tmp_path):
+    """The machine this whole rule exists for, seen from the reporting side.
 
-    Codex installs under one CODEX_HOME and is then operated without that variable,
-    so its hook entry is nowhere this environment looks.
-    The old rule read that as absent and removed the skills that Codex still reads.
+    `installed_consumers` reads the current environment's hooks.json alone,
+    so a Codex installed under another CODEX_HOME is invisible here and the skills look unread.
+    Removal no longer decides anything from that, but status still speaks from it,
+    and a line that asserts nothing reads them would be stating a fact it cannot establish —
+    while naming a command that deletes them.
+    The line stays conditional so the judgement is the user's.
     """
     env = isolated_env(tmp_path)
     codex_env = dict(env, CODEX_HOME=str(tmp_path / "elsewhere-codex"))
     assert run_semlf(["install", "codex"], codex_env).returncode == 0
-    assert run_semlf(["install", "opencode"], env).returncode == 0
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     assert skill.is_file()
 
-    r = run_semlf(["uninstall", "opencode"], env)
+    r = run_semlf(["status"], env)
     assert r.returncode == 0, r.stderr
-    assert skill.is_file(), "removed a skill a Codex under another home still reads"
+    assert "no agent reads these" not in r.stdout
+    assert "if you use neither agent" in r.stdout
+
+
+def test_force_does_not_open_the_naming_gate(tmp_path):
+    """--force widens admission, never the question of what is planned at all.
+
+    It is the first flag a user reaches for when a file will not go,
+    so a gate that sat below the force check would look like it held until someone tried.
+    """
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    env = isolated_env(tmp_path)
+    assert run_semlf(["install", "opencode"], env).returncode == 0
+
+    r = run_semlf(["uninstall", "opencode", "--force"], env)
+    assert r.returncode == 0, r.stderr
+    assert skill.is_file(), (
+        "--force removed a skill the request never named both targets for"
+    )
 
 
 def test_status_names_the_skills_no_agent_reads_any_more(tmp_path):
@@ -918,7 +938,7 @@ def test_status_names_the_skills_no_agent_reads_any_more(tmp_path):
 
     r = run_semlf(["status"], env)
     assert r.returncode == 0, r.stderr
-    assert "skills: no agent reads these any more" in r.stdout
+    assert "skills: no agent installed here reads these" in r.stdout
     assert "semlf uninstall codex opencode" in r.stdout
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     assert str(skill) in r.stdout
@@ -931,4 +951,4 @@ def test_status_does_not_call_the_skills_orphaned_while_an_agent_reads_them(tmp_
 
     r = run_semlf(["status"], env)
     assert r.returncode == 0, r.stderr
-    assert "skills: no agent reads these any more" not in r.stdout
+    assert "skills: no agent installed here reads these" not in r.stdout

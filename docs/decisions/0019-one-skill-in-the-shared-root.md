@@ -8,6 +8,17 @@ That rule is overturned here, and its three objections are answered below rather
 **Amends:** [ADR-0016](0016-one-entry-point-and-the-payload-registry.md) —
 a registry row's `owner` may be `shared`, meaning any selected agent target.
 Everything else about the registry is unchanged.
+**Amended:** 2026-08-16 —
+the conservative removal predicate below is withdrawn, and with it the last-consumer rule.
+It could not see a Codex installed under a non-default `CODEX_HOME` and operated without that variable,
+because the codex hook is an entry merged into the user's own `hooks.json` and no row records it,
+so it read a live Codex as absent and authorised deleting the skills that Codex was still reading.
+Removal now takes the shared skills only when the request names every agent target,
+which is a statement the user makes rather than a fact the tool infers,
+and the predicate is deleted rather than extended.
+The reporting predicate is untouched and still governs `status` and `doctor`;
+`status` now also names a shared skill nothing here reads
+and offers the removal command conditionally, since it reads the same partial evidence.
 
 This record states decisions.
 The mechanisms that carry them out —
@@ -65,11 +76,21 @@ a predicate that fails closed to "absent" is harmless when it produces a warning
 and destructive when it authorises an unlink,
 so a second, conservative predicate answers that question and every ambiguity retains.
 
+*Withdrawn by the 2026-08-16 amendment.*
+The reasoning above holds and is the reason the second predicate is gone rather than fixed:
+conservatism is not reachable when the evidence is,
+so no predicate authorises the delete now.
+
 **Shared skills are removed when the last consumer goes; `checker` and `readme` are retained and reported.**
 The asymmetry is about behavior.
 A checker left behind does nothing until something calls it.
 A skill left behind is advertised to every model that scans the root,
 and the checker path in its body may by then point at nothing.
+
+*Amended 2026-08-16.*
+The asymmetry survives, the trigger does not:
+the skills leave when the request names every agent target, not when the last consumer goes,
+and `status` names them meanwhile so retention does not become silent accumulation.
 
 ## Answering ADR-0018
 
@@ -91,6 +112,11 @@ The refcounting it feared is one comparison, and it converges in either removal 
 What ADR-0018 did not foresee is that the comparison must be conservative rather than merely correct,
 because it authorises a delete.
 That is a constraint on the rule, not a reason it cannot exist.
+
+*Amended 2026-08-16.*
+The constraint turned out to be unsatisfiable, and the answer is smaller than either ADR imagined:
+there is no comparison, because the user names the targets and nothing is refcounted at all.
+ADR-0018's objection is still answered — uninstall resolves — just not by counting.
 
 ## Consequences
 

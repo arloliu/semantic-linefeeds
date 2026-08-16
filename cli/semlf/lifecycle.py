@@ -734,8 +734,10 @@ def project_retired(snapshot, destinations):
         digests = {entry["sha256"] for _, entry in proving}
         if len(digests) > 1:
             named = " and ".join(name for name, _ in proving)
+            # Names the conflict rather than the caller's verb:
+            # both doors project, and uninstall migrates nothing.
             raise RetiredRecordConflict(
-                f"refusing to migrate {live}: {named} both record "
+                f"refusing to act on {live}: {named} both record "
                 f"{dest} with different digests; remove the stale one by hand"
             )
         aliases[live] = [name for name, _ in proving]
@@ -1227,12 +1229,20 @@ def status_command(argv, shim_expected=None):
     if orphaned_skills:
         listed = ", ".join(str(p) for p in orphaned_skills)
         wanted = " ".join(AGENT_TARGETS)
+        # Conditional, and deliberately so.
+        # installed_consumers reads this environment's artifacts alone,
+        # which is the same evidence gap that stopped deciding removals one commit ago:
+        # a Codex under another CODEX_HOME is invisible here.
+        # Asserting that nothing reads these would state a fact this predicate cannot establish,
+        # and it would do so while naming the command that deletes them,
+        # so the line reports what it can see and leaves the judgement with the user.
+        #
         # Worded apart from the payloads line below on purpose:
         # the split that matters is which of them a command can take,
         # so each line leads with its own remedy rather than repeating the diagnosis.
         print(
-            f"skills: no agent reads these any more; "
-            f"`semlf uninstall {wanted}` removes {listed}."
+            f"skills: no agent installed here reads these; "
+            f"if you use neither agent, `semlf uninstall {wanted}` removes {listed}."
         )
     if leftover_paths:
         listed = ", ".join(str(p) for p in leftover_paths)
@@ -1257,11 +1267,17 @@ def _forget_note(dest, name):
     Returns None on a clean forget.
     On a raised OSError it returns an accurate stderr line instead —
     the caller still counts dest as removed either way.
+
+    The record is named, not just the destination.
+    One removal can clear a live name and the retired names that proved it,
+    so a line that named only the file would leave the reader unable to tell which record survived.
     """
     try:
         manifest.forget(name)
     except OSError as exc:
-        return f"removed {dest}, but could not clear its provenance record: {exc}"
+        return (
+            f"removed {dest}, but could not clear its {name} provenance record: {exc}"
+        )
     return None
 
 
