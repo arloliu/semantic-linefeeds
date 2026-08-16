@@ -1139,6 +1139,7 @@ def status_command(argv, shim_expected=None):
     snapshot = manifest.load()
     destinations = payload_destinations()
     leftover_paths = []
+    orphaned_skills = []
     # Every identity payload — both checker copies and the readme — reports through payload_identity;
     # the classifier vocabulary never appears on a payload line.
     for row in registry.ROWS:
@@ -1217,6 +1218,22 @@ def status_command(argv, shim_expected=None):
             snapshot.get(name), dest, rendered, artifact_version(), False
         )
         print(f"{label}: {verdict.state} ({dest})")
+        # A shared row with no consumer is a skill advertised to every model that scans the root.
+        # Removal retains it on purpose, so this is what keeps the retention from being silent,
+        # and it names the one command that takes it.
+        row = registry.BY_ID[name]
+        if row.owner == "shared" and not expected_by(row, consumers):
+            orphaned_skills.append(dest)
+    if orphaned_skills:
+        listed = ", ".join(str(p) for p in orphaned_skills)
+        wanted = " ".join(AGENT_TARGETS)
+        # Worded apart from the payloads line below on purpose:
+        # the split that matters is which of them a command can take,
+        # so each line leads with its own remedy rather than repeating the diagnosis.
+        print(
+            f"skills: no agent reads these any more; "
+            f"`semlf uninstall {wanted}` removes {listed}."
+        )
     if leftover_paths:
         listed = ", ".join(str(p) for p in leftover_paths)
         print(f"payloads: no remaining consumer; remove {listed} by hand if unwanted.")

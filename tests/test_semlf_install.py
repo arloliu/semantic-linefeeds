@@ -904,3 +904,31 @@ def test_a_codex_under_another_home_keeps_its_skills(tmp_path):
     r = run_semlf(["uninstall", "opencode"], env)
     assert r.returncode == 0, r.stderr
     assert skill.is_file(), "removed a skill a Codex under another home still reads"
+
+
+def test_status_names_the_skills_no_agent_reads_any_more(tmp_path):
+    """Retention without reporting is how a machine accumulates skills nobody reads.
+
+    The removal rule keeps the skills until the user names every agent target,
+    so status has to say they are there and print the command that takes them.
+    """
+    env = isolated_env(tmp_path)
+    assert run_semlf(["install", "opencode"], env).returncode == 0
+    assert run_semlf(["uninstall", "opencode"], env).returncode == 0
+
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0, r.stderr
+    assert "skills: no agent reads these any more" in r.stdout
+    assert "semlf uninstall codex opencode" in r.stdout
+    skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
+    assert str(skill) in r.stdout
+
+
+def test_status_does_not_call_the_skills_orphaned_while_an_agent_reads_them(tmp_path):
+    """The line is about having no consumer, not about being installed."""
+    env = isolated_env(tmp_path)
+    assert run_semlf(["install", "opencode"], env).returncode == 0
+
+    r = run_semlf(["status"], env)
+    assert r.returncode == 0, r.stderr
+    assert "skills: no agent reads these any more" not in r.stdout
