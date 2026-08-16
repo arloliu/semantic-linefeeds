@@ -736,3 +736,14 @@ def test_a_foreign_hooks_json_leaves_codex_absent(home, capsys):
     hooks.parent.mkdir(parents=True, exist_ok=True)
     hooks.write_text('{"hooks": {"PostToolUse": []}}', encoding="utf-8")
     assert lifecycle.target_present("codex", manifest.load()) is False
+
+
+def test_every_legacy_row_names_a_readable_retired_record():
+    """`retired_entry` raises for a name it does not know.
+
+    Both callers of `legacy_provable` walk LEGACY_ARTIFACTS,
+    and one of them is doctor, whose job is to report a broken machine rather than abort on it.
+    A row added here but not to RETIRED would turn that report into a traceback.
+    """
+    for retired, _folder, _live in lifecycle.LEGACY_ARTIFACTS:
+        assert retired in manifest.RETIRED
