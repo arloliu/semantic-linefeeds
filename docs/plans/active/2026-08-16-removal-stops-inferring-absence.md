@@ -349,7 +349,7 @@ def test_status_names_the_skills_no_agent_reads_any_more(tmp_path):
 
     r = run_semlf(["status"], env)
     assert r.returncode == 0, r.stderr
-    assert "skills: no remaining consumer" in r.stdout
+    assert "skills: no agent reads these any more" in r.stdout
     assert "semlf uninstall codex opencode" in r.stdout
     skill = tmp_path / "home" / ".agents" / "skills" / "semantic-linefeeds" / "SKILL.md"
     assert str(skill) in r.stdout
@@ -362,14 +362,14 @@ def test_status_does_not_call_the_skills_orphaned_while_an_agent_reads_them(tmp_
 
     r = run_semlf(["status"], env)
     assert r.returncode == 0, r.stderr
-    assert "skills: no remaining consumer" not in r.stdout
+    assert "skills: no agent reads these any more" not in r.stdout
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `python3 -m pytest tests/test_semlf_install.py -q -k "status_names_the_skills or orphaned_while_an_agent"`
 Expected: `test_status_names_the_skills_no_agent_reads_any_more` FAILS on
-`assert "skills: no remaining consumer" in r.stdout` — status prints only the classifier state line today.
+`assert "skills: no agent reads these any more" in r.stdout` — status prints only the classifier state line today.
 The second test passes already; it is the guard against reporting the line on a healthy machine.
 
 - [ ] **Step 3: Add the report**
@@ -400,10 +400,19 @@ Then, immediately before the existing `if leftover_paths:` block at `cli/semlf/l
         listed = ", ".join(str(p) for p in orphaned_skills)
         wanted = " ".join(AGENT_TARGETS)
         print(
-            f"skills: no remaining consumer; "
+            f"skills: no agent reads these any more; "
             f"`semlf uninstall {wanted}` removes {listed}."
         )
 ```
+
+The wording is deliberate, and the two lines are meant to be read together.
+An orphaned machine prints this line next to the existing payloads line at `cli/semlf/lifecycle.py:1295`,
+which opens "payloads: no remaining consumer" and ends "remove them by hand if unwanted".
+Repeating "no remaining consumer" here would make one report look like it says the same thing twice
+while offering two different remedies.
+The split that matters is which of them a command can take:
+a verb removes the skills, and nothing but a hand removes the payloads,
+so each line leads with its own remedy.
 
 - [ ] **Step 4: Run the suite**
 
@@ -483,14 +492,20 @@ def test_uninstall_projects_a_pre_rename_recorded_skill(tmp_path):
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `python3 -m pytest tests/test_migration.py -q -k "projects_a_pre_rename"`
-Expected: FAIL. Either the run exits 1 with "content differs" on stderr,
-or — if the fixture's bytes happen to match the current rendering — it exits 0
-and fails on `assert not (state / "codex-skill.json").exists()`,
-because `_forget_note` clears only the live name.
+Expected: FAIL with exit code 1 and "content differs" on stderr.
 
-Read the failure before continuing:
-which of the two it is tells you whether the fixture's skill body matches this build's rendering,
-and both are the defect.
+The fixture is why that is the certain outcome rather than one of two.
+`old_checkout_state` at `tests/test_migration.py:55` writes the skill to
+`~/.agents/skills/semantic-linefeeds/SKILL.md` — the current `skill` row's own destination —
+with a body rendered against checkout paths rather than the data root,
+and records it under `codex-skill` with that path and that body's digest.
+So the bytes cannot equal this build's rendering,
+the live `skill` record does not exist,
+and admission has nothing left to succeed on.
+
+That same fixture is what makes the fix work:
+the retired record's path resolves to the destination,
+which is exactly the condition `project_retired` requires before it collects an alias.
 
 - [ ] **Step 3: Let `plan_remove_file` take a snapshot and its aliases**
 
