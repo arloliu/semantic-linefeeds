@@ -43,8 +43,7 @@ carrying a core byte-identical to the repository copy, verified by `cmp`.
 | Imports | `argparse collections json os re subprocess sys tempfile`, all stdlib |
 | Startup cost | 22.6ms versus 16.4ms, median of 25 runs each, CPython 3.12.3, one machine |
 
-The build recipe, the module sources, and the staged-repository fixture are checked in at
-`docs/proofs/zipapp-packaging/`,
+The build recipe, the module sources, and the staged-repository fixture are checked in at `docs/proofs/zipapp-packaging/`,
 with the embedded core's digest as the identity check,
 so the proof is reproducible rather than reported.
 The archive's own digest is deliberately not asserted,

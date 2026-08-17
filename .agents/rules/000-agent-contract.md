@@ -49,6 +49,5 @@ This repo enforces its own rule on itself.
 Write every comment, docstring, and Markdown paragraph with semantic line breaks:
 one sentence per line,
 and a long sentence splits only at a real clause boundary.
-Check every touched Markdown file with
-`python3 scripts/check_linefeeds.py --file <file>` before committing;
+Check every touched Markdown file with `python3 scripts/check_linefeeds.py --file <file>` before committing;
 zero `fused`/`wrap` findings is the bar.

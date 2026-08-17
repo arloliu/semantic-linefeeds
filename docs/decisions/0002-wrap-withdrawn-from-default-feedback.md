@@ -3,8 +3,7 @@
 **Status:** accepted  
 **Date:** 2026-08-10
 **Amended:** 2026-08-14 —
-[ADR-0017](0017-experimental-wrap-also-lives-in-ini.md) adds a
-`.semlf.ini` `experimental-wrap` key beside the environment variable;
+[ADR-0017](0017-experimental-wrap-also-lives-in-ini.md) adds a `.semlf.ini` `experimental-wrap` key beside the environment variable;
 the opt-in-surface sentence below now names one of two surfaces,
 env still winning over ini.
 
@@ -137,8 +136,7 @@ Both numbers are detector-output correlation, not labeled recall,
 so neither proves nor disproves coverage of genuinely column-wrapped paragraphs;
 The prohibition in ADR-0003 applies to them exactly as it does to every other raw count.
 The fixtures show only that the two defects often coexist —
-7 of 9 marked `wrap` paragraphs also carry `fused`, and
-`tests/fixtures/go/bad_wrapped.go:1` carries both on one line.
+7 of 9 marked `wrap` paragraphs also carry `fused`, and `tests/fixtures/go/bad_wrapped.go:1` carries both on one line.
 
 So the honest statement is:
 paragraph-level retention is **unknown** until ADR-0003 supplies independent labels.
@@ -192,8 +190,7 @@ the module docstring, CLI help, README, project map, and every adapter contract.
 
 ### The condition for `wrap` to return
 
-`wrap` returns to default feedback when, and only when, some predicate reaches
-**zero false positives on a held-out labeled set** under the ADR-0003 protocol.
+`wrap` returns to default feedback when, and only when, some predicate reaches **zero false positives on a held-out labeled set** under the ADR-0003 protocol.
 Until then it is an experiment, not a diagnostic.
 If no predicate ever clears that bar, `wrap` stays out, and that is an acceptable outcome.
 

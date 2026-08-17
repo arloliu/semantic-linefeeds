@@ -272,8 +272,7 @@ def describe_plan(planned, refusals, prefix=""):
 # The codex hook and the agentsmd snippet each own a shared file this kit does not control end to end:
 # structural admission over hooks.json's PostToolUse entries,
 # and sentinel-block admission over a user-named Markdown file.
-# Both keep their own preflight-then-apply plan, folded into the same
-# `planned`/`refusals` lists every other artifact uses.
+# Both keep their own preflight-then-apply plan, folded into the same `planned`/`refusals` lists every other artifact uses.
 
 
 SENTINEL_OPEN = "<!-- semantic-linefeeds -->"

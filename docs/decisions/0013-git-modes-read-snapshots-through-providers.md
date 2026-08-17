@@ -49,8 +49,7 @@ the policy above it still applies.
 
 ### One enumeration per snapshot
 
-Each provider reads its snapshot with exactly one
-`git diff --raw -z --no-abbrev --no-renames --diff-filter=AMTUX` listing,
+Each provider reads its snapshot with exactly one `git diff --raw -z --no-abbrev --no-renames --diff-filter=AMTUX` listing,
 which carries status, post-image mode, and post-image object id for every path in one pass.
 `--no-abbrev` is the flag that forces full object ids in raw output —
 `--full-index` governs patch output, not raw, and would not have done this —

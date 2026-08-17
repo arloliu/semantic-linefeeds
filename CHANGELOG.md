@@ -5,6 +5,56 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+The checker stops accusing four kinds of correct line, and stops hiding work on two others.
+
+### Fixed
+
+- **A line ending in Chinese punctuation is no longer read as unterminated.**
+  A line closing on `。` or `，` counted as a severed clause,
+  so an English line beneath it was flagged on correct text.
+  Mixed Chinese-English prose puts that boundary in ordinary paragraphs.
+  This is not Chinese support: no check reads Chinese, it only stops accusing text it never understood.
+- **A break before `since`, `once`, `whereas`, `whenever`, or `whether` is no longer flagged.**
+  Those words open a clause exactly as `until`, `while`, and `because` already did,
+  so the line above one of them ends where it should.
+  `before` and `after` were considered and deliberately left out:
+  they open a clause and also work as ordinary prepositions,
+  and exempting them would hide real column wraps like `4 LE bytes right` / `after it`.
+- **A long-line advisory now measures the sentence, not the indentation.**
+  A 68-character comment nested deep inside a struct drew an advisory telling you to split it at column 120.
+  Indentation and the comment marker no longer count toward a sentence's length.
+- **A line holding several run-on sentences now reports every one of them.**
+  It used to surrender them one per pass,
+  which is indistinguishable from a finding that survived a repair,
+  so a fix could stop with the line still run on.
+- **A repeated phrase almost never costs a finding its position now.**
+  When the same sentence appeared twice on a line,
+  the checker could not say where the problem was and withheld the finding from editor feedback entirely.
+  One shape still defeats it:
+  a one-line block comment whose text also appears in code beside it on the same line.
+
+### Added
+
+- **An over-long line now always says so, even when the checker cannot suggest where to break it.**
+  It used to report nothing in that case, which was indistinguishable from approval.
+  That mattered most right after repairing a column-wrapped comment:
+  you rejoin the severed lines as asked, the result runs past the limit,
+  and the tool went quiet on a line that still needed splitting.
+  The new message says plainly that no boundary was recognized,
+  that the checker's word list is short rather than complete,
+  and that leaving the line long is the right answer when it genuinely has nowhere to break.
+
+### Documentation
+
+- The suppression directive is shown in every language that supports it,
+  not only in Markdown.
+- The scope note says plainly that Chinese, Japanese, and Korean prose is passed over rather than checked,
+  so a clean run over it is silence rather than approval.
+- The repair guidance for a severed clause is bound to the two lines the finding covers,
+  which settles the old conflict between rejoining a clause and never reflowing text you did not write.
+
 ## [0.8.0] - 2026-08-16
 
 One skill now serves both Codex CLI and opencode, published once to the directory they already share.
@@ -74,8 +124,7 @@ A setup skill lets you ask an agent to install `semlf` instead of doing it by ha
   `semlf uninstall` removes what was installed without touching anything it did not write,
   and `semlf doctor` replays a real edit through every installed hook end to end.
 - **`.semlf.ini` can now opt a project into `wrap` feedback**:
-  `experimental-wrap = true` does what
-  `SEMLF_EXPERIMENTAL_WRAP=1` already did, project-wide.
+  `experimental-wrap = true` does what `SEMLF_EXPERIMENTAL_WRAP=1` already did, project-wide.
   The environment variable still wins whenever it is set,
   so it can force `wrap` on or off regardless of what the file says.
 
@@ -217,8 +266,7 @@ and the judgment layer for every agent.
   Hook feedback carries the exact two-line replacement for the agent's next edit,
   and nothing is written for it automatically.
 - **A native Codex skill** (ADR-0006).
-  `scripts/install.py --codex` now also writes
-  `~/.agents/skills/semantic-linefeeds/SKILL.md`.
+  `scripts/install.py --codex` now also writes `~/.agents/skills/semantic-linefeeds/SKILL.md`.
   Status, idempotent upgrade, and a `--force` divergence rule match the opencode installer.
 - **The judgment layer reaches every agent** (ADR-0006).
   `SNIPPET.md` gains the compound-object `and` test,
@@ -327,8 +375,7 @@ A third holdout then cleared both floors it stated.
   so the publication block on `fused` rates is lifted for the predicate that ships.
   Four false positives in 360 labeled non-violations,
   none from either repair under test:
-  three are the non-connector class
-  [ADR-0002](docs/decisions/0002-wrap-withdrawn-from-default-feedback.md) records,
+  three are the non-connector class [ADR-0002](docs/decisions/0002-wrap-withdrawn-from-default-feedback.md) records,
   and one is a `gofail:` directive reaching the prose stream,
   which is recorded with carbon-lang's HTML-comment licence block
   as the next extraction defects to cut.
@@ -404,8 +451,7 @@ rather than by any test in this repository.
   Nothing in this release changes how a fused line is found,
   so the miss is recorded against that heuristic and blocks any published `fused` rate.
   It cannot be localized from this round, whose labels were deleted when the bundle was spent.
-  How a round is read when one floor clears and another does not is
-  [ADR-0009](docs/decisions/0009-a-round-scores-what-the-change-could-move.md).
+  How a round is read when one floor clears and another does not is [ADR-0009](docs/decisions/0009-a-round-scores-what-the-change-could-move.md).
 
 - **A missed floor is acknowledged in the corpus manifest or the suite fails.**
   A round states its floors before it is drawn and answers them once,

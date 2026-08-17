@@ -10,8 +10,7 @@ Counts drawn from current findings exclude every violation the detector already 
 which makes recall unfalsifiable,
 and a lost true positive can be masked by a new false positive while a total holds steady.
 
-The reference corpus is `cassandra-gocql-driver` at commit
-`930bac9531fa5ba8d9535619bf20b3da1d0ffbee`, selected with `git ls-files '*.go' '*.md' | head -200`.
+The reference corpus is `cassandra-gocql-driver` at commit `930bac9531fa5ba8d9535619bf20b3da1d0ffbee`, selected with `git ls-files '*.go' '*.md' | head -200`.
 It yields 2,827 findings across 161 of 164 files.
 **Those are detector outputs, not reviewed labels,**
 and no precision or recall claim rests on them.

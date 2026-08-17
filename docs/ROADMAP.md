@@ -69,6 +69,8 @@ What remains open is smaller and named:
 | Open item | Evidence | What it needs |
 |---|---|---|
 | Adjacent telegraphic notes in Go comments read as one severed clause | three of the third round's four false positives | ADR-0002 territory: a positive-evidence `wrap` test, or nothing |
+| An abbreviation followed by a capitalised proper noun | `The Smith et al. Nature paper argues otherwise.` draws a `fused` finding on one sentence | A signal that separates a citation period from a sentence period. The exclusion list cannot: the same characters carry both uses, and `al.` commonly ends a sentence, so exempting it would hide real violations. |
+| A word that is both a subordinator and a preposition | a correct break before `after the request finishes` is called a `wrap`, while three labeled column wraps land on the prepositional use (`4 LE bytes right` / `after it`) | A signal that separates a clause opener from a preposition. `CONNECTORS` cannot: one entry admits both uses, which is why `before` and `after` are the two subordinators left out of the set. |
 
 The round's two extraction defects are repaired and off this table:
 the `gofail:` directive cut and the Markdown licence-paragraph cut both landed,
@@ -78,10 +80,8 @@ removing only the measured class and adding nothing.
 The declined repairs stay declined with their numbers on record:
 the bracket and emphasis forms of the markup class,
 and the non-lowercase final word,
-in the diagnosis and in
-[`docs/plans/done/v0.4.2-what-the-holdout-found.md`](plans/done/v0.4.2-what-the-holdout-found.md).
-How a round is read when one floor clears and another does not is
-[ADR-0009](decisions/0009-a-round-scores-what-the-change-could-move.md).
+in the diagnosis and in [`docs/plans/done/v0.4.2-what-the-holdout-found.md`](plans/done/v0.4.2-what-the-holdout-found.md).
+How a round is read when one floor clears and another does not is [ADR-0009](decisions/0009-a-round-scores-what-the-change-could-move.md).
 
 ## Releases
 
@@ -104,6 +104,8 @@ because a guardrail nobody can install cleanly has no team to integrate with.
   wider automatic-fix classes beyond `!`/`?`.
 - GitHub Action, SARIF, and annotations as serializers over the diagnostic schema.
 - A real-agent regression corpus.
+- The `wrap` repair recipe is bound to the finding's two-line ownership window,
+  which closes the conflict between rejoining a severed clause and never reflowing stable text.
 
 ### v1.0 — Stable contracts
 
@@ -116,8 +118,10 @@ in either direction, because the freeze removes the room a port would need to co
 ## Deferred, with reasons
 
 - **A numeric `confidence` field on diagnostics.**
-  A deliberate absence carried forward from v0.5:
-  no number ships until observed rates support one.
+  Holdout rounds now report rates, so the original "no number until observed rates support one" gate is crossed.
+  What still blocks it is that those are corpus-stratum rates,
+  and a per-finding number is a different claim the evidence does not support.
+  Entry condition: a per-finding calibration, not another stratum rate.
 - **Go template files (`.tmpl`).**
   Invisible to the checker today, and reported from the field by go-secs.
   Support means a new extraction state machine for `{{/* ... */}}` comments amid template markup,
@@ -151,12 +155,28 @@ in either direction, because the freeze removes the room a port would need to co
   Entry condition: the labeled corpus must show masking creates no false positives around protected content.
 - **Feedback persistence.**
   A session log of findings would show whether agents actually repaired what was reported.
-  Deferred to v0.7, where the real-agent corpus needs the same data.
-- **Legacy-paragraph editing recipe.**
-  The skill simultaneously requires rejoining a severed clause and never reflowing stable text
-  (`skills/semantic-linefeeds/SKILL.md:38`, `skills/semantic-linefeeds/SKILL.md:67-70`),
-  which conflict when the severed clause continues into untouched prose.
-  A concrete ordering is added when the ADR-0005 ownership ranges make "the affected two lines" precise.
+  Deferred to v0.9, alongside the real-agent corpus that needs the same data.
+- **Testing whether an `and` joins two independent clauses.**
+  `CONNECTORS` exempts every lower line opening with `and`,
+  while the skill calls a compound-object `and` a mistake to avoid,
+  so the one break the skill warns about hardest is the one the detector cannot catch.
+  Closing it needs a subject-and-verb test on both halves,
+  which is the grammar this project leaves to the judgment layer.
+  The exemption is doing real precision work and stays;
+  what is recorded here is that its unconditional form is a choice, not an oversight.
+  The same test is what `BOUNDARY_HINT_RE` would need before it could hold more than six words.
+  That pattern was once derived from `CONNECTORS`, and the derivation was withdrawn:
+  a word there withholds a finding while a word in the hint pattern raises one,
+  so the safe direction's tolerance leaked into the unsafe one,
+  and filtering the result never converged —
+  two review rounds each produced fresh comma-led forms that open no clause
+  (`, since 2020`, `, once per day`, `, because of the delay`, `, though.`).
+  A hint list has to be argued word by word from the uses a word has,
+  and no labeled evidence exists to argue from,
+  because the corpus asks only `wrap` and `fused` questions.
+  The pattern's comma-led form still admits the enumeration a list closes on
+  (`filters, hooks, and selectors`),
+  which is a known cost of a choice older than any of this.
 - **More languages.**
   Marginal value has flattened.
 - **More agent installers and an LSP.**
@@ -169,9 +189,14 @@ in either direction, because the freeze removes the room a port would need to co
 - **Inline trailing comments.**
   Higher parser complexity and false-positive risk for short text.
 - **CJK support.**
-  Adding `。！？` to the terminator sets is cheap,
-  but `wrap` depends on inter-word spaces and a following capital,
-  so real CJK support is larger than terminators alone.
+  Full-width terminators are now recognized as line enders,
+  so mixed prose is no longer accused at the language boundary —
+  but no kind analyzes CJK text, and the README says so.
+  Real support is a per-kind redesign rather than a terminator set:
+  `fused` needs a CJK token alternative and a no-space opener rule,
+  `wrap` needs an end-of-clause decision for a language without inter-word spaces,
+  and `long` needs a CJK boundary hint and a width that counts double-width glyphs.
+  Entry condition: field reports from a CJK-writing user, or a labeled CJK corpus.
 
 ## Positioning
 

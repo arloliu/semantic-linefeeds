@@ -75,8 +75,7 @@ but they do change the manifest's digest of the full raw file,
 so identity substitutes for a missing record and never overrides one that already says `edited`.
 It never deletes shared files (`hooks.json`, the AGENTS.md target),
 and it never touches `semlf.bak`.
-A `hooks.json` too strangely shaped to locate `PostToolUse` in refuses the same way
-`install_codex`'s own guard does, rather than silently doing nothing.
+A `hooks.json` too strangely shaped to locate `PostToolUse` in refuses the same way `install_codex`'s own guard does, rather than silently doing nothing.
 Skill removal for every installed adapter is covered here,
 closing the deferral [ADR-0006](0006-judgment-layer-for-every-agent.md) recorded.
 
@@ -84,8 +83,7 @@ closing the deferral [ADR-0006](0006-judgment-layer-for-every-agent.md) recorded
 
 Doctor replays payloads end to end rather than checking file existence,
 certifies an installed hook in both directions or fails it,
-and its platform lines are the evidence stream
-[ADR-0011](0011-go-port-gated-on-field-evidence.md)'s gate reads.
+and its platform lines are the evidence stream [ADR-0011](0011-go-port-gated-on-field-evidence.md)'s gate reads.
 
 ## Evidence
 

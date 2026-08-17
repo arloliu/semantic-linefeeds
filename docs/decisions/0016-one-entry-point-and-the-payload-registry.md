@@ -43,8 +43,7 @@ and the write-verbs no longer have to live beside the repository tree.
 
 Every transform fails loud when its match count is wrong,
 so a canonical-source edit can never silently disable a rewrite.
-The installed hook command keeps the shape
-`python3 <path ending in check_linefeeds.py> --hook codex`,
+The installed hook command keeps the shape `python3 <path ending in check_linefeeds.py> --hook codex`,
 so ADR-0014's structural ownership rule holds unchanged.
 
 ### Hooks and skills target one neutral root
@@ -200,8 +199,7 @@ and the claims above are answered here.
 - **Structural hook ownership** — `parse_managed_codex_hook` over matcher, hook type,
   launcher, checker basename, and arguments, never substring.
 - **Doctor's replay contract** — end-to-end payload replay rather than file existence,
-  and its platform lines as the evidence stream
-  [ADR-0011](0011-go-port-gated-on-field-evidence.md)'s gate reads.
+  and its platform lines as the evidence stream [ADR-0011](0011-go-port-gated-on-field-evidence.md)'s gate reads.
 - **The maintainer-act publishing boundary** and **the no-fork mapping rule** from ADR-0015:
   `pyproject.toml` still maps `cli/semlf` and `scripts/check_linefeeds.py` from their real locations,
   rather than forking either into a packaging-only tree.
@@ -229,8 +227,7 @@ and the claims above are answered here.
   it builds the wheel, installs it into a venv,
   and runs `semlf install codex` from the installed entry point.
   It also replays doctor through a really built zipapp.
-  [`tests/test_installer.py`](../../tests/test_installer.py)'s
-  `test_both_doors_render_identical_artifacts` is the two-door parity check.
+  [`tests/test_installer.py`](../../tests/test_installer.py)'s `test_both_doors_render_identical_artifacts` is the two-door parity check.
 - **The classifier matrix.**
   [`tests/test_classify.py`](../../tests/test_classify.py) covers every cell:
   version ordering, absent, adoption on an exact rendering,
@@ -255,8 +252,7 @@ and the claims above are answered here.
   then exercises package-door install, dry-run, status, doctor, force, and uninstall over them,
   including the leftover-zipapp `PATH` warning.
 - **Identity.**
-  `test_lifecycle.py`'s per-payload identity states and
-  [`tests/test_doctor.py`](../../tests/test_doctor.py) together pin the reporting:
+  `test_lifecycle.py`'s per-payload identity states and [`tests/test_doctor.py`](../../tests/test_doctor.py) together pin the reporting:
   doctor passes with current payloads,
   fails on an expected-payload mismatch,
   fails an installed hook with no published payload,

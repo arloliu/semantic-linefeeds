@@ -185,7 +185,7 @@ So this kit backs the rule with three layers instead of trusting the model to re
    `scripts/check_linefeeds.py`, dependency-free Python 3.
    Three precision-tuned heuristics:
    `fused` (two sentences on one line), `wrap` (a line severed mid-clause),
-   and `long` (over a configurable limit, default 120 chars, with a likely clause boundary).
+   and `long` (over a configurable limit, default 120 chars, reported whether or not a clause boundary is found).
    `--file` audits report all three, because an audit is read by the person who asked for it.
    The hook reads a stable snapshot of the edited file for context,
    so it can report a real line number and skip findings an edit didn't touch,
@@ -199,6 +199,15 @@ Two directives, each scoped to exactly one line:
 - `semlf-ignore` — withholds every finding anchored on the line carrying it.
 - `semlf-ignore-next` — withholds every finding anchored on the next line.
 
+The directive rides in a comment, so it is written the way the file's own language writes comments.
+
+| Language | Standalone | Trailing |
+|---|---|---|
+| Markdown | `<!-- semlf-ignore-next -->` | `… judged text. <!-- semlf-ignore long -->` |
+| Go, Rust, C-family, JavaScript | `// semlf-ignore-next` | `// … judged text.  // semlf-ignore long` |
+| Python, Ruby, shell | `# semlf-ignore-next` | `# … judged text.  # semlf-ignore long` |
+| Lua, SQL | `-- semlf-ignore-next` | `-- … judged text.  -- semlf-ignore long` |
+
 Standalone, on a line of its own:
 
 ```markdown
@@ -206,11 +215,23 @@ Standalone, on a line of its own:
 A line the checker will leave alone.
 ```
 
+```go
+// semlf-ignore-next
+// A line the checker will leave alone.
+```
+
 Trailing, after the line it judges:
 
 ```markdown
 A long judged line that runs on past the limit. <!-- semlf-ignore long -->
 ```
+
+```python
+# A long judged line that runs on past the limit.  # semlf-ignore long
+```
+
+A trailing carrier is the rightmost comment marker to the end of the line,
+so the judged text is whatever stands to its left.
 
 A two-line `wrap` finding anchors on its upper line,
 so a trailing carrier suppressing it must sit on that first line, not the second.
@@ -354,6 +375,27 @@ so `semlf` does not need to be installed or on `PATH` beforehand.
 | Ruby, Perl, Lua | `.rb` `.rake` `.pl` `.pm` `.lua` |
 | SQL, R, Haskell, Elixir | `.sql` `.r` `.R` `.hs` `.ex` `.exs` |
 | Markdown | `.md` `.markdown` `.mdx` |
+
+### What is not analyzed
+
+The checker reads English prose.
+Its two sentence-reading kinds each depend on an ASCII signal —
+a lowercase word before the stop, and a lowercase opener on the following line —
+so CJK text is passed over rather than checked.
+A Chinese, Japanese, or Korean paragraph therefore draws no `fused` and no `wrap`,
+however it is broken.
+The `long` advisory is the exception:
+it counts characters rather than reading the sentence,
+so a CJK line past the limit draws one like any other line.
+Its message says the checker found no boundary it recognizes,
+which is the honest answer for CJK text and leaves the split to your judgment.
+A full-width terminator is recognized as ending a line,
+so a Chinese sentence above an English one is not accused at the boundary.
+A CJK line that ends without punctuation can still draw a `wrap`
+when the line under it opens on a lowercase English word,
+because that judgment is read off the English line.
+In none of these cases is the CJK text itself read as prose:
+what fires is a rule about the English line beside it, or about width.
 
 ## Recommended Instructions Companion
 

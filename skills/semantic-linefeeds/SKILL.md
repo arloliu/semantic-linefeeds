@@ -36,12 +36,18 @@ Then judge each finding — the checker flags suspicion, it does not decide:
 - **fused** — split the line after the terminal punctuation.
   This one is almost always correct to fix.
 - **wrap** — rejoin the severed clause onto one line, then re-split at sentence ends.
+  The repair is confined to the two lines the finding spans;
+  if a correct re-split would push text into a third line you did not write,
+  rejoin those two lines only and surface the rest under Bounded disagreement.
 - **long** — scan rightward from the limit (default 120) for the first clause boundary; break there.
   Nothing rightward: scan backward from that point and break at the last boundary found.
   Nothing in either direction: leave the line long — an over-long line beats a severed clause.
 
 A clause boundary is `;`, `:`, `—`, a coordinating conjunction (`and`, `but`, `so`),
-or a relative pronoun opening a clause (`which`, `that`, `where`).
+or a word opening a subordinate clause —
+a relative pronoun (`which`, `that`, `where`) or a subordinator (`because`, `although`, `whereas`).
+The words in parentheses illustrate each class rather than exhausting it:
+judge the word by whether a clause opens on it, not by whether it appears here.
 `and`/`but`/`so` qualify **only when both sides could stand alone as a complete sentence** —
 its own subject, its own verb.
 Not boundaries: a comma between list items, the `and` that closes a list ("A, B, and C"),
@@ -61,6 +67,18 @@ license headers;
 fenced code and `<pre>` blocks inside doc comments;
 doctest lines;
 and Markdown link reference definitions.
+
+The checker analyzes English prose only.
+The two sentence-reading kinds never fire on CJK text:
+a CJK paragraph draws no `fused` and no `wrap` however it is broken,
+so a clean run over one is silence rather than approval —
+apply the one-thought-per-line rule from your own judgment there.
+Two exceptions are worth knowing.
+A `wrap` can land on a CJK line when an English line follows it,
+because that judgment is read off the English line rather than off the CJK text.
+A CJK line past the limit draws the `long` advisory like any other,
+because that kind counts characters and does not read the sentence;
+judge where a CJK line breaks yourself, and leave it long if it has no boundary.
 
 ## Scope discipline
 

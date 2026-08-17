@@ -61,9 +61,38 @@ run it under Python 3.9, and reject any import outside the stdlib allowlist.
 
 - **Precision over recall.**
   The checker flags suspicion, the agent judges;
-  when a heuristic is uncertain, skip the line.
+  when a heuristic is uncertain about *what is wrong with a line*, skip the line.
   A miss is acceptable;
   a false positive is a bug.
+  One reading is exempt, and the exemption is written narrowly on purpose.
+  An **advisory** kind may report the **physical length of the extracted prose** without a heuristic,
+  because counting characters in the text a reader sees is not a judgment about that text.
+  `long` is that kind and the only one:
+  it reports every line past the limit and says whether it also found a boundary to name.
+  Withholding the report made silence mean two things —
+  "this line is fine" and "this line is long and I cannot see where it breaks" —
+  and an agent told to rejoin a column-wrapped comment heard the second as the first.
+
+  Three limits keep this from becoming a general licence,
+  and each was named by a reviewer who tried to widen it:
+
+  - **Advisory only.**
+    A blocking kind may never be raised by a count.
+    `long` never blocks (ADR-0001), which is what makes an over-long line with nowhere to break
+    cost attention rather than a rejected edit.
+  - **Length only, of the prose only.**
+    Not a count of commas, of capitals, or of any other feature,
+    which would be a guess about prose dressed as arithmetic;
+    and not of `raw`, whose indentation and comment marker this release already removed from the
+    measurement because counting them accused correct text.
+  - **A heuristic may refine the message, never gate the report.**
+    `long` consults the boundary hint to choose which advice to print.
+    That is the difference between deciding *what to say* and deciding *whether to speak*,
+    and only the second is exempt here.
+
+  A finding that cannot meet all three stays under the rule above:
+  when the heuristic is uncertain, skip the line.
+
 - Analysis may see the whole file:
   `diagnose(text, path, spans)` reads one stable snapshot.
 - Reporting is restricted to diagnostics **owned** by a change:

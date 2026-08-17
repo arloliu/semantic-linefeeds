@@ -56,8 +56,7 @@ or for an air-gapped machine with no package index — use the checkout door the
 
 Codex CLI resolves standalone `SKILL.md` skills from `$HOME/.agents/skills`
 and from a repository's own `.agents/skills` directory.
-The installer writes the user-level copy at
-`~/.agents/skills/semantic-linefeeds/SKILL.md`,
+The installer writes the user-level copy at `~/.agents/skills/semantic-linefeeds/SKILL.md`,
 performing the three rewrites above so the installed file stays self-contained,
 even on a machine with no checkout at all.
 `$HOME` resolves the same way Python's `Path.home()` resolves it:
