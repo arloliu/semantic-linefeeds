@@ -10,8 +10,9 @@ import check_linefeeds
 FUSED = "One sentence. Another fused on the same line.\n"
 CLEAN = "One sentence per line.\n"
 
-# Over 40 characters with a comma-led conjunction:
-# the long predicate needs a boundary hint as well as length.
+# Over 40 characters with a comma-led conjunction.
+# Length alone would draw the advisory now,
+# but the hint is what makes this fixture draw the hinted message rather than the other one.
 LONG_WITH_BOUNDARY = (
     "The exporter batches metrics in memory, "
     "and it retries failed uploads until the queue drains.\n"

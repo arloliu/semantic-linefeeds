@@ -32,7 +32,8 @@ def test_schema_is_json_serializable_with_ranges():
 
 
 def test_a_degraded_diagnostic_serializes_a_null_ownership():
-    text = "Stop aa. Bb then aa. Bb again.\n"
+    # A `wrap`, because a `fused` almost never degrades any more: see test_diagnostics.py.
+    text = "the cat and the\nthe dog ran\n"
     doc = check_linefeeds.to_schema("doc.md", check_linefeeds.diagnose(text, "doc.md"))
     (d,) = json.loads(json.dumps(doc))["diagnostics"]
     assert d["ownership"] is None

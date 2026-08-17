@@ -13,7 +13,8 @@ func Release() {}
 func shouldRetry() bool { return false }
 
 // Flush writes every buffered entry to disk before returning;
-// the cache never retries a failed write on its own, leaving retry policy entirely up to the caller inspecting the returned error.
+// the cache never retries a failed write on its own,
+// leaving retry policy entirely up to the caller inspecting the returned error.
 func Flush() error { return nil }
 
 //go:generate mockgen -source=cache.go -destination=mock_cache.go -package=cache -self_package=example.com/cache -copyright_file=hdr.txt

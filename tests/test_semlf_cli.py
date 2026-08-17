@@ -123,9 +123,9 @@ def test_invocation_state_is_restored(tmp_path):
 def test_long_limit_does_not_leak_between_calls(tmp_path, capsys):
     """A flag on call one must not still be in force on call two.
 
-    The sentence carries a comma-led conjunction:
-    the long predicate needs a boundary hint as well as length,
-    so a hintless sentence would never fire and the test would prove nothing.
+    The sentence carries a comma-led conjunction,
+    which fixes which of the two advisory messages it draws.
+    Length alone decides whether it fires at all.
     """
     doc = tmp_path / "doc.md"
     line = (

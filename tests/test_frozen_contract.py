@@ -34,6 +34,19 @@ LONG_MSG = (
     "else leave the line long"
 )
 
+LONG_NO_BOUNDARY = (
+    "This advisory line keeps going well past the configured limit without ever offering the "
+    "checker a boundary word it knows about so the finder has nothing at all to point the "
+    "reader toward here.\n"
+)
+
+LONG_NO_BOUNDARY_MSG = (
+    "advisory: {n} chars and no boundary recognized — "
+    "the words this checker matches are a short list, not the whole grammar, "
+    "so look for a comma-led phrase or any other real clause boundary yourself; "
+    "if the line genuinely has none, leaving it long is the right answer"
+)
+
 
 def test_fused_tuple_fields_are_frozen():
     assert check_linefeeds.check(FUSED, "doc.md") == [
@@ -182,3 +195,14 @@ def test_no_report_gains_a_final_newline():
             check_linefeeds.check(text, "doc.md"), "doc.md", snippet=False
         )
         assert not got.endswith("\n")
+
+
+def test_the_unhinted_long_message_is_frozen():
+    """The other half of the advisory contract, added when silence stopped being an answer.
+
+    An over-limit line with no recognized boundary used to report nothing,
+    which an agent that had just rejoined two lines read as approval.
+    """
+    got = check_linefeeds.check(LONG_NO_BOUNDARY, "doc.md")
+    prose = LONG_NO_BOUNDARY.rstrip("\n")
+    assert got == [(1, "long", LONG_NO_BOUNDARY_MSG.format(n=len(prose)), prose)]

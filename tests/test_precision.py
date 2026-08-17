@@ -64,6 +64,248 @@ def test_a_sentence_end_that_is_not_an_abbreviation_still_fuses():
     assert kinds("One sentence here. Another sentence follows.\n") == [(1, "fused")]
 
 
+# --- full-width terminators -----------------------------------------------
+
+
+def test_a_chinese_sentence_above_an_english_line_is_not_a_wrap():
+    """A CJK terminator ends a line as surely as an ASCII one.
+
+    Mixed-language prose is the norm in Chinese technical writing,
+    so a boundary between a Chinese sentence and an English one is the common case rather than an edge case.
+    Reading the CJK terminator as "no terminator" accuses correct text at every such boundary.
+    """
+    assert kinds("這是一個完整的句子。\nnext english line continues here.\n") == []
+    assert kinds("這是列表的一項，\nnext item follows on its own line.\n") == []
+
+
+def test_a_chinese_terminator_ends_a_go_comment_line_too():
+    assert kinds("package p\n\n// 這是列表，\n// next item\n", path="doc.go") == []
+
+
+def test_an_unterminated_chinese_line_above_an_english_one_still_wraps():
+    """The other half: adding terminators must not bless every CJK line ending."""
+    assert kinds("這是一個沒有標點結尾的句子\nnext english line continues here.\n") == [
+        (1, "wrap")
+    ]
+
+
+# --- subordinators --------------------------------------------------------
+
+
+# Only the words with a verified false positive behind them and no evidence against them.
+# Two words are excluded for opposite reasons, and the difference matters.
+# "wherever", "whereupon", and "lest" are grammatically capable of opening a clause
+# but had no reproduction, and an entry nothing tests is one nobody can remove safely —
+# that is an absence of evidence.
+# "before" and "after" had a reproduction and were withdrawn anyway,
+# because the calibration corpus carries three labeled column wraps their entry would hide —
+# that is evidence of harm, tested below.
+SUBORDINATORS = [
+    "since",
+    "once",
+    "whereas",
+    "whenever",
+    "whether",
+]
+
+# The two the corpus refused, kept here so the exclusion is checked rather than remembered.
+AMBIGUOUS_SUBORDINATORS = ["before", "after"]
+
+
+@pytest.mark.parametrize("word", SUBORDINATORS)
+def test_a_break_before_a_subordinator_is_not_a_wrap(word):
+    """A subordinator opens a clause, so a line starting with one continues legitimately.
+
+    The list already holds until, while, and because.
+    The members below open a clause by the same grammar,
+    and their absence accuses a correct break for no reason but list membership.
+    """
+    assert kinds(f"Close the session\n{word} the request finishes.\n") == []
+
+
+@pytest.mark.parametrize("word", ["until", "while", "because", "although"])
+def test_the_subordinators_that_already_passed_still_pass(word):
+    assert kinds(f"Close the session\n{word} the request finishes.\n") == []
+
+
+@pytest.mark.parametrize("word", AMBIGUOUS_SUBORDINATORS)
+def test_the_two_ambiguous_subordinators_stay_out_of_the_set(word):
+    """Their entry would hide a labeled column wrap, so their absence is the finding."""
+    assert word not in check_linefeeds.CONNECTORS
+
+
+@pytest.mark.parametrize(
+    "upper,lower",
+    [
+        (
+            "CRC32C over the message payload only, 4 LE bytes right",
+            "after it, computed from the filled slab.",
+        ),
+        (
+            "It is an error to declare a Go version",
+            "before Go 1.16, where the support was added.",
+        ),
+    ],
+)
+def test_a_column_wrap_landing_on_a_preposition_is_still_seen(upper, lower):
+    """The use that keeps "before" and "after" out of CONNECTORS.
+
+    Both words open a subordinate clause and both stand as a preposition,
+    and a line break between a governing word and its object is a column wrap rather than a clause break.
+    These two are shortened from labeled units in the calibration corpus.
+    """
+    assert kinds(f"{upper}\n{lower}\n") == [(1, "wrap")]
+
+
+# --- long measures the prose ----------------------------------------------
+
+
+def test_indentation_does_not_make_a_short_sentence_long():
+    """The advisory is about the sentence, not about the column the comment sits in.
+
+    A nested struct pushes a comment rightward without making its prose any longer.
+    Counting the carrier tells the agent to split a line that reads perfectly well,
+    which is the one way this tool can cause the wrapping it exists to prevent.
+    """
+    sentence = "It flushes the queue, and the retry loop then drains it slowly here."
+    assert len(sentence) == 68
+    deep = "package p\n\n" + " " * 56 + "// " + sentence + "\n"
+    flat = "package p\n\n// " + sentence + "\n"
+    assert kinds(deep, path="doc.go") == kinds(flat, path="doc.go") == []
+
+
+def test_a_genuinely_long_prose_line_still_draws_the_advisory():
+    """The other half: measuring the prose must not silence a real one."""
+    sentence = (
+        "The exporter batches metrics in memory, and the flush loop then "
+        "retries every failed upload with exponential backoff until the "
+        "queue finally drains completely."
+    )
+    assert len(sentence) > 120
+    assert kinds("package p\n\n// " + sentence + "\n", path="doc.go") == [(3, "long")]
+
+
+# The words the hint pattern holds, and the reason it is not derived from CONNECTORS.
+# Each pair is a comma-led use where no clause opens,
+# drawn from the two review rounds that argued for the derivation and then against it.
+NON_CLAUSAL_AFTER_A_COMMA = [
+    ("or", "configuration, filters, hooks, or repository selectors"),
+    ("nor", "no primary was configured, nor an alternate metadata server"),
+    ("yet", "one retry landed, yet another attempt was queued"),
+    ("until", "the flag holds its value, until further notice"),
+    ("as", "the module sources, as well as the recovery procedures"),
+    ("since", "the wire format has been stable, since 2020"),
+    ("once", "the compaction job runs, once per day"),
+    ("whether", "the flag still matters, whether or not it is set"),
+    ("when", "the ordering guarantee holds, when in doubt"),
+    ("if", "the retries all landed, if any"),
+    ("though", "the queue drained, though."),
+    ("because", "the upload failed, because of the delay"),
+]
+
+
+@pytest.mark.parametrize("word,line", NON_CLAUSAL_AFTER_A_COMMA)
+def test_a_connector_with_a_non_clausal_use_raises_no_advisory(word, line):
+    """Why the hint pattern is its own list rather than a view of CONNECTORS.
+
+    A word in CONNECTORS withholds a finding, so admitting one too many costs recall.
+    A word in this pattern raises one, so admitting one too many costs precision,
+    which this project calls a bug rather than a trade.
+    Every line here opens no clause after its comma, so no advisory should point at it.
+    """
+    assert word in check_linefeeds.CONNECTORS
+    assert not check_linefeeds.BOUNDARY_HINT_RE.search("x" * 130 + ", " + line)
+
+
+def test_the_hint_pattern_is_not_derived_from_the_connector_set():
+    """A regression guard on the revert, not a style assertion.
+
+    Deriving this pattern from CONNECTORS was tried and withdrawn,
+    because filtering the derived set never converged:
+    each review round removed the words it was shown and the next round found more.
+    A derivation filtered back down to exactly these six words would pass;
+    what fails here is one that widens the pattern again.
+    """
+    derived = {w for w in check_linefeeds.CONNECTORS if f", {w}" in ", because, since"}
+    assert derived, "sanity: the set really does hold words the pattern omits"
+    hinted = {
+        w
+        for w in check_linefeeds.CONNECTORS
+        if check_linefeeds.BOUNDARY_HINT_RE.search(
+            "x" * 130 + f", {w} the clause runs on."
+        )
+    }
+    assert hinted == {"and", "but", "so", "which", "that", "where"}
+
+
+# --- every boundary on a line ---------------------------------------------
+
+
+def test_every_fused_boundary_on_a_line_is_reported():
+    """One finding per boundary, not one per line.
+
+    The skill ends the repair loop on a finding that survives one attempt.
+    A line reporting its boundaries one at a time looks exactly like a finding that survived,
+    so an agent stops with the line still fused.
+    """
+    text = "alpha beta. Gamma delta. Epsilon zeta. Eta theta.\n"
+    assert kinds(text) == [(1, "fused"), (1, "fused"), (1, "fused")]
+
+
+def test_a_single_boundary_still_reports_once():
+    assert kinds("alpha beta. Gamma delta.\n") == [(1, "fused")]
+
+
+def test_a_repeated_phrase_still_locates_each_boundary_exactly():
+    """A repeated needle used to make the locate refuse, which withheld the finding in hook mode."""
+    text = "# H\n\nIt works. It works. It works.\n"
+    found = [
+        d for d in check_linefeeds.diagnose(text, "doc.md") if d["kind"] == "fused"
+    ]
+    assert len(found) == 2
+    assert all(d["ownership_basis"] == "token" for d in found)
+    starts = [d["ownership"]["start"] for d in found]
+    assert starts[0] != starts[1]
+
+
+# --- a lower line that opens on markup, and why it is not read -------------
+
+
+# Every shape four review rounds found the widened opener accusing.
+# The gate that read them was withdrawn, so each of these is silent again,
+# and this list is what a future attempt has to clear before it ships.
+MARKUP_METADATA_ROWS = [
+    ("Close the session", "**until** the queue drains."),
+    ("The repairs stay declined", "**However**, this is a new sentence."),
+    ("**runtime: python3**", "**platform: linux**"),
+    ("**執行環境：python3**", "**作業系統：linux**"),
+    ("**status**", "**accepted**"),
+    ("Runtime", "`python3`"),
+    ("Execution time", "`python3`"),
+    ("Install command", "`pip install semlf`"),
+]
+
+
+@pytest.mark.parametrize("upper,lower", MARKUP_METADATA_ROWS)
+def test_a_lower_line_opening_on_markup_is_not_read(upper, lower):
+    """The opener test wants a lowercase word, and markup is not one.
+
+    Reading through the markup was tried across four review rounds
+    and produced a new false-positive class in every one of them.
+    A field label and a stranded governing word end the same way —
+    "Execution time" and "the gopls binary is in the module" both close on a lowercase noun —
+    so what separates them is whether the line holds a verb,
+    which is the grammar this project leaves to the judgment layer.
+    """
+    assert kinds(f"{upper}\n{lower}\n") == []
+
+
+def test_the_stranded_word_above_markup_is_a_known_miss():
+    """The recall this withdrawal gives back, kept visible rather than forgotten."""
+    assert kinds("in the diagnosis and in\n[the plan](plan.md).\n") == []
+    assert kinds("How a round is read is\n`docs/decisions/0009.md`.\n") == []
+
+
 # --- trailing emphasis ----------------------------------------------------
 
 
@@ -817,3 +1059,28 @@ def test_a_visible_markdown_licence_paragraph_is_silent():
 
 def test_markdown_prose_after_a_licence_paragraph_is_still_checked():
     assert kinds(CARBON_HEADER) == [(9, "fused")]
+
+
+def test_a_cjk_line_can_still_carry_a_finding_read_off_the_english_line():
+    """The scope note has to match this, and for one round it did not.
+
+    A CJK paragraph draws nothing however it is broken,
+    but an unterminated CJK line above an English one draws a wrap anchored on the CJK line,
+    because the judgment is read off the English opener rather than off the CJK text.
+    """
+    assert kinds("這是一個沒有標點結尾的句子\nnext english line continues.\n") == [
+        (1, "wrap")
+    ]
+    assert kinds("這是一個沒有標點結尾的句子\n這是另一個中文句子\n") == []
+
+
+def test_a_long_cjk_line_can_draw_the_advisory_but_never_the_blocking_kinds():
+    """The exception the scope note has to name, and for two rounds did not.
+
+    `fused` and `wrap` are structurally blind to CJK text,
+    but the `long` hint looks for punctuation CJK writing also uses,
+    so an over-long CJK line draws a width complaint rather than a reading of the sentence.
+    """
+    assert kinds("這" * 132 + "——" + "這" * 5 + "\n") == [(1, "long")]
+    assert kinds("這" * 140 + "\n") == [(1, "long")]
+    assert kinds("這" * 40 + "\n") == []

@@ -5,7 +5,7 @@ covering Go, C-family, Rust, Python, shell, SQL, Ruby, and more, plus Markdown p
 Three heuristics, tuned for precision over recall — the agent judges, this only flags suspicion:
 "fused" is two independent sentences on one line,
 "wrap" is a line that ends mid-clause with the sentence continuing on the next line,
-and "long" is a line over the threshold that appears to contain a clause boundary to split at.
+and "long" is a line over the threshold, reported with or without a clause boundary to name.
 
 Two modes.
 "--hook [claude|codex]" reads a PostToolUse JSON payload on stdin (agent defaults to claude)
@@ -294,10 +294,33 @@ CONNECTORS = {
     "until",
     "if",
     "as",
+    # The rest of the subordinator family, less the two the corpus refused.
+    # The members above were collected as they came up rather than as a family,
+    # so a correct break before "whereas" was accused where the same break before "until" passed.
+    # "before" and "after" are deliberately absent:
+    # both open a clause and both stand as a preposition or an adverb,
+    # and the calibration corpus carries three labeled column wraps that land on the second use
+    # ("4 LE bytes right" / "after it", "a Go version" / "before Go 1.N").
+    # One list entry cannot separate the two uses,
+    # so admitting them would trade three measured true positives for an unmeasured class.
+    # The five below cost nothing measurable, though the measurement is bounded by that corpus:
+    # "since" and "once" carry the same ambiguity with no instance of it in the calibration set.
+    "since",
+    "once",
+    "whereas",
+    "whenever",
+    "whether",
 }
 
 # Characters that can legitimately end a semantically broken line.
-OK_LINE_ENDERS = tuple(".!?;:,—-–)”\"'`")
+# ASCII enders first, then their full-width counterparts.
+# A CJK terminator ends a line as surely as an ASCII one,
+# and without these a Chinese line above an English one reads as a severed clause —
+# a false positive at every language boundary in mixed prose,
+# which is the ordinary case in Chinese technical writing rather than an edge case.
+# This is not CJK support: no kind gains the ability to analyze Chinese,
+# the checker only stops accusing text it never understood.
+OK_LINE_ENDERS = tuple(".!?;:,—-–)”\"'`" + "。！？；：，、）」』》】’")
 
 # Abbreviations that end mid-sentence rather than ending a sentence.
 # Derived from the rule below rather than from a general list of abbreviations.
@@ -375,8 +398,27 @@ FENCE_RE = re.compile(r"^(`{3,}|~{3,})")
 # and without a state the lines under it are read as prose.
 PRE_OPEN_RE = re.compile(r"<pre\b|<pre>", re.IGNORECASE)
 
+# Deliberately its own list, not derived from CONNECTORS.
+#
+# Both lists answer something like "does a clause open here",
+# and one round of this project did derive this pattern from that set.
+# It was reverted, because the two pull in opposite directions.
+# A word in CONNECTORS *withholds* a finding, so admitting one too many costs recall, which is safe.
+# A word here *raises* one, so admitting one too many costs precision, which this project calls a bug.
+# Filtering the derived set did not converge:
+# two rounds of review each produced fresh words whose comma-led form opens no clause —
+# ", since 2020", ", once per day", ", until further notice", ", because of the delay", ", though."
+# Each round removed the words it was shown and the next round found more.
+#
+# A hint list has to be argued word by word from the uses a word actually has,
+# and there is no labeled evidence to argue from:
+# the corpus asks only `wrap` and `fused` questions, never a `long` one.
+# So the six words below stay the six words this pattern has always held.
+#
 # A bare "and" is usually a compound object (not a boundary);
 # require the comma-led form, or strong punctuation, before advising a split.
+# That form still admits the enumeration a list closes on ("filters, hooks, and selectors"),
+# which is a known cost of a choice older than this list's current shape.
 BOUNDARY_HINT_RE = re.compile(r"[;:—]|\s–\s|, (?:and|but|so|which|that|where)\b")
 
 Language = collections.namedtuple(
@@ -1299,10 +1341,27 @@ def diagnose(text, path, spans=None):
             # else: the carrier is not a shared suffix of both views;
             # treat the tail as unrecognized so raw and prose stay one text.
 
-        match = FUSED_RE.search(prose)
-        if match:
+        # Every boundary on the line, not just the first.
+        # The skill ends its repair loop on a finding that survives one attempt,
+        # and a line that surrenders its boundaries one per pass is indistinguishable from one that survived,
+        # so an agent stops with the line still fused.
+        for match in FUSED_RE.finditer(prose):
             anchor = _line_range(text, offsets, lineno)
-            located = locate_in_line(text, offsets, lineno, match.group(0))
+            # Located by offset within the prose, not by re-searching the matched text.
+            # Two boundaries on one line can match identical strings when a phrase repeats,
+            # and a repeated needle makes locate_in_line refuse rather than guess,
+            # which withholds the finding entirely under spans.
+            # The prose is located once and the match indexes into it,
+            # which is the same shape the `long` branch already uses below.
+            prose_at = locate_in_line(text, offsets, lineno, prose)
+            located = (
+                {
+                    "start": prose_at["start"] + match.start(),
+                    "end": prose_at["start"] + match.end(),
+                }
+                if prose_at
+                else None
+            )
             if located and located["end"] <= anchor["end"]:
                 tail = re.search(r"\s", text[located["end"] : anchor["end"]])
                 end = located["end"] + tail.start() if tail else anchor["end"]
@@ -1365,15 +1424,31 @@ def diagnose(text, path, spans=None):
                     }
                 )
 
-        if limit and len(raw) > limit and BOUNDARY_HINT_RE.search(prose):
+        # Measured on the prose, not on `raw`.
+        # `raw` carries indentation, the comment marker, and any Markdown carrier,
+        # none of which the reader parses as part of the sentence.
+        # Counting them told a deeply nested comment to split a sentence that reads fine,
+        # which is the one way this checker can cause the wrapping it exists to prevent.
+        # An over-long line reports either way, and the message says which case it is.
+        # Withholding the finding when no boundary matched made silence carry two meanings:
+        # "this line is fine" and "this line is long and I cannot see where it breaks".
+        # A `wrap` repair rejoins two lines into one.
+        # In the calibration corpus about a quarter of those rejoins run past the limit with nothing to match,
+        # so the agent that did as it was told heard nothing back and stopped there.
+        # The hint vocabulary is narrow by design — it holds six words —
+        # and a comma-led participle or appositive is a real break it was never going to match.
+        if limit and len(prose) > limit:
             anchor = _line_range(text, offsets, lineno)
             located = locate_in_line(text, offsets, lineno, prose)
             ownership, basis = (located, "token") if located else (None, "degraded")
+            hinted = BOUNDARY_HINT_RE.search(prose)
             findings.append(
                 {
                     "kind": "long",
                     "line": lineno,
-                    "message": f"advisory: {len(raw)} chars with a possible clause boundary — scan from ~{limit} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long",
+                    "message": f"advisory: {len(prose)} chars with a possible clause boundary — scan from ~{limit} rightward for ';' ':' '—' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long"
+                    if hinted
+                    else f"advisory: {len(prose)} chars and no boundary recognized — the words this checker matches are a short list, not the whole grammar, so look for a comma-led phrase or any other real clause boundary yourself; if the line genuinely has none, leaving it long is the right answer",
                     "excerpt": prose,
                     "anchor": anchor,
                     "evidence": dict(anchor),

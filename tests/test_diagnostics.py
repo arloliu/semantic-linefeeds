@@ -56,12 +56,20 @@ def test_a_comment_marker_degrades_nothing_when_prose_is_verbatim():
     assert text[d["ownership"]["start"] : d["ownership"]["end"]] == "here. Another"
 
 
-def test_an_ambiguous_match_carries_no_ownership():
+def test_a_repeated_match_now_locates_each_boundary_exactly():
+    """Locating by offset removes the ambiguity that used to force a degrade.
+
+    The needle used to be the matched text,
+    which a repeated phrase made unfindable,
+    so ownership was dropped rather than guessed.
+    Indexing into the located prose by the match offset is not a guess,
+    so the finding keeps its exact range instead of being withheld under spans.
+    """
     text = "Stop aa. Bb then aa. Bb again.\n"
-    (d,) = diags(text)
-    assert d["kind"] == "fused"
-    assert d["ownership"] is None
-    assert d["ownership_basis"] == "degraded"
+    found = diags(text)
+    assert len(found) == 2
+    assert all(d["kind"] == "fused" for d in found)
+    assert all(d["ownership_basis"] == "token" for d in found)
 
 
 LONG_PROSE = (
@@ -205,7 +213,14 @@ def test_an_unchanged_boundary_is_not_reported_for_changed_evidence():
 
 
 def test_a_degraded_diagnostic_never_reports_under_spans():
-    text = "Stop aa. Bb then aa. Bb again.\n"
+    # The fixture is a `wrap`, because a `fused` almost never degrades any more:
+    # its ownership is an offset into the located prose rather than a search for the matched text.
+    # It is not unreachable, which an earlier version of this comment claimed.
+    # A line that repeats its own extracted prose outside the comment still defeats the locate,
+    # such as a one-line block comment whose text recurs in a string literal beside it.
+    # No shape in the corpus does that, so a `fused` fixture would pin a line nobody writes.
+    # `wrap` locates single words, so a word repeated on the upper line defeats the locate naturally.
+    text = "the cat and the\nthe dog ran\n"
     assert len(diags(text, spans=None)) == 1
     everything = [{"start": 0, "end": len(text)}]
     assert diags(text, spans=everything) == []
@@ -304,9 +319,10 @@ def test_a_period_fused_line_gets_no_suggestion():
 
 def test_a_two_boundary_line_gets_no_suggestion():
     text = "Go now? Come here! Stay put.\n"
-    (d,) = diags(text)
-    assert d["kind"] == "fused"
-    assert "suggestion" not in d
+    found = diags(text)
+    assert len(found) == 2
+    assert all(d["kind"] == "fused" for d in found)
+    assert all("suggestion" not in d for d in found)
 
 
 def test_fused_suggestion_byte_identity_holds_with_a_duplicated_prefix():

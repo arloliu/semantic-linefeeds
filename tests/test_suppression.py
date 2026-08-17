@@ -1,5 +1,6 @@
 """The suppression contract of ADR-0010: grammar, carriers, and the diagnose filter."""
 
+import check_linefeeds
 from check_linefeeds import (
     DIRECTIVE_KINDS,
     MALFORMED,
@@ -403,3 +404,10 @@ def test_a_directive_after_a_licence_paragraph_still_suppresses():
         "<!-- semlf-ignore-next fused -->\n" + FUSED
     )
     assert kinds_at(md) == []
+
+
+def test_one_directive_suppresses_every_fused_boundary_on_its_line():
+    # The filter keys on (line, kind),
+    # so a line reporting three boundaries is still withheld whole by the one directive above it.
+    text = "<!-- semlf-ignore-next -->\nalpha beta. Gamma delta. Epsilon zeta.\n"
+    assert check_linefeeds.check(text, "doc.md") == []
