@@ -110,7 +110,8 @@ run it under Python 3.9, and reject any import outside the stdlib allowlist.
   `--file`: 0 clean, 1 violations or unreadable input.
   `--hook`: 2 for a `fused` finding, with the report on stderr;
   0 for clean, not applicable, or advisories only.
-  `wrap` never reaches hook feedback unless `SEMLF_EXPERIMENTAL_WRAP` or the `.semlf.ini` `experimental-wrap` key opts in (env wins, ADR-0017),
+  `wrap` reaches hook feedback only on a line a blocking finding already holds (ADR-0021),
+  or when `SEMLF_EXPERIMENTAL_WRAP` or the `.semlf.ini` `experimental-wrap` key opts in (env wins, ADR-0017),
   and it never blocks even then.
   64 usage error;
   `--help` and `--version` exit 0.

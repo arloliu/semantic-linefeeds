@@ -1562,6 +1562,11 @@ def _kind_of(finding):
     return finding["kind"] if isinstance(finding, dict) else finding[1]
 
 
+def _line_of(finding):
+    """The anchor line of a finding whether it is a diagnostic dict or a legacy tuple."""
+    return finding["line"] if isinstance(finding, dict) else finding[0]
+
+
 def format_findings(findings, path, snippet, skill_hint=True):
     findings = _as_tuples(findings)
     where = "the text just written to" if snippet else ""
@@ -1584,6 +1589,17 @@ def format_findings(findings, path, snippet, skill_hint=True):
             f"A finding can be a false positive (e.g. an 'and' joining a compound object is not a boundary) — "
             f"judge each one; leave the line alone if the break would sever a clause."
         ]
+        # A blocking report could not carry the withheld kind until it began travelling with the block on its line,
+        # so the wording above speaks only to the blocking one.
+        # Left as it stood, the kind the corpus shows misfiring would arrive under "Fix these" with nothing qualifying it.
+        if WITHHELD_KIND in {kind for _, kind, _, _ in findings}:
+            blocking.append(
+                f"A {WITHHELD_KIND} finding sharing a line with a blocking one says where the split leaves text, "
+                f"not that a second repair is due: rejoin before you split, "
+                f"so the opening it names travels to the line below. "
+                f"Judge it like any other finding — "
+                f"if that line already ends at a real clause boundary, split without moving anything."
+            )
         if skill_hint:
             blocking.append(
                 "If unsure of the rules, load the semantic-linefeeds skill."
@@ -1766,10 +1782,23 @@ def model_visible(findings, path=None):
     The gate this release is measured by asks what the model is told,
     not what the checker can see.
     `path` threads through to opted_into_withheld_kind's env/ini/default resolution (ADR-0017).
+
+    One exception outlives the withdrawal.
+    A withheld finding anchored on a line a blocking finding already holds travels with it,
+    because the withdrawal exists to keep the model away from prose it was not going to touch,
+    and that line is being rewritten either way.
+    Repairing a fused line whose closing sentence continues below strands that opening on a line of its own,
+    and the withheld finding is the only one that says the opening belongs with the line under it (ADR-0021).
+    An advisory does not corroborate: it leaves the line as its author wrote it.
     """
     if opted_into_withheld_kind(path):
         return list(findings)
-    return [finding for finding in findings if _kind_of(finding) != WITHHELD_KIND]
+    blocked = {_line_of(f) for f in findings if _kind_of(f) in BLOCKING_KINDS}
+    return [
+        finding
+        for finding in findings
+        if _kind_of(finding) != WITHHELD_KIND or _line_of(finding) in blocked
+    ]
 
 
 def blocking_kinds(findings):

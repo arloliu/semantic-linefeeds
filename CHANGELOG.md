@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Repairing a run-on line no longer strands the sentence it splits off.**
+  A comment wrapped at a column often ends one sentence mid-line
+  and starts the next one at the end of that same line.
+  The stop falls inside `// Package cache provides caches`,
+  the words after it open a sentence that finishes on the line below,
+  and splitting there left that opening standing alone on a line of its own.
+  That reads worse than the wrapped comment it replaced,
+  because a line holding no whole thought breaks the one rule the rest of the file keeps,
+  and it widens the next diff to that sentence from two lines to three.
+  The checker always saw both halves of this, and only ever told you about the run-on one.
+  A `wrap` now ships beside a `fused` whenever the two land on the same line,
+  and the repair guidance says to rejoin before splitting.
+  On a large Go codebase a third of all run-on lines have this shape.
+  `wrap` is unchanged everywhere else: it still never blocks, and it stays out of hook feedback on any other line.
+
 ## [0.8.1] - 2026-08-18
 
 The checker stops accusing five kinds of correct line, and stops hiding work on two others.

@@ -6,6 +6,11 @@
 [ADR-0017](0017-experimental-wrap-also-lives-in-ini.md) adds a `.semlf.ini` `experimental-wrap` key beside the environment variable;
 the opt-in-surface sentence below now names one of two surfaces,
 env still winning over ini.
+**Amended:** 2026-08-18 —
+[ADR-0021](0021-a-withheld-finding-travels-with-the-block-it-shares-a-line-with.md) adds one exception to the withdrawal below:
+a `wrap` anchored on a line a blocking finding already holds is delivered with it,
+because that line is being rewritten either way.
+Every line no block holds keeps the withdrawal exactly as stated here.
 
 ## Context
 

@@ -19,9 +19,11 @@ def test_hook_bad_edit_blocks():
     assert r.returncode == 2
     assert "[fused]" in r.stderr
     assert "semantic-linefeeds skill" in r.stderr
-    # This payload also carries a wrap, which this release withholds from hook feedback.
-    # `test_wrap_is_withheld_from_a_report_it_would_otherwise_share` is where that is asserted.
-    assert "[wrap]" not in r.stderr
+    # The recorded comment is the shape the withdrawal's one exception exists for.
+    # Its stop falls inside "provides caches", and the words after that stop open a sentence finishing on the next line.
+    # Splitting at the stop without the second finding leaves that opening standing alone,
+    # so the wrap ships beside the fused it shares a line with.
+    assert "[wrap]" in r.stderr
 
 
 def test_hook_good_edit_passes():

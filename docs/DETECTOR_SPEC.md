@@ -402,6 +402,8 @@ It crosses the physical boundary and ends after the lower line's opening word.
 `wrap` is a closed-world heuristic.
 Correct breaks before lowercase phrases outside `CONNECTORS` can produce false positives.
 For that reason, hooks withhold it by default and it never blocks.
+The one line it still reaches is a line a blocking finding already holds,
+where the repair needs it and the withholding protects nothing.
 
 ## `long`
 
@@ -557,6 +559,15 @@ The note appears only when at least one degraded report survives visibility filt
 File audits see all detected kinds.
 Hooks first remove `wrap` unless the active environment or project configuration opts in.
 
+One `wrap` survives that removal without any opt-in:
+the one anchored on a line that a blocking finding also holds.
+That line is being rewritten whatever the hook says about it,
+so the removal has no prose left to protect there,
+and the `wrap` is what keeps the repair from stranding the sentence the `fused` split off.
+Only a blocking kind corroborates.
+A `wrap` beside a `long` on one line is still removed,
+because an advisory leaves the line as its author wrote it.
+
 After visibility filtering, delivery follows this matrix:
 
 | Visible result | Hook status | Hook channel | File status |
@@ -566,11 +577,15 @@ After visibility filtering, delivery follows this matrix:
 | `wrap` only, default | 0 | No output | 1 |
 | Opted-in `wrap` only | 0 | One JSON object on standard output | 1 |
 | Any visible `fused` | 2 | One combined text report on standard error | 1 |
+| `fused` and a `wrap` on its line | 2 | Both in that one report on standard error | 1 |
 | Read error in `--file` | not applicable | Error on standard error | 1 |
 | Usage error | 64 | Usage or error on standard error | 64 |
 
 When one hook delivery contains blocking and advisory findings, standard error carries every visible finding together.
 An advisory-only hook report is one JSON object under `hookSpecificOutput.additionalContext`.
+
+A blocking report carrying a withheld finding adds one sentence naming it as direction for the repair,
+not as a second repair, and stating that the rejoin comes before the split.
 
 Text excerpts truncate beyond 60 characters.
 Every non-empty hook report ends with the bounded-disagreement instruction.
@@ -585,7 +600,12 @@ A clean JSON audit emits `[]`.
 
 - A sentence genuinely ending in a listed abbreviation goes unreported,
   because `fused` is the blocking kind and a wrong block costs more than a miss.
-- `wrap` has known false positives and stays outside default hook feedback by design.
+- `wrap` has known false positives and stays outside default hook feedback by design,
+  except on a line a blocking finding already holds.
+- A repair that strands an opening on its own line draws only a `wrap`,
+  which no block corroborates,
+  so a default hook passes that file in silence.
+  Delivering the `wrap` beside the block is what prevents the repair, not what catches it.
 - `CONNECTORS` can hide genuine wraps because over-inclusion costs recall rather than precision.
 - `long` counts code points, so CJK display width and grapheme width are not represented.
 - The six-word boundary hint can name list-closing conjunctions that are not clause boundaries,
@@ -600,7 +620,7 @@ A clean JSON audit emits `[]`.
   because these exclusions operate on whole lines, whole paragraphs, or whole files.
 - Payload-only hook fallbacks lose surrounding context and may miss cross-boundary findings.
 - Ambiguous token location causes span-scoped diagnostics to be withheld rather than widened to a whole line.
-- `--file` returns status 1 for `wrap` even though hooks withhold it, because file mode is an explicit human audit.
+- `--file` returns status 1 for `wrap` even though hooks mostly withhold it, because file mode is an explicit human audit.
 
 These limitations follow the implemented precision and delivery policies.
 They should remain explicit so future changes do not mistake a known tradeoff for an accidental regression.

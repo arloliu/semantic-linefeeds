@@ -28,6 +28,20 @@ FUSED_PLUS_LONG = FUSED_ONLY + LONG_ONLY
 WRAP_ONLY = "a line that ends mid-clause because it was\nwrapped at a column.\n"
 FUSED_PLUS_WRAP = FUSED_ONLY + "\n" + WRAP_ONLY
 
+# One line carrying both kinds at once,
+# which is the shape a column-wrapped comment takes when a sentence ends mid-line
+# and the sentence after it runs off the end of that same line.
+FUSED_AND_WRAP_ON_ONE_LINE = (
+    "One sentence here. Another sentence follows mid-clause because it\n"
+    "was wrapped at a column.\n"
+)
+# The same shape with an advisory kind standing where the blocking one stood.
+LONG_AND_WRAP_ON_ONE_LINE = (
+    "This clause runs on and on well past the configured advisory threshold "
+    "of one hundred and twenty characters, and the tail keeps\n"
+    "going past the column it was wrapped at.\n"
+)
+
 AGENTS = ["claude", "codex"]
 
 # The opt-in that puts `wrap` back in front of the model.
@@ -86,6 +100,27 @@ def test_case_texts_produce_the_intended_kinds():
     assert kinds(FUSED_PLUS_LONG) == {"fused", "long"}
     assert kinds(WRAP_ONLY) == {"wrap"}
     assert kinds(FUSED_PLUS_WRAP) == {"fused", "wrap"}
+    assert kinds(FUSED_AND_WRAP_ON_ONE_LINE) == {"fused", "wrap"}
+    assert kinds(LONG_AND_WRAP_ON_ONE_LINE) == {"long", "wrap"}
+
+
+def test_the_one_line_cases_put_both_kinds_on_the_same_line():
+    """The exception these cases exercise is scoped to one line, not to one file.
+
+    A case whose two kinds drifted onto separate lines would quietly become a second FUSED_PLUS_WRAP,
+    and the test below would then pass without exercising anything.
+    """
+    import check_linefeeds
+
+    def lines(text, kind):
+        return {f[0] for f in check_linefeeds.check(text, "doc.md") if f[1] == kind}
+
+    for text, blocking in [
+        (FUSED_AND_WRAP_ON_ONE_LINE, "fused"),
+        (LONG_AND_WRAP_ON_ONE_LINE, "long"),
+    ]:
+        assert lines(text, blocking) == lines(text, "wrap")
+    assert not lines(FUSED_PLUS_WRAP, "fused") & lines(FUSED_PLUS_WRAP, "wrap")
 
 
 @pytest.mark.parametrize("agent", AGENTS)
@@ -151,11 +186,66 @@ def test_wrap_alone_tells_the_model_nothing(agent):
 
 @pytest.mark.parametrize("agent", AGENTS)
 def test_wrap_is_withheld_from_a_report_it_would_otherwise_share(agent):
-    """A blocking report must not smuggle the withdrawn kind in beside the blocking one."""
+    """A blocking report carries the withdrawn kind only for the line it blocks.
+
+    The two findings sit on different lines here,
+    so the wrap describes prose this edit is not rewriting and stays out of the report.
+    """
     r = deliver(agent, FUSED_PLUS_WRAP)
     assert r.returncode == 2
     assert "[fused]" in r.stderr
     assert "[wrap]" not in r.stderr
+
+
+@pytest.mark.parametrize("agent", AGENTS)
+def test_a_wrap_on_a_blocked_line_travels_with_it(agent):
+    """A line that is already being rewritten has nothing left for the withdrawal to protect.
+
+    Splitting a fused line whose closing sentence continues below strands that opening on a line of its own,
+    and the wrap is the only finding that says the opening belongs with the line under it.
+    Withholding it here buys no quiet, because the edit is blocked either way.
+    """
+    r = deliver(agent, FUSED_AND_WRAP_ON_ONE_LINE)
+    assert r.returncode == 2
+    assert "[fused]" in r.stderr
+    assert "[wrap]" in r.stderr
+
+
+@pytest.mark.parametrize("agent", AGENTS)
+def test_a_delivered_wrap_directs_the_repair_rather_than_adding_one(agent):
+    """A blocking report says "Fix these", and the withdrawn kind it now carries is not a second thing to fix.
+
+    Before the exception a blocking report could not contain this kind,
+    so its wording never had to account for one.
+    Left unsaid, the kind the corpus shows misfiring arrives as a bare instruction to change a line,
+    which is the outcome the withdrawal was written to prevent.
+    """
+    r = deliver(agent, FUSED_AND_WRAP_ON_ONE_LINE)
+    assert "rejoin before you split" in r.stderr
+    assert "not that a second repair is due" in r.stderr
+    assert "already ends at a real clause boundary" in r.stderr
+
+
+@pytest.mark.parametrize("agent", AGENTS)
+def test_a_blocking_report_carrying_no_wrap_is_worded_as_before(agent):
+    """The added sentence belongs to the report that carries the withdrawn kind, and to no other."""
+    r = deliver(agent, FUSED_ONLY)
+    assert "Fix these in the block you just wrote" in r.stderr
+    assert "rejoin before you split" not in r.stderr
+
+
+@pytest.mark.parametrize("agent", AGENTS)
+def test_a_wrap_beside_an_advisory_stays_withheld(agent):
+    """Only a blocking finding corroborates a wrap.
+
+    An advisory leaves the line standing as its author wrote it,
+    so a wrap delivered beside one still risks sending the model at prose that was never wrong.
+    """
+    r = deliver(agent, LONG_AND_WRAP_ON_ONE_LINE)
+    assert r.returncode == 0
+    context = advisory(r)
+    assert "[long]" in context
+    assert "[wrap]" not in context
 
 
 @pytest.mark.parametrize("agent", AGENTS)

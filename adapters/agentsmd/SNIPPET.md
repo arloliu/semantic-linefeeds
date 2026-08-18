@@ -6,6 +6,9 @@ One sentence per line;
 a sentence longer than the configured limit (default 120 chars) splits only at a real clause boundary
 (`;`, `:`, `—`, or a conjunction where both sides stand alone).
 
+Splitting two sentences off one line can strand the second one's opening:
+when the text after the stop continues on the line below, join it there rather than leaving it alone.
+
 A conjunction (`and`, `but`, `so`) or relative pronoun (`which`, `that`, `where`) is a boundary only when both sides could stand alone as a complete sentence.
 A compound subject or object does not split:
 "depends on X and Y" has no boundary at "and".

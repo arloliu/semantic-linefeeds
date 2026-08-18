@@ -105,10 +105,12 @@ because a guardrail nobody can install cleanly has no team to integrate with.
 
 - Hook-side mutation of the suggested replacement, gated by a content-hash check immediately before writing (ADR-0007);
   wider automatic-fix classes beyond `!`/`?`.
+  Entry condition: a suggestion must be able to reach the line below the one it replaces.
+  Its shape today is a two-line replacement for the anchor line alone,
+  and over the pinned evidence base a third of all `fused` lines carry a `wrap` as well,
+  so widening the class without widening the shape would write that many stranded openings into files unattended.
 - GitHub Action, SARIF, and annotations as serializers over the diagnostic schema.
 - A real-agent regression corpus.
-- The `wrap` repair recipe is bound to the finding's two-line ownership window,
-  which closes the conflict between rejoining a severed clause and never reflowing stable text.
 
 ### v1.0 — Stable contracts
 

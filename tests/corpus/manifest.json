@@ -2,7 +2,7 @@
   "schema_version": 1,
   "rubric": {
     "path": "skills/semantic-linefeeds/SKILL.md",
-    "digest": "sha256:599cec7e9df825f801c3ffb66e091622b7da7e2a2e77333e10ea3485c3165cbf",
+    "digest": "sha256:d731884d53dc32d5f4fb2291cd5ec1b78c1665f14ca9bfca26ea894b23f91de7",
     "note": "the normative source for what counts as a violation; LABELING.md adds procedure only"
   },
   "reporting": {

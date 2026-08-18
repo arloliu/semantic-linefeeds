@@ -35,6 +35,11 @@ Then judge each finding — the checker flags suspicion, it does not decide:
 
 - **fused** — split the line after the terminal punctuation.
   This one is almost always correct to fix.
+  Before you split, read the line below.
+  If the text after the stop does not finish its sentence and the next line opens on a lowercase word,
+  the sentence continues there:
+  join that text to the line below instead of leaving it standing alone.
+  A line holding no whole thought reads worse than the column wrap you started from.
 - **wrap** — rejoin the severed clause onto one line, then re-split at sentence ends.
   The repair is confined to the two lines the finding spans;
   if a correct re-split would push text into a third line you did not write,
@@ -42,6 +47,10 @@ Then judge each finding — the checker flags suspicion, it does not decide:
 - **long** — scan rightward from the limit (default 120) for the first clause boundary; break there.
   Nothing rightward: scan backward from that point and break at the last boundary found.
   Nothing in either direction: leave the line long — an over-long line beats a severed clause.
+
+When one line draws both `fused` and `wrap`, rejoin before you split.
+Splitting first strands the opening the rejoin was going to absorb,
+and the checker then reports the `wrap` you created instead of the one you were given.
 
 A clause boundary is `;`, `:`, `—`, a coordinating conjunction (`and`, `but`, `so`),
 or a word opening a subordinate clause —
