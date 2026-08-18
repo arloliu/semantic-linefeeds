@@ -1068,3 +1068,240 @@ def test_a_class_the_population_never_produced_is_a_line_rather_than_an_absence(
     for name in clf.WITHHOLDING_CLASSES:
         if name != "terminator_period":
             assert any(problem.startswith(f"{name}: no unit") for problem in problems)
+
+
+# --- the stimulus, and the batch a pass reads -----------------------------
+#
+# A pass must see what a repairing agent sees, minus the answer.
+# Being precise about the "minus" is the point.
+# What it is shown is `format_findings` output, not `deliver` output:
+# `deliver` appends a suggested-replacement block for any finding carrying one.
+# The elicited rates therefore describe agents given a blinded body,
+# not agents given complete hook feedback.
+
+import subprocess  # noqa: E402
+
+from corpus_harness import (  # noqa: E402
+    REPAIR_BATCH,
+    attach_candidates,
+    file_digest,
+    repair_batches,
+    repair_stimulus,
+)
+
+FIXTURES = REPO / "tests" / "diagnostics" / "fixtures"
+BATCH = REPO / "tests" / "corpus" / "repairs" / "batch.py"
+DRAW = REPO / "tests" / "corpus" / "repairs" / "draw.py"
+
+
+def fixture_units(pattern):
+    """Units from the golden fixture tree, laid out so a checkout root sits above them."""
+    return repair_population(
+        {"id": "fixtures", "selection_command": f"git ls-files '{pattern}'"}, FIXTURES
+    )
+
+
+def test_the_stimulus_is_the_report_body_and_not_the_delivered_one():
+    """`deliver` appends the suggestion, and this is the redaction that removes it."""
+    text = "Stop now! Go later.\n"
+    stimulus = repair_stimulus(text, "doc.md", 1)
+    assert "[fused] line 1" in stimulus["body"]
+    assert "Fix these in the block you just wrote" in stimulus["body"]
+    assert "Go later." in stimulus["body"]
+    # The line does carry a suggestion, and none of it reaches the body.
+    (finding,) = clf.diagnose(text, "doc.md")
+    assert "suggestion" in finding
+    assert "suggested" not in stimulus["body"].lower()
+
+
+def test_the_stimulus_says_line_n_rather_than_line_n_of_your_edit():
+    """`snippet=False`, because a drawn unit is a file's line and not an edit's."""
+    body = repair_stimulus("Stop now! Go later.\n", "doc.md", 1)["body"]
+    assert "line 1:" in body
+    assert "of your edit" not in body
+
+
+def test_every_finding_on_the_anchor_line_reaches_the_stored_body():
+    """A `wrap` travels with a blocking finding.
+    The rejoin it invites is the repair this corpus measures.
+    """
+    long_line = "and it also runs on well past the advisory limit " * 3
+    text = f"Stop now! Go later, {long_line}and\nthen it keeps running on.\n"
+    stimulus = repair_stimulus(text, "doc.md", 1)
+    assert stimulus["kinds"] == ["fused", "long", "wrap"]
+    for kind in ("[fused]", "[wrap]", "[long]"):
+        assert kind in stimulus["body"]
+
+
+def test_the_stimulus_records_the_limit_it_was_rendered_under():
+    """`format_findings` prints the number, so a changed limit changes the text."""
+    stimulus = repair_stimulus("Stop now! Go later.\n", "doc.md", 1)
+    assert str(stimulus["long_limit"]) in stimulus["body"]
+
+
+def test_two_boundaries_on_one_line_share_one_body():
+    """A host sends the line's findings, not one of them."""
+    units = fixture_units("many_boundaries.md")
+    assert len(units) == 2
+    assert units[0]["stimulus"] == units[1]["stimulus"]
+    assert units[0]["stimulus"]["body"].count("[fused]") == 2
+
+
+def test_a_batch_is_reproducible_after_the_checkout_is_gone(tmp_path):
+    """Everything a pass reads comes from the sample and from two files in this repo."""
+    sample = tmp_path / "sample.json"
+    units = attach_candidates(fixture_units("*.md"), FIXTURES.parent)
+    sample.write_text(
+        json.dumps(
+            {
+                "units": units,
+                "stimulus_digests": {
+                    "skill": file_digest(
+                        REPO / "skills" / "semantic-linefeeds" / "SKILL.md"
+                    ),
+                    "repairing": file_digest(
+                        REPO / "tests" / "corpus" / "repairs" / "REPAIRING.md"
+                    ),
+                    "renderer": file_digest(REPO / "scripts" / "check_linefeeds.py"),
+                },
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    first, second = tmp_path / "a", tmp_path / "b"
+    for out in (first, second):
+        done = subprocess.run(
+            [
+                sys.executable,
+                str(BATCH),
+                "claude",
+                "--sample",
+                str(sample),
+                "--out",
+                str(out),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(tmp_path),
+        )
+        assert done.returncode == 0, done.stderr
+    names = sorted(path.name for path in first.iterdir())
+    assert names
+    for name in names:
+        assert (first / name).read_bytes() == (second / name).read_bytes()
+
+
+def test_a_batch_refuses_when_the_rule_it_was_drawn_under_has_moved(tmp_path):
+    """A round whose stimulus changed halfway through measures two stimuli."""
+    sample = tmp_path / "sample.json"
+    sample.write_text(
+        json.dumps(
+            {
+                "units": [],
+                "stimulus_digests": {
+                    "skill": "sha256:" + "0" * 64,
+                    "repairing": "sha256:" + "0" * 64,
+                    "renderer": "sha256:" + "0" * 64,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    done = subprocess.run(
+        [
+            sys.executable,
+            str(BATCH),
+            "claude",
+            "--sample",
+            str(sample),
+            "--out",
+            str(tmp_path / "out"),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert done.returncode != 0
+    for name in ("skill", "repairing", "renderer"):
+        assert name in done.stderr
+    assert "nothing was laid out" in done.stderr
+
+
+def test_a_batch_shows_no_suggestion_no_class_name_and_no_original_marker(tmp_path):
+    """Three redactions, and the third is the one that is easy to forget.
+
+    Changing nothing is one candidate among the others.
+    A flag on it is a flag the undecided reach for.
+    """
+    units = attach_candidates(fixture_units("*.md"), FIXTURES.parent)
+    sample = tmp_path / "sample.json"
+    sample.write_text(
+        json.dumps(
+            {
+                "units": units,
+                "stimulus_digests": {
+                    "skill": file_digest(
+                        REPO / "skills" / "semantic-linefeeds" / "SKILL.md"
+                    ),
+                    "repairing": file_digest(
+                        REPO / "tests" / "corpus" / "repairs" / "REPAIRING.md"
+                    ),
+                    "renderer": file_digest(REPO / "scripts" / "check_linefeeds.py"),
+                },
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "out"
+    done = subprocess.run(
+        [
+            sys.executable,
+            str(BATCH),
+            "claude",
+            "--sample",
+            str(sample),
+            "--out",
+            str(out),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert done.returncode == 0, done.stderr
+    rendered = "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(out.iterdir())
+    )
+    assert rendered
+    # A unit's path is data the batch echoes rather than a label it chose,
+    # and these fixtures are named after the classes they exercise,
+    # so the paths come out before the class names are looked for.
+    composed = rendered
+    for unit in units:
+        composed = composed.replace(unit["path"], "<path>")
+    assert "<path>" in composed
+    for name in clf.WITHHOLDING_CLASSES:
+        assert name not in composed
+    for field in ("original_cut", "preserving", "carrier_valid", "withheld_by"):
+        assert field not in rendered
+
+
+def test_a_pass_reads_its_units_in_an_order_of_its_own():
+    """The same reason `labeling_batches` randomizes: drift must not line up."""
+    sample = [{"id": f"u-{number:03d}"} for number in range(40)]
+    one = [unit["id"] for batch in repair_batches(sample, "claude") for unit in batch]
+    two = [unit["id"] for batch in repair_batches(sample, "codex") for unit in batch]
+    again = [unit["id"] for batch in repair_batches(sample, "claude") for unit in batch]
+    assert sorted(one) == sorted(two) == [unit["id"] for unit in sample]
+    assert one != two
+    assert one == again
+
+
+def test_a_batch_holds_no_more_units_than_a_sitting():
+    sample = [{"id": f"u-{number:03d}"} for number in range(40)]
+    batches = repair_batches(sample, "claude")
+    assert max(len(batch) for batch in batches) <= REPAIR_BATCH
+    assert sum(len(batch) for batch in batches) == 40

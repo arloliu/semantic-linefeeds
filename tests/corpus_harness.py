@@ -1395,6 +1395,107 @@ def exact_set_key(classes):
     return ",".join(sorted(classes))
 
 
+# How many units one pass judges at a sitting.
+# Smaller than a labeling batch.
+# A unit here carries a body and a candidate list, not two lines and two questions.
+REPAIR_BATCH = 15
+
+
+def repair_stimulus(text, path, line):
+    """What a repairing agent is shown for one anchor line, minus the answer.
+
+    `format_findings` renders the report body and never reads a suggestion.
+    `deliver` is what a host actually sends,
+    and it appends a suggested-replacement block for any finding carrying one,
+    followed by the judgment and suppression notes.
+    So this is `format_findings` output rather than `deliver` output,
+    which is a deliberate redaction and not a reproduction.
+    What the round measures is therefore agents given a blinded body,
+    not agents given complete hook feedback.
+
+    Every finding the hook would put on this line travels:
+    the `fused` one, and any `wrap` or `long` anchored beside it.
+    ADR-0021 is why a `wrap` travels with a blocking finding at all,
+    and the repair it invites is the rejoin this corpus measures.
+
+    Stored rather than recomputed.
+    Re-rendering later would need the extractor's state for the whole file —
+    block comments, docstrings, fences, and everything above the window —
+    which a one-line or two-line window cannot reproduce.
+    """
+    import check_linefeeds
+
+    visible = check_linefeeds.model_visible(check_linefeeds.diagnose(text, path), path)
+    here = [finding for finding in visible if finding["line"] == line]
+    return {
+        "body": check_linefeeds.format_findings(
+            here, path, snippet=False, skill_hint=True
+        ),
+        "kinds": sorted({finding["kind"] for finding in here}),
+        # `format_findings` prints this number, so a changed limit changes the text.
+        "long_limit": check_linefeeds.active_long_limit(path)
+        or check_linefeeds.DEFAULT_LONG_LINE,
+        "withheld_kind_opt_in": bool(check_linefeeds.opted_into_withheld_kind(path)),
+    }
+
+
+def candidate_id(index):
+    """A candidate's name in a batch, which is its position in the sorted universe."""
+    return f"c{index:02d}"
+
+
+def attach_candidates(units, root):
+    """Give each drawn unit its candidate universe, in the checkout it was drawn from.
+
+    After the draw rather than during it.
+    A candidate is validated by splicing it into its file and re-reading the file,
+    so generating for the whole population would re-walk each source file
+    once per candidate of every boundary in it.
+
+    The unit records which candidate leaves the window unchanged.
+    A batch never renders that, because a flag on "change nothing"
+    is a flag the undecided reach for.
+    """
+    import check_linefeeds
+
+    texts = {}
+    for unit in units:
+        key = (unit["source"], unit["path"])
+        if key not in texts:
+            texts[key] = (root / unit["source"] / unit["path"]).read_text(
+                encoding="utf-8"
+            )
+        text = texts[key]
+        records, _suppressions = check_linefeeds.judged_lines(text, unit["path"])
+        window = repair_window(records, unit["index"])
+        found = repair_candidates(window, text, unit["path"])
+        unit["defect"] = found["defect"]
+        unit["positions"] = found["positions"]
+        unit["original_cut"] = list(original_cuts(window))
+        unit["candidates"] = [
+            {
+                "id": candidate_id(index),
+                "cuts": list(cuts),
+                "lines": body["lines"],
+                "preserving": body["preserving"],
+                "carrier_valid": body["carrier_valid"],
+                "intact": body["intact"],
+            }
+            for index, (cuts, body) in enumerate(sorted(found["candidates"].items()))
+        ]
+    return units
+
+
+def repair_batches(sample, name, size=REPAIR_BATCH):
+    """One pass's units, in an order of its own, in bounded batches.
+
+    The same shape `labeling_batches` uses, and for the same two reasons.
+    Order is randomized per pass so that fatigue and drift do not line up across passes,
+    and batches are bounded because a pass judging a hundred at a sitting drifts inside it.
+    """
+    return labeling_batches(sample, name, size)
+
+
 def repair_population(source, root):
     """Every fused boundary the detector raises on one source, as a repair unit.
 
@@ -1425,6 +1526,9 @@ def repair_population(source, root):
         at = {record["line"]: index for index, record in enumerate(records)}
         wrapped = {d["line"] for d in diagnostics if d["kind"] == "wrap"}
         seen = collections.Counter()
+        # Rendered once per line, because two boundaries on one line share one body:
+        # a host sends the line's findings, not one of them.
+        stimulus = {}
         for diagnostic in diagnostics:
             if diagnostic["kind"] != "fused":
                 continue
@@ -1466,6 +1570,9 @@ def repair_population(source, root):
                         "co_wrap": line in wrapped,
                         "language": _language(name),
                     },
+                    "stimulus": stimulus.setdefault(
+                        line, repair_stimulus(text, name, line)
+                    ),
                 }
             )
     return out

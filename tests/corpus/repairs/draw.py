@@ -32,8 +32,10 @@ sys.path.insert(0, str(REPO / "scripts"))
 import check_linefeeds as clf  # noqa: E402
 from corpus_harness import (  # noqa: E402
     REPAIR_ADMISSION,
+    attach_candidates,
     contract_digest,
     draw_strata,
+    file_digest,
     repair_admission_digest,
     repair_population,
     stratum_shortfalls,
@@ -41,6 +43,8 @@ from corpus_harness import (  # noqa: E402
 
 CORPUS = TESTS / "corpus"
 MANIFEST = CORPUS / "manifest.json"
+SKILL = REPO / "skills" / "semantic-linefeeds" / "SKILL.md"
+REPAIRING = HERE.parent / "REPAIRING.md"
 
 # Every unit comes from a stratum quota, so there is no random base.
 # The label corpus uses one because its dimensions overlap,
@@ -74,6 +78,7 @@ def main(argv=None):
         sys.exit("no calibration source produced a unit; check the checkout root")
 
     drawn, strata = draw_strata(population, QUOTAS, SEED)
+    attach_candidates(drawn, root)
     shortfalls = stratum_shortfalls(population, strata, QUOTAS)
 
     out = pathlib.Path(args.out)
@@ -94,6 +99,15 @@ def main(argv=None):
                 "draw_digest": contract_digest(
                     {"base": BASE, "seed": SEED, "quotas": QUOTAS}
                 ),
+                # What the stimulus was rendered under.
+                # A batch checks these before it lays anything out,
+                # so a changed rule refuses.
+                # It does not silently change the stimulus halfway through a round.
+                "stimulus_digests": {
+                    "skill": file_digest(SKILL),
+                    "repairing": file_digest(REPAIRING),
+                    "renderer": file_digest(REPO / "scripts" / "check_linefeeds.py"),
+                },
                 "sources": {
                     source["id"]: source["commit"]
                     for source in manifest["sources"]
