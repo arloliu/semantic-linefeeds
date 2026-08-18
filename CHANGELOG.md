@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A measurement round can no longer commit to its answer after seeing the question.**
+  This project scores changes against sealed text nobody has read,
+  and the record that makes it a prediction rather than a description is written before the text is drawn.
+  That record named what was being predicted but not which round it belonged to,
+  and nothing tied it to the text drawn afterwards,
+  so one round's commitment could stand in for another's,
+  and a change could be adjusted once the text had been read and committed to after the fact.
+  The record now names its round, may be written only once for it,
+  and the drawn text carries the record it was drawn under,
+  which sealing checks.
+  Rounds already sealed are untouched and still open.
+  Nothing here changes what the checker reports.
+
 - **Repairing a run-on line no longer strands the sentence it splits off.**
   A comment wrapped at a column often ends one sentence mid-line
   and starts the next one at the end of that same line.

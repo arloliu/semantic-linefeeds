@@ -32,13 +32,14 @@ def main(number, intent):
         CORPUS / "freeze.jsonl",
         TESTS.parent / "scripts" / "check_linefeeds.py",
         CORPUS / "manifest.json",
+        round=number,
     )
-    holdout.freeze_predicate(intent)
-    frozen = holdout.require_predicate_freeze()
+    frozen = holdout.freeze_predicate(intent)
 
     print(f"frozen for round {number}: {frozen['predicate_digest']}")
     print(f"  intent   {frozen['intent']}")
     print(f"  manifest {frozen['manifest_digest']}")
+    print(f"  record   {frozen['id']}")
     print("commit this ledger line before drawing anything")
 
 

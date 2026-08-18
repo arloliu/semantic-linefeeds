@@ -133,7 +133,22 @@ def main(number):
         CORPUS / "freeze.jsonl",
         TESTS.parent / "scripts" / "check_linefeeds.py",
         CORPUS / "manifest.json",
+        round=number,
     )
+
+    # The sample names the freeze its prose was drawn under, and the seal answers to that record.
+    # Without this the ledger accepts any freeze naming the current predicate,
+    # so a predicate could be frozen, drawn against, tuned once the prose had been read,
+    # frozen again, and sealed against the second freeze.
+    sample = json.loads((round_dir / "sample.json").read_text(encoding="utf-8"))
+    drawn_under = sample.get("drawn_under")
+    if not drawn_under:
+        sys.exit(
+            f"round {number}'s sample names no freeze record.\n"
+            "It was drawn before the draw recorded one, so nothing here can say "
+            "which predicate its prose was drawn under.\n"
+            "Nothing was written."
+        )
 
     if not sys.stdin.isatty():
         sys.exit(
@@ -158,7 +173,7 @@ def main(number):
     if not passphrase.strip():
         sys.exit("an empty passphrase seals nothing; nothing was written")
 
-    holdout.seal(text, passphrase)
+    holdout.seal(text, passphrase, drawn_under=drawn_under)
     holdout.freeze(
         {
             **{

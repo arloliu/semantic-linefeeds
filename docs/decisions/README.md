@@ -43,6 +43,8 @@ If a record and a rule disagree, the rule wins until a new record supersedes it.
 | [ADR-0020](0020-string-literal-inertness-follows-lexical-coverage.md) | String-literal content is inert only where the extractor has lexical coverage; Python multiline strings use the standard-library tokenizer, recognized docstrings remain prose, and other language profiles retain a named limitation — this narrows ADR-0010's universal wording to implemented behavior |
 | [ADR-0021](0021-a-withheld-finding-travels-with-the-block-it-shares-a-line-with.md) | A withheld `wrap` is delivered when a blocking finding sits on the same line, because that line is being rewritten anyway and the `wrap` is what stops the repair stranding the sentence it splits off; an advisory does not corroborate, and every other line keeps the withdrawal — this amends [ADR-0002](0002-wrap-withdrawn-from-default-feedback.md) |
 
+| [ADR-0022](0022-a-pre-draw-freeze-binds-a-round-and-a-sample.md) | A holdout's pre-draw freeze names the round it is for and is written once, and the sample records the freeze it was drawn under, so a predicate cannot be tuned after its prose has been read and committed to afterwards; the sealed rounds are untouched and the records that predate the rule authorize nothing — this amends [ADR-0008](0008-a-holdout-is-spent-by-being-opened.md) |
+
 ## Principles these records share
 
 1. **Meaning before columns.**

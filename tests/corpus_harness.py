@@ -805,14 +805,18 @@ def _unit_problems(record, declared_sources, declared_frames):
 class Holdout:
     """One sealed bundle, plus the append-only ledger that decides whether it opens."""
 
-    def __init__(self, bundle, ledger, predicate, manifest):
+    def __init__(self, bundle, ledger, predicate, manifest, round=None):
         self.bundle = bundle
         self.ledger = ledger
         self.predicate = predicate
         self.manifest = manifest
+        # The round a draw or a seal is acting for.
+        # `open` and `record_evaluation` never need it:
+        # they answer to the bundle's own freeze, which binds a ciphertext.
+        self.round = round
 
     def freeze_predicate(self, intent):
-        """Commit to a predicate before the prose it will be scored against has been drawn.
+        """Commit to a predicate, for one round, before its prose has been drawn.
 
         The freeze that binds a bundle can only be written once the bundle exists,
         which is after the sample was drawn, labeled, and sealed.
@@ -822,46 +826,107 @@ class Holdout:
         This record is the one that carries the claim.
         It names a predicate and nothing else that has been read yet,
         and the draw refuses to run without it.
-        """
-        self._append(
-            {
-                "record": "predicate_freeze",
-                "predicate_digest": self._predicate_digest(),
-                "manifest_digest": self._manifest_digest(),
-                "intent": intent,
-            }
-        )
 
-    def require_predicate_freeze(self):
-        """The record committing to this predicate, or a refusal naming what is missing.
+        It carries a round and an id because naming a predicate is not enough.
+        Without the round, a freeze written for one round authorizes any other.
+        Without the id, nothing ties the sample to the record it was drawn under,
+        so a predicate could be frozen, drawn against, tuned once the prose had been read,
+        frozen again, and sealed against the second freeze with nothing objecting.
+        """
+        if self.round is None:
+            raise ScoringRefused(
+                "a pre-draw freeze names the round it is for; this one names no round"
+            )
+        record = {
+            "record": "predicate_freeze",
+            "round": self.round,
+            "predicate_digest": self._predicate_digest(),
+            "manifest_digest": self._manifest_digest(),
+            "intent": intent,
+        }
+        # One pre-draw freeze per round.
+        # A second one is how a predicate read the prose and then committed to itself.
+        for earlier in self._records():
+            if (
+                earlier.get("record") == "predicate_freeze"
+                and earlier.get("round") == self.round
+            ):
+                raise ScoringRefused(
+                    f"round {self.round} was already frozen, for: {earlier['intent']}; "
+                    "a round that needs a second predicate needs a new round"
+                )
+        record["id"] = _digest(json.dumps(record, sort_keys=True).encode("utf-8"))
+        self._append(record)
+        return record
+
+    def require_predicate_freeze(self, drawn_under=None):
+        """The record this round was frozen under, or a refusal naming what is missing.
 
         The manifest digest is recorded on the freeze and not compared here.
         A sample is drawn before its floors are stated,
         so the manifest is expected to move between this record and the bundle's own freeze;
         the predicate is the thing that may not.
+
+        `drawn_under` is the record id the sample recorded at draw time.
+        Passing it is what turns "some freeze names this predicate" into
+        "the freeze this prose was drawn under names this predicate".
+        A sealed round passes it; a draw has nothing to pass yet.
+
+        A record with no round is from rounds 1 to 3, which were written before this rule.
+        Accepted records are never edited, so those stand as they are,
+        and this path refuses them rather than guessing which round they meant.
+        Opening and scoring those bundles is unaffected:
+        both answer to the bundle's own freeze, which binds a ciphertext.
         """
         digest = self._predicate_digest()
-        for record in self._records():
-            if (
-                record.get("record") == "predicate_freeze"
-                and record["predicate_digest"] == digest
-            ):
+        candidates = [
+            record
+            for record in self._records()
+            if record.get("record") == "predicate_freeze"
+        ]
+        for_round = [
+            record for record in candidates if record.get("round") == self.round
+        ]
+        if not for_round:
+            legacy = [record for record in candidates if "round" not in record]
+            if legacy:
+                raise ScoringRefused(
+                    f"no freeze record names round {self.round}; "
+                    f"{len(legacy)} record(s) predate the round rule and authorize nothing, "
+                    "because a freeze that names no round would authorize every round"
+                )
+            raise ScoringRefused(
+                f"no freeze record names round {self.round}; "
+                "freeze it before drawing the prose it will be scored against"
+            )
+        if drawn_under is not None:
+            for_round = [
+                record for record in for_round if record.get("id") == drawn_under
+            ]
+            if not for_round:
+                raise ScoringRefused(
+                    "the sample was drawn under a freeze this ledger does not hold; "
+                    "nothing may be sealed against a freeze the prose never saw"
+                )
+        for record in for_round:
+            if record["predicate_digest"] == digest:
                 return record
         raise ScoringRefused(
-            "no freeze record names this predicate; "
-            "freeze it before drawing the prose it will be scored against"
+            "the predicate changed since the freeze this round was drawn under; "
+            "a tuned predicate needs a new round"
         )
 
-    def seal(self, text, passphrase):
+    def seal(self, text, passphrase, drawn_under=None):
         """Write the ciphertext bundle.
 
         The plaintext never reaches the working tree.
 
-        Sealing is refused for an unfrozen predicate.
+        Sealing is refused for an unfrozen predicate,
+        and for a predicate that is not the one the prose was drawn under.
         The first round got the ordering right by care,
         and care is not a mechanism.
         """
-        self.require_predicate_freeze()
+        self.require_predicate_freeze(drawn_under)
         salt = os.urandom(16)
         mask_key, tag_key = _keys(passphrase, salt, KDF_ITERATIONS)
         ciphertext = _mask(text.encode("utf-8"), mask_key)

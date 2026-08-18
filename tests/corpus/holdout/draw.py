@@ -59,7 +59,13 @@ def main(root, number):
         CORPUS / "freeze.jsonl",
         TESTS.parent / "scripts" / "check_linefeeds.py",
         MANIFEST,
+        round=number,
     )
+    # A round that already holds a bundle is spent or in flight, and is not redrawn.
+    # ADR-0008 retires a round's sources once it has been opened,
+    # so a second draw would measure memory rather than generalization.
+    if (out_dir / "bundle.json").exists():
+        sys.exit(f"round {number} already holds a bundle\nnothing was drawn")
     try:
         frozen = holdout.require_predicate_freeze()
     except ScoringRefused as refusal:
@@ -90,6 +96,11 @@ def main(root, number):
                     for name, (bands, count) in sorted(QUOTAS.items())
                 },
                 "population": len(population),
+                # The record this prose was drawn under.
+                # The seal checks it.
+                # That is what stops a predicate being tuned after the draw,
+                # then frozen again before the seal.
+                "drawn_under": frozen["id"],
                 "units": drawn,
             },
             indent=2,
