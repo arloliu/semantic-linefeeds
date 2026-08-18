@@ -1,7 +1,7 @@
 # Detector Implementation Specification
 
 **Status:** living implementation specification
-**Applies to:** `scripts/check_linefeeds.py` version 0.8.0 at the current repository head
+**Applies to:** `scripts/check_linefeeds.py` version 0.8.1 at the current repository head
 
 ## Purpose and authority
 
