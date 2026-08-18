@@ -573,3 +573,277 @@ def test_a_line_in_the_middle_of_a_split_carries_no_tail_of_its_own():
         judged("/* Go later. */", "Go later."),
     ]
     assert carrier_valid(window, ["/* Stop now!", "/* Go later. */"], plain)
+
+
+# --- the acceptable set ----------------------------------------------------
+#
+# A label has three values and a repair does not.
+# A long fused line can be split at either of two real clause boundaries,
+# and both results are correct prose,
+# so the settled outcome is a set and the question is whether the machine's answer is in it.
+
+from corpus_harness import (  # noqa: E402
+    MAX_POSITIONS,
+    ScoringRefused,
+    candidate_is_valid,
+    cut_positions,
+    original_cuts,
+    repair_candidates,
+    repair_resolution,
+    score_repair,
+    set_acceptable,
+)
+
+
+def universe(text, path, index=0):
+    window = window_at(text, path, index)
+    return window, repair_candidates(window, text, path)
+
+
+def test_the_original_is_always_in_the_universe():
+    """Leaving the line alone has to be an answer the corpus can give.
+
+    For a window whose anchor ends mid-clause,
+    the existing break sits where no lexical rule offers one.
+    Most units in the stratum a period widening activates are exactly that.
+    A universe built from the lexical rule alone would not hold the original for them.
+    """
+    for text, path in (
+        (PAIR, "doc.md"),
+        ("Stop now! Go later.\n", "doc.md"),
+        ("- It ends mid-clause and\n  then it keeps running on.\n", "doc.md"),
+    ):
+        window, found = universe(text, path)
+        cuts = original_cuts(window)
+        assert cuts in found["candidates"], (text, found["candidates"].keys())
+        assert candidate_is_valid(found["candidates"][cuts])
+        assert found["candidates"][cuts]["lines"] == [
+            record["original_raw"] for record in window.records
+        ]
+
+
+def test_a_wrap_carrying_window_offers_its_own_break():
+    """The non-lexical source, named on its own because it is the majority case."""
+    window = window_at(PAIR, "doc.md")
+    assert cut_positions(window) == (22,)
+    assert PAIR.splitlines()[0].endswith("and")
+
+
+def test_the_universe_is_the_size_the_bound_says():
+    """`1 + n + n(n-1)/2`, at most two cuts, which is three lines out of two."""
+    text = "One thing, and another; a third: a fourth.\nthen it keeps on.\n"
+    window, found = universe(text, "doc.md")
+    positions = cut_positions(window)
+    assert found["defect"] is None
+    assert (
+        len(found["candidates"])
+        == 1 + len(positions) + len(positions) * (len(positions) - 1) // 2
+    )
+    assert max(len(cuts) for cuts in found["candidates"]) == 2
+
+
+def test_a_window_offering_too_many_positions_leaves_the_sample():
+    """Recorded with its position count rather than silently absent."""
+    text = (
+        "One thing, another thing, a third thing, a fourth thing, "
+        "a fifth thing, a sixth thing, a seventh thing.\nthen it keeps on.\n"
+    )
+    window, found = universe(text, "doc.md")
+    assert len(cut_positions(window)) > MAX_POSITIONS
+    assert found["candidates"] == {}
+    assert str(found["positions"]) in found["defect"]
+
+
+def test_the_generator_offers_a_comma_without_judging_it():
+    """A comma joining a compound object is offered, and the passes reject it.
+
+    Asking the generator to decide would put the clause judgment back in the instrument,
+    which is the thing this project leaves to a reader.
+    """
+    text = "It holds apples, pears and plums in one basket here.\nthen it keeps on.\n"
+    window, _found = universe(text, "doc.md")
+    assert 16 in cut_positions(window)
+    assert text[:16].endswith("apples,")
+
+
+def test_the_generator_never_reaches_the_shipped_repair(monkeypatch):
+    """Nothing in the drawing path may read a suggestion.
+
+    Patched to raise rather than to return a secret:
+    the generator has no call site that could reach it,
+    and a secret nobody could have produced proves nothing by being absent.
+    """
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("the generator read the shipped repair")
+
+    monkeypatch.setattr(clf, "_fused_suggestion", refuse)
+    _window, found = universe("Stop now! Go later.\nthen it keeps on.\n", "doc.md")
+    assert found["defect"] is None
+    assert found["candidates"]
+
+
+def test_a_window_with_no_valid_split_offers_only_the_original():
+    """A docstring opener cannot be repeated, and neither can a decorated block comment.
+
+    This is the intended answer rather than a gap in the generator.
+    The detector withholds its own suggestion on these as `prefix_other`.
+    The third zero-tolerance condition exists to protect exactly this unit:
+    one whose only acceptable repair is the original.
+    """
+    text = 'def f():\n    """Stop now! Go later.\n\n    More here.\n    """\n'
+    window, found = universe(text, "x.py")
+    valid = [cuts for cuts, c in found["candidates"].items() if candidate_is_valid(c)]
+    assert valid == [original_cuts(window)]
+
+
+# --- three verdicts per candidate become one set --------------------------
+
+
+def a_pass(chosen, accept, universe_keys):
+    accept = [tuple(key) for key in accept]
+    return {
+        "chosen": tuple(chosen),
+        "accept": accept,
+        "reject": [key for key in universe_keys if key not in accept],
+    }
+
+
+def synthetic(valid=True):
+    """Two candidates, described by their validity rather than by any prose."""
+    return {
+        (): {"preserving": True, "carrier_valid": True, "intact": True},
+        (9,): {"preserving": valid, "carrier_valid": True, "intact": True},
+    }
+
+
+def test_a_candidate_every_pass_accepted_is_acceptable():
+    candidates = synthetic()
+    keys = list(candidates)
+    passes = [a_pass((), [(), (9,)], keys) for _ in range(3)]
+    got = repair_resolution(passes, candidates)
+    assert got["outcome"] == "settled"
+    assert got["acceptable"] == frozenset({(), (9,)})
+
+
+def test_a_candidate_every_pass_rejected_is_rejected():
+    candidates = synthetic()
+    keys = list(candidates)
+    passes = [a_pass((), [()], keys) for _ in range(3)]
+    got = repair_resolution(passes, candidates)
+    assert got["outcome"] == "settled"
+    assert got["acceptable"] == frozenset({()})
+    assert got["rejected"] == frozenset({(9,)})
+
+
+def test_a_candidate_the_passes_split_on_refers_the_whole_unit():
+    """Two passes accepting {A, B} against one accepting {A} is a referral, not a vote.
+
+    A disagreement about where a line may be cut is the same question a widening asks.
+    """
+    candidates = synthetic()
+    keys = list(candidates)
+    passes = [
+        a_pass((), [(), (9,)], keys),
+        a_pass((), [(), (9,)], keys),
+        a_pass((), [()], keys),
+    ]
+    got = repair_resolution(passes, candidates)
+    assert got["outcome"] == "adjudicated"
+    assert got["referred"] == frozenset({(9,)})
+    assert got["acceptable"] == frozenset({()})
+
+
+def test_an_invalid_candidate_never_enters_the_set_however_many_accepted_it():
+    candidates = synthetic(valid=False)
+    keys = list(candidates)
+    passes = [a_pass((), [(), (9,)], keys) for _ in range(3)]
+    got = repair_resolution(passes, candidates)
+    assert got["acceptable"] == frozenset({()})
+
+
+def test_a_unit_whose_only_unanimous_candidate_is_invalid_is_adjudicated():
+    candidates = {
+        (): {"preserving": False, "carrier_valid": True, "intact": True},
+        (9,): {"preserving": True, "carrier_valid": True, "intact": True},
+    }
+    keys = list(candidates)
+    passes = [a_pass((), [()], keys) for _ in range(3)]
+    got = repair_resolution(passes, candidates)
+    assert got["outcome"] == "adjudicated"
+    assert got["acceptable"] == frozenset()
+
+
+def test_a_repair_the_generator_never_offered_refuses_the_unit():
+    """The generator was wrong about the universe, and the set cannot be patched.
+
+    Three-pass coverage of a universe is the only thing that makes a set complete,
+    so a candidate added after the coverage failed has no coverage.
+    """
+    candidates = synthetic()
+    keys = list(candidates)
+    passes = [a_pass((), [(), (9,)], keys) for _ in range(2)]
+    passes.append({"chosen": (4,), "accept": [(4,), ()], "reject": [(9,)]})
+    got = repair_resolution(passes, candidates)
+    assert got["outcome"] == "defect"
+    assert got["invented"] == frozenset({(4,)})
+    assert got["acceptable"] == frozenset()
+
+
+def test_a_pass_that_did_not_answer_every_candidate_is_an_error():
+    """Malformed is not an outcome.
+    It is a record nobody can read.
+    """
+    candidates = synthetic()
+    with pytest.raises(ValueError):
+        repair_resolution([{"chosen": (), "accept": [()], "reject": []}], candidates)
+
+
+def test_a_pass_that_rejected_the_repair_it_would_make_is_an_error():
+    candidates = synthetic()
+    keys = list(candidates)
+    broken = a_pass((), [(9,)], keys)
+    broken["chosen"] = ()
+    with pytest.raises(ValueError):
+        repair_resolution([broken], candidates)
+
+
+def test_every_pass_omitting_a_valid_candidate_still_puts_it_to_them():
+    """Agreement by omission is the failure the generated universe exists to prevent."""
+    text = "One thing, and another thing entirely.\nthen it keeps on.\n"
+    window, found = universe(text, "doc.md")
+    keys = list(found["candidates"])
+    omitted = (10,)
+    assert omitted in keys
+    assert candidate_is_valid(found["candidates"][omitted])
+    passes = [
+        a_pass(original_cuts(window), [original_cuts(window)], keys) for _ in range(3)
+    ]
+    got = repair_resolution(passes, found["candidates"])
+    assert omitted in got["rejected"]
+    assert omitted not in got["acceptable"]
+
+
+# --- the ordering, enforced rather than asked for -------------------------
+
+
+def test_nothing_may_enlarge_an_acceptable_set_after_a_machine_repair_is_read():
+    """Promotion is the only place a repair algorithm is read, and it runs last."""
+    unit = {}
+    set_acceptable(unit, [(), (9,)])
+    assert score_repair(unit, (9,)) is True
+    assert score_repair(unit, (4,)) is False
+    with pytest.raises(ScoringRefused):
+        set_acceptable(unit, [(), (9,), (4,)])
+
+
+def test_a_unit_with_no_acceptable_set_cannot_be_scored():
+    with pytest.raises(ScoringRefused):
+        score_repair({}, ())
+
+
+def test_an_acceptable_set_may_be_written_until_it_is_read():
+    unit = {}
+    set_acceptable(unit, [()])
+    set_acceptable(unit, [(), (9,)])
+    assert unit["acceptable"] == frozenset({(), (9,)})

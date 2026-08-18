@@ -1122,6 +1122,265 @@ def compose(window, lines):
     return list(lines) + [window.records[1]["original_raw"]]
 
 
+# --- the acceptable set, over a universe nobody invented -------------------
+
+# A cut may sit immediately after any of these, and no semantic test is applied.
+# Offering a comma that turns out to join a compound object is correct behaviour:
+# the passes reject it, and the rejection is data.
+# Asking the generator to decide would put the clause judgment back in the instrument,
+# which is the thing this project leaves to a reader.
+CUT_PUNCTUATION = ";:,\u2014"
+
+# Two cuts is what a two-line window can produce as three lines.
+MAX_CUTS = 2
+
+# Six positions is twenty-two candidates, and a pass judging more than that is guessing.
+MAX_POSITIONS = 6
+
+
+def cut_positions(window):
+    """Every position in the window's joined prose where a cut may be offered.
+
+    Three lexical sources and one that is not lexical at all.
+    There is no single list in this repository to generate from:
+    `CONNECTORS` is broad and exists to withhold a `wrap`,
+    `BOUNDARY_HINT_RE` is deliberately not derived from it because it raises an advisory,
+    and `FUSED_RE` matches one restricted sentence shape rather than every break the rule allows.
+    So the rule here takes a lexical superset and lets the passes reject it.
+
+    The fourth source is the break the window already has.
+    Most units in the stratum a period widening activates carry a `wrap` too,
+    which means the anchor ends mid-clause,
+    which means its existing break sits exactly where no lexical rule offers one.
+    Without it the original would not be in the universe for most of the population,
+    and leaving the line alone would stop being an answer the corpus can give.
+    """
+    import check_linefeeds
+
+    prose = window.prose
+    positions = set()
+    for match in check_linefeeds.FUSED_RE.finditer(prose):
+        boundary = check_linefeeds._match_boundary(match)
+        positions.add(match.start() + boundary.end(2))
+    positions.update(
+        index + 1 for index, letter in enumerate(prose) if letter in CUT_PUNCTUATION
+    )
+    at = 0
+    for record in window.records[:-1]:
+        at += len(record["prose"])
+        positions.add(at)
+        at += 1
+    return tuple(
+        sorted(
+            position
+            for position in positions
+            if prose[:position].strip() and prose[position:].strip()
+        )
+    )
+
+
+def _prose_bounds(window):
+    """Each window line's prose, as a range of the joined prose."""
+    bounds, at = [], 0
+    for record in window.records:
+        bounds.append((at, at + len(record["prose"])))
+        at += len(record["prose"]) + 1
+    return bounds
+
+
+def _suffix_of(record):
+    """Everything the raw line carries behind its prose: its tail, and any carrier."""
+    return record["original_raw"][len(record["leader"]) + len(record["prose"]) :]
+
+
+def candidate_lines(window, cuts):
+    """The raw lines one candidate would write, with every leader and suffix placed.
+
+    A leader is repeated byte for byte from the line the text came from,
+    which is the rule `carrier_valid` enforces,
+    so a candidate is carrier-valid by construction wherever a valid split exists.
+    Some windows have none: a docstring opener, a decorated block comment.
+    Those generate candidates that fail validation,
+    rather than candidates that quietly rewrite a leader into something the rule forbids.
+    """
+    prose = window.prose
+    bounds = _prose_bounds(window)
+    edges = [0, *cuts, len(prose)]
+    lines = []
+    for opening, closing in zip(edges, edges[1:]):
+        chunk = prose[opening:closing]
+        start = opening + len(chunk) - len(chunk.lstrip(" "))
+        text = chunk.strip(" ")
+        end = start + len(text)
+        owner = next(
+            index
+            for index, (low, high) in enumerate(bounds)
+            if low < end and start < high
+        )
+        suffix = ""
+        for index, (_low, high) in enumerate(bounds):
+            if start <= high - 1 < end:
+                suffix = _suffix_of(window.records[index])
+        lines.append(window.records[owner]["leader"] + text + suffix)
+    return lines
+
+
+def repair_candidates(window, text, path):
+    """The bounded universe of repairs for one window, each with its validity.
+
+    Generated rather than invented.
+    Asking three passes what else they would accept improves on asking none,
+    but all three can omit the same valid break and agree by omission,
+    which recreates the failure the third pass exists to prevent.
+
+    The bound is explicit.
+    At most two distinct cut positions are combined,
+    so `n` positions give `1 + n + n(n-1)/2` candidates, the original among them.
+    A window offering more than six positions leaves the sample as a defect,
+    the way the label corpus drops a unit whose sampling was wrong.
+    The defect carries its position count rather than being silently absent.
+    """
+    if any(record["leader"] is None for record in window.records):
+        return {
+            "defect": "a window line's prose does not sit in its raw line exactly once",
+            "positions": 0,
+            "candidates": {},
+        }
+    positions = cut_positions(window)
+    if len(positions) > MAX_POSITIONS:
+        return {
+            "defect": (
+                f"{len(positions)} cut positions, "
+                f"and a pass judging more than {MAX_POSITIONS} is guessing"
+            ),
+            "positions": len(positions),
+            "candidates": {},
+        }
+
+    combinations = [()]
+    combinations += [(position,) for position in positions]
+    combinations += [
+        (first, second)
+        for index, first in enumerate(positions)
+        for second in positions[index + 1 :]
+    ]
+    candidates = {}
+    for cuts in combinations:
+        lines = candidate_lines(window, cuts)
+        candidates[cuts] = dict(
+            normalize_repair(window, lines, text, path), cuts=cuts, lines=lines
+        )
+    return {"defect": None, "positions": len(positions), "candidates": candidates}
+
+
+def original_cuts(window):
+    """The candidate that leaves the window exactly as it is."""
+    at = 0
+    cuts = []
+    for record in window.records[:-1]:
+        at += len(record["prose"])
+        cuts.append(at)
+        at += 1
+    return tuple(cuts)
+
+
+def candidate_is_valid(candidate):
+    """A candidate that fails any of the three facts never enters an acceptable set.
+
+    However many passes accepted it.
+    A repair that loses a word is not a variant of the right answer,
+    and neither is one that mangles a leader or stops being prose.
+    """
+    return bool(
+        candidate["preserving"] and candidate["carrier_valid"] and candidate["intact"]
+    )
+
+
+def repair_resolution(passes, candidates):
+    """Settle three per-candidate verdicts into an acceptable set, or refer them.
+
+    A candidate is acceptable when it is valid and every pass accepted it.
+    A candidate every pass rejected is rejected.
+    A candidate the passes split on is referred, and so is the whole unit:
+    a disagreement about where a line may be cut is the defect source ADR-0008 names,
+    and it is the same question a widening asks.
+
+    A pass reporting a repair the generator never offered refuses the unit.
+    The generator was wrong about the universe,
+    and a set assembled from an incomplete universe is not complete.
+    It is not patched by adding the missing candidate afterwards,
+    because three-pass coverage of a universe is the only thing making a set complete,
+    and a candidate added after the coverage failed has no coverage.
+    """
+    universe = set(candidates)
+    for record in passes:
+        named = {tuple(key) for key in record["accept"]} | {
+            tuple(key) for key in record["reject"]
+        }
+        outside = named - universe
+        if outside:
+            return {
+                "outcome": "defect",
+                "reason": "a pass reported a repair the generator never offered",
+                "invented": frozenset(outside),
+                "acceptable": frozenset(),
+                "referred": frozenset(),
+                "rejected": frozenset(),
+            }
+    for record in passes:
+        accept = {tuple(key) for key in record["accept"]}
+        reject = {tuple(key) for key in record["reject"]}
+        if accept & reject or accept | reject != universe:
+            raise ValueError(
+                "a pass must accept or reject every candidate, exactly once each"
+            )
+        if tuple(record["chosen"]) not in accept:
+            raise ValueError("a pass must accept the repair it says it would make")
+
+    acceptable, referred, rejected = set(), set(), set()
+    for key, candidate in candidates.items():
+        verdicts = {
+            key in {tuple(name) for name in record["accept"]} for record in passes
+        }
+        if len(verdicts) > 1:
+            referred.add(key)
+        elif verdicts == {True}:
+            if candidate_is_valid(candidate):
+                acceptable.add(key)
+        else:
+            rejected.add(key)
+    return {
+        "outcome": "settled" if (not referred and acceptable) else "adjudicated",
+        "reason": None,
+        "invented": frozenset(),
+        "acceptable": frozenset(acceptable),
+        "referred": frozenset(referred),
+        "rejected": frozenset(rejected),
+    }
+
+
+def set_acceptable(unit, acceptable):
+    """Freeze what this unit's correct answers are, before any machine has spoken."""
+    if unit.get("read"):
+        raise ScoringRefused(
+            "the acceptable set was already read against a machine repair, "
+            "and a set that grows afterwards is a set fitted to the answer"
+        )
+    unit["acceptable"] = frozenset(tuple(cuts) for cuts in acceptable)
+
+
+def score_repair(unit, cuts):
+    """Whether a machine repair lands in this unit's acceptable set, sealing the set.
+
+    Promotion is the only place a repair algorithm is read, and it runs last.
+    Reading one seals the set here rather than in a comment asking for the ordering.
+    """
+    if "acceptable" not in unit:
+        raise ScoringRefused("this unit has no acceptable set to score against")
+    unit["read"] = True
+    return tuple(cuts) in unit["acceptable"]
+
+
 def manifest_problems(document):
     """Everything wrong with a manifest, named by unit rather than counted.
 
