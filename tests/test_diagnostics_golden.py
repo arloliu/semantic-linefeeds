@@ -91,3 +91,25 @@ def test_the_golden_covers_both_fixture_trees(root):
     want = json.loads(GOLDEN.read_text(encoding="utf-8"))
     prefix = str(root.relative_to(REPO))
     assert any(name.startswith(prefix) for name in want)
+
+
+def test_the_class_function_answers_for_every_boundary_in_the_corpus():
+    """Eight early returns became one tuple, so every class now runs on every match.
+
+    The refusals the helper reached first used to hide the rest of them:
+    a code-span match never reached the terminator test at all.
+    Nothing may assume an earlier class is absent, and this is what says so.
+    """
+    seen = set()
+    for path in corpus():
+        text = path.read_text(encoding="utf-8")
+        name = str(path.relative_to(REPO))
+        for diagnostic in check_linefeeds.diagnose(text, name, withholding=True):
+            if diagnostic["kind"] != "fused":
+                assert "withheld_by" not in diagnostic
+                continue
+            classes = diagnostic["withheld_by"]
+            assert isinstance(classes, tuple)
+            assert set(classes) <= set(check_linefeeds.WITHHOLDING_CLASSES)
+            seen.update(classes)
+    assert seen, "no boundary in the corpus withholds anything"

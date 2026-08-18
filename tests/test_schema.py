@@ -58,3 +58,24 @@ def test_text_renderer_reads_diagnostics_and_tuples_identically():
     assert check_linefeeds.format_findings(
         diagnostics, "doc.md", snippet=False
     ) == check_linefeeds.format_findings(tuples, "doc.md", snippet=False)
+
+
+def test_a_fused_diagnostic_carries_no_withholding_key_by_default():
+    """`to_schema` passes diagnostics through verbatim.
+
+    A key added to a finding therefore reaches every consumer of the document,
+    so the class vector is opt-in and the default document is the one it always was.
+    """
+    text = "One sentence here. Another sentence follows.\n"
+    doc = check_linefeeds.to_schema("doc.md", check_linefeeds.diagnose(text, "doc.md"))
+    (d,) = doc["diagnostics"]
+    assert "withheld_by" not in d
+
+
+def test_the_withholding_flag_adds_the_key_and_changes_nothing_else():
+    """The same finding either way, plus one key."""
+    text = "One sentence here. Another sentence follows.\n"
+    (plain,) = check_linefeeds.diagnose(text, "doc.md")
+    (annotated,) = check_linefeeds.diagnose(text, "doc.md", withholding=True)
+    assert annotated["withheld_by"] == ("terminator_period",)
+    assert {k: v for k, v in annotated.items() if k != "withheld_by"} == plain
