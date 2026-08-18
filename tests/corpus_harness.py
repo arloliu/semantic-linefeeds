@@ -866,6 +866,262 @@ def _stratum_problems(name, stratum, counts):
     return []
 
 
+# --- what a repair is, as an object two repairs can be compared as ---------
+
+RepairWindow = collections.namedtuple(
+    "RepairWindow", "records form prose bounds breaks above below"
+)
+
+
+def collapsed(prose):
+    """One text with every internal whitespace run reduced to a single space.
+
+    Every offset in this module is measured in this coordinate system.
+    A repair that only changes a gap from two spaces to one has moved no break,
+    and a coordinate system that said otherwise would report it as one.
+    """
+    return " ".join(prose.split())
+
+
+def repair_window(records, index):
+    """The one or two judged lines a repair replaces.
+
+    The shipped suggestion replaces the anchor alone,
+    and the population says that is the wrong window for most of it:
+    most units in the stratum a period widening activates carry a `wrap` too,
+    and the shipped rule is that the rejoin comes before the split.
+    So the window is the anchor and the line beneath it.
+
+    A finding on the last judged line of a paragraph has no line beneath it.
+    `diagnose` requires no successor, and dropping those findings would be silent,
+    so the one-line form is explicit and the lower line must share the anchor's paragraph.
+
+    Takes the whole walk and a position rather than one record,
+    because finding the neighbour by line number would rescan the walk once per unit,
+    and a source is enumerated a few thousand units at a time.
+    """
+    above = records[index]
+    below = records[index + 1] if index + 1 < len(records) else None
+    if below is not None and below["paragraph"] != above["paragraph"]:
+        below = None
+    members = (above,) if below is None else (above, below)
+    bounds, at = [], 0
+    for record in members:
+        length = len(collapsed(record["prose"]))
+        bounds.append((at, at + length))
+        at += length + 1
+    return RepairWindow(
+        records=members,
+        form="one-line" if below is None else "two-line",
+        prose=" ".join(record["prose"] for record in members),
+        bounds=tuple(bounds),
+        breaks=_breaks_of(members),
+        above=tuple(record["prose"] for record in records[:index]),
+        below=tuple(record["prose"] for record in records[index + len(members) :]),
+    )
+
+
+def written(replacement):
+    """The lines of a replacement that carry text, which are the ones a walk can return."""
+    return [line for line in replacement if line.strip()]
+
+
+def _breaks_of(records):
+    """Where a run of judged lines breaks, as offsets into their joined prose."""
+    offsets, at = [], 0
+    for record in records[:-1]:
+        at += len(collapsed(record["prose"]))
+        offsets.append(at)
+        at += 1
+    return tuple(offsets)
+
+
+def splice(window, replacement, text):
+    """The file with the window's raw lines replaced by the ones a repair wrote.
+
+    The terminator is the window's own, which is what keeps a CRLF file a CRLF file.
+    A window at the end of a file with no final newline has none to reuse,
+    and a multi-line repair there needs one, so it gets the ordinary newline.
+    """
+    first, last = window.records[0], window.records[-1]
+    terminator = first["terminator"] or "\n"
+    return (
+        text[: first["raw_span"]["start"]]
+        + terminator.join(replacement)
+        + text[last["raw_span"]["end"] :]
+    )
+
+
+def normalize_repair(window, replacement, text, path):
+    """Reduce a rewrite to the four facts that make two rewrites comparable.
+
+    The replacement is spliced into the file and re-read through `judged_lines`.
+    A list marker, an indent, a docstring, and a comment leader are all decided there.
+    The detector decides them, rather than a second opinion about what a leader is.
+    `_SUGGESTION_PREFIX_RE` could not do this job:
+    it validates an already-separated prefix rather than finding one,
+    and it rejects list markers on purpose,
+    which is a stratum this corpus exists to score.
+
+    `preserving`     the prose is the same text, differing only in where it breaks.
+    `breaks`         where it now breaks, as offsets into the window's joined prose.
+    `carrier_valid`  every produced line carries the leader and tail the rule allows.
+    `intact`         re-reading yields judged prose lines in one paragraph,
+                     and nothing outside the window changed what it is.
+
+    `breaks` is None unless `preserving` and `intact` both hold,
+    because an offset into prose that no longer matches is not an offset into anything.
+    The original window is a point in this space,
+    so leaving the line alone is an answer the corpus can represent rather than a hole.
+    """
+    import check_linefeeds
+
+    spliced = splice(window, replacement, text)
+    walked = check_linefeeds.judged_lines(spliced, path)
+    if walked is None:
+        return {
+            "preserving": False,
+            "breaks": None,
+            "carrier_valid": False,
+            "intact": False,
+        }
+    produced_all, _suppressions = walked
+    produced = _produced_window(window, produced_all)
+    # One judged line per non-blank line the repair wrote.
+    # A line that stopped being prose — code without its comment marker, a table row,
+    # a standalone directive — leaves the walk without leaving a gap in it,
+    # and counting is what notices.
+    # A blank line is not counted here because it is not lost:
+    # it splits the paragraph, which `_produced_window` refuses on its own terms.
+    intact = produced is not None and len(produced) == len(written(replacement))
+    preserving = bool(intact) and collapsed(
+        " ".join(record["prose"] for record in produced)
+    ) == collapsed(window.prose)
+    return {
+        "preserving": preserving,
+        "breaks": _breaks_of(produced) if (intact and preserving) else None,
+        "carrier_valid": bool(intact) and carrier_valid(window, replacement, produced),
+        "intact": intact,
+    }
+
+
+def _produced_window(window, records):
+    """The judged lines the replacement produced, or None when the file stopped matching.
+
+    Two halves, and the second is the one that catches a fence.
+    A replacement that opens a code fence leaves its own lines looking like prose
+    and takes every line below it out of the walk,
+    so a check that looked only at the window would pass.
+    """
+    above, below = len(window.above), len(window.below)
+    if len(records) < above + below + 1:
+        return None
+    proses = [record["prose"] for record in records]
+    if tuple(proses[:above]) != window.above:
+        return None
+    if below and tuple(proses[len(proses) - below :]) != window.below:
+        return None
+    produced = records[above : len(records) - below]
+    if len({record["paragraph"] for record in produced}) != 1:
+        return None
+    return produced
+
+
+def carrier_valid(window, replacement, produced):
+    """Whether every leader and tail stayed where the rule puts it.
+
+    A line produced by splitting one original line carries that line's leader,
+    byte for byte.
+    A line that absorbed another drops the absorbed line's leader and keeps no trace of it.
+    A tail stays on the line it belonged to and never moves across a break,
+    so an original line whose tail would land mid-line must have had no tail to move.
+    And a repair does not write its own line terminators.
+
+    A repair that preserves the prose and breaks this rule is a defect, not a variant,
+    and the admission contract refuses a class on one occurrence of it.
+    """
+    if any("\n" in line or "\r" in line for line in replacement):
+        return False
+    if len(produced) != len(written(replacement)):
+        # The rule describes lines the detector judges as lines.
+        # A line the repair wrote that is not one of those is not valid under it.
+        return False
+    if any(record["leader"] is None for record in produced):
+        return False
+
+    owners, at = [], 0
+    for record in produced:
+        length = len(collapsed(record["prose"]))
+        owners.append(
+            [
+                index
+                for index, (start, end) in enumerate(window.bounds)
+                if start < at + length and at < end
+            ]
+        )
+        at += length + 1
+    if not all(owners):
+        return False
+
+    for record, owned in zip(produced, owners):
+        source = window.records[owned[0]]
+        if source["leader"] is None or record["leader"] != source["leader"]:
+            return False
+        for absorbed in owned[1:]:
+            leader = window.records[absorbed]["leader"]
+            # Searched past the produced line's own leader.
+            # A rejoin inside a blockquote keeps one `>` legitimately,
+            # and looking at the whole raw line would read that one as the absorbed one.
+            body = record["raw"][len(record["leader"]) :]
+            if leader and leader.strip() and leader.strip() in body:
+                return False
+
+    # Which produced line each original line's prose ends on, when one does.
+    ends = {}
+    for index, source in enumerate(window.records):
+        carrying = [i for i, owned in enumerate(owners) if index in owned]
+        if not carrying:
+            return False
+        last = carrying[-1]
+        if owners[last][-1] == index:
+            ends[last] = index
+        elif (source["tail"] and source["tail"].strip()) or source["carrier"]:
+            # It would have to sit in the middle of a rejoined line, so it cannot move.
+            return False
+
+    for position, record in enumerate(produced):
+        source = window.records[ends[position]] if position in ends else None
+        if _carrier_text(record) != (_carrier_text(source) if source else None):
+            # A carrier deleted by a repair silences nothing and unsilences a line,
+            # and a carrier a repair invented is a suppression nobody authorized.
+            return False
+        if source is not None:
+            if record["tail"] != source["tail"]:
+                return False
+        elif record["tail"] and record["tail"].strip():
+            return False
+    return True
+
+
+def _carrier_text(record):
+    """The exact bytes of a line's suppression carrier, or None where it has none."""
+    return record["carrier"]["text"] if record["carrier"] else None
+
+
+def compose(window, lines):
+    """An anchor-only algorithm's output, as a replacement for the whole window.
+
+    `_fused_suggestion` returns two lines replacing the anchor
+    and says nothing about the line below, so scoring it here keeps that line as it is.
+    From `original_raw` rather than `raw`:
+    the judged view has had any suppression carrier taken off it,
+    and splicing that view back would delete the carrier from the file.
+    """
+    if window.form == "one-line":
+        return list(lines)
+    return list(lines) + [window.records[1]["original_raw"]]
+
+
 def manifest_problems(document):
     """Everything wrong with a manifest, named by unit rather than counted.
 
