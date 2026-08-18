@@ -50,7 +50,7 @@ sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(REPO / "scripts"))
 
 import check_linefeeds as clf  # noqa: E402
-from corpus_harness import files_of  # noqa: E402
+from corpus_harness import exact_set_key, files_of  # noqa: E402
 
 MANIFEST = TESTS / "corpus" / "manifest.json"
 
@@ -91,7 +91,7 @@ def measure(root, source):
             also = diagnostic["line"] in wrapped
             # The exact set is the sampling stratum: exact sets partition the population,
             # while class membership overlaps and cannot carry an unbiased marginal on its own.
-            key = ",".join(sorted(found))
+            key = exact_set_key(found)
             exact[key] += 1
             exact_co_wrap[key] += also
             for cls in found:

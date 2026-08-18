@@ -1381,6 +1381,200 @@ def score_repair(unit, cuts):
     return tuple(cuts) in unit["acceptable"]
 
 
+# --- the population, and the draw over it ---------------------------------
+
+
+def exact_set_key(classes):
+    """The name of the exact class set a unit belongs to.
+
+    One helper rather than one convention per file.
+    `measured.json` is pinned with these keys,
+    and `sample.json` records its population sizes against them.
+    A stratum table that cannot be checked against the measurement is one nobody checks.
+    """
+    return ",".join(sorted(classes))
+
+
+def repair_population(source, root):
+    """Every fused boundary the detector raises on one source, as a repair unit.
+
+    Not every prose boundary, which is what the label corpus enumerates.
+    A repair exists only where a finding was delivered,
+    and that conditional is what this corpus measures.
+
+    This is the one place in the drawing path that reads the detector,
+    and it reads no suggestion.
+    """
+    import check_linefeeds
+
+    out = []
+    for name in files_of(source, root):
+        try:
+            text = (root / name).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        try:
+            walked = check_linefeeds.judged_lines(text, name)
+            diagnostics = check_linefeeds.diagnose(text, name, withholding=True)
+        except Exception:
+            # A file the extractor cannot read is not a unit, and it is not a crash either.
+            continue
+        if walked is None:
+            continue
+        records, _suppressions = walked
+        at = {record["line"]: index for index, record in enumerate(records)}
+        wrapped = {d["line"] for d in diagnostics if d["kind"] == "wrap"}
+        seen = collections.Counter()
+        for diagnostic in diagnostics:
+            if diagnostic["kind"] != "fused":
+                continue
+            line = diagnostic["line"]
+            # Two numbers, and they are not the same number.
+            # `index` finds the window in the walk.
+            # A line carrying two boundaries has one walk position and two units.
+            # `match` is which of that line's boundaries this unit is.
+            match = seen[line]
+            seen[line] += 1
+            index = at.get(line)
+            if index is None:
+                continue
+            window = repair_window(records, index)
+            classes = tuple(diagnostic["withheld_by"])
+            out.append(
+                {
+                    "id": f"{source['id']}:{name}:{line}:{match}#repair",
+                    "source": source["id"],
+                    "frame": "main",
+                    "path": name,
+                    "line": line,
+                    "match": match,
+                    "index": index,
+                    "lines": [record["line"] for record in window.records],
+                    "window": {
+                        "form": window.form,
+                        # The raw lines travel with the unit, carrier bytes and all,
+                        # so the window can be rebuilt without the checkout.
+                        "raw": [record["original_raw"] for record in window.records],
+                        "prose": window.prose,
+                        "leaders": [record["leader"] for record in window.records],
+                        "tails": [record["tail"] for record in window.records],
+                        "breaks": list(window.breaks),
+                    },
+                    "withheld_by": list(classes),
+                    "stratum": exact_set_key(classes),
+                    "covariates": {
+                        "co_wrap": line in wrapped,
+                        "language": _language(name),
+                    },
+                }
+            )
+    return out
+
+
+def draw_strata(population, quotas, seed):
+    """A stratified draw over exact class sets, which partition the population.
+
+    `level_of` returns one scalar level per dimension,
+    and a unit refused by three classes belongs to three of them,
+    so a top-up on one class raises another class's members' chance of selection
+    and a raw marginal over such a draw is biased for the population marginal.
+    Exact sets are disjoint, so the draw has known inclusion probabilities
+    and a population-weighted estimator that is not biased in that way.
+
+    There is no random base.
+    The label corpus uses one because its dimensions overlap
+    and a base spreads what nothing quotas.
+    Here the strata are disjoint and enumerable,
+    so a base would only add units nothing could weight.
+
+    A stratum below the floor is drawn at zero and declared unreportable.
+    It is not drawn thin and quietly counted.
+    """
+    members = collections.defaultdict(list)
+    for record in population:
+        members[record["stratum"]].append(record)
+
+    strata, drawn = {}, []
+    for key in sorted(members):
+        pool = sorted(members[key], key=lambda record: record["id"])
+        size = len(pool)
+        take = (
+            _rng(seed, key).sample(pool, min(quotas["per_set"], size))
+            if size >= quotas["floor"]
+            else []
+        )
+        strata[key] = {
+            "population": size,
+            "drawn": len(take),
+            "inclusion_probability": len(take) / size if size else 0.0,
+            "reportable": size >= quotas["floor"],
+        }
+        drawn += take
+    return sorted(drawn, key=lambda record: record["id"]), strata
+
+
+def weighted_rate(units, strata, activated):
+    """A population-weighted rate over the strata a candidate activates.
+
+    **Descriptive. It decides nothing, and nothing reads it as a gate.**
+    The admission contract gates each activated stratum on its own Wilson bound,
+    and `repair_admission_problems` never sees this number.
+
+    One interval over this mean would need a stratified variance estimator nobody defined.
+    Several units can also share one window and so one repair outcome,
+    which a binomial interval would count as independent trials.
+    """
+    counts = collections.defaultdict(lambda: [0, 0])
+    for unit in units:
+        if unit["stratum"] not in activated or unit.get("ambiguous"):
+            continue
+        counts[unit["stratum"]][0] += bool(unit["acceptable"])
+        counts[unit["stratum"]][1] += 1
+    scored = {key: pair for key, pair in counts.items() if pair[1]}
+    total = sum(strata[key]["population"] for key in scored)
+    if not total:
+        return None
+    return (
+        sum(
+            strata[key]["population"] * (hits / seen)
+            for key, (hits, seen) in scored.items()
+        )
+        / total
+    )
+
+
+def stratum_shortfalls(population, strata, quotas):
+    """Everything the draw could not buy, named rather than absent.
+
+    An empty class and an unreportable stratum both appear as lines.
+    A class the population never produced looks exactly like a class nobody asked about
+    once it is missing from a table,
+    and the difference is the whole reason to declare the universe in code.
+    """
+    import check_linefeeds
+
+    carried = collections.Counter()
+    for record in population:
+        carried.update(record["withheld_by"])
+
+    problems = [
+        f"{name}: no unit in the population carries it"
+        for name in check_linefeeds.WITHHOLDING_CLASSES
+        if not carried[name]
+    ]
+    for key in sorted(strata):
+        body = strata[key]
+        shown = key or "(none: suggested today)"
+        if not body["reportable"]:
+            problems.append(
+                f"{shown}: holds {body['population']}, below the floor of "
+                f"{quotas['floor']}, so the frozen rules can report no rate for it"
+            )
+        elif body["drawn"] < quotas["per_set"]:
+            problems.append(f"{shown}: drew {body['drawn']} of {quotas['per_set']}")
+    return problems
+
+
 def manifest_problems(document):
     """Everything wrong with a manifest, named by unit rather than counted.
 

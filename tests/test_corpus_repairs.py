@@ -847,3 +847,224 @@ def test_an_acceptable_set_may_be_written_until_it_is_read():
     set_acceptable(unit, [()])
     set_acceptable(unit, [(), (9,)])
     assert unit["acceptable"] == frozenset({(), (9,)})
+
+
+# --- the population, and the draw over it ---------------------------------
+#
+# The strata are exact class sets because they partition the population.
+# Class membership overlaps.
+# A top-up on one class raises another class's members' chance of selection,
+# and a raw marginal over such a draw is biased.
+
+from corpus_harness import (  # noqa: E402
+    REPAIR_ADMISSION,
+    draw_strata,
+    exact_set_key,
+    repair_admission_problems,
+    repair_population,
+    stratum_shortfalls,
+    weighted_rate,
+)
+
+QUOTAS = {"per_set": 40, "floor": 26}
+
+
+def synthetic_population(spec):
+    """A population described by (stratum classes, count) pairs and nothing else."""
+    made = []
+    for classes, count in spec:
+        key = exact_set_key(classes)
+        for number in range(count):
+            made.append(
+                {
+                    "id": f"{key or 'none'}-{number:04d}",
+                    "stratum": key,
+                    "withheld_by": list(classes),
+                }
+            )
+    return made
+
+
+def test_the_stratum_key_is_the_one_the_measurement_was_pinned_with():
+    """`measured.json` carries these keys, and a table nobody can cross-check is not one."""
+    for source_id, body in MEASURED.items():
+        for key in body["exact_sets"]:
+            assert exact_set_key(key.split(",") if key else []) == key, source_id
+
+
+def test_a_line_carrying_two_boundaries_yields_two_units_at_one_window():
+    """One walk position, two units, and two identities.
+
+    A consumer looking a record up by line number alone lands on the wrong one.
+    A line with two boundaries is the `many_boundaries` stratum by definition.
+    """
+    root = REPO / "tests" / "diagnostics" / "fixtures"
+    units = repair_population(
+        {"id": "styx", "selection_command": "git ls-files 'many_boundaries.md'"}, root
+    )
+    assert [unit["match"] for unit in units] == [0, 1]
+    assert len({unit["index"] for unit in units}) == 1
+    assert len({unit["id"] for unit in units}) == 2
+    assert all(unit["stratum"] == "many_boundaries" for unit in units)
+
+
+def test_a_unit_carries_the_raw_lines_its_window_can_be_rebuilt_from():
+    root = REPO / "tests" / "diagnostics" / "fixtures"
+    (unit,) = repair_population(
+        {"id": "styx", "selection_command": "git ls-files 'period_boundary.md'"}, root
+    )
+    assert unit["window"]["raw"] == ["One sentence here. Another sentence follows."]
+    assert unit["window"]["form"] == "one-line"
+    assert unit["stratum"] == "terminator_period"
+    assert unit["covariates"]["language"] == "markdown"
+
+
+def test_the_drawing_path_never_reaches_the_shipped_repair(monkeypatch):
+    """Nothing in the drawing path may read a suggestion.
+
+    `repair_population` does call `diagnose`,
+    so a secret planted in the suggestion would reach the sample if anything copied one.
+    Asserted over the whole serialized sample, not over the fields expected to be clean.
+    """
+    secret = "sxJQ7pLeakCanary"
+    monkeypatch.setattr(
+        clf, "_fused_suggestion", lambda record, match: {"lines": [secret, secret]}
+    )
+    root = REPO / "tests" / "diagnostics" / "fixtures"
+    population = repair_population(
+        {"id": "styx", "selection_command": "git ls-files '*.md'"}, root
+    )
+    assert population
+    drawn, strata = draw_strata(population, {"per_set": 40, "floor": 1}, "leak")
+    assert drawn
+    assert secret not in json.dumps({"units": drawn, "strata": strata})
+
+
+def test_a_stratum_below_the_floor_is_drawn_at_zero_and_declared():
+    """Not silently absent, and not drawn thin and quietly counted."""
+    population = synthetic_population(
+        [(["terminator_period"], 25), (["protected_span"], 40)]
+    )
+    drawn, strata = draw_strata(population, QUOTAS, "seed")
+    assert strata["terminator_period"]["drawn"] == 0
+    assert strata["terminator_period"]["reportable"] is False
+    assert strata["terminator_period"]["population"] == 25
+    assert {unit["stratum"] for unit in drawn} == {"protected_span"}
+
+
+def test_a_class_with_a_large_marginal_can_still_be_unreportable():
+    """The shape the measured population actually has.
+
+    `terminator_period` carries thousands of units.
+    Almost none of them are in the set it activates alone.
+    A candidate is scored on the exact sets it activates, not on every unit carrying it,
+    so a marginal that clears the floor says nothing about whether the draw can rate it.
+    """
+    population = synthetic_population(
+        [
+            (["terminator_period"], 20),
+            (["terminator_period", "protected_span"], 60),
+            (["terminator_period", "many_boundaries"], 60),
+        ]
+    )
+    marginal = sum(
+        1 for unit in population if "terminator_period" in unit["withheld_by"]
+    )
+    assert marginal == 140
+    _drawn, strata = draw_strata(population, QUOTAS, "seed")
+    assert strata["terminator_period"]["reportable"] is False
+    problems = stratum_shortfalls(population, strata, QUOTAS)
+    assert any(
+        problem.startswith("terminator_period: holds 20") for problem in problems
+    )
+
+
+def test_the_draw_is_unchanged_when_the_class_declarations_are_reordered():
+    """A stratum is a set, and a set has no order for a seed to depend on."""
+    spec = [
+        (["terminator_period", "protected_span"], 50),
+        (["many_boundaries", "terminator_period"], 50),
+    ]
+    first, _strata = draw_strata(synthetic_population(spec), QUOTAS, "repairs-1")
+    shuffled = synthetic_population(
+        [(list(reversed(classes)), count) for classes, count in spec]
+    )
+    second, _again = draw_strata(shuffled, QUOTAS, "repairs-1")
+    assert [unit["id"] for unit in first] == [unit["id"] for unit in second]
+
+
+def test_the_draw_is_reproducible_from_its_seed_and_moves_with_it():
+    population = synthetic_population([(["terminator_period"], 100)])
+    once, _a = draw_strata(population, QUOTAS, "repairs-1")
+    twice, _b = draw_strata(population, QUOTAS, "repairs-1")
+    other, _c = draw_strata(population, QUOTAS, "repairs-2")
+    assert [unit["id"] for unit in once] == [unit["id"] for unit in twice]
+    assert [unit["id"] for unit in once] != [unit["id"] for unit in other]
+
+
+def test_every_stratum_records_the_probability_a_unit_entered_by():
+    population = synthetic_population([(["terminator_period"], 100)])
+    _drawn, strata = draw_strata(population, QUOTAS, "seed")
+    body = strata["terminator_period"]
+    assert body["inclusion_probability"] == body["drawn"] / body["population"] == 0.4
+
+
+def test_a_weighted_rate_differs_from_the_unweighted_one_it_replaces():
+    """The reason the strata carry their population sizes at all.
+
+    Two strata drawn to the same size out of very different populations.
+    Pooling the drawn units counts the small stratum as heavily as the large one,
+    and the population-weighted answer is the one that describes the population.
+    """
+    population = synthetic_population(
+        [(["terminator_period"], 1000), (["protected_span"], 40)]
+    )
+    drawn, strata = draw_strata(population, QUOTAS, "seed")
+    scored = [
+        dict(unit, acceptable=unit["stratum"] == "terminator_period") for unit in drawn
+    ]
+    pooled = sum(unit["acceptable"] for unit in scored) / len(scored)
+    weighted = weighted_rate(scored, strata, {"terminator_period", "protected_span"})
+    assert pooled == 0.5
+    assert round(weighted, 4) == round(1000 / 1040, 4)
+    assert weighted != pooled
+
+
+def test_the_weighted_rate_decides_nothing():
+    """It is descriptive, and the admission gate never sees it.
+
+    The gate is per stratum on its own Wilson bound.
+    One interval over this mean would need a variance estimator nobody defined.
+    """
+    population = synthetic_population([(["terminator_period"], 100)])
+    drawn, strata = draw_strata(population, QUOTAS, "seed")
+    scored = [dict(unit, acceptable=True) for unit in drawn]
+    assert weighted_rate(scored, strata, {"terminator_period"}) == 1.0
+    refused = repair_admission_problems(
+        {
+            "class": "terminator_period",
+            "algorithm": "a",
+            "baseline_algorithm": "a",
+            "zero_tolerance": dict.fromkeys(REPAIR_ADMISSION["zero_tolerance"], 0),
+            "strata": {"terminator_period": {"scored": 40, "acceptable": 36}},
+        }
+    )
+    assert refused, "a perfect weighted rate must not rescue a stratum below the floor"
+
+
+def test_an_ambiguous_unit_leaves_the_weighted_rate():
+    population = synthetic_population([(["terminator_period"], 100)])
+    drawn, strata = draw_strata(population, QUOTAS, "seed")
+    scored = [dict(unit, acceptable=False, ambiguous=True) for unit in drawn[:20]]
+    scored += [dict(unit, acceptable=True) for unit in drawn[20:]]
+    assert weighted_rate(scored, strata, {"terminator_period"}) == 1.0
+
+
+def test_a_class_the_population_never_produced_is_a_line_rather_than_an_absence():
+    """An empty class and a class nobody asked about look identical once omitted."""
+    population = synthetic_population([(["terminator_period"], 40)])
+    _drawn, strata = draw_strata(population, QUOTAS, "seed")
+    problems = stratum_shortfalls(population, strata, QUOTAS)
+    for name in clf.WITHHOLDING_CLASSES:
+        if name != "terminator_period":
+            assert any(problem.startswith(f"{name}: no unit") for problem in problems)
