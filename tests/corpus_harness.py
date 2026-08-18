@@ -1314,6 +1314,16 @@ def repair_resolution(passes, candidates):
     """
     universe = set(candidates)
     for record in passes:
+        if record.get("missing"):
+            return {
+                "outcome": "defect",
+                "reason": "a pass reported a repair the generator never offered",
+                "invented": frozenset(),
+                "acceptable": frozenset(),
+                "referred": frozenset(),
+                "rejected": frozenset(),
+            }
+    for record in passes:
         named = {tuple(key) for key in record["accept"]} | {
             tuple(key) for key in record["reject"]
         }
@@ -1357,6 +1367,56 @@ def repair_resolution(passes, candidates):
         "referred": frozenset(referred),
         "rejected": frozenset(rejected),
     }
+
+
+_ANSWER_ARRAY_RE = re.compile(r"\[\s*\{.*}\s*]", re.DOTALL)
+
+
+def pass_answers(path):
+    """The JSON array a pass returned, however much prose it wrapped around it."""
+    match = _ANSWER_ARRAY_RE.search(path.read_text(encoding="utf-8"))
+    if not match:
+        return []
+    try:
+        return json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return []
+
+
+def repair_pass_verdicts(answer, candidates):
+    """One pass's answer, from candidate names into the keys resolution reads.
+
+    A pass answers with the names it was shown.
+    A name it was not shown is a record nobody can read.
+    That is an error rather than a verdict,
+    the same distinction the label corpus draws for a pass that answered another question.
+    """
+    cuts = {candidate["id"]: tuple(candidate["cuts"]) for candidate in candidates}
+    named = (
+        set(answer.get("accept", []))
+        | set(answer.get("reject", []))
+        | {answer.get("choose")}
+    )
+    unknown = sorted(named - {None} - set(cuts))
+    if unknown:
+        raise ValueError(f"a pass named candidates it was not shown: {unknown}")
+    return {
+        "chosen": cuts[answer["choose"]],
+        "accept": [cuts[name] for name in answer.get("accept", [])],
+        "reject": [cuts[name] for name in answer.get("reject", [])],
+        "missing": answer.get("missing") or [],
+    }
+
+
+def candidate_for_breaks(candidates, breaks):
+    """The candidate a repair lands on, or None when it lands outside the universe."""
+    if breaks is None:
+        return None
+    wanted = list(breaks)
+    for candidate in candidates:
+        if candidate["breaks"] == wanted:
+            return candidate
+    return None
 
 
 def set_acceptable(unit, acceptable):
@@ -1477,6 +1537,10 @@ def attach_candidates(units, root):
                 "id": candidate_id(index),
                 "cuts": list(cuts),
                 "lines": body["lines"],
+                # Where it breaks once normalized.
+                # Two repairs are the same repair when they land on the same point,
+                # and a cut position is not that point: it is where the generator cut.
+                "breaks": list(body["breaks"]) if body["breaks"] is not None else None,
                 "preserving": body["preserving"],
                 "carrier_valid": body["carrier_valid"],
                 "intact": body["intact"],

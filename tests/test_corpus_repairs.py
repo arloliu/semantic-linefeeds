@@ -1305,3 +1305,240 @@ def test_a_batch_holds_no_more_units_than_a_sitting():
     batches = repair_batches(sample, "claude")
     assert max(len(batch) for batch in batches) <= REPAIR_BATCH
     assert sum(len(batch) for batch in batches) == 40
+
+
+# --- collect, adjudicate, promote -----------------------------------------
+#
+# Promotion is the only place a repair algorithm is read, and it runs last.
+
+COLLECT = REPO / "tests" / "corpus" / "repairs" / "collect.py"
+ADJUDICATE = REPO / "tests" / "corpus" / "repairs" / "adjudicate.py"
+PROMOTE = REPO / "tests" / "corpus" / "repairs" / "promote.py"
+
+PASSES = ("claude", "codex", "agy")
+
+
+def round_dir(tmp_path, pattern="suggestion_*.md"):
+    """A whole round on disk: a sample, and a place for the answers to land."""
+    repairs = tmp_path / "repairs"
+    repairs.mkdir()
+    units = attach_candidates(fixture_units(pattern), FIXTURES.parent)
+    assert units
+    (repairs / "sample.json").write_text(
+        json.dumps({"units": units}, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    answers = tmp_path / "answers"
+    answers.mkdir()
+    return repairs, answers, units
+
+
+def answer_all(answers, units, choose, accept=None, missing=None, names=PASSES):
+    """Write one `.out` per pass, each answering every unit the same way."""
+    for name in names:
+        payload = []
+        for unit in units:
+            names_shown = [candidate["id"] for candidate in unit["candidates"]]
+            taken = accept(unit) if accept else [choose(unit)]
+            payload.append(
+                {
+                    "id": unit["id"],
+                    "choose": choose(unit),
+                    "accept": taken,
+                    "reject": [one for one in names_shown if one not in taken],
+                    "missing": missing(unit) if missing else [],
+                }
+            )
+        (answers / f"{name}-01.out").write_text(
+            json.dumps(payload, indent=2), encoding="utf-8"
+        )
+
+
+def original_id(unit):
+    """The candidate that leaves the window as it is, which a pass is never told."""
+    (found,) = [
+        candidate["id"]
+        for candidate in unit["candidates"]
+        if candidate["cuts"] == unit["original_cut"]
+    ]
+    return found
+
+
+def run(script, *args):
+    return subprocess.run(
+        [sys.executable, str(script), *[str(arg) for arg in args]],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_a_unanimous_round_settles_and_reports_per_stratum(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(answers, units, original_id)
+    done = run(COLLECT, repairs, answers)
+    assert done.returncode == 0, done.stderr
+    assert "per stratum" in done.stdout
+    assert "candidates offered" in done.stdout
+    assert f"{len(units)} of {len(units)} units settled" in done.stdout
+
+
+def test_the_damage_counts_are_headlines_rather_than_footnotes(tmp_path):
+    """The rate at which a competent agent breaks a line while repairing it."""
+    repairs, answers, units = round_dir(tmp_path, "docstring_prefix.py")
+    answer_all(answers, units, original_id)
+    done = run(COLLECT, repairs, answers)
+    assert done.returncode == 0, done.stderr
+    assert "carrier invalid" in done.stdout
+    invalid = sum(
+        1
+        for unit in units
+        for candidate in unit["candidates"]
+        if not candidate["carrier_valid"]
+    )
+    assert invalid
+    assert f"carrier invalid  {invalid}" in done.stdout.replace("   ", "  ")
+
+
+def test_a_split_referral_reaches_the_worksheet_grouped_by_its_shape(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    everything = [candidate["id"] for candidate in units[0]["candidates"]]
+    answer_all(
+        answers,
+        units,
+        original_id,
+        accept=lambda u: everything,
+        names=("claude", "codex"),
+    )
+    answer_all(answers, units, original_id, names=("agy",))
+    assert run(ADJUDICATE, "worksheet", repairs, answers).returncode == 0
+    entries = json.loads((repairs / "adjudications.json").read_text(encoding="utf-8"))
+    assert entries
+    assert {entry["shape"] for entry in entries} == {"split"}
+    assert all(entry["referred"] for entry in entries)
+    assert all(entry["outcome"] is None for entry in entries)
+
+
+def test_a_repair_the_generator_missed_is_its_own_shape(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(
+        answers, units, original_id, missing=lambda u: [["a line", "another line"]]
+    )
+    assert run(ADJUDICATE, "worksheet", repairs, answers).returncode == 0
+    entries = json.loads((repairs / "adjudications.json").read_text(encoding="utf-8"))
+    assert {entry["shape"] for entry in entries} == {"missing"}
+
+
+def test_a_decision_without_a_reason_is_refused(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(
+        answers,
+        units,
+        original_id,
+        accept=lambda u: [candidate["id"] for candidate in u["candidates"]],
+        names=("claude",),
+    )
+    answer_all(answers, units, original_id, names=("codex", "agy"))
+    run(ADJUDICATE, "worksheet", repairs, answers)
+    assert run(ADJUDICATE, "check", repairs, answers).returncode == 1
+    entries = json.loads((repairs / "adjudications.json").read_text(encoding="utf-8"))
+    for entry in entries:
+        entry["outcome"] = "settled"
+        entry["acceptable"] = [entry["candidates"][0]["id"]]
+    (repairs / "adjudications.json").write_text(json.dumps(entries), encoding="utf-8")
+    done = run(ADJUDICATE, "check", repairs, answers)
+    assert done.returncode == 1
+    assert "no reason recorded" in done.stdout
+    for entry in entries:
+        entry["reason"] = "the second break severs a clause"
+    (repairs / "adjudications.json").write_text(json.dumps(entries), encoding="utf-8")
+    assert run(ADJUDICATE, "check", repairs, answers).returncode == 0
+
+
+def promoted(tmp_path, pattern="suggestion_*.md"):
+    repairs, answers, units = round_dir(tmp_path, pattern)
+    answer_all(answers, units, original_id)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    done = run(PROMOTE, repairs, answers, FIXTURES.parent, "--manifest", manifest)
+    return done, manifest, repairs, answers, units
+
+
+def test_promotion_records_what_the_shipped_predicate_did(tmp_path):
+    done, manifest, _repairs, _answers, units = promoted(tmp_path)
+    assert done.returncode == 0, done.stderr
+    records = json.loads(manifest.read_text(encoding="utf-8"))["repairs"]
+    assert len(records) == len(units)
+    for record in records:
+        baseline = record["baseline_suggestion"]
+        assert baseline["predicate"] == file_digest(
+            REPO / "scripts" / "check_linefeeds.py"
+        )
+        assert baseline["lines"], record["id"]
+        assert baseline["preserving"] and baseline["carrier_valid"]
+        # The passes accepted only the unchanged window, and the shipped repair splits.
+        assert baseline["acceptable"] is False
+
+
+def test_promotion_refuses_a_referral_nobody_decided(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(
+        answers,
+        units,
+        original_id,
+        accept=lambda u: [candidate["id"] for candidate in u["candidates"]],
+        names=("claude",),
+    )
+    answer_all(answers, units, original_id, names=("codex", "agy"))
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    done = run(PROMOTE, repairs, answers, FIXTURES.parent, "--manifest", manifest)
+    assert done.returncode != 0
+    assert "undecided" in done.stderr
+    assert "nothing was promoted" in done.stderr
+    assert "repairs" not in json.loads(manifest.read_text(encoding="utf-8"))
+
+
+def test_promotion_refuses_when_no_unit_was_answered_by_every_pass(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    done = run(PROMOTE, repairs, answers, FIXTURES.parent, "--manifest", manifest)
+    assert done.returncode != 0
+    assert "nothing was promoted" in done.stderr
+
+
+def test_promotion_refuses_to_rewrite_a_round_under_another_predicate(tmp_path):
+    """A later predicate cannot rewrite what this round recorded.
+
+    The record is a historical fact about the predicate that produced it,
+    and a replay under a different one would break the identity it was written for.
+    """
+    done, manifest, repairs, answers, _units = promoted(tmp_path)
+    assert done.returncode == 0, done.stderr
+    document = json.loads(manifest.read_text(encoding="utf-8"))
+    for record in document["repairs"]:
+        record["baseline_suggestion"]["predicate"] = "sha256:" + "0" * 64
+    manifest.write_text(json.dumps(document), encoding="utf-8")
+    again = run(PROMOTE, repairs, answers, FIXTURES.parent, "--manifest", manifest)
+    assert again.returncode != 0
+    assert "a different predicate" in again.stderr
+    assert "nothing was promoted" in again.stderr
+    # And it did not rewrite what it refused.
+    assert json.loads(manifest.read_text(encoding="utf-8")) == document
+
+
+def test_replaying_promotion_reproduces_the_same_manifest(tmp_path):
+    done, manifest, repairs, answers, _units = promoted(tmp_path)
+    assert done.returncode == 0, done.stderr
+    first = manifest.read_text(encoding="utf-8")
+    again = run(PROMOTE, repairs, answers, FIXTURES.parent, "--manifest", manifest)
+    assert again.returncode == 0, again.stderr
+    assert manifest.read_text(encoding="utf-8") == first
+
+
+def test_a_pass_naming_a_candidate_it_was_never_shown_is_an_error(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(answers, units, lambda unit: "c99")
+    done = run(COLLECT, repairs, answers)
+    assert done.returncode == 0, done.stderr
+    assert "error" in done.stdout
