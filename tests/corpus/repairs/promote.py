@@ -26,7 +26,7 @@ sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(REPO / "scripts"))
 sys.path.insert(0, str(HERE.parent))
 
-from collect import resolved  # noqa: E402
+from collect import resolved, votes_for  # noqa: E402
 from corpus_harness import (  # noqa: E402
     candidate_for_breaks,
     compose,
@@ -99,6 +99,7 @@ def main(argv=None):
     )
 
     outcomes, names = resolved(sample, answers_dir, decisions)
+    votes = votes_for(sample, answers_dir)
     if not outcomes:
         sys.exit("no unit was answered by every pass\nnothing was promoted")
 
@@ -141,7 +142,21 @@ def main(argv=None):
         text = texts[key]
 
         record = dict(unit)
-        record["passes"] = names
+        # The stratum a rate is reported over, with the weight that rate carries.
+        # A record naming a set and not the population it came from cannot be weighted.
+        record["stratum"] = dict(
+            sample.get("strata", {}).get(unit["stratum"], {}), set=unit["stratum"]
+        )
+        record["passes"] = {
+            name: {
+                "choose": cast[name].get("choose"),
+                "accept": cast[name].get("accept", []),
+                "reject": cast[name].get("reject", []),
+                "missing": cast[name].get("missing") or [],
+            }
+            for name in names
+            for cast in [votes[uid]]
+        }
         record["outcome"] = got["outcome"]
         if got.get("reason"):
             record["adjudication"] = got["reason"]

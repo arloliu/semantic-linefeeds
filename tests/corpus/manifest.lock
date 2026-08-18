@@ -1,4 +1,4 @@
 {
-  "digest": "sha256:d42b5e1b91b3e984b4ef357c4c5edc4575c5b785862b05215a961589dd195f20",
-  "reason": "the manifest gains a repair_admission section, and no label changes. It preregisters what a widened automatic repair must clear before any repair has been elicited: the scored denominator, the rule that a class is measured on the exact class sets it activates, an absolute floor of 0.80 on each activated stratum's Wilson-95 lower bound taken stratum by stratum rather than pooled, the conditions under which a stratum can be rated at all, the requirement that the shipped class be scored through the same algorithm, and three conditions that refuse a class however well it scores. Nothing in it touches what counts as a violation or how a unit was labeled, so every existing unit keeps the status it carries"
+  "digest": "sha256:27098c10e01bc5de5477d7741d0409cd75ebca77784fbafdb4ccee5d3cb125b9",
+  "reason": "the manifest gains an empty repairs section, and no label changes. It is the section the repair round will be promoted into, and it is required rather than optional so that a reader can tell an empty corpus from a section nobody wrote. Every record it will hold is checked by repair_problems, which names the unit rather than counting defects. Nothing here touches what counts as a violation or how any unit was labeled"
 }

@@ -60,6 +60,7 @@ SECTIONS = (
     "rubric",
     "reporting",
     "repair_admission",
+    "repairs",
     "covariate_definitions",
     "eligible_anchor",
     "frames",
@@ -193,6 +194,10 @@ REPAIR_ADMISSION = {
         "drawn after the widened predicate is frozen"
     ),
 }
+
+
+# What a repair unit's outcome may be, fixed here so a promotion cannot invent one.
+REPAIR_OUTCOMES = ("settled", "ambiguous")
 
 
 class ScoringRefused(Exception):
@@ -1814,6 +1819,9 @@ def manifest_problems(document):
         for name in COVARIATES
         if not defined.get(name)
     ]
+    problems += repair_floor_problems(document)
+    for record in document.get("repairs", []):
+        problems += repair_problems(record)
     for source in document.get("sources", []):
         problems += _source_problems(source)
     declared = {source["id"] for source in document.get("sources", [])}
@@ -1861,6 +1869,129 @@ def _repair_admission_problems(section):
         if name not in frozen
     ]
     return problems
+
+
+REPAIR_FIELDS = (
+    "id",
+    "source",
+    "frame",
+    "path",
+    "lines",
+    "window",
+    "withheld_by",
+    "stratum",
+    "covariates",
+    "stimulus",
+    "candidates",
+    "passes",
+    "outcome",
+    "acceptable",
+    "baseline_suggestion",
+)
+
+
+def repair_problems(record, predicate=None):
+    """Everything wrong with one repair record, named by unit rather than counted.
+
+    The same idiom `_unit_problems` sets, and for the same reason:
+    a gate that reports a number tells a reader to go looking,
+    and a gate that reports `styx:a.go:12:0#repair: ...` tells them where.
+    """
+    import check_linefeeds
+
+    name = record.get("id", "<unnamed repair>")
+    problems = [
+        f"{name}: records no {field}"
+        for field in REPAIR_FIELDS
+        if record.get(field) in (None, "")
+    ]
+
+    outcome = record.get("outcome")
+    if outcome not in REPAIR_OUTCOMES:
+        problems.append(f"{name}: outcome {outcome!r} is not one of {REPAIR_OUTCOMES}")
+
+    candidates = {
+        candidate.get("id"): candidate for candidate in record.get("candidates") or []
+    }
+    acceptable = record.get("acceptable") or []
+    if outcome == "settled" and not acceptable:
+        problems.append(
+            f"{name}: settled with an empty acceptable set; "
+            "a unit whose only correct answer is the original names that candidate"
+        )
+    if outcome == "ambiguous" and acceptable:
+        problems.append(
+            f"{name}: ambiguous and still names {len(acceptable)} acceptable repair(s); "
+            "an ambiguous unit leaves the rate rather than carrying one"
+        )
+    for one in acceptable:
+        candidate = candidates.get(one)
+        if candidate is None:
+            problems.append(
+                f"{name}: acceptable names {one!r}, which is not a candidate"
+            )
+        elif not candidate_is_valid(candidate):
+            problems.append(
+                f"{name}: acceptable names {one}, which is not valid on all three flags"
+            )
+
+    for who, answer in sorted((record.get("passes") or {}).items()):
+        covered = set(answer.get("accept") or []) | set(answer.get("reject") or [])
+        if covered != set(candidates):
+            problems.append(
+                f"{name}: pass {who} answered {len(covered)} of {len(candidates)} candidates"
+            )
+        if set(answer.get("accept") or []) & set(answer.get("reject") or []):
+            problems.append(
+                f"{name}: pass {who} both accepted and rejected a candidate"
+            )
+
+    unknown = sorted(
+        set(record.get("withheld_by") or []) - set(check_linefeeds.WITHHOLDING_CLASSES)
+    )
+    if unknown:
+        problems.append(
+            f"{name}: withheld by {unknown}, which the detector does not declare"
+        )
+
+    stratum = record.get("stratum") or {}
+    if exact_set_key(record.get("withheld_by") or []) != stratum.get("set"):
+        problems.append(
+            f"{name}: stratum {stratum.get('set')!r} is not the exact set of its classes"
+        )
+    if not isinstance(stratum.get("inclusion_probability"), (int, float)):
+        problems.append(
+            f"{name}: the stratum records no inclusion probability, "
+            "so nothing it contributes to can be weighted"
+        )
+
+    baseline = record.get("baseline_suggestion") or {}
+    if predicate and baseline.get("predicate") != predicate:
+        problems.append(
+            f"{name}: the baseline was produced by {baseline.get('predicate')}, "
+            f"and the predicate in the tree is {predicate}"
+        )
+    if outcome == "adjudicated" and not record.get("adjudication", "").strip():
+        problems.append(f"{name}: adjudicated with no reason recorded")
+    return problems
+
+
+def repair_floor_problems(document):
+    """Every repair floor keyed to a round the manifest does not declare.
+
+    A floor for a round nobody drew is a prediction nothing will ever answer.
+    """
+    declared = {
+        str(source.get("round"))
+        for source in document.get("sources", [])
+        if source.get("side") == "holdout"
+    }
+    floors = document.get("reporting", {}).get("repair_floors", {})
+    return [
+        f"a repair floor names round {number}, and no source declares that round"
+        for number in sorted(floors)
+        if number.isdigit() and number not in declared
+    ]
 
 
 def _source_problems(source):

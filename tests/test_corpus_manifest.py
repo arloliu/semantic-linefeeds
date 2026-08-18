@@ -78,6 +78,7 @@ def manifest(**overrides):
             "max_ambiguous_fraction": 0.25,
         },
         "repair_admission": json.loads(json.dumps(REPAIR_ADMISSION)),
+        "repairs": [],
         "covariate_definitions": {
             name: f"how {name} is measured" for name in COVARIATES
         },

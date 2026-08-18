@@ -167,6 +167,7 @@
     "baseline": "the shipped class is measured and reported beside every candidate as context; it is 34 boundaries with 32 of them in one source, and it is never the bar",
     "admissible_from": "no class is admissible on the calibration side; every number above is scored on a holdout round drawn after the widened predicate is frozen"
   },
+  "repairs": [],
   "covariate_definitions": {
     "prose_width": "the widest raw line in the paragraph holding the boundary, in display columns with tabs expanded to 8",
     "raw_end_column": "the display column where the upper raw line ends, trailing whitespace removed",

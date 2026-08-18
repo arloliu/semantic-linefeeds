@@ -1542,3 +1542,209 @@ def test_a_pass_naming_a_candidate_it_was_never_shown_is_an_error(tmp_path):
     done = run(COLLECT, repairs, answers)
     assert done.returncode == 0, done.stderr
     assert "error" in done.stdout
+
+
+# --- the manifest section, and the validator over it ----------------------
+#
+# The repair records live in the same manifest as the label records.
+# One manifest, one lock, one digest to repin:
+# splitting them would let one move without the other noticing.
+
+from corpus_harness import (  # noqa: E402
+    REPAIR_FIELDS,
+    manifest_problems,
+    repair_floor_problems,
+    repair_problems,
+)
+
+
+def repair_record(**overrides):
+    """One promoted repair, complete enough that the validator has no complaint."""
+    record = {
+        "id": "styx:internal/buffer.go:12:0#repair",
+        "source": "styx",
+        "frame": "main",
+        "path": "internal/buffer.go",
+        "line": 12,
+        "match": 0,
+        "index": 3,
+        "lines": [12, 13],
+        "window": {
+            "form": "two-line",
+            "raw": ["// One sentence here. Another follows.", "// and it goes on."],
+            "prose": "One sentence here. Another follows. and it goes on.",
+            "leaders": ["// ", "// "],
+            "tails": ["", ""],
+            "breaks": [35],
+        },
+        "withheld_by": ["terminator_period"],
+        "stratum": {
+            "set": "terminator_period",
+            "population": 3851,
+            "drawn": 40,
+            "inclusion_probability": 0.0104,
+            "reportable": True,
+        },
+        "covariates": {"co_wrap": True, "language": "go"},
+        "stimulus": {"body": "semantic-linefeeds: 1 issue(s)", "kinds": ["fused"]},
+        "candidates": [
+            {
+                "id": "c00",
+                "cuts": [],
+                "breaks": [],
+                "lines": ["// One sentence here. Another follows. and it goes on."],
+                "preserving": True,
+                "carrier_valid": True,
+                "intact": True,
+            },
+            {
+                "id": "c01",
+                "cuts": [18],
+                "breaks": [18],
+                "lines": [
+                    "// One sentence here.",
+                    "// Another follows. and it goes on.",
+                ],
+                "preserving": True,
+                "carrier_valid": True,
+                "intact": True,
+            },
+        ],
+        "passes": {
+            name: {"choose": "c01", "accept": ["c01"], "reject": ["c00"], "missing": []}
+            for name in ("agy", "claude", "codex")
+        },
+        "outcome": "settled",
+        "acceptable": ["c01"],
+        "baseline_suggestion": {
+            "lines": ["// One sentence here.", "// Another follows. and it goes on."],
+            "breaks": [18],
+            "candidate": "c01",
+            "acceptable": True,
+            "preserving": True,
+            "carrier_valid": True,
+            "intact": True,
+            "predicate": "sha256:" + "1" * 64,
+        },
+    }
+    record.update(overrides)
+    return record
+
+
+def test_a_complete_repair_record_draws_no_complaint():
+    assert repair_problems(repair_record()) == []
+
+
+@pytest.mark.parametrize("field", REPAIR_FIELDS)
+def test_a_repair_record_missing_a_field_is_rejected(field):
+    """A field that may go missing is a field no reader can rely on."""
+    thin = repair_record()
+    del thin[field]
+    assert any(field in problem for problem in repair_problems(thin))
+
+
+def test_a_settled_unit_with_an_empty_acceptable_set_is_rejected():
+    """Settled means somebody said what the right answers are."""
+    problems = repair_problems(repair_record(acceptable=[]))
+    assert any("empty acceptable set" in problem for problem in problems)
+
+
+def test_an_ambiguous_unit_carries_no_acceptable_repair():
+    """An ambiguous unit leaves the rate rather than carrying one."""
+    problems = repair_problems(repair_record(outcome="ambiguous"))
+    assert any("leaves the rate" in problem for problem in problems)
+
+
+def test_an_acceptable_candidate_that_is_not_valid_is_rejected():
+    """A repair that loses a word is not a variant of the right answer."""
+    broken = repair_record()
+    broken["candidates"][1]["preserving"] = False
+    problems = repair_problems(broken)
+    assert any("not valid on all three flags" in problem for problem in problems)
+
+
+def test_an_acceptable_name_that_is_not_a_candidate_is_rejected():
+    problems = repair_problems(repair_record(acceptable=["c99"]))
+    assert any("not a candidate" in problem for problem in problems)
+
+
+def test_a_pass_that_did_not_answer_every_candidate_is_rejected():
+    """The universe is what makes a set complete, so a partial answer covers nothing."""
+    partial = repair_record()
+    partial["passes"]["agy"] = {
+        "choose": "c01",
+        "accept": ["c01"],
+        "reject": [],
+        "missing": [],
+    }
+    problems = repair_problems(partial)
+    assert any("answered 1 of 2 candidates" in problem for problem in problems)
+
+
+def test_a_pass_that_both_accepted_and_rejected_a_candidate_is_rejected():
+    doubled = repair_record()
+    doubled["passes"]["agy"]["reject"] = ["c00", "c01"]
+    problems = repair_problems(doubled)
+    assert any("both accepted and rejected" in problem for problem in problems)
+
+
+def test_a_class_the_detector_does_not_declare_is_rejected():
+    """A stratum named after a class nobody declares cannot be drawn again."""
+    problems = repair_problems(repair_record(withheld_by=["terminator_semicolon"]))
+    assert any("does not declare" in problem for problem in problems)
+
+
+def test_a_stratum_that_is_not_the_exact_set_of_its_classes_is_rejected():
+    """The strata partition the population, and a mislabelled one breaks the partition."""
+    crossed = repair_record()
+    crossed["stratum"]["set"] = "protected_span"
+    problems = repair_problems(crossed)
+    assert any("not the exact set" in problem for problem in problems)
+
+
+def test_a_stratum_with_no_inclusion_probability_is_rejected():
+    """Nothing it contributes to can be weighted without one."""
+    unweighted = repair_record()
+    del unweighted["stratum"]["inclusion_probability"]
+    problems = repair_problems(unweighted)
+    assert any("inclusion probability" in problem for problem in problems)
+
+
+def test_a_baseline_produced_by_another_predicate_is_rejected():
+    """What the shipped repair did is a historical fact about the predicate that did it."""
+    problems = repair_problems(repair_record(), predicate="sha256:" + "2" * 64)
+    assert any("predicate in the tree" in problem for problem in problems)
+    assert repair_problems(repair_record(), predicate="sha256:" + "1" * 64) == []
+
+
+def test_a_repair_floor_for_a_round_nobody_declared_is_rejected():
+    """A floor for a round nobody drew is a prediction nothing will ever answer."""
+    document = {
+        "sources": [{"id": "styx", "side": "holdout", "round": 4}],
+        "reporting": {"repair_floors": {"4": {}, "9": {}}},
+    }
+    problems = repair_floor_problems(document)
+    assert len(problems) == 1
+    assert "round 9" in problems[0]
+
+
+def test_the_repairs_section_is_required_even_while_it_is_empty():
+    """A reader must be able to tell an empty corpus from a section nobody wrote."""
+    document = json.loads(
+        (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert document["repairs"] == []
+    assert manifest_problems(document) == []
+    del document["repairs"]
+    assert any("repairs" in problem for problem in manifest_problems(document))
+
+
+def test_a_broken_repair_record_reaches_the_manifest_gate():
+    """The validator joins `manifest_problems` rather than standing beside it."""
+    document = json.loads(
+        (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
+    )
+    document["repairs"] = [repair_record(acceptable=[])]
+    assert any(
+        "empty acceptable set" in problem for problem in manifest_problems(document)
+    )
