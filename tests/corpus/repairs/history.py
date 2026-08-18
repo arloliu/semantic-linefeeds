@@ -7,11 +7,15 @@ if the wild population were large enough, the corpus would be captured rather th
 It is not, so the instrument that says so is committed rather than described.
 
 What it counts is an approximation, and the approximation is the point.
-A repair event is a finding on the parent blob whose anchor line does not appear in the child.
+A repair event is a finding on the parent blob whose anchor line occurs fewer times in the child.
 That over-counts:
-a deleted line, a rename with edits, and a rewrite for unrelated reasons all look the same.
-So the result is a ceiling on the number of real repairs, not an estimate of it,
-and the plan reads it as one.
+a deleted line and a rewrite for unrelated reasons both look like a repair.
+So the result is an over-count of repairs rather than an estimate of them.
+
+Two things it does not do, so the number is read as an over-count rather than a proven ceiling.
+It compares whole blobs rather than diff hunks,
+so a line repaired in one place and reintroduced in another nets to nothing.
+And it sees only this repository, which is one project's history.
 
 Only first-parent commits are walked.
 A merge's diff against its first parent attributes the whole side branch to one commit,
@@ -35,12 +39,37 @@ SUFFIXES = (".md", ".py", ".go", ".ts")
 EXCLUDED_PREFIX = "tests/"
 
 
-def git(*args):
-    return subprocess.run(
+def git(*args, allow_failure=False):
+    """Run one git command, refusing to treat a failure as an empty answer.
+
+    The first version returned stdout without checking the status,
+    so a command that failed contributed nothing and looked like a file with no findings.
+    A miscount that silently lowers the headline number is the one this instrument must not make.
+    """
+    done = subprocess.run(
         ["git", "-C", str(REPO)] + list(args),
         capture_output=True,
         text=True,
-    ).stdout
+    )
+    if done.returncode != 0:
+        if allow_failure:
+            return None
+        raise RuntimeError(f"git {' '.join(args)} failed: {done.stderr.strip()}")
+    return done.stdout
+
+
+def changed_paths(parent, commit):
+    """Every changed path as (status, old path, new path), with renames carrying both."""
+    out = []
+    raw = git("diff", "--name-status", "-M", parent, commit)
+    for line in raw.splitlines():
+        parts = line.split("\t")
+        status = parts[0]
+        if status.startswith("R") and len(parts) == 3:
+            out.append((status, parts[1], parts[2]))
+        elif len(parts) == 2:
+            out.append((status, parts[1], parts[1]))
+    return out
 
 
 def anchors(text, path):
@@ -66,6 +95,7 @@ def main(argv=None):
     repaired = collections.Counter()
     introduced = collections.Counter()
     survived = collections.Counter()
+    skipped = []
     walked = 0
 
     for commit in commits:
@@ -74,28 +104,42 @@ def main(argv=None):
             continue
         parent = parents[0]
         walked += 1
-        # -M follows a rename.
-        # A moved file is then compared with itself,
-        # rather than counted as one deletion beside one addition.
-        changed = git("diff", "--name-only", "-M", parent, commit).splitlines()
-        for name in changed:
-            if not name.endswith(SUFFIXES) or name.startswith(EXCLUDED_PREFIX):
+        # -M detects a rename, and --name-status is what reports both of its paths.
+        # --name-only returns one name.
+        # Reading that name from both blobs does not follow a rename:
+        # it looks for the new path inside the old commit.
+        for status, old_name, new_name in changed_paths(parent, commit):
+            # A deletion has no child blob and an addition has no parent one,
+            # so neither can carry a repair.
+            # Skipping them is not an error.
+            if status.startswith(("D", "A")):
                 continue
-            before, after = (
-                git("show", f"{parent}:{name}"),
-                git("show", f"{commit}:{name}"),
-            )
+            if not new_name.endswith(SUFFIXES) or new_name.startswith(EXCLUDED_PREFIX):
+                continue
+            before = git("show", f"{parent}:{old_name}", allow_failure=True)
+            after = git("show", f"{commit}:{new_name}", allow_failure=True)
+            if before is None or after is None:
+                skipped.append(f"{commit[:8]} {old_name} -> {new_name}")
+                continue
             if not before or not after:
                 continue
-            present = set(after.splitlines())
-            was = set(before.splitlines())
-            for kind, anchor in anchors(before, name):
-                if anchor in present:
+            # Counted by occurrence, not by membership.
+            # A file can hold one line twice.
+            # Repairing one of them leaves the other in the set,
+            # which a membership test reads as survival.
+            present = collections.Counter(after.splitlines())
+            was = collections.Counter(before.splitlines())
+            seen = collections.Counter()
+            for kind, anchor in anchors(before, old_name):
+                seen[anchor] += 1
+                if seen[anchor] <= present[anchor]:
                     survived[kind] += 1
                 else:
                     repaired[kind] += 1
-            for kind, anchor in anchors(after, name):
-                if anchor not in was:
+            fresh = collections.Counter()
+            for kind, anchor in anchors(after, new_name):
+                fresh[anchor] += 1
+                if fresh[anchor] > was[anchor]:
                     introduced[kind] += 1
 
     report = {
@@ -103,14 +147,21 @@ def main(argv=None):
         "commits_walked": walked,
         "suffixes": list(SUFFIXES),
         "excluded_prefix": EXCLUDED_PREFIX,
+        "skipped": skipped,
         "repaired": dict(repaired),
         "introduced": dict(introduced),
         "survived": dict(survived),
-        "note": "repaired counts any anchor line that stopped existing, so it is a ceiling",
+        "note": (
+            "repaired counts any anchor line whose occurrences fell, "
+            "so a deletion and an unrelated rewrite are counted alongside a real repair; "
+            "it is an over-count of repairs rather than a proven ceiling on them"
+        ),
     }
     print(f"{walked} first-parent commits walked")
+    if skipped:
+        print(f"  {len(skipped)} path(s) skipped: {skipped[:3]}")
     for label, counter in (
-        ("repaired (at most)", repaired),
+        ("repaired (over-counted)", repaired),
         ("introduced", introduced),
         ("survived unchanged", survived),
     ):

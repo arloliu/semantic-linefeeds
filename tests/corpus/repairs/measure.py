@@ -137,6 +137,19 @@ def judged(raw, prose, path):
     and passes the stripped raw line onward (`scripts/check_linefeeds.py:1375-1389`).
     `diagnose` reports the stripped prose but anchors at the original raw line,
     so the two have to be brought back together here.
+
+    **The carrier answer here is an inference, and it is the one number this file does not prove.**
+    The detector decides from the prose as it stood *before* stripping,
+    and what reaches this function is the prose after.
+    A stripped line no longer ends with the carrier,
+    and a line whose carrier was recognized but rejected commonly does not end with it either,
+    so those two outcomes are not distinguishable from what is available here.
+    The pinned output reports zero `carrier_stripped` units in all three sources,
+    and that zero is unvalidated rather than measured.
+    The plan's Task 2 replaces this with the detector's own value through `judged_lines`,
+    and repins the output against it.
+    Nothing else in this file depends on the answer:
+    every other class is computed from the judged prose and raw line directly.
     """
     tail = clf.trailing_carrier(raw, clf.is_markdown(path), clf.lang_for_path(path))
     if not tail:
