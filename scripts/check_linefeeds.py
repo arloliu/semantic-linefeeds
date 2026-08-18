@@ -28,11 +28,13 @@ import argparse
 import collections
 import configparser
 import fnmatch
+import io
 import json
 import os
 import re
 import sys
 import tempfile
+import tokenize
 
 __version__ = "0.8.0"
 
@@ -329,7 +331,10 @@ OK_LINE_ENDERS = tuple(".!?;:,—-–)”\"'`" + "。！？；：，、）」』
 # without narrowing anything today.
 # "etc." and "resp." are left out for the opposite reason:
 # both commonly do end a sentence.
-MID_SENTENCE_ABBREVIATIONS = ("cf", "esp", "viz", "vs")
+# "al." can also end a sentence,
+# but an author surname following et al. produces a blocking false positive.
+# Precision wins here at the accepted cost of missing that ambiguous sentence boundary.
+MID_SENTENCE_ABBREVIATIONS = ("al", "cf", "esp", "viz", "vs")
 
 # Sentence end followed by a new sentence on the same line.
 # Two or more lowercase letters are required before the terminal punctuation,
@@ -357,8 +362,9 @@ FUSED_RE = re.compile(
 CLOSING_EMPHASIS_RE = re.compile(r"(\*{1,3}|_{1,3}|~{1,2})$")
 
 # A code span that closes the line it sits on.
-# The backtick is a legitimate line ender, so a line ending in a span is never a wrap
-# and the clause the span was attached to is never read at all.
+# A span-only line keeps its backtick as a legitimate line ender.
+# When prose precedes the span, peel_code_span removes it before the wrap check
+# so the prose can still expose a severed clause.
 TRAILING_CODE_SPAN_RE = re.compile(r"`[^`]+`$")
 
 # A comment line holding nothing but code punctuation.
@@ -919,6 +925,42 @@ def prose_lines_markdown(text):
         yield i, raw, prose
 
 
+def python_multiline_string_lines(text):
+    """Return line numbers occupied by Python multi-line string tokens.
+
+    Python docstrings remain prose because prose_lines_code recognizes them before consulting this set.
+    Python 3.12+ splits f-strings into token segments,
+    so a multi-line FSTRING_MIDDLE segment carries the same lexical evidence as STRING.
+    An unfinished triple-quoted string has no complete string token,
+    so TokenError's start row protects the rest of the invalid file from false comment findings.
+    Both spellings CPython uses for that state are matched as substrings rather than in full:
+    an exact message would silently stop protecting the region the day the wording changes,
+    which is the one failure direction this function must not have.
+    "multi-line statement" is the unclosed-bracket message and is deliberately not matched.
+    Other tokenization failures keep any ranges already identified and otherwise preserve the older extractor behavior.
+    """
+    lines = set()
+    string_types = {tokenize.STRING}
+    fstring_middle = getattr(tokenize, "FSTRING_MIDDLE", None)
+    if fstring_middle is not None:
+        string_types.add(fstring_middle)
+    try:
+        tokens = tokenize.generate_tokens(io.StringIO(text).readline)
+        for token in tokens:
+            if token.type in string_types and token.start[0] != token.end[0]:
+                lines.update(range(token.start[0], token.end[0] + 1))
+    except tokenize.TokenError as error:
+        message = error.args[0] if error.args else ""
+        if len(error.args) > 1 and (
+            "multi-line string" in message or "triple-quoted" in message
+        ):
+            start_row = error.args[1][0]
+            lines.update(range(start_row, len(text.splitlines()) + 1))
+    except (IndentationError, SyntaxError):
+        pass
+    return lines
+
+
 def prose_lines_code(text, lang):
     """Yield (lineno, raw, prose) for prose comment lines.
 
@@ -942,6 +984,7 @@ def prose_lines_code(text, lang):
     expect_doc = lang.docstrings  # a module docstring may open the file
     sig_pending = False
     sig_depth = 0
+    string_lines = python_multiline_string_lines(text) if lang.docstrings else set()
 
     def reset_scope():
         nonlocal fence, pre, doctest
@@ -1076,12 +1119,16 @@ def prose_lines_code(text, lang):
             if stripped.startswith(m):
                 marker = m
                 break
+        if marker is not None and i in string_lines:
+            prev_col = None
+            reset_scope()
+            yield i, None, None
+            continue
         if marker is None:
             prev_col = None
             reset_scope()
             if lang.docstrings and stripped:
                 # A "#" after whitespace in a string default (def f(x="a #b"):) makes the tracker miss that docstring
-                # A "#"-led line inside a multi-line string literal is misread as a comment
                 code = re.sub(r"\s#.*$", "", stripped).rstrip()
                 if sig_pending:
                     sig_depth += code.count("(") - code.count(")")

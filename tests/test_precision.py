@@ -53,15 +53,29 @@ def test_a_single_letter_abbreviation_needs_no_exclusion(abbreviation):
     assert kinds(line) == []
 
 
-def test_a_word_merely_ending_in_an_excluded_abbreviation_still_fuses():
-    """The exclusion is anchored at a word boundary, not matched anywhere in the word."""
-    assert kinds("The two limits are five and ten, resp. The default is five.\n") == [
-        (1, "fused")
-    ]
+@pytest.mark.parametrize(
+    "line",
+    [
+        "The two limits are five and ten, resp. The default is five.\n",
+        "The handler waits on one signal. The default is five.\n",
+    ],
+    ids=["resp-ends-in-esp", "signal-ends-in-al"],
+)
+def test_a_word_merely_ending_in_an_excluded_abbreviation_still_fuses(line):
+    """The exclusion is anchored at a word boundary, not matched anywhere in the word.
+
+    One case per entry whose spelling is the tail of ordinary English words,
+    which is where dropping the anchor would cost real findings rather than rare ones.
+    """
+    assert kinds(line) == [(1, "fused")]
 
 
 def test_a_sentence_end_that_is_not_an_abbreviation_still_fuses():
     assert kinds("One sentence here. Another sentence follows.\n") == [(1, "fused")]
+
+
+def test_et_al_citation_does_not_block_as_two_sentences():
+    assert kinds("The Smith et al. Nature paper argues otherwise.\n") == []
 
 
 # --- full-width terminators -----------------------------------------------
@@ -718,6 +732,69 @@ def prose_after_the_licence_cut(text, path):
         for n, _, p in check_linefeeds.without_license_text(stream, text, path)
         if p is not None
     ]
+
+
+def extracted_prose(text, path):
+    stream = check_linefeeds.prose_stream(text, path)
+    assert stream is not None
+    return [(n, p) for n, _raw, p in stream if p is not None]
+
+
+def test_marker_led_lines_in_a_python_multiline_string_are_not_prose():
+    text = 'value = """\n# One sentence here. Another sentence follows.\n"""\n'
+    assert extracted_prose(text, "example.py") == []
+    assert kinds(text, "example.py") == []
+
+
+def test_a_suppression_directive_inside_a_python_string_is_inert():
+    text = (
+        'value = """\n'
+        "# semlf-ignore-next\n"
+        "# One sentence here. Another sentence follows.\n"
+        '"""\n'
+    )
+    assert extracted_prose(text, "example.py") == []
+
+
+def test_marker_led_lines_in_an_unclosed_python_multiline_string_are_not_prose():
+    text = 'value = """\n# One sentence here. Another sentence follows.\n'
+    assert extracted_prose(text, "example.py") == []
+
+
+def test_marker_led_lines_in_a_python_multiline_f_string_are_not_prose():
+    text = 'value = f"""\n# One sentence here. Another sentence follows.\n"""\n'
+    assert extracted_prose(text, "example.py") == []
+    assert kinds(text, "example.py") == []
+
+
+def test_marker_led_lines_in_an_unclosed_python_multiline_f_string_are_not_prose():
+    text = 'value = f"""\n# One sentence here. Another sentence follows.\n'
+    assert extracted_prose(text, "example.py") == []
+
+
+def test_an_unclosed_bracket_does_not_silence_the_rest_of_the_file():
+    """An unfinished string protects what follows it; an unfinished statement must not.
+
+    Both end tokenization the same way,
+    so the message test that separates them is what keeps this file readable.
+    """
+    text = "value = (1,\n# One sentence here. Another sentence follows.\n"
+    assert kinds(text, "example.py") == [(2, "fused")]
+
+
+def test_a_python_comment_after_a_multiline_string_remains_prose():
+    text = (
+        'value = """\n'
+        "# This text belongs to the string. It remains inert.\n"
+        '"""\n'
+        "# One sentence here. Another sentence follows.\n"
+    )
+    assert kinds(text, "example.py") == [(4, "fused")]
+
+
+def test_a_python_docstring_remains_prose():
+    text = 'def f():\n    """One sentence here. Another sentence follows."""\n'
+    assert kinds(text, "example.py") == [(2, "fused")]
 
 
 def test_a_licence_header_is_cut_whether_or_not_a_directive_stands_above_it():

@@ -7,6 +7,11 @@ carrier identification and recognition are two steps:
 the extractor marks a candidate by yielding it in the prose stream,
 and what it suppresses is read only after the licence cut,
 so a candidate inside a removed paragraph is never read as a directive.
+**Amended:** 2026-08-17 —
+[ADR-0020](0020-string-literal-inertness-follows-lexical-coverage.md) narrows the string-literal entry below:
+inertness holds where the extractor has lexical evidence that a line belongs to a literal,
+which today means Python through the standard-library tokenizer.
+A marker-led line inside a multiline string in any other profile is a named limitation, not a guarantee.
 
 ## Decision
 

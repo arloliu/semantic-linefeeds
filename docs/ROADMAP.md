@@ -69,8 +69,11 @@ What remains open is smaller and named:
 | Open item | Evidence | What it needs |
 |---|---|---|
 | Adjacent telegraphic notes in Go comments read as one severed clause | three of the third round's four false positives | ADR-0002 territory: a positive-evidence `wrap` test, or nothing |
-| An abbreviation followed by a capitalised proper noun | `The Smith et al. Nature paper argues otherwise.` draws a `fused` finding on one sentence | A signal that separates a citation period from a sentence period. The exclusion list cannot: the same characters carry both uses, and `al.` commonly ends a sentence, so exempting it would hide real violations. |
 | A word that is both a subordinator and a preposition | a correct break before `after the request finishes` is called a `wrap`, while three labeled column wraps land on the prepositional use (`4 LE bytes right` / `after it`) | A signal that separates a clause opener from a preposition. `CONNECTORS` cannot: one entry admits both uses, which is why `before` and `after` are the two subordinators left out of the set. |
+
+The citation-abbreviation item is closed by admitting `al.` to the exclusion list.
+The same spelling can end a sentence,
+but the precision rule prefers that bounded missed finding over a blocking false positive on ordinary citations.
 
 The round's two extraction defects are repaired and off this table:
 the `gofail:` directive cut and the Markdown licence-paragraph cut both landed,

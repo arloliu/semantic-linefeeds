@@ -34,6 +34,17 @@ The checker stops accusing four kinds of correct line, and stops hiding work on 
   the checker could not say where the problem was and withheld the finding from editor feedback entirely.
   One shape still defeats it:
   a one-line block comment whose text also appears in code beside it on the same line.
+- **A citation is no longer read as two sentences.**
+  In `The Smith et al. Nature paper argues otherwise.` the period closes the citation, not the sentence,
+  and the checker blocked the line it appeared on.
+  A sentence that genuinely ends in `al.` now goes unreported instead,
+  which is the trade this checker prefers: a missed line costs less than a wrong accusation.
+- **Text inside a Python multi-line string is no longer read as a comment.**
+  A `#`-led line inside an assigned triple-quoted string or f-string was checked as prose,
+  so a string holding sample text or a template could block the edit that wrote it.
+  A suppression directive written inside such a string no longer reaches the line below it either.
+  Docstrings are unaffected and are still checked.
+  Other languages do not yet have this: a comment marker inside their multi-line strings can still be misread.
 
 ### Added
 

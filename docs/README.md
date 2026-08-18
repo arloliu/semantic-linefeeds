@@ -7,6 +7,7 @@ not what it is about.
 | Directory | Holds | Lifecycle |
 |---|---|---|
 | [`ROADMAP.md`](ROADMAP.md) | What has not shipped yet | Living; shrinks as releases ship |
+| [`DETECTOR_SPEC.md`](DETECTOR_SPEC.md) | What the portable detector currently implements | Living; changes with detector behavior |
 | [`decisions/`](decisions/) | Why the design is what it is | Immutable once accepted; superseded, never edited |
 | [`plans/active/`](plans/active/) | Work being executed now | Living until its release ships |
 | [`plans/done/`](plans/done/) | Plans that were executed | Frozen history |

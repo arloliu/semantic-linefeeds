@@ -135,7 +135,7 @@ Use the Quickstart above, or the [checkout door](#air-gapped-and-mirror-installs
 |---|---|---|---|
 | Checker | `${XDG_DATA_HOME:-~/.local/share}/semlf/check_linefeeds.py` | The enforcement core every installed hook and skill runs | Codex CLI, opencode |
 | README | published beside the checker, at the same neutral root | Resolves the installed skill's suppression-rules link, even on an air-gapped machine | Codex CLI, opencode |
-| Codex hook entry | `$CODEX_HOME/hooks.json` (default `~/.codex/hooks.json`) | Runs the checker after every edit; blocks `fused`, reports `wrap`/`long` as advice | Codex CLI |
+| Codex hook entry | `$CODEX_HOME/hooks.json` (default `~/.codex/hooks.json`) | Runs the checker after every edit; blocks `fused`, reports `long`, and reports `wrap` only when opted in | Codex CLI |
 | Judgment skill | `~/.agents/skills/semantic-linefeeds/SKILL.md` | The judgment layer: clause-boundary calls, suppression syntax, the disagreement rule | Codex CLI, opencode |
 | Setup skill | `~/.agents/skills/setup-semlf/SKILL.md` | Lets an agent install, repair, or configure `semlf` without improvising the commands | Codex CLI, opencode |
 | opencode plugin | the opencode plugins directory (`$XDG_CONFIG_HOME/opencode/plugins`, default `~/.config/opencode/plugins`) | Wires the checker into opencode's edit/write/apply_patch tool output | opencode |

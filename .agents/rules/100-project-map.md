@@ -24,7 +24,7 @@ tests/                            # pytest harness; see 300-testing.md
 ## The Core Stays One File
 
 `scripts/check_linefeeds.py` is Python 3.9+ with stdlib imports only
-(`argparse collections configparser fnmatch json os re sys tempfile`).
+(`argparse collections configparser fnmatch io json os re sys tempfile tokenize`).
 Every adapter depends on the "copy one file, runs on bare python3" property;
 adding a dependency or splitting the file breaks every install story at once.
 
