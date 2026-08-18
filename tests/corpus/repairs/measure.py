@@ -7,34 +7,40 @@ so the instrument that produced them is committed rather than described.
 `qualify.py` exists for the same reason:
 a number nobody can recompute is a number the next reader has to take on trust.
 
-Three things separate this from a reading of `_fused_suggestion`.
+Two things separate this from a plain run of the checker.
 
 The population is the manifest's own selection command, through `files_of`,
 and not a walk of every file with a checked suffix.
 A walk pulls in tests and vendored code the draw will never see.
 
 One unit is one boundary, not one line.
-`diagnose` emits a diagnostic per `FUSED_RE` match and puts the same full prose line in each
-(`scripts/check_linefeeds.py:1395-1423`),
+`diagnose` emits a diagnostic per `FUSED_RE` match and puts the same full prose line in each,
 so classifying from `FUSED_RE.search(prose)` would read every boundary on a line as the first one.
 
-Every class that applies is counted, not the first one.
-The shipped function stops at its first refusal because it only needs to know whether to speak;
-a widening admits one class at a time and has to know which others still stand on the same line.
-
-The classes are also finer than the refusals.
-`_fused_suggestion` asks whether the character before the gap is `!` or `?`,
-which answers "no" for a period and for a bang behind a closing quote alike,
-and those are different repairs carrying different risks.
+The classes are the detector's own.
+This file used to recompute them from the excerpt and the anchor,
+which meant reconstructing the judged raw line
+and inferring whether a suppression carrier had come off it.
+That inference was the one number here that could not be proved.
+`diagnose(..., withholding=True)` reports what the detector decided,
+so there is nothing left to reconstruct,
+and every count below is now measured rather than partly inferred.
+The counts did not move when it changed,
+which is what says the inference had been right.
 
 Nothing here reads a suggestion.
+
+To reproduce the pinned output,
+clone the three calibration sources into one root at the commits `manifest.json` declares,
+and point this at that root.
+`tests/test_corpus_repairs.py` checks what the pinned output claims,
+which is the part that goes stale when the detector moves underneath it.
 """
 
 import argparse
 import collections
 import json
 import pathlib
-import re
 import sys
 
 HERE = pathlib.Path(__file__).resolve()
@@ -48,117 +54,9 @@ from corpus_harness import files_of  # noqa: E402
 
 MANIFEST = TESTS / "corpus" / "manifest.json"
 
-# Every class a suggestion can be withheld by, named so the name survives a widening.
-# A class a later predicate admits stops being a refusal and keeps its identity here,
-# because the round that scored it has to stay comparable to the round that did not.
-CLASSES = (
-    "carriage_return",
-    "many_boundaries",
-    "protected_span",
-    "prose_not_unique",
-    "gap_multiple_spaces",
-    "gap_tab",
-    "gap_other_whitespace",
-    "terminator_period",
-    "closing_delimiter",
-    "prefix_list_marker",
-    "prefix_other",
-    "tail_rejected",
-    "carrier_stripped",
-)
-
-_LIST_MARKER_RE = re.compile(r"^\s*([-*+]|\d+[.)])\s")
-
-# The terminator and any closing delimiters, read off the tail of one match rather than the head.
-# `FUSED_RE` may open on a code span holding punctuation and whitespace of its own,
-# so a search from the left can land inside the span instead of on the sentence boundary.
-_BOUNDARY_RE = re.compile(r"([.!?])([\"')\]*_~]*)(\s+)")
-
-
-def classes_for(prose, raw, match):
-    """Every class that withholds a suggestion for one boundary, in declaration order."""
-    found = []
-    if "\r" in raw:
-        found.append("carriage_return")
-    if len(list(clf.FUSED_RE.finditer(prose))) != 1:
-        found.append("many_boundaries")
-    if "`" in prose or "<" in prose or ">" in prose:
-        found.append("protected_span")
-
-    occurrences = raw.count(prose)
-    if occurrences != 1:
-        found.append("prose_not_unique")
-
-    # The gap and the punctuation are the ones abutting the following sentence,
-    # which is the tail of the match after its opening capital or code span is removed.
-    text = match.group(0)
-    # The last one, not the first.
-    # A match may open on a code span carrying punctuation and whitespace of its own,
-    # and the sentence boundary is the one abutting the next sentence's opener,
-    # which is where the match ends.
-    boundary = None
-    for candidate in _BOUNDARY_RE.finditer(text):
-        boundary = candidate
-    terminator, delimiters, gap = boundary.groups()
-
-    if gap != " ":
-        if "\t" in gap:
-            found.append("gap_tab")
-        elif gap == " " * len(gap):
-            found.append("gap_multiple_spaces")
-        else:
-            found.append("gap_other_whitespace")
-    if terminator == ".":
-        found.append("terminator_period")
-    if delimiters:
-        found.append("closing_delimiter")
-
-    # The prefix and tail tests are meaningless while the prose sits in the raw line twice:
-    # the shipped function never reaches them,
-    # and an arbitrary occurrence is not the one it would have picked.
-    if occurrences == 1:
-        idx = raw.find(prose)
-        prefix, tail = raw[:idx], raw[idx + len(prose) :]
-        if not clf._SUGGESTION_PREFIX_RE.match(prefix):
-            found.append(
-                "prefix_list_marker"
-                if _LIST_MARKER_RE.match(prefix)
-                else "prefix_other"
-            )
-        if not clf._SUGGESTION_TAIL_RE.match(tail):
-            found.append("tail_rejected")
-    return found
-
-
-def judged(raw, prose, path):
-    """The raw line the detector judged, and whether a suppression carrier came off it.
-
-    The call site strips a trailing carrier only when the extracted prose ends with it,
-    and passes the stripped raw line onward (`scripts/check_linefeeds.py:1375-1389`).
-    `diagnose` reports the stripped prose but anchors at the original raw line,
-    so the two have to be brought back together here.
-
-    **The carrier answer here is an inference, and it is the one number this file does not prove.**
-    The detector decides from the prose as it stood *before* stripping,
-    and what reaches this function is the prose after.
-    A stripped line no longer ends with the carrier,
-    and a line whose carrier was recognized but rejected commonly does not end with it either,
-    so those two outcomes are not distinguishable from what is available here.
-    The pinned output reports zero `carrier_stripped` units in all three sources,
-    and that zero is unvalidated rather than measured.
-    The plan's Task 2 replaces this with the detector's own value through `judged_lines`,
-    and repins the output against it.
-    Nothing else in this file depends on the answer:
-    every other class is computed from the judged prose and raw line directly.
-    """
-    tail = clf.trailing_carrier(raw, clf.is_markdown(path), clf.lang_for_path(path))
-    if not tail:
-        return raw, False
-    _parsed, judged_raw, carrier = tail
-    if prose.rstrip(" \t").endswith(carrier):
-        # The carrier is not a shared suffix of both views, so nothing was stripped.
-        return raw, False
-    return judged_raw, True
+# The names are the detector's, not a copy of them.
+# A copy would drift the day a class is added, and this file is the plan's evidence.
+CLASSES = clf.WITHHOLDING_CLASSES
 
 
 def measure(root, source):
@@ -176,7 +74,7 @@ def measure(root, source):
             skipped.append(f"{name}: {problem}")
             continue
         try:
-            diagnostics = clf.diagnose(text, name)
+            diagnostics = clf.diagnose(text, name, withholding=True)
         except (
             Exception
         ) as problem:  # a file the extractor cannot read is not a measurement
@@ -184,35 +82,25 @@ def measure(root, source):
             continue
 
         wrapped = {d["line"] for d in diagnostics if d["kind"] == "wrap"}
-        # One diagnostic per match, all carrying the same prose:
-        # collapse to one line and iterate the matches here instead.
-        lines = {}
+        # One diagnostic per match, so one diagnostic is one unit.
         for diagnostic in diagnostics:
-            if diagnostic["kind"] == "fused":
-                lines[diagnostic["line"]] = diagnostic
-
-        for lineno, diagnostic in sorted(lines.items()):
-            prose = diagnostic["excerpt"]
-            raw = text[diagnostic["anchor"]["start"] : diagnostic["anchor"]["end"]]
-            raw, stripped = judged(raw, prose, name)
-            also = lineno in wrapped
-            for match in clf.FUSED_RE.finditer(prose):
-                totals["boundaries"] += 1
-                found = classes_for(prose, raw, match)
-                if stripped:
-                    found.append("carrier_stripped")
-                # The exact set is the sampling stratum: exact sets partition the population,
-                # while class membership overlaps and cannot carry an unbiased marginal on its own.
-                key = ",".join(sorted(found))
-                exact[key] += 1
-                exact_co_wrap[key] += also
-                for cls in found:
-                    per_class[cls] += 1
-                    co_wrap[cls] += also
-                if not found:
-                    totals["suggested"] += 1
-                    totals["suggested_co_wrap"] += also
-                totals["co_wrap"] += also
+            if diagnostic["kind"] != "fused":
+                continue
+            totals["boundaries"] += 1
+            found = diagnostic["withheld_by"]
+            also = diagnostic["line"] in wrapped
+            # The exact set is the sampling stratum: exact sets partition the population,
+            # while class membership overlaps and cannot carry an unbiased marginal on its own.
+            key = ",".join(sorted(found))
+            exact[key] += 1
+            exact_co_wrap[key] += also
+            for cls in found:
+                per_class[cls] += 1
+                co_wrap[cls] += also
+            if not found:
+                totals["suggested"] += 1
+                totals["suggested_co_wrap"] += also
+            totals["co_wrap"] += also
     return totals, per_class, co_wrap, exact, exact_co_wrap, skipped
 
 
