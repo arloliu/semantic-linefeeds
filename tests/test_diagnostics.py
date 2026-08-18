@@ -462,3 +462,296 @@ def test_a_non_breaking_space_separator_gets_no_suggestion():
     (d,) = diags(text)
     assert d["kind"] == "fused"
     assert "suggestion" not in d
+
+
+# --- the judged line -------------------------------------------------------
+#
+# `diagnose` does not read what `prose_stream` yields.
+# A harness that re-extracts through the stream reads a different text from the finding's.
+
+
+def walked(text, path="doc.md"):
+    records, _suppressions = check_linefeeds.judged_lines(text, path)
+    return records
+
+
+def only(text, path="doc.md"):
+    (record,) = walked(text, path)
+    return record
+
+
+def test_a_path_with_nothing_to_extract_is_not_walked_at_all():
+    """None rather than an empty walk, which is what `diagnose` turns into no findings."""
+    assert check_linefeeds.judged_lines("plain\n", "photo.png") is None
+
+
+def test_a_standalone_directive_line_is_consumed_rather_than_judged():
+    """It is a paragraph boundary, not prose, and the suppression it carries survives it."""
+    records, suppressions = check_linefeeds.judged_lines(
+        "<!-- semlf-ignore-next fused -->\nStop now! Go later.\n", "doc.md"
+    )
+    assert [record["line"] for record in records] == [2]
+    assert suppressions == {2: {"fused"}}
+
+
+def test_a_same_line_directive_leaves_the_line_judged_without_its_carrier():
+    """The carrier comes off both views before any pattern runs, and its bytes are kept."""
+    record = only("Stop now! Go later. <!-- semlf-ignore wrap -->\n")
+    assert record["prose"] == record["raw"] == "Stop now! Go later."
+    assert record["original_raw"] == "Stop now! Go later. <!-- semlf-ignore wrap -->"
+    assert record["carrier"] == {
+        "text": "<!-- semlf-ignore wrap -->",
+        "offset": 0,
+        "kinds": ("wrap",),
+    }
+    assert record["suppressed_kinds"] == ("wrap",)
+
+
+def test_a_line_holding_only_a_carrier_is_not_judged():
+    """Nothing is left of it once the carrier comes off, so there is no line to judge."""
+    assert walked("<!-- semlf-ignore fused -->\n") == []
+
+
+def test_an_unrecognized_trailing_tail_leaves_raw_and_prose_one_text():
+    """A tail that is not a shared suffix of both views is not a carrier."""
+    record = only("Stop now! Go later. not-a-directive\n")
+    assert record["carrier"] is None
+    assert record["original_raw"] == record["raw"]
+
+
+def test_a_line_whose_prose_repeats_in_it_carries_no_leader_or_tail():
+    """The shipped repair refuses to pick an occurrence, and neither does the record.
+
+    No extractor reaches this today: it is constructed directly,
+    because every path to `raw` today puts the prose in it exactly once.
+    """
+    record = dict(only("Stop now!\n"), raw="x Stop now! Stop now!")
+    rebuilt = check_linefeeds._judged_record(
+        "", [0, 0], 1, record["raw"], "Stop now!", record["raw"], None, 0
+    )
+    assert rebuilt["leader"] is None and rebuilt["tail"] is None
+
+
+def test_a_crlf_terminator_survives_into_the_record():
+    """A window is spliced back into the file, so the terminator has to be put back as it was."""
+    records = walked("Stop now! Go later.\r\nAnd here it ends.\r\n")
+    assert [record["terminator"] for record in records] == ["\r\n", "\r\n"]
+
+
+def test_a_final_line_with_no_newline_carries_an_empty_terminator():
+    assert only("Stop now! Go later.")["terminator"] == ""
+
+
+def test_the_raw_span_covers_the_line_the_carrier_was_still_on():
+    """The span is the anchor, which is the file's line rather than the judged view of it."""
+    text = "Stop now! Go later. <!-- semlf-ignore wrap -->\n"
+    record = only(text)
+    span = record["raw_span"]
+    assert text[span["start"] : span["end"]] == record["original_raw"]
+
+
+def test_a_blank_line_breaks_the_paragraph_and_a_directive_line_does_too():
+    """Two records are in one paragraph exactly when nothing was dropped between them."""
+    joined = walked("It ends mid-clause and\nthen it keeps running on.\n")
+    assert len({record["paragraph"] for record in joined}) == 1
+    split = walked("It ends mid-clause and\n\nthen it keeps running on.\n")
+    assert len({record["paragraph"] for record in split}) == 2
+    directive = walked(
+        "It ends mid-clause and\n"
+        "<!-- semlf-ignore-next long -->\n"
+        "then it keeps running on.\n"
+    )
+    assert len({record["paragraph"] for record in directive}) == 2
+
+
+# --- the withholding classes ----------------------------------------------
+
+
+def withheld(text, path="doc.md"):
+    return [
+        d["withheld_by"]
+        for d in check_linefeeds.diagnose(text, path, withholding=True)
+        if d["kind"] == "fused"
+    ]
+
+
+def test_a_suggestion_is_produced_exactly_when_nothing_withholds_it():
+    (classes,) = withheld("Stop now! Go later.\n")
+    assert classes == ()
+    (d,) = diags("Stop now! Go later.\n")
+    assert d["suggestion"] == {"lines": ["Stop now!", "Go later."]}
+
+
+def test_a_period_boundary_is_its_own_class():
+    assert withheld("One sentence here. Another sentence follows.\n") == [
+        ("terminator_period",)
+    ]
+
+
+def test_a_closing_quote_before_the_gap_is_a_different_class_from_a_period():
+    """The shipped helper answers "not ! or ?" to both, and they are different repairs."""
+    assert withheld('He said "stop!" Then he left again.\n') == [("closing_delimiter",)]
+
+
+def test_a_gap_of_two_spaces_is_its_own_class():
+    assert withheld("Stop now!  Go later.\n") == [("gap_multiple_spaces",)]
+
+
+def test_a_gap_holding_a_tab_is_its_own_class():
+    assert withheld("Stop now!\tGo later.\n") == [("gap_tab",)]
+
+
+def test_a_gap_of_any_other_whitespace_is_its_own_class():
+    assert withheld("Stop now!\u00a0Go later.\n") == [("gap_other_whitespace",)]
+
+
+def test_two_boundaries_on_one_line_are_classed_one_by_one():
+    """Per match, not per line, so one line can carry two units with different classes."""
+    assert withheld("Go now? Come here! Stay put.\n") == [
+        ("many_boundaries",),
+        ("many_boundaries",),
+    ]
+    assert withheld("Go now. Come here! Stay put.\n") == [
+        ("many_boundaries", "terminator_period"),
+        ("many_boundaries",),
+    ]
+
+
+def test_a_protected_span_anywhere_on_the_line_withholds():
+    assert withheld("Run it now! Then read `the file` again.\n") == [
+        ("protected_span",)
+    ]
+    assert withheld("Run it now! Then read a <tag> here.\n") == [("protected_span",)]
+
+
+def test_a_list_marker_leader_is_a_different_class_from_any_other_leader():
+    """A bullet and a docstring both fail the whitelist, and they are not one class."""
+    assert withheld("- Stop now! Go later.\n") == [("prefix_list_marker",)]
+    assert withheld("1. Stop now! Go later.\n") == [("prefix_list_marker",)]
+    assert withheld('def f():\n    """Stop now! Go later."""\n', "x.py") == [
+        ("prefix_other", "tail_rejected")
+    ]
+
+
+def test_anything_but_whitespace_behind_the_prose_withholds():
+    """A block comment fails on both halves of its line, which is two classes and not one."""
+    assert withheld("/* Stop now! Go later. */\n", "x.c") == [
+        ("prefix_other", "tail_rejected")
+    ]
+
+
+def test_a_rejected_tail_alone_withholds_on_its_own():
+    """Constructed, because no extractor today leaves a bad tail behind a good leader."""
+    record = check_linefeeds._judged_record(
+        "", [0, 0], 1, "Stop now! Go later. */", "Stop now! Go later.", "", None, 0
+    )
+    (match,) = check_linefeeds.FUSED_RE.finditer(record["prose"])
+    assert check_linefeeds._fused_withholding(record, match) == ("tail_rejected",)
+
+
+def test_a_stripped_carrier_leaves_the_finding_and_takes_the_suggestion():
+    assert withheld("Stop now! Go later. <!-- semlf-ignore wrap -->\n") == [
+        ("carrier_stripped",)
+    ]
+    (d,) = diags("Stop now! Go later. <!-- semlf-ignore wrap -->\n")
+    assert "suggestion" not in d
+
+
+def test_a_carriage_return_in_the_judged_line_withholds():
+    """Constructed directly: every extractor reaches `raw` through splitlines,
+    so no current entry path can put one there.
+    """
+    record = check_linefeeds._judged_record(
+        "", [0, 0], 1, "Stop now!\rGo later.", "Stop now! Go later.", "", None, 0
+    )
+    (match,) = check_linefeeds.FUSED_RE.finditer(record["prose"])
+    assert "carriage_return" in check_linefeeds._fused_withholding(record, match)
+
+
+def test_a_prose_line_that_is_not_unique_in_its_raw_line_withholds():
+    """Also constructed: the prose sits in `raw` exactly once on every path today."""
+    record = check_linefeeds._judged_record(
+        "", [0, 0], 1, "Go now! X Go now! X", "Go now! X", "", None, 0
+    )
+    (match,) = check_linefeeds.FUSED_RE.finditer(record["prose"])
+    assert "prose_not_unique" in check_linefeeds._fused_withholding(record, match)
+
+
+def test_the_prefix_and_tail_classes_are_absent_when_the_prose_is_not_unique():
+    """Testing them against an arbitrary occurrence would invent a class the code never had."""
+    record = check_linefeeds._judged_record(
+        "", [0, 0], 1, "- Go now! X - Go now! X", "Go now! X", "", None, 0
+    )
+    (match,) = check_linefeeds.FUSED_RE.finditer(record["prose"])
+    classes = check_linefeeds._fused_withholding(record, match)
+    assert "prose_not_unique" in classes
+    assert not [name for name in classes if name.startswith(("prefix_", "tail_"))]
+
+
+def test_the_boundary_is_read_from_the_end_of_a_match_and_not_its_start():
+    """A match may open on a code span carrying punctuation and whitespace of its own.
+
+    Reading from the start calls the space inside the span the gap,
+    and the letter before it the terminator,
+    which reports neither the real terminator nor the real gap.
+    """
+    (classes,) = withheld("Run `make now`. Then read it.\n")
+    assert "terminator_period" in classes
+    assert not [name for name in classes if name.startswith("gap_")]
+
+
+# One case per class.
+# Deleting a class from the list then leaves a named test red,
+# rather than quietly shrinking what the tuple can say.
+# The two constructed cases are the two no extractor path reaches.
+CLASS_CASES = {
+    "many_boundaries": ("Go now? Come here! Stay put.\n", "doc.md"),
+    "protected_span": ("Run it now! Then read `the file` again.\n", "doc.md"),
+    "gap_multiple_spaces": ("Stop now!  Go later.\n", "doc.md"),
+    "gap_tab": ("Stop now!\tGo later.\n", "doc.md"),
+    "gap_other_whitespace": ("Stop now!\u00a0Go later.\n", "doc.md"),
+    "terminator_period": ("One sentence here. Another sentence follows.\n", "doc.md"),
+    "closing_delimiter": ('He said "stop!" Then he left again.\n', "doc.md"),
+    "prefix_list_marker": ("- Stop now! Go later.\n", "doc.md"),
+    "prefix_other": ("/* Stop now! Go later. */\n", "x.c"),
+    "tail_rejected": ("/* Stop now! Go later. */\n", "x.c"),
+    "carrier_stripped": (
+        "Stop now! Go later. <!-- semlf-ignore wrap -->\n",
+        "doc.md",
+    ),
+}
+
+CONSTRUCTED_CASES = {
+    "carriage_return": ("Stop now!\rGo later.", "Stop now! Go later."),
+    "prose_not_unique": ("Go now! X Go now! X", "Go now! X"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(CLASS_CASES))
+def test_each_class_is_produced_by_a_case_that_names_it(name):
+    text, path = CLASS_CASES[name]
+    assert any(name in classes for classes in withheld(text, path))
+
+
+@pytest.mark.parametrize("name", sorted(CONSTRUCTED_CASES))
+def test_each_constructed_class_is_produced_by_its_case(name):
+    raw, prose = CONSTRUCTED_CASES[name]
+    record = check_linefeeds._judged_record("", [0, 0], 1, raw, prose, "", None, 0)
+    (match,) = check_linefeeds.FUSED_RE.finditer(record["prose"])
+    assert name in check_linefeeds._fused_withholding(record, match)
+
+
+def test_every_declared_class_has_a_case():
+    """A class nobody exercises is a stratum nobody can draw."""
+    covered = set(CLASS_CASES) | set(CONSTRUCTED_CASES)
+    assert covered == set(check_linefeeds.WITHHOLDING_CLASSES)
+    assert len(set(check_linefeeds.WITHHOLDING_CLASSES)) == len(
+        check_linefeeds.WITHHOLDING_CLASSES
+    )
+
+
+def test_classes_report_in_declaration_order():
+    order = check_linefeeds.WITHHOLDING_CLASSES
+    for classes in withheld("Go now?  Come `here`! Stay put.\n"):
+        positions = [order.index(name) for name in classes]
+        assert positions == sorted(positions)

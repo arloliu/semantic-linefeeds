@@ -29,7 +29,13 @@ sys.path.insert(0, str(TESTS.parent / "scripts"))
 sys.path.insert(0, str(HERE.parent.parent))
 
 from collect import answers  # noqa: E402
-from corpus_harness import KINDS, Holdout, defect, resolution  # noqa: E402
+from corpus_harness import (  # noqa: E402
+    KINDS,
+    Holdout,
+    defect,
+    repair_round_bindings,
+    resolution,
+)
 
 CORPUS = TESTS / "corpus"
 HOLDOUT = CORPUS / "holdout"
@@ -133,7 +139,34 @@ def main(number):
         CORPUS / "freeze.jsonl",
         TESTS.parent / "scripts" / "check_linefeeds.py",
         CORPUS / "manifest.json",
+        round=number,
     )
+
+    # The sample names the freeze its prose was drawn under, and the seal answers to that record.
+    # Without this the ledger accepts any freeze naming the current predicate,
+    # so a predicate could be frozen, drawn against, tuned once the prose had been read,
+    # frozen again, and sealed against the second freeze.
+    sample = json.loads((round_dir / "sample.json").read_text(encoding="utf-8"))
+    drawn_under = sample.get("drawn_under")
+    if not drawn_under:
+        sys.exit(
+            f"round {number}'s sample names no freeze record.\n"
+            "It was drawn before the draw recorded one, so nothing here can say "
+            "which predicate its prose was drawn under.\n"
+            "Nothing was written."
+        )
+
+    # What the round bound beyond its predicate, recomputed now.
+    # The sample carries what the freeze recorded, and all three must agree.
+    # A contract that moved everywhere at once, mid-round, was chosen after the reading.
+    bound = sample.get("binds") or {}
+    binds = {name: repair_round_bindings(manifest)[name] for name in bound} or None
+    if binds and binds != bound:
+        moved = sorted(name for name in bound if bound[name] != binds[name])
+        sys.exit(
+            f"round {number} was frozen against {sorted(bound)}, and {moved} has moved.\n"
+            "Nothing was written."
+        )
 
     if not sys.stdin.isatty():
         sys.exit(
@@ -158,7 +191,7 @@ def main(number):
     if not passphrase.strip():
         sys.exit("an empty passphrase seals nothing; nothing was written")
 
-    holdout.seal(text, passphrase)
+    holdout.seal(text, passphrase, drawn_under=drawn_under, binds=binds)
     holdout.freeze(
         {
             **{

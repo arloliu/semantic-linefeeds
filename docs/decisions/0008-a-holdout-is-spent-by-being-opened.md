@@ -2,6 +2,12 @@
 
 **Status:** accepted  
 **Date:** 2026-08-11
+**Amended:** 2026-08-18 —
+[ADR-0022](0022-a-pre-draw-freeze-binds-a-round-and-a-sample.md) corrects the fourth decision below.
+The bundle freeze stops the ordering mistake, as stated.
+The pre-draw record did not:
+it named no round and nothing tied it to the sample drawn after it,
+so a predicate could be tuned once the prose had been read and committed to afterwards.
 
 ## Context
 

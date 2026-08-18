@@ -1292,74 +1292,178 @@ _SUGGESTION_PREFIX_RE = re.compile(r"^[ \t]*(?:(?:#|//|;|>)[ \t]*)*$")
 _SUGGESTION_TAIL_RE = re.compile(r"^[ \t]*$")
 
 
-def _fused_suggestion(prose, raw, match):
+# The sentence boundary inside one FUSED_RE match: punctuation, closing delimiters, gap.
+# The last match is the boundary, not the first.
+# A match may open on a code span carrying punctuation and whitespace of its own,
+# and the sentence boundary is the one abutting the next sentence's opener,
+# which is where the match ends.
+_BOUNDARY_RE = re.compile(r"([.!?])([\"')\]*_~]*)(\s+)")
+
+# A leader a list item opens with, which is one of the two ways a prefix is rejected.
+_LIST_MARKER_RE = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
+
+# Every reason the shipped repair declines to suggest a split, named rather than numbered.
+# Named because a class outlives the predicate that refuses it:
+# admitting periods would delete `terminator_period` from a derived view of the refusals,
+# and with it the stratum a holdout was drawn on.
+# The order here is the order a withholding tuple reports in.
+WITHHOLDING_CLASSES = (
+    "carriage_return",
+    "many_boundaries",
+    "protected_span",
+    "prose_not_unique",
+    "gap_multiple_spaces",
+    "gap_tab",
+    "gap_other_whitespace",
+    "terminator_period",
+    "closing_delimiter",
+    "prefix_list_marker",
+    "prefix_other",
+    "tail_rejected",
+    "carrier_stripped",
+)
+
+
+def _match_boundary(match):
+    """The sentence boundary of one FUSED_RE match, as punctuation, delimiters, and gap.
+
+    No guard, and the reason is the pattern.
+    FUSED_RE requires terminal punctuation, then optional closing delimiters,
+    then a non-empty whitespace run,
+    which is exactly what `_BOUNDARY_RE` matches,
+    so the search cannot come back empty.
+    """
+    found = None
+    for candidate in _BOUNDARY_RE.finditer(match.group(0)):
+        found = candidate
+    return found
+
+
+def _fused_withholding(record, match):
+    """Every class that withholds a repair for this boundary, in declaration order.
+
+    One tuple in place of eight early returns.
+    A refusal is not a repair class:
+    the shipped helper answers "the character before the gap is not ! or ?"
+    for a period boundary and for a bang behind a closing quote alike,
+    and those are different repairs carrying different risks.
+    Splitting them is what lets a rate be reported for one without the other.
+
+    Total where the helper short-circuited.
+    Every class is computed for every match,
+    including matches the helper never reached past its first refusal,
+    so nothing here may assume an earlier class is absent.
+    """
+    prose, raw = record["prose"], record["raw"]
+    found = set()
+
+    if "\r" in raw:
+        found.add("carriage_return")
+    if sum(1 for _ in FUSED_RE.finditer(prose)) > 1:
+        found.add("many_boundaries")
+    if "`" in prose or "<" in prose or ">" in prose:
+        found.add("protected_span")
+
+    boundary = _match_boundary(match)
+    terminator, delimiters, gap = (
+        boundary.group(1),
+        boundary.group(2),
+        boundary.group(3),
+    )
+    if gap != " ":
+        # Not exclusive, and complete:
+        # a gap of only spaces is longer than one, a gap holding a tab says so,
+        # and anything else is neither.
+        if gap.count(" ") == len(gap):
+            found.add("gap_multiple_spaces")
+        if "\t" in gap:
+            found.add("gap_tab")
+        if any(character not in " \t" for character in gap):
+            found.add("gap_other_whitespace")
+    if terminator == ".":
+        found.add("terminator_period")
+    if delimiters:
+        found.add("closing_delimiter")
+
+    # Only where the prose sits in the judged raw line exactly once.
+    # The shipped helper stops at that test and never reaches the prefix or the tail,
+    # so evaluating them against an arbitrary occurrence would invent a class it never had.
+    if record["leader"] is None:
+        found.add("prose_not_unique")
+    else:
+        if not _SUGGESTION_PREFIX_RE.match(record["leader"]):
+            found.add(
+                "prefix_list_marker"
+                if _LIST_MARKER_RE.match(record["leader"])
+                else "prefix_other"
+            )
+        if not _SUGGESTION_TAIL_RE.match(record["tail"]):
+            found.add("tail_rejected")
+
+    if record["carrier"] is not None:
+        found.add("carrier_stripped")
+    return tuple(name for name in WITHHOLDING_CLASSES if name in found)
+
+
+def _fused_suggestion(record, match):
     """A two-line suggested replacement for an automatic-class fused finding, or None.
 
-    Maximally conservative rather than a real protected-span engine:
-    no suggestion unless FUSED_RE matches exactly once, the terminator sits with nothing between it and a single ASCII space, `prose` has no backtick/`<`/`>` anywhere on the line, `raw` contains `prose` exactly once, and the prefix/tail around `prose` in `raw` both pass the structural whitelist above.
-    Any closing quote, bracket, paren, or emphasis mark between the terminator and the space withholds the suggestion instead of trying to reattach it.
-    `raw` cannot carry an embedded `\\r` on any current entry path (every extractor reaches it through `str.splitlines()`),
-    so that check is a belt over an already-fastened suspender, kept for a future entry path that might skip it.
+    Maximally conservative rather than a real protected-span engine.
+    A suggestion exists exactly when no class withholds it,
+    which is the same set of conditions the helper used to check one early return at a time.
+    FUSED_RE matches once.
+    The terminator sits with nothing between it and a single ASCII space.
+    `prose` has no backtick, `<`, or `>` anywhere on the line.
+    The judged raw line contains `prose` exactly once,
+    and the leader and tail around it both pass the structural whitelist above.
+    No carrier came off the line, and no `\r` survived into it.
     """
-    if "\r" in raw:
+    if _fused_withholding(record, match):
         return None
-    if len(list(FUSED_RE.finditer(prose))) != 1:
-        return None
-    if "`" in prose or "<" in prose or ">" in prose:
-        return None
-    if raw.count(prose) != 1:
-        return None
-    text = match.group(0)
-    ws = re.search(r"\s+", text)
-    if ws.group(0) != " ":
-        return None
-    terminator = text[ws.start() - 1]
-    if terminator not in "!?":
-        return None
-    idx = raw.find(prose)
-    prefix = raw[:idx]
-    tail_text = raw[idx + len(prose) :]
-    if not _SUGGESTION_PREFIX_RE.match(prefix) or not _SUGGESTION_TAIL_RE.match(
-        tail_text
-    ):
-        return None
-    cut = match.start() + ws.start()
+    prose, leader, tail = record["prose"], record["leader"], record["tail"]
+    cut = match.start() + _match_boundary(match).start(3)
     p1 = prose[:cut]
     p2 = prose[cut:].lstrip(" ")
-    return {"lines": [prefix + p1, prefix + p2 + tail_text]}
+    return {"lines": [leader + p1, leader + p2 + tail]}
 
 
-def diagnose(text, path, spans=None):
-    """Return a list of diagnostic dicts, sorted by line.
+def judged_lines(text, path):
+    """Every line the detector judges, as it judges it, paired with what suppresses each.
 
-    Each dict carries the finding plus its three ranges.
-    `anchor` is the raw line the finding was read from.
-    `evidence` is what the finder looked at — both lines for `wrap`.
-    `ownership` is the causal tokens, or None when a locate could not pin them exactly.
-    `spans=None` reports everything;
-    a spans list restricts reporting to diagnostics whose ownership touches a normalized span,
-    and a degraded diagnostic is withheld under spans.
+    `prose_stream` is not what the finders read.
+    License text is dropped first,
+    a standalone directive line is consumed as a paragraph boundary rather than judged,
+    and a recognized trailing carrier comes off both views before any pattern runs
+    (ADR-0010).
+    A caller re-extracting through `prose_stream` reads a different text from the finding's.
+    It also gets no offsets, which live in `line_offsets`.
+
+    Returns `(records, suppressions)`, or None where there is nothing to judge.
+    The suppression map is returned rather than folded into the records,
+    because a `wrap` finding is filed against the upper line of its pair
+    and answers to that line's suppressions rather than to the record that produced it.
     """
-    normalized = None if spans is None else [normalize_span(span) for span in spans]
-    suppressions = {}
     lines = prose_stream(text, path)
     if lines is None:
-        return []
+        return None
     lines = without_license_text(lines, text, path)
     is_md = is_markdown(path)
     lang = None if is_md else lang_for_path(path)
-
     offsets = line_offsets(text)
-    findings = []
-    limit = active_long_limit(path)
-    prev = None  # (lineno, prose) of previous prose line in the same paragraph
+
+    suppressions = {}
+    records = []
+    # Two records are in one paragraph when they carry the same number.
+    # Every place the walk drops a line is a place the paragraph breaks,
+    # which is what the wrap pair is allowed to span.
+    paragraph = 0
     for lineno, raw, prose in lines:
         if prose is None:
-            prev = None
+            paragraph += 1
             continue
 
         # Checked against the still-unrebound raw line:
-        # the trailing-carrier block below this one reassigns `raw` later in the same iteration.
+        # the trailing-carrier block below this one rebinds `raw` in the same iteration.
         parsed = parse_directive(prose)
         if (
             parsed is not None
@@ -1370,37 +1474,114 @@ def diagnose(text, path, spans=None):
             # A MALFORMED line, or one whose carrier whitespace is not ASCII (ADR-0010's WS grammar), falls through and stays visible prose.
             offset, kinds = parsed
             suppressions.setdefault(lineno + offset, set()).update(kinds)
-            prev = None
+            paragraph += 1
             continue
-        carrier_stripped = False
+
+        original_raw = raw
+        carrier = None
         tail = trailing_carrier(raw, is_md, lang)
         if tail:
-            (offset, kinds), judged_raw, carrier = tail
+            (offset, kinds), judged_raw, carrier_text = tail
             trimmed_prose = prose.rstrip(" \t")
-            if trimmed_prose.endswith(carrier):
+            if trimmed_prose.endswith(carrier_text):
                 suppressions.setdefault(lineno + offset, set()).update(kinds)
                 raw = judged_raw
-                prose = trimmed_prose[: -len(carrier)].rstrip(" \t")
-                carrier_stripped = True
+                prose = trimmed_prose[: -len(carrier_text)].rstrip(" \t")
+                carrier = {
+                    "text": carrier_text,
+                    "offset": offset,
+                    "kinds": tuple(sorted(kinds)),
+                }
                 if not prose:
-                    prev = None
+                    paragraph += 1
                     continue
             # else: the carrier is not a shared suffix of both views;
             # treat the tail as unrecognized so raw and prose stay one text.
+
+        records.append(
+            _judged_record(
+                text, offsets, lineno, raw, prose, original_raw, carrier, paragraph
+            )
+        )
+
+    for record in records:
+        record["suppressed_kinds"] = tuple(sorted(suppressions.get(record["line"], ())))
+    return records, suppressions
+
+
+def _judged_record(text, offsets, lineno, raw, prose, original_raw, carrier, paragraph):
+    """One judged line, carrying everything a repair would need to be spliced back.
+
+    `leader` and `tail` are the two halves of the judged raw line around the prose,
+    and they are None when the prose does not sit in it exactly once,
+    because the shipped repair refuses to pick an occurrence and neither does this.
+    That test is not `prose_at`'s:
+    `locate_in_line` asks whether the prose is unique in the file's own line,
+    and this asks whether it is unique in the line after a carrier came off,
+    which are different questions once a carrier has.
+    """
+    span = _line_range(text, offsets, lineno)
+    index = raw.find(prose) if raw.count(prose) == 1 else -1
+    return {
+        "line": lineno,
+        "prose": prose,
+        "raw": raw,
+        # The bytes before the carrier came off, which the judged line no longer holds.
+        "original_raw": original_raw,
+        # The span of the line's content, and its terminator kept apart from it,
+        # because a window spliced back into the file has to put a CRLF back as it was.
+        "raw_span": span,
+        "terminator": text[span["end"] : offsets[lineno]],
+        # Measured against the file's line rather than against `raw`:
+        # this is the span every finding's ownership is derived from.
+        "prose_at": locate_in_line(text, offsets, lineno, prose),
+        "leader": raw[:index] if index >= 0 else None,
+        "tail": raw[index + len(prose) :] if index >= 0 else None,
+        "carrier": carrier,
+        "paragraph": paragraph,
+    }
+
+
+def diagnose(text, path, spans=None, withholding=False):
+    """Return a list of diagnostic dicts, sorted by line.
+
+    Each dict carries the finding plus its three ranges.
+    `anchor` is the raw line the finding was read from.
+    `evidence` is what the finder looked at — both lines for `wrap`.
+    `ownership` is the causal tokens, or None when a locate could not pin them exactly.
+    `spans=None` reports everything;
+    a spans list restricts reporting to diagnostics whose ownership touches a normalized span,
+    and a degraded diagnostic is withheld under spans.
+    `withholding` adds `withheld_by` to each `fused` finding, and is off by default:
+    `to_schema` passes diagnostics through verbatim,
+    so a key added unconditionally would reach every consumer of the document.
+    """
+    normalized = None if spans is None else [normalize_span(span) for span in spans]
+    walked = judged_lines(text, path)
+    if walked is None:
+        return []
+    records, suppressions = walked
+
+    offsets = line_offsets(text)
+    findings = []
+    limit = active_long_limit(path)
+    prev = None  # the previous judged record, when it is in the same paragraph
+    for record in records:
+        lineno, prose = record["line"], record["prose"]
 
         # Every boundary on the line, not just the first.
         # The skill ends its repair loop on a finding that survives one attempt,
         # and a line that surrenders its boundaries one per pass is indistinguishable from one that survived,
         # so an agent stops with the line still fused.
         for match in FUSED_RE.finditer(prose):
-            anchor = _line_range(text, offsets, lineno)
+            anchor = dict(record["raw_span"])
             # Located by offset within the prose, not by re-searching the matched text.
             # Two boundaries on one line can match identical strings when a phrase repeats,
             # and a repeated needle makes locate_in_line refuse rather than guess,
             # which withholds the finding entirely under spans.
             # The prose is located once and the match indexes into it,
             # which is the same shape the `long` branch already uses below.
-            prose_at = locate_in_line(text, offsets, lineno, prose)
+            prose_at = record["prose_at"]
             located = (
                 {
                     "start": prose_at["start"] + match.start(),
@@ -1425,14 +1606,15 @@ def diagnose(text, path, spans=None):
                 "ownership": ownership,
                 "ownership_basis": basis,
             }
-            if not carrier_stripped:
-                suggestion = _fused_suggestion(prose, raw, match)
-                if suggestion is not None:
-                    finding["suggestion"] = suggestion
+            if withholding:
+                finding["withheld_by"] = _fused_withholding(record, match)
+            suggestion = _fused_suggestion(record, match)
+            if suggestion is not None:
+                finding["suggestion"] = suggestion
             findings.append(finding)
 
-        if prev is not None:
-            prev_no, prev_prose = prev
+        if prev is not None and prev["paragraph"] == record["paragraph"]:
+            prev_no, prev_prose = prev["line"], prev["prose"]
             first_word = re.match(r"[a-z]+", prose)
             if (
                 not line_ending(prev_prose).endswith(OK_LINE_ENDERS)
@@ -1446,10 +1628,10 @@ def diagnose(text, path, spans=None):
                     else None
                 )
                 lower = locate_in_line(text, offsets, lineno, first_word.group(0))
-                anchor = _line_range(text, offsets, prev_no)
+                anchor = dict(prev["raw_span"])
                 evidence = {
                     "start": anchor["start"],
-                    "end": _line_range(text, offsets, lineno)["end"],
+                    "end": record["raw_span"]["end"],
                 }
                 if upper and lower and upper["end"] <= lower["start"]:
                     ownership, basis = (
@@ -1485,8 +1667,10 @@ def diagnose(text, path, spans=None):
         # The hint vocabulary is narrow by design — it holds six words —
         # and a comma-led participle or appositive is a real break it was never going to match.
         if limit and len(prose) > limit:
-            anchor = _line_range(text, offsets, lineno)
-            located = locate_in_line(text, offsets, lineno, prose)
+            anchor = dict(record["raw_span"])
+            # Copied rather than shared: a diagnostic owns its ranges,
+            # and the record is read again by every other finder on this line.
+            located = dict(record["prose_at"]) if record["prose_at"] else None
             ownership, basis = (located, "token") if located else (None, "degraded")
             hinted = BOUNDARY_HINT_RE.search(prose)
             findings.append(
@@ -1504,7 +1688,7 @@ def diagnose(text, path, spans=None):
                 }
             )
 
-        prev = (lineno, prose)
+        prev = record
     findings.sort(key=lambda d: d["line"])
     if normalized is not None:
         findings = [

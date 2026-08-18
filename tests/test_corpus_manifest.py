@@ -16,8 +16,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from corpus_harness import (  # noqa: E402
     COVARIATES,
+    REPAIR_ADMISSION,
+    contract_digest,
     file_digest,
     manifest_problems,
+    repair_admission_digest,
     replay_kinds,
     resolution,
 )
@@ -74,6 +77,8 @@ def manifest(**overrides):
             "max_interval_half_width": 0.15,
             "max_ambiguous_fraction": 0.25,
         },
+        "repair_admission": json.loads(json.dumps(REPAIR_ADMISSION)),
+        "repairs": [],
         "covariate_definitions": {
             name: f"how {name} is measured" for name in COVARIATES
         },
@@ -445,3 +450,65 @@ def test_the_manifest_has_not_changed_without_a_recorded_reason():
     assert lock["reason"].strip(), (
         "a manifest change with no stated reason is an unexplained one"
     )
+
+
+# --- the admission contract -----------------------------------------------
+
+
+def test_the_manifest_holds_the_admission_contract_the_harness_holds():
+    """Two copies, and the point of two copies is that moving one is a failure.
+
+    The manifest copy is what a reviewer reads to reproduce a decision.
+    The harness copy is what refuses a candidate.
+    A reviewer reading a bar the code does not apply is reading a description.
+    """
+    assert on_disk()["repair_admission"] == json.loads(json.dumps(REPAIR_ADMISSION))
+
+
+def test_a_floor_lowered_in_the_manifest_alone_is_rejected():
+    """The floor is the clause a losing candidate has the most reason to move."""
+    lowered = manifest()
+    lowered["repair_admission"]["floor"] = 0.6
+    assert any("floor" in problem for problem in manifest_problems(lowered))
+
+
+def test_a_zero_tolerance_condition_dropped_from_the_manifest_is_rejected():
+    """A condition refuses a class outright, so deleting one is worth more than lowering a rate."""
+    thin = manifest()
+    del thin["repair_admission"]["zero_tolerance"]
+    problems = manifest_problems(thin)
+    assert any("zero_tolerance" in problem for problem in problems)
+
+
+def test_a_clause_the_frozen_contract_does_not_hold_is_rejected():
+    """A manifest may not carry a rule the code will never apply."""
+    extra = manifest()
+    extra["repair_admission"]["escape_hatch"] = "admit anything the maintainer likes"
+    assert any("escape_hatch" in problem for problem in manifest_problems(extra))
+
+
+def test_the_manifest_missing_the_admission_section_is_rejected():
+    """A bar that may be absent is a bar a round can start without."""
+    thin = manifest()
+    del thin["repair_admission"]
+    assert any("repair_admission" in problem for problem in manifest_problems(thin))
+
+
+def test_the_contract_digest_is_over_the_contract_and_not_over_the_file():
+    """A freeze binds this digest, so what moves it decides what a round is bound to.
+
+    The manifest's file digest moves whenever any of its several hundred units moves.
+    Binding a round to that would bind it to every unit the corpus later grows,
+    and every such move would look like the contract changing.
+    """
+    assert repair_admission_digest() != file_digest(MANIFEST)
+    grown = json.loads(json.dumps(on_disk()))
+    grown["units"].append(unit(id="c-9999"))
+    assert contract_digest(grown["repair_admission"]) == repair_admission_digest()
+
+
+def test_moving_a_clause_moves_the_contract_digest():
+    """The other half: a digest that does not move is not a binding."""
+    moved = json.loads(json.dumps(REPAIR_ADMISSION))
+    moved["floor"] = 0.6
+    assert contract_digest(moved) != repair_admission_digest()

@@ -143,6 +143,31 @@
       }
     }
   },
+  "repair_admission": {
+    "interval": "wilson-95",
+    "floor": 0.8,
+    "denominator": "a unit is scored when it carries a frozen acceptable set and is not ambiguous; ambiguous units leave the rate and are kept as cases, as the label corpus already treats them",
+    "activation": "a class admits a repair only where every other class is absent, so it is scored on the exact class sets it activates rather than on every unit carrying it",
+    "statistic": "per activated exact set, the fraction of that stratum's scored units whose machine repair is in the acceptable set",
+    "test": "every activated stratum clears the floor on its own lower bound, independently of the others",
+    "pooling": "a population-weighted combination across the activated strata is reported as description, and it decides nothing; one interval over a weighted mean would need a stratified variance estimator this corpus does not define, and several units can share one window and so one repair outcome, which a binomial interval would count as independent trials",
+    "unreportable_stratum": "an activated stratum the frozen rules cannot rate refuses the class, and is never dropped so that the remaining strata carry the claim",
+    "reportable": {
+      "min_scored": 26,
+      "max_interval_half_width": 0.15,
+      "max_ambiguous_fraction": 0.25,
+      "min_scored_note": "a preregistered policy minimum rather than a derivation; what the frozen rules make reportable depends on the realized count, the half-width and the ambiguous fraction, none of them known before labeling, so nothing can prove a smaller stratum intrinsically unreportable; 26 is the size at which a rate of 0.80 first fits inside the frozen half-width, and it is taken as a floor on that ground alone"
+    },
+    "same_algorithm": "the repair transformation under test is applied to the shipped class as well, and both numbers are reported from that one algorithm; a round that scores two classes through two algorithms is refused",
+    "zero_tolerance": {
+      "prose_not_preserved": "a machine repair that does not preserve the prose",
+      "carrier_changed": "a machine repair that changes a carrier",
+      "fired_where_only_the_original_is_acceptable": "a machine repair that fires on a unit whose acceptable set holds only the original; automatically repairing a line that should have been left alone is the worst outcome this tool can produce"
+    },
+    "baseline": "the shipped class is measured and reported beside every candidate as context; it is 34 boundaries with 32 of them in one source, and it is never the bar",
+    "admissible_from": "no class is admissible on the calibration side; every number above is scored on a holdout round drawn after the widened predicate is frozen"
+  },
+  "repairs": [],
   "covariate_definitions": {
     "prose_width": "the widest raw line in the paragraph holding the boundary, in display columns with tabs expanded to 8",
     "raw_end_column": "the display column where the upper raw line ends, trailing whitespace removed",
@@ -210,7 +235,8 @@
     "carbon-lang opens every Markdown file with a licence block inside an HTML comment, and those lines reach the prose stream; the five drawn units were kept and labeled false on the round-2 boilerplate precedent, and the block's presence in the stream is an extraction defect recorded here for a repair no earlier than round 3 being spent",
     "a gofail: directive line and the code line under it reach the prose stream from a Go comment, etcd:server/storage/backend/backend.go:617; the unit was kept and labeled false, the detector reports a wrap there, and that false positive is owned by the directive class rather than by any repair this round scored",
     "round 3's four false positives in 360 labeled non-violations are one directive line and three of one class: adjacent telegraphic notes in Go comments, each note a complete thought without terminal punctuation, where the next note's lowercase opening reads as a severed continuation; that is the non-connector continuation weakness ADR-0002 records, measured here at etcd:server/etcdserver/api/v3rpc/maintenance.go:169, etcd:server/storage/mvcc/metrics.go:242, and etcd:server/storage/wal/metrics.go:26",
-    "one labeling family refused one unit in each of two round 3 batches on three consecutive runs, then answered both on a fourth run whose prompt named refusal as unavailable and pointed at the ambiguous answer; recorded beside round 2's same phenomenon, which ended with the refused unit leaving the sample as a defect"
+    "one labeling family refused one unit in each of two round 3 batches on three consecutive runs, then answered both on a fourth run whose prompt named refusal as unavailable and pointed at the ambiguous answer; recorded beside round 2's same phenomenon, which ended with the refused unit leaving the sample as a defect",
+    "the round that scores a widened automatic repair is round 4, and it is stated here before it is drawn. It draws three sources, none of the twelve this manifest already declares (three calibration and nine holdout across rounds 1 to 3), with the same composition split and qualified by qualify.py on line-length distribution alone. It is drawn only after the widened predicate and the admission contract are frozen against it, which binds the admission contract, the class taxonomy, the draw configuration and the source selection together (ADR-0024). And it is drawn, labeled and sealed by a session that did not tune that predicate. No class is admissible before that round answers, because every number the repair corpus holds is measured on the calibration side"
   ],
   "sources": [
     {

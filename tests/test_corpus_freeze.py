@@ -14,7 +14,16 @@ import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from corpus_harness import Holdout, ScoringRefused  # noqa: E402
+from corpus_harness import (  # noqa: E402
+    REPAIR_ADMISSION,
+    REPAIR_DRAW,
+    Holdout,
+    ScoringRefused,
+    _freeze_id,
+    repair_admission_digest,
+    repair_round_bindings,
+    source_selection_digest,
+)
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 
@@ -26,6 +35,10 @@ RULES = {"interval": "wilson-95", "min_true": 10, "max_half_width": 0.15}
 # The rules that keep a holdout out of history have to cover the next round as well as this one,
 # and asking about an existing directory would not tell them apart.
 UNDRAWN_ROUND = 97
+
+# The round these tests act for.
+# A pre-draw freeze names one, because a freeze that names no round authorizes every round.
+TEST_ROUND = 90
 
 
 @pytest.fixture
@@ -40,6 +53,7 @@ def unsealed(tmp_path):
         ledger=tmp_path / "freeze.jsonl",
         predicate=predicate,
         manifest=manifest,
+        round=TEST_ROUND,
     )
 
 
@@ -76,7 +90,7 @@ def test_a_predicate_tuned_after_its_freeze_cannot_be_sealed_against(unsealed):
     unsealed.predicate.write_text(
         "def check(text, path):\n    return [(1, 'wrap')]\n", encoding="utf-8"
     )
-    with pytest.raises(ScoringRefused, match="no freeze record names this predicate"):
+    with pytest.raises(ScoringRefused, match="the predicate changed since the freeze"):
         unsealed.seal(PLAINTEXT, PASSPHRASE)
 
 
@@ -200,3 +214,321 @@ def test_resealing_the_same_text_does_not_restore_a_spent_bundle(holdout):
     holdout.seal(PLAINTEXT, PASSPHRASE)
     with pytest.raises(ScoringRefused, match="no freeze record names this bundle"):
         holdout.open(PASSPHRASE)
+
+
+def test_a_freeze_written_for_one_round_authorizes_no_other(unsealed):
+    """A round is not a label on a record; it is what the record authorizes.
+
+    Without it one freeze covers every round that shares its predicate,
+    so a spent round's commitment would stand in for a new round's.
+    """
+    unsealed.freeze_predicate("the round these tests act for")
+    unsealed.round = TEST_ROUND + 1
+    with pytest.raises(
+        ScoringRefused, match=f"no freeze record names round {TEST_ROUND + 1}"
+    ):
+        unsealed.seal(PLAINTEXT, PASSPHRASE)
+
+
+def test_a_round_cannot_be_frozen_twice(unsealed):
+    """The second freeze is the one written after the prose was read."""
+    unsealed.freeze_predicate("the first commitment")
+    with pytest.raises(ScoringRefused, match="was already frozen"):
+        unsealed.freeze_predicate("a second one, after reading the sample")
+
+
+def test_a_freeze_that_names_no_round_authorizes_nothing(unsealed):
+    """Rounds 1 to 3 wrote records without a round, and those records stand.
+
+    They are not edited, and they are not honoured either:
+    a record that names no round would authorize every round,
+    which is the opposite of what a freeze is for.
+    """
+    unsealed.ledger.write_text(
+        json.dumps(
+            {
+                "record": "predicate_freeze",
+                "predicate_digest": unsealed._predicate_digest(),
+                "manifest_digest": unsealed._manifest_digest(),
+                "intent": "written the way rounds 1 to 3 wrote theirs",
+            },
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ScoringRefused, match="predate the round rule"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE)
+
+
+def test_a_predicate_tuned_after_the_draw_cannot_refreeze_and_seal(unsealed):
+    """The sequence the ledger did not refuse before this rule existed.
+
+    Freeze A, draw and label the prose, tune to B once it has been read,
+    append a freeze for B, and seal against B.
+    Every step was permitted, and the sealed bundle looked correct afterwards.
+    What closes it is the sample carrying the id of the freeze it was drawn under:
+    a seal that cannot name that record is refused,
+    and the record it names still holds predicate A.
+    """
+    frozen = unsealed.freeze_predicate("predicate A, before any prose was drawn")
+    drawn_under = frozen["id"]
+
+    # The prose is drawn here, under A, and read.
+    unsealed.predicate.write_text(
+        "def check(text, path):\n    return [(1, 'wrap')]\n", encoding="utf-8"
+    )
+    # Round 90 is already frozen, so B cannot even be committed to.
+    with pytest.raises(ScoringRefused, match="was already frozen"):
+        unsealed.freeze_predicate("predicate B, tuned against prose it has now read")
+
+    # And a seal naming the freeze the prose was actually drawn under refuses,
+    # because that record names A while the tree holds B.
+    with pytest.raises(ScoringRefused, match="the predicate changed since the freeze"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=drawn_under)
+
+
+def test_a_seal_naming_a_freeze_the_ledger_does_not_hold_is_refused(unsealed):
+    """The sample's record id is checked against the ledger, not trusted from the sample."""
+    unsealed.freeze_predicate("the freeze this round was drawn under")
+    with pytest.raises(ScoringRefused, match="a freeze this ledger does not hold"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under="sha256:not-a-record")
+
+
+@pytest.mark.parametrize("number", [1, 2, 3])
+def test_the_sealed_rounds_still_answer_to_their_own_freeze(number):
+    """A protocol repair that invalidates the evidence already gathered is not a repair.
+
+    Rounds 1 to 3 were sealed before a pre-draw record named a round,
+    and round 1 wrote no pre-draw record at all.
+    Binding new rounds to one must leave the old bundles reachable.
+
+    This calls `_require_freeze`, which is the function `open` and `record_evaluation` go through.
+    Asserting that some ledger line mentions the bundle would pass even if that path had broken,
+    because the line's existence is not what the code consults.
+    """
+    corpus = REPO / "tests" / "corpus"
+    holdout = Holdout(
+        bundle=corpus / "holdout" / f"round-{number}" / "bundle.json",
+        ledger=corpus / "freeze.jsonl",
+        predicate=REPO / "scripts" / "check_linefeeds.py",
+        manifest=corpus / "manifest.json",
+        round=number,
+    )
+    try:
+        frozen = holdout._require_freeze()
+    except ScoringRefused as refusal:
+        # The predicate and manifest have both moved since these rounds were sealed,
+        # so the refusal names what moved rather than failing to find the record.
+        # Either way the bundle-freeze path resolved.
+        # What must never happen is a refusal saying no record names this bundle at all.
+        assert "no freeze record names this bundle" not in str(refusal), refusal
+    else:
+        assert frozen["record"] == "freeze"
+
+    # And the round is spent, which is the other half of why it cannot be reused.
+    with pytest.raises(ScoringRefused, match="already been evaluated"):
+        holdout._require_unspent()
+
+
+@pytest.mark.parametrize("number", [1, 2, 3])
+def test_a_spent_round_cannot_be_drawn_again(number):
+    """ADR-0008 retires a round's sources once the round has been opened.
+
+    The pre-draw path is where a redraw would start,
+    and the three spent rounds have no record it will honour.
+    """
+    corpus = REPO / "tests" / "corpus"
+    holdout = Holdout(
+        bundle=corpus / "holdout" / f"round-{number}" / "bundle.json",
+        ledger=corpus / "freeze.jsonl",
+        predicate=REPO / "scripts" / "check_linefeeds.py",
+        manifest=corpus / "manifest.json",
+        round=number,
+    )
+    with pytest.raises(ScoringRefused, match="predate the round rule"):
+        holdout.require_predicate_freeze()
+
+
+def test_a_hand_written_record_reusing_an_id_cannot_be_sealed_against(unsealed):
+    """The sharper form of the refreeze sequence, which needs no edit to the sample.
+
+    The sample names the id of the freeze its prose was drawn under.
+    If a second record can carry that same id, the sample answers to either of them,
+    so a predicate tuned after the prose was read is reachable without touching what the draw wrote.
+    An id is the digest of its own record, so a reader can tell the two apart.
+    """
+    frozen = unsealed.freeze_predicate("predicate A, before any prose was drawn")
+    unsealed.predicate.write_text(
+        "def check(text, path):\n    return [(1, 'wrap')]\n", encoding="utf-8"
+    )
+    forged = dict(frozen)
+    forged["predicate_digest"] = unsealed._predicate_digest()
+    forged["intent"] = "predicate B, tuned against prose it has now read"
+    with unsealed.ledger.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(forged, sort_keys=True) + "\n")
+
+    with pytest.raises(ScoringRefused, match="not the digest of its own content"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"])
+
+
+def test_a_hand_written_second_record_for_a_round_refuses_the_ledger(unsealed):
+    """A correctly-hashed forgery is still a second record for a round.
+
+    The id check catches a copied id; this catches a fresh one.
+    The refusal covers the whole operation rather than picking whichever record matches,
+    because picking is what an appended record is written to exploit.
+    """
+    frozen = unsealed.freeze_predicate("predicate A, before any prose was drawn")
+    unsealed.predicate.write_text(
+        "def check(text, path):\n    return [(1, 'wrap')]\n", encoding="utf-8"
+    )
+    forged = {
+        "record": "predicate_freeze",
+        "round": unsealed.round,
+        "predicate_digest": unsealed._predicate_digest(),
+        "manifest_digest": unsealed._manifest_digest(),
+        "intent": "predicate B, hashed correctly and still a second commitment",
+    }
+    forged["id"] = _freeze_id(forged)
+    with unsealed.ledger.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(forged, sort_keys=True) + "\n")
+
+    with pytest.raises(ScoringRefused, match="two pre-draw records"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"])
+
+
+def test_a_round_whose_bundle_exists_cannot_be_frozen(unsealed):
+    """A pre-draw record for a drawn round is a commitment dated after its own prose.
+
+    The draw already refuses a round holding a bundle,
+    but the ledger would have recorded the false commitment before the draw declined to run,
+    and the ledger is the artifact that outlives the command.
+    """
+    unsealed.freeze_predicate("the round these tests act for")
+    unsealed.seal(PLAINTEXT, PASSPHRASE)
+    unsealed.round = TEST_ROUND + 5
+    with pytest.raises(ScoringRefused, match="already holds a bundle"):
+        unsealed.freeze_predicate("a commitment written after the prose exists")
+
+
+# --- what a round binds beyond its predicate ------------------------------
+#
+# ADR-0022 bound a predicate and a sample.
+# It said in as many words what it did not claim.
+# A round is also decided by its admission contract, its class taxonomy,
+# its draw configuration, and which sources it draws from.
+
+
+def test_a_round_binds_only_what_it_says_it_binds(unsealed):
+    """A labeling round reads no admission contract, so a moved one must not refuse it."""
+    frozen = unsealed.freeze_predicate("scoring a labeling round")
+    assert "binds" not in frozen
+    unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"])
+    assert unsealed.bundle.exists()
+
+
+def test_a_contract_that_moved_in_every_copy_of_itself_refuses_the_seal(unsealed):
+    """The case the manifest-against-constant comparison cannot catch.
+
+    That comparison catches one copy moving.
+    Once both move together while a round is underway there is nothing left to compare,
+    and only a digest recorded before the prose existed says so.
+    """
+    binds = {"admission": "sha256:" + "a" * 64, "taxonomy": "sha256:" + "b" * 64}
+    frozen = unsealed.freeze_predicate("scoring a widened repair", binds)
+    assert frozen["binds"] == binds
+    # The seal recomputes them, and by then the contract has moved.
+    moved = dict(binds, admission="sha256:" + "c" * 64)
+    with pytest.raises(ScoringRefused, match="has moved since"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"], binds=moved)
+    assert not unsealed.bundle.exists()
+
+
+def test_a_binding_the_round_never_made_refuses_too(unsealed):
+    """A round frozen against three things cannot be sealed against four."""
+    frozen = unsealed.freeze_predicate(
+        "scoring a widened repair", {"admission": "sha256:" + "a" * 64}
+    )
+    with pytest.raises(ScoringRefused, match="has moved since"):
+        unsealed.seal(
+            PLAINTEXT,
+            PASSPHRASE,
+            drawn_under=frozen["id"],
+            binds={"admission": "sha256:" + "a" * 64, "draw": "sha256:" + "d" * 64},
+        )
+
+
+def test_bindings_that_did_not_move_seal_normally(unsealed):
+    binds = {"admission": "sha256:" + "a" * 64, "sources": "sha256:" + "b" * 64}
+    frozen = unsealed.freeze_predicate("scoring a widened repair", binds)
+    unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"], binds=dict(binds))
+    assert unsealed.bundle.exists()
+
+
+def test_a_bound_record_still_hashes_to_its_own_id(unsealed):
+    """The id is the digest of the record without its id, whatever fields it carries.
+
+    A record written before this change carries no `binds` and still validates,
+    because the digest is over the keys that are present.
+    A protocol repair that made an existing ledger unreadable would not be a repair.
+    """
+    bound = unsealed.freeze_predicate("a", {"admission": "sha256:" + "a" * 64})
+    assert bound["id"] == _freeze_id({k: v for k, v in bound.items() if k != "id"})
+    plain = {
+        "record": "predicate_freeze",
+        "round": 91,
+        "predicate_digest": unsealed._predicate_digest(),
+        "manifest_digest": unsealed._manifest_digest(),
+        "intent": "an older record, with no bindings",
+    }
+    plain["id"] = _freeze_id(plain)
+    with unsealed.ledger.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(plain, sort_keys=True) + "\n")
+    # The reader accepts both shapes rather than refusing the ledger.
+    assert len(unsealed._predicate_freezes()) == 2
+
+
+def test_the_source_selection_digest_moves_with_a_commit_and_not_with_a_label():
+    """It binds which files the round draws from, and nothing else in the manifest.
+
+    `require_predicate_freeze` deliberately does not compare the manifest's own digest,
+    because a sample is drawn before its floors are stated.
+    A digest over the whole file would put that back.
+    """
+    document = {
+        "sources": [
+            {
+                "id": "styx",
+                "side": "calibration",
+                "commit": "0" * 40,
+                "selection_command": "git ls-files '*.go'",
+            }
+        ],
+        "units": [{"id": "c-0001"}],
+    }
+    before = source_selection_digest(document)
+    document["units"].append({"id": "c-0002"})
+    assert source_selection_digest(document) == before
+    document["sources"][0]["commit"] = "1" * 40
+    assert source_selection_digest(document) != before
+
+
+def test_a_repair_round_binds_all_four_things_the_amendment_names():
+    document = json.loads(
+        (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
+    )
+    binds = repair_round_bindings(document)
+    assert sorted(binds) == ["admission", "draw", "sources", "taxonomy"]
+    assert binds["admission"] == repair_admission_digest()
+    assert binds["sources"] == source_selection_digest(document)
+    assert all(digest.startswith("sha256:") for digest in binds.values())
+
+
+def test_the_draw_configuration_is_one_copy_rather_than_two():
+    """The freeze that binds it and the draw that obeys it read the same numbers."""
+    assert REPAIR_DRAW["floor"] == REPAIR_ADMISSION["reportable"]["min_scored"]
+    text = (REPO / "tests" / "corpus" / "repairs" / "draw.py").read_text(
+        encoding="utf-8"
+    )
+    assert "REPAIR_DRAW" in text

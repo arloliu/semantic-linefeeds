@@ -1,0 +1,25 @@
+{
+  "commits_walked": 219,
+  "excluded_prefix": "tests/",
+  "introduced": {
+    "fused": 4,
+    "wrap": 256
+  },
+  "note": "repaired counts any anchor line whose occurrences fell, so a deletion and an unrelated rewrite are counted alongside a real repair; it is an over-count of repairs rather than a proven ceiling on them",
+  "repaired": {
+    "fused": 10,
+    "wrap": 271
+  },
+  "rev": "86a1686b0418069b608cb523b461b51a83d5b2e1",
+  "skipped": [],
+  "suffixes": [
+    ".md",
+    ".py",
+    ".go",
+    ".ts"
+  ],
+  "survived": {
+    "fused": 243,
+    "wrap": 1986
+  }
+}
