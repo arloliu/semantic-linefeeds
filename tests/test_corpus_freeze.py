@@ -14,7 +14,7 @@ import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from corpus_harness import Holdout, ScoringRefused  # noqa: E402
+from corpus_harness import Holdout, ScoringRefused, _freeze_id  # noqa: E402
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 
@@ -292,31 +292,34 @@ def test_the_sealed_rounds_still_answer_to_their_own_freeze(number):
 
     Rounds 1 to 3 were sealed before a pre-draw record named a round,
     and round 1 wrote no pre-draw record at all.
-    Binding new rounds to one must leave the old bundles reachable,
-    which they are: opening and scoring answer to the bundle's own freeze,
-    and that record binds a ciphertext rather than a round.
+    Binding new rounds to one must leave the old bundles reachable.
+
+    This calls `_require_freeze`, which is the function `open` and `record_evaluation` go through.
+    Asserting that some ledger line mentions the bundle would pass even if that path had broken,
+    because the line's existence is not what the code consults.
     """
     corpus = REPO / "tests" / "corpus"
-    bundle = corpus / "holdout" / f"round-{number}" / "bundle.json"
-    ciphertext = json.loads(bundle.read_text(encoding="utf-8"))["ciphertext"]
-    ledger = [
-        json.loads(line)
-        for line in (corpus / "freeze.jsonl").read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
     holdout = Holdout(
-        bundle=bundle,
+        bundle=corpus / "holdout" / f"round-{number}" / "bundle.json",
         ledger=corpus / "freeze.jsonl",
         predicate=REPO / "scripts" / "check_linefeeds.py",
         manifest=corpus / "manifest.json",
         round=number,
     )
-    digest = holdout._ciphertext_digest()
-    assert any(
-        record.get("record") == "freeze" and record["ciphertext_digest"] == digest
-        for record in ledger
-    ), f"round {number}'s bundle has no freeze record naming it"
-    assert ciphertext, "a sealed bundle carries a ciphertext"
+    try:
+        frozen = holdout._require_freeze()
+    except ScoringRefused as refusal:
+        # The predicate and manifest have both moved since these rounds were sealed,
+        # so the refusal names what moved rather than failing to find the record.
+        # Either way the bundle-freeze path resolved.
+        # What must never happen is a refusal saying no record names this bundle at all.
+        assert "no freeze record names this bundle" not in str(refusal), refusal
+    else:
+        assert frozen["record"] == "freeze"
+
+    # And the round is spent, which is the other half of why it cannot be reused.
+    with pytest.raises(ScoringRefused, match="already been evaluated"):
+        holdout._require_unspent()
 
 
 @pytest.mark.parametrize("number", [1, 2, 3])
@@ -336,3 +339,65 @@ def test_a_spent_round_cannot_be_drawn_again(number):
     )
     with pytest.raises(ScoringRefused, match="predate the round rule"):
         holdout.require_predicate_freeze()
+
+
+def test_a_hand_written_record_reusing_an_id_cannot_be_sealed_against(unsealed):
+    """The sharper form of the refreeze sequence, which needs no edit to the sample.
+
+    The sample names the id of the freeze its prose was drawn under.
+    If a second record can carry that same id, the sample answers to either of them,
+    so a predicate tuned after the prose was read is reachable without touching what the draw wrote.
+    An id is the digest of its own record, so a reader can tell the two apart.
+    """
+    frozen = unsealed.freeze_predicate("predicate A, before any prose was drawn")
+    unsealed.predicate.write_text(
+        "def check(text, path):\n    return [(1, 'wrap')]\n", encoding="utf-8"
+    )
+    forged = dict(frozen)
+    forged["predicate_digest"] = unsealed._predicate_digest()
+    forged["intent"] = "predicate B, tuned against prose it has now read"
+    with unsealed.ledger.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(forged, sort_keys=True) + "\n")
+
+    with pytest.raises(ScoringRefused, match="not the digest of its own content"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"])
+
+
+def test_a_hand_written_second_record_for_a_round_refuses_the_ledger(unsealed):
+    """A correctly-hashed forgery is still a second record for a round.
+
+    The id check catches a copied id; this catches a fresh one.
+    The refusal covers the whole operation rather than picking whichever record matches,
+    because picking is what an appended record is written to exploit.
+    """
+    frozen = unsealed.freeze_predicate("predicate A, before any prose was drawn")
+    unsealed.predicate.write_text(
+        "def check(text, path):\n    return [(1, 'wrap')]\n", encoding="utf-8"
+    )
+    forged = {
+        "record": "predicate_freeze",
+        "round": unsealed.round,
+        "predicate_digest": unsealed._predicate_digest(),
+        "manifest_digest": unsealed._manifest_digest(),
+        "intent": "predicate B, hashed correctly and still a second commitment",
+    }
+    forged["id"] = _freeze_id(forged)
+    with unsealed.ledger.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(forged, sort_keys=True) + "\n")
+
+    with pytest.raises(ScoringRefused, match="two pre-draw records"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"])
+
+
+def test_a_round_whose_bundle_exists_cannot_be_frozen(unsealed):
+    """A pre-draw record for a drawn round is a commitment dated after its own prose.
+
+    The draw already refuses a round holding a bundle,
+    but the ledger would have recorded the false commitment before the draw declined to run,
+    and the ledger is the artifact that outlives the command.
+    """
+    unsealed.freeze_predicate("the round these tests act for")
+    unsealed.seal(PLAINTEXT, PASSPHRASE)
+    unsealed.round = TEST_ROUND + 5
+    with pytest.raises(ScoringRefused, match="already holds a bundle"):
+        unsealed.freeze_predicate("a commitment written after the prose exists")

@@ -802,6 +802,20 @@ def _unit_problems(record, declared_sources, declared_frames):
     return problems
 
 
+def _freeze_id(record):
+    """The canonical id of a pre-draw freeze: the digest of the record without its id.
+
+    Deriving the id from the content is what lets a reader check it.
+    An id chosen freely would be a label a hand-written record could copy.
+    """
+    return _digest(
+        json.dumps(
+            {name: value for name, value in record.items() if name != "id"},
+            sort_keys=True,
+        ).encode("utf-8")
+    )
+
+
 class Holdout:
     """One sealed bundle, plus the append-only ledger that decides whether it opens."""
 
@@ -837,6 +851,14 @@ class Holdout:
             raise ScoringRefused(
                 "a pre-draw freeze names the round it is for; this one names no round"
             )
+        # A round whose bundle exists has been drawn, and usually labeled and sealed.
+        # Appending a pre-draw record for it would write a commitment dated after the prose,
+        # which is the one thing this record exists to make impossible.
+        if self.bundle.exists():
+            raise ScoringRefused(
+                f"round {self.round} already holds a bundle; "
+                "a pre-draw freeze written now would postdate the prose it claims to predict"
+            )
         record = {
             "record": "predicate_freeze",
             "round": self.round,
@@ -846,18 +868,61 @@ class Holdout:
         }
         # One pre-draw freeze per round.
         # A second one is how a predicate read the prose and then committed to itself.
-        for earlier in self._records():
-            if (
-                earlier.get("record") == "predicate_freeze"
-                and earlier.get("round") == self.round
-            ):
+        for earlier in self._predicate_freezes():
+            if earlier.get("round") == self.round:
                 raise ScoringRefused(
                     f"round {self.round} was already frozen, for: {earlier['intent']}; "
                     "a round that needs a second predicate needs a new round"
                 )
-        record["id"] = _digest(json.dumps(record, sort_keys=True).encode("utf-8"))
+        record["id"] = _freeze_id(record)
         self._append(record)
         return record
+
+    def _predicate_freezes(self):
+        """Every modern pre-draw record, refusing the whole ledger if any invariant is broken.
+
+        The writer keeps one record per round and hashes each record into its own id.
+        A reader that only filters on those fields trusts them,
+        and the ledger is a text file: a record can be appended by hand.
+        Two hand-written shapes defeat a trusting reader.
+        A second record for a round lets a predicate be committed to after its prose was read.
+        A second record reusing the first one's id does the same without the sample being touched,
+        because the sample names an id and two records would answer to it.
+
+        So the invariants are checked here rather than assumed:
+        an id is the digest of its own record, ids are unique, and a round has one record.
+        A violation refuses the operation instead of selecting whichever record fits,
+        because selecting is exactly what an appended record is written to exploit.
+
+        Records with no round predate the rule and are not returned.
+        `require_predicate_freeze` reports them separately;
+        they are never honoured, so their shape is not policed here.
+        """
+        modern, by_round, by_id = [], {}, {}
+        for record in self._records():
+            if record.get("record") != "predicate_freeze" or "round" not in record:
+                continue
+            claimed = record.get("id")
+            if claimed != _freeze_id(record):
+                raise ScoringRefused(
+                    f"a pre-draw record for round {record['round']} carries an id "
+                    "that is not the digest of its own content; the ledger was edited by hand"
+                )
+            if claimed in by_id:
+                raise ScoringRefused(
+                    f"two pre-draw records share the id {claimed}; "
+                    "a sample naming that id would answer to either of them"
+                )
+            if record["round"] in by_round:
+                raise ScoringRefused(
+                    f"round {record['round']} carries two pre-draw records; "
+                    "a round is frozen once, and the second record is the one "
+                    "written after the prose was read"
+                )
+            by_id[claimed] = record
+            by_round[record["round"]] = record
+            modern.append(record)
+        return modern
 
     def require_predicate_freeze(self, drawn_under=None):
         """The record this round was frozen under, or a refusal naming what is missing.
@@ -879,16 +944,17 @@ class Holdout:
         both answer to the bundle's own freeze, which binds a ciphertext.
         """
         digest = self._predicate_digest()
-        candidates = [
-            record
-            for record in self._records()
-            if record.get("record") == "predicate_freeze"
-        ]
         for_round = [
-            record for record in candidates if record.get("round") == self.round
+            record
+            for record in self._predicate_freezes()
+            if record["round"] == self.round
         ]
         if not for_round:
-            legacy = [record for record in candidates if "round" not in record]
+            legacy = [
+                record
+                for record in self._records()
+                if record.get("record") == "predicate_freeze" and "round" not in record
+            ]
             if legacy:
                 raise ScoringRefused(
                     f"no freeze record names round {self.round}; "
