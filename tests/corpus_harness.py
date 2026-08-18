@@ -59,6 +59,7 @@ SECTIONS = (
     "schema_version",
     "rubric",
     "reporting",
+    "repair_admission",
     "covariate_definitions",
     "eligible_anchor",
     "frames",
@@ -115,6 +116,82 @@ REPORTING = {
     "min_true_violations": 10,
     "max_interval_half_width": 0.15,
     "max_ambiguous_fraction": 0.25,
+}
+
+# Settled before a single repair was elicited, for the same reason REPORTING was.
+# A floor stated after its labels are read is not a gate.
+# Every clause is written into the manifest too, and the two copies are compared,
+# so one of them moving is a failure rather than an edit.
+REPAIR_ADMISSION = {
+    "interval": "wilson-95",
+    "floor": 0.8,
+    "denominator": (
+        "a unit is scored when it carries a frozen acceptable set and is not ambiguous; "
+        "ambiguous units leave the rate and are kept as cases, "
+        "as the label corpus already treats them"
+    ),
+    "activation": (
+        "a class admits a repair only where every other class is absent, "
+        "so it is scored on the exact class sets it activates "
+        "rather than on every unit carrying it"
+    ),
+    "statistic": (
+        "per activated exact set, the fraction of that stratum's scored units "
+        "whose machine repair is in the acceptable set"
+    ),
+    "test": (
+        "every activated stratum clears the floor on its own lower bound, "
+        "independently of the others"
+    ),
+    "pooling": (
+        "a population-weighted combination across the activated strata is reported "
+        "as description, and it decides nothing; "
+        "one interval over a weighted mean would need a stratified variance estimator "
+        "this corpus does not define, and several units can share one window "
+        "and so one repair outcome, which a binomial interval would count as "
+        "independent trials"
+    ),
+    "unreportable_stratum": (
+        "an activated stratum the frozen rules cannot rate refuses the class, "
+        "and is never dropped so that the remaining strata carry the claim"
+    ),
+    "reportable": {
+        "min_scored": 26,
+        "max_interval_half_width": 0.15,
+        "max_ambiguous_fraction": 0.25,
+        "min_scored_note": (
+            "a preregistered policy minimum rather than a derivation; "
+            "what the frozen rules make reportable depends on the realized count, "
+            "the half-width and the ambiguous fraction, "
+            "none of them known before labeling, "
+            "so nothing can prove a smaller stratum intrinsically unreportable; "
+            "26 is the size at which a rate of 0.80 first fits inside the frozen "
+            "half-width, and it is taken as a floor on that ground alone"
+        ),
+    },
+    "same_algorithm": (
+        "the repair transformation under test is applied to the shipped class as well, "
+        "and both numbers are reported from that one algorithm; "
+        "a round that scores two classes through two algorithms is refused"
+    ),
+    "zero_tolerance": {
+        "prose_not_preserved": "a machine repair that does not preserve the prose",
+        "carrier_changed": "a machine repair that changes a carrier",
+        "fired_where_only_the_original_is_acceptable": (
+            "a machine repair that fires on a unit whose acceptable set holds only "
+            "the original; automatically repairing a line that should have been left "
+            "alone is the worst outcome this tool can produce"
+        ),
+    },
+    "baseline": (
+        "the shipped class is measured and reported beside every candidate as context; "
+        "it is 34 boundaries with 32 of them in one source, and it is never the bar"
+    ),
+    "admissible_from": (
+        "no class is admissible on the calibration side; "
+        "every number above is scored on a holdout round "
+        "drawn after the widened predicate is frozen"
+    ),
 }
 
 
@@ -674,6 +751,121 @@ def floor_problems(units, floors, dimension=None, bands=None):
     return problems
 
 
+def contract_digest(contract):
+    """A digest of a contract's content, canonicalized, rather than of the file holding it.
+
+    The manifest's file digest moves whenever any of its several hundred units moves,
+    so a round bound to that digest is bound to everything the corpus later grows.
+    This one moves when the contract moves and at no other time,
+    which is the property a freeze needs from it.
+    """
+    return _digest(json.dumps(contract, sort_keys=True).encode("utf-8"))
+
+
+def repair_admission_digest():
+    """The digest of the admission contract as this harness holds it.
+
+    Comparing the manifest against the in-code constant catches one copy moving.
+    It catches nothing when both move together once a round is underway,
+    and only a freeze binding this digest does.
+    """
+    return contract_digest(REPAIR_ADMISSION)
+
+
+def repair_admission_problems(candidate):
+    """Every reason a candidate class is refused admission, or nothing when it clears.
+
+    The clauses are `REPAIR_ADMISSION`, which was frozen before any repair existed.
+    Refusal is the default here in a way it is not in `recall`:
+    a condition that was not measured refuses,
+    and a stratum that cannot be rated refuses,
+    because a class admitted on a number nobody has is admitted on nothing.
+    """
+    name = candidate.get("class", "<unnamed class>")
+    problems = []
+
+    algorithm = candidate.get("algorithm")
+    baseline = candidate.get("baseline_algorithm")
+    if not algorithm or not baseline:
+        problems.append(
+            f"{name}: names no algorithm on one side or the other, "
+            "and the shipped class is scored through the same one"
+        )
+    elif algorithm != baseline:
+        problems.append(
+            f"{name}: scored through {algorithm!r} while the shipped class was scored "
+            f"through {baseline!r}, and one round scores both through one algorithm"
+        )
+
+    measured = candidate.get("zero_tolerance") or {}
+    for condition in sorted(REPAIR_ADMISSION["zero_tolerance"]):
+        count = measured.get(condition)
+        if count is None:
+            problems.append(
+                f"{name}: {condition} was not measured, "
+                "and an unmeasured condition is not a satisfied one"
+            )
+        elif count:
+            problems.append(
+                f"{name}: {count} unit(s) hit {condition}, "
+                "which refuses the class however well it scores"
+            )
+
+    strata = candidate.get("strata") or {}
+    if not strata:
+        problems.append(
+            f"{name}: activates no stratum, so nothing about it has been scored"
+        )
+    for stratum in sorted(strata):
+        problems += _stratum_problems(name, stratum, strata[stratum])
+    return problems
+
+
+def _stratum_problems(name, stratum, counts):
+    """One activated stratum against the floor, or against the reasons it cannot be rated.
+
+    Each stratum is judged alone.
+    A large stratum clearing the floor does not carry a small one that fails it,
+    which pooling them into a single rate would let it do.
+    """
+    where = f"{name} on {stratum}"
+    rules = REPAIR_ADMISSION["reportable"]
+    scored = counts.get("scored", 0)
+    acceptable = counts.get("acceptable", 0)
+    ambiguous = counts.get("ambiguous", 0)
+    labeled = counts.get("labeled", scored + ambiguous)
+    if acceptable > scored:
+        return [
+            f"{where}: {acceptable} acceptable repairs on {scored} scored units, "
+            "which is not a proportion"
+        ]
+
+    interval = wilson(acceptable, scored)
+    withheld = []
+    if scored < rules["min_scored"]:
+        withheld.append(f"fewer than {rules['min_scored']} scored units")
+    if interval and (interval[1] - interval[0]) / 2 > rules["max_interval_half_width"]:
+        withheld.append(
+            f"interval wider than {round(rules['max_interval_half_width'] * 100)} points"
+        )
+    if ambiguous > rules["max_ambiguous_fraction"] * labeled:
+        withheld.append("more than a quarter of the labels are ambiguous")
+    if withheld:
+        return [
+            f"{where}: {acceptable} of {scored} and no rate, "
+            f"because {'; '.join(withheld)}; "
+            "an activated stratum the round cannot rate refuses the class"
+        ]
+
+    if interval[0] < REPAIR_ADMISSION["floor"]:
+        return [
+            f"{where}: {acceptable} of {scored} is {acceptable / scored:.3f}, "
+            f"and its lower bound of {interval[0]:.3f} is below the floor of "
+            f"{REPAIR_ADMISSION['floor']:.2f}"
+        ]
+    return []
+
+
 def manifest_problems(document):
     """Everything wrong with a manifest, named by unit rather than counted.
 
@@ -686,6 +878,7 @@ def manifest_problems(document):
         if name not in document
     ]
     problems += _reporting_problems(document.get("reporting", {}))
+    problems += _repair_admission_problems(document.get("repair_admission", {}))
     defined = document.get("covariate_definitions", {})
     problems += [
         f"dimension {name} is recorded on units but never defined"
@@ -713,6 +906,32 @@ def _reporting_problems(reporting):
         for name, value in REPORTING.items()
         if reporting.get(name) != value
     ]
+
+
+def _repair_admission_problems(section):
+    """The manifest's copy of the admission contract against the frozen one.
+
+    Clause by clause rather than as one comparison,
+    because a reader who is told the contract moved still has to find out where.
+    The frozen side is round-tripped through JSON first:
+    the manifest can only hold what JSON holds,
+    and a tuple in code would differ from the list it was written as.
+    """
+    frozen = json.loads(json.dumps(REPAIR_ADMISSION))
+    problems = [
+        f"repair admission clause {name} is missing from the manifest"
+        if name not in section
+        else f"repair admission clause {name} does not match the frozen contract"
+        for name, value in sorted(frozen.items())
+        if section.get(name) != value
+    ]
+    problems += [
+        f"repair admission clause {name} is in the manifest "
+        "and not in the frozen contract"
+        for name in sorted(section)
+        if name not in frozen
+    ]
+    return problems
 
 
 def _source_problems(source):
