@@ -2,6 +2,10 @@
 
 **Status:** accepted
 **Date:** 2026-08-18
+**Amended:** 2026-08-18 by
+[ADR-0024](0024-a-repair-round-binds-more-than-its-predicate.md),
+which binds the four things the "What this does not claim" section below leaves unbound,
+for the rounds whose meaning depends on them.
 **Amends:** [ADR-0008](0008-a-holdout-is-spent-by-being-opened.md) —
 its fourth decision says the ledger "stops the ordering mistake".
 The bundle freeze does.

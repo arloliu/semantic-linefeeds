@@ -101,6 +101,9 @@ def main(root, number):
                 # That is what stops a predicate being tuned after the draw,
                 # then frozen again before the seal.
                 "drawn_under": frozen["id"],
+                # Copied so the seal has something to compare against,
+                # and so a reader sees what the round was frozen to without the ledger.
+                "binds": frozen.get("binds", {}),
                 "units": drawn,
             },
             indent=2,

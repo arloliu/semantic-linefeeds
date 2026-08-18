@@ -44,6 +44,7 @@ If a record and a rule disagree, the rule wins until a new record supersedes it.
 | [ADR-0021](0021-a-withheld-finding-travels-with-the-block-it-shares-a-line-with.md) | A withheld `wrap` is delivered when a blocking finding sits on the same line, because that line is being rewritten anyway and the `wrap` is what stops the repair stranding the sentence it splits off; an advisory does not corroborate, and every other line keeps the withdrawal — this amends [ADR-0002](0002-wrap-withdrawn-from-default-feedback.md) |
 
 | [ADR-0022](0022-a-pre-draw-freeze-binds-a-round-and-a-sample.md) | A holdout's pre-draw freeze names the round it is for and is written once, and the sample records the freeze it was drawn under, so a predicate cannot be tuned after its prose has been read and committed to afterwards; the sealed rounds are untouched and the records that predate the rule authorize nothing — this amends [ADR-0008](0008-a-holdout-is-spent-by-being-opened.md) |
+| [ADR-0024](0024-a-repair-round-binds-more-than-its-predicate.md) | A round's pre-draw freeze also binds what that round says it depends on — its admission contract, its class taxonomy, its draw configuration, and which sources it draws from — and the seal recomputes each one and refuses a mismatch, which is the case no comparison between two copies of a contract can catch; a labeling round binds none of them because it reads none of them — this amends [ADR-0022](0022-a-pre-draw-freeze-binds-a-round-and-a-sample.md) |
 
 ## Principles these records share
 

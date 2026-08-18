@@ -1444,6 +1444,55 @@ def score_repair(unit, cuts):
 # --- the population, and the draw over it ---------------------------------
 
 
+# The repair round's draw configuration, here rather than in the script that runs it,
+# so the freeze that binds it and the draw that obeys it read one copy.
+REPAIR_DRAW = {"base": 0, "seed": "repairs-1", "per_set": 40, "floor": 26}
+
+
+def source_selection_digest(document):
+    """A digest of what the manifest says the population is, and of nothing else.
+
+    Not the manifest's own digest.
+    `require_predicate_freeze` deliberately does not compare that,
+    because a sample is drawn before its floors are stated
+    and the manifest is expected to move between the freeze and the seal.
+    What may not move is which files the round draws from.
+    """
+    declared = [
+        {
+            "id": source.get("id"),
+            "side": source.get("side"),
+            "commit": source.get("commit"),
+            "selection_command": source.get("selection_command"),
+        }
+        for source in document.get("sources", [])
+    ]
+    declared.sort(key=lambda source: (str(source["side"]), str(source["id"])))
+    return contract_digest(declared)
+
+
+def repair_round_bindings(document):
+    """Everything a repair round means beyond its predicate and its manifest.
+
+    ADR-0022 bound the predicate and the sample.
+    It said in as many words what it did not claim:
+    a round is also decided by its admission contract, its class taxonomy,
+    its draw configuration, and which sources it draws from,
+    and any of those could move between the freeze and the seal without being noticed.
+    The admission contract is the sharpest of the four.
+    Comparing the manifest against an in-code constant catches one copy moving,
+    and catches nothing once both move together while a round is underway.
+    """
+    import check_linefeeds
+
+    return {
+        "admission": repair_admission_digest(),
+        "taxonomy": contract_digest(list(check_linefeeds.WITHHOLDING_CLASSES)),
+        "draw": contract_digest(REPAIR_DRAW),
+        "sources": source_selection_digest(document),
+    }
+
+
 def exact_set_key(classes):
     """The name of the exact class set a unit belongs to.
 
@@ -1928,7 +1977,7 @@ class Holdout:
         # they answer to the bundle's own freeze, which binds a ciphertext.
         self.round = round
 
-    def freeze_predicate(self, intent):
+    def freeze_predicate(self, intent, binds=None):
         """Commit to a predicate, for one round, before its prose has been drawn.
 
         The freeze that binds a bundle can only be written once the bundle exists,
@@ -1965,6 +2014,14 @@ class Holdout:
             "manifest_digest": self._manifest_digest(),
             "intent": intent,
         }
+        # What else this round's meaning depends on, named by the round.
+        # A labeling round binds nothing further.
+        # A repair round binds its admission contract, its taxonomy,
+        # its draw configuration, and its source selection.
+        # Binding all four on every round would refuse a labeling seal for a contract
+        # that round never read.
+        if binds:
+            record["binds"] = dict(binds)
         # One pre-draw freeze per round.
         # A second one is how a predicate read the prose and then committed to itself.
         for earlier in self._predicate_freezes():
@@ -2023,7 +2080,7 @@ class Holdout:
             modern.append(record)
         return modern
 
-    def require_predicate_freeze(self, drawn_under=None):
+    def require_predicate_freeze(self, drawn_under=None, binds=None):
         """The record this round was frozen under, or a refusal naming what is missing.
 
         The manifest digest is recorded on the freeze and not compared here.
@@ -2035,6 +2092,11 @@ class Holdout:
         Passing it is what turns "some freeze names this predicate" into
         "the freeze this prose was drawn under names this predicate".
         A sealed round passes it; a draw has nothing to pass yet.
+
+        `binds` is what the round depends on besides the predicate, recomputed now.
+        Comparing it against the record catches a contract that moved everywhere at once
+        while the round was underway.
+        No comparison between two copies can catch that.
 
         A record with no round is from rounds 1 to 3, which were written before this rule.
         Accepted records are never edited, so those stand as they are,
@@ -2074,24 +2136,40 @@ class Holdout:
                     "nothing may be sealed against a freeze the prose never saw"
                 )
         for record in for_round:
-            if record["predicate_digest"] == digest:
-                return record
+            if record["predicate_digest"] != digest:
+                continue
+            if binds is not None:
+                bound = record.get("binds", {})
+                moved = sorted(
+                    name
+                    for name in set(bound) | set(binds)
+                    if bound.get(name) != binds.get(name)
+                )
+                if moved:
+                    raise ScoringRefused(
+                        f"this round was frozen against {sorted(bound)} and "
+                        f"{moved} has moved since; "
+                        "a contract that changes while a round is underway "
+                        "is a contract chosen after the prose was read"
+                    )
+            return record
         raise ScoringRefused(
             "the predicate changed since the freeze this round was drawn under; "
             "a tuned predicate needs a new round"
         )
 
-    def seal(self, text, passphrase, drawn_under=None):
+    def seal(self, text, passphrase, drawn_under=None, binds=None):
         """Write the ciphertext bundle.
 
         The plaintext never reaches the working tree.
 
         Sealing is refused for an unfrozen predicate,
-        and for a predicate that is not the one the prose was drawn under.
+        for a predicate that is not the one the prose was drawn under,
+        and for a round whose other bindings have moved since it was frozen.
         The first round got the ordering right by care,
         and care is not a mechanism.
         """
-        self.require_predicate_freeze(drawn_under)
+        self.require_predicate_freeze(drawn_under, binds)
         salt = os.urandom(16)
         mask_key, tag_key = _keys(passphrase, salt, KDF_ITERATIONS)
         ciphertext = _mask(text.encode("utf-8"), mask_key)

@@ -14,7 +14,16 @@ import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from corpus_harness import Holdout, ScoringRefused, _freeze_id  # noqa: E402
+from corpus_harness import (  # noqa: E402
+    REPAIR_ADMISSION,
+    REPAIR_DRAW,
+    Holdout,
+    ScoringRefused,
+    _freeze_id,
+    repair_admission_digest,
+    repair_round_bindings,
+    source_selection_digest,
+)
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 
@@ -401,3 +410,125 @@ def test_a_round_whose_bundle_exists_cannot_be_frozen(unsealed):
     unsealed.round = TEST_ROUND + 5
     with pytest.raises(ScoringRefused, match="already holds a bundle"):
         unsealed.freeze_predicate("a commitment written after the prose exists")
+
+
+# --- what a round binds beyond its predicate ------------------------------
+#
+# ADR-0022 bound a predicate and a sample.
+# It said in as many words what it did not claim.
+# A round is also decided by its admission contract, its class taxonomy,
+# its draw configuration, and which sources it draws from.
+
+
+def test_a_round_binds_only_what_it_says_it_binds(unsealed):
+    """A labeling round reads no admission contract, so a moved one must not refuse it."""
+    frozen = unsealed.freeze_predicate("scoring a labeling round")
+    assert "binds" not in frozen
+    unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"])
+    assert unsealed.bundle.exists()
+
+
+def test_a_contract_that_moved_in_every_copy_of_itself_refuses_the_seal(unsealed):
+    """The case the manifest-against-constant comparison cannot catch.
+
+    That comparison catches one copy moving.
+    Once both move together while a round is underway there is nothing left to compare,
+    and only a digest recorded before the prose existed says so.
+    """
+    binds = {"admission": "sha256:" + "a" * 64, "taxonomy": "sha256:" + "b" * 64}
+    frozen = unsealed.freeze_predicate("scoring a widened repair", binds)
+    assert frozen["binds"] == binds
+    # The seal recomputes them, and by then the contract has moved.
+    moved = dict(binds, admission="sha256:" + "c" * 64)
+    with pytest.raises(ScoringRefused, match="has moved since"):
+        unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"], binds=moved)
+    assert not unsealed.bundle.exists()
+
+
+def test_a_binding_the_round_never_made_refuses_too(unsealed):
+    """A round frozen against three things cannot be sealed against four."""
+    frozen = unsealed.freeze_predicate(
+        "scoring a widened repair", {"admission": "sha256:" + "a" * 64}
+    )
+    with pytest.raises(ScoringRefused, match="has moved since"):
+        unsealed.seal(
+            PLAINTEXT,
+            PASSPHRASE,
+            drawn_under=frozen["id"],
+            binds={"admission": "sha256:" + "a" * 64, "draw": "sha256:" + "d" * 64},
+        )
+
+
+def test_bindings_that_did_not_move_seal_normally(unsealed):
+    binds = {"admission": "sha256:" + "a" * 64, "sources": "sha256:" + "b" * 64}
+    frozen = unsealed.freeze_predicate("scoring a widened repair", binds)
+    unsealed.seal(PLAINTEXT, PASSPHRASE, drawn_under=frozen["id"], binds=dict(binds))
+    assert unsealed.bundle.exists()
+
+
+def test_a_bound_record_still_hashes_to_its_own_id(unsealed):
+    """The id is the digest of the record without its id, whatever fields it carries.
+
+    A record written before this change carries no `binds` and still validates,
+    because the digest is over the keys that are present.
+    A protocol repair that made an existing ledger unreadable would not be a repair.
+    """
+    bound = unsealed.freeze_predicate("a", {"admission": "sha256:" + "a" * 64})
+    assert bound["id"] == _freeze_id({k: v for k, v in bound.items() if k != "id"})
+    plain = {
+        "record": "predicate_freeze",
+        "round": 91,
+        "predicate_digest": unsealed._predicate_digest(),
+        "manifest_digest": unsealed._manifest_digest(),
+        "intent": "an older record, with no bindings",
+    }
+    plain["id"] = _freeze_id(plain)
+    with unsealed.ledger.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(plain, sort_keys=True) + "\n")
+    # The reader accepts both shapes rather than refusing the ledger.
+    assert len(unsealed._predicate_freezes()) == 2
+
+
+def test_the_source_selection_digest_moves_with_a_commit_and_not_with_a_label():
+    """It binds which files the round draws from, and nothing else in the manifest.
+
+    `require_predicate_freeze` deliberately does not compare the manifest's own digest,
+    because a sample is drawn before its floors are stated.
+    A digest over the whole file would put that back.
+    """
+    document = {
+        "sources": [
+            {
+                "id": "styx",
+                "side": "calibration",
+                "commit": "0" * 40,
+                "selection_command": "git ls-files '*.go'",
+            }
+        ],
+        "units": [{"id": "c-0001"}],
+    }
+    before = source_selection_digest(document)
+    document["units"].append({"id": "c-0002"})
+    assert source_selection_digest(document) == before
+    document["sources"][0]["commit"] = "1" * 40
+    assert source_selection_digest(document) != before
+
+
+def test_a_repair_round_binds_all_four_things_the_amendment_names():
+    document = json.loads(
+        (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
+    )
+    binds = repair_round_bindings(document)
+    assert sorted(binds) == ["admission", "draw", "sources", "taxonomy"]
+    assert binds["admission"] == repair_admission_digest()
+    assert binds["sources"] == source_selection_digest(document)
+    assert all(digest.startswith("sha256:") for digest in binds.values())
+
+
+def test_the_draw_configuration_is_one_copy_rather_than_two():
+    """The freeze that binds it and the draw that obeys it read the same numbers."""
+    assert REPAIR_DRAW["floor"] == REPAIR_ADMISSION["reportable"]["min_scored"]
+    text = (REPO / "tests" / "corpus" / "repairs" / "draw.py").read_text(
+        encoding="utf-8"
+    )
+    assert "REPAIR_DRAW" in text

@@ -32,6 +32,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 import check_linefeeds as clf  # noqa: E402
 from corpus_harness import (  # noqa: E402
     REPAIR_ADMISSION,
+    REPAIR_DRAW,
     attach_candidates,
     contract_digest,
     draw_strata,
@@ -46,15 +47,18 @@ MANIFEST = CORPUS / "manifest.json"
 SKILL = REPO / "skills" / "semantic-linefeeds" / "SKILL.md"
 REPAIRING = HERE.parent / "REPAIRING.md"
 
+# One copy of these numbers, in the harness, because the freeze that binds them
+# and this draw that obeys them have to be looking at the same ones.
+#
 # Every unit comes from a stratum quota, so there is no random base.
 # The label corpus uses one because its dimensions overlap,
 # and a base is what spreads whatever nothing quotas.
 # Here the strata are disjoint and enumerable,
 # so a base would only add units nothing could weight.
-BASE = 0
-SEED = "repairs-1"
-PER_SET = 40
-FLOOR = 26
+BASE = REPAIR_DRAW["base"]
+SEED = REPAIR_DRAW["seed"]
+PER_SET = REPAIR_DRAW["per_set"]
+FLOOR = REPAIR_DRAW["floor"]
 
 QUOTAS = {"per_set": PER_SET, "floor": FLOOR}
 
