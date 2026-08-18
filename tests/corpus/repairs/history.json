@@ -1,0 +1,24 @@
+{
+  "commits_walked": 215,
+  "excluded_prefix": "tests/",
+  "introduced": {
+    "fused": 4,
+    "wrap": 101
+  },
+  "note": "repaired counts any anchor line that stopped existing, so it is a ceiling",
+  "repaired": {
+    "fused": 10,
+    "wrap": 116
+  },
+  "rev": "a082ae94ce8f3f08a19be91c952cf27c4d98ea67",
+  "suffixes": [
+    ".md",
+    ".py",
+    ".go",
+    ".ts"
+  ],
+  "survived": {
+    "fused": 243,
+    "wrap": 2139
+  }
+}
