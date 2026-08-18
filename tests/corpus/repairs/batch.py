@@ -77,6 +77,25 @@ def render(unit, number):
     return "\n".join(lines)
 
 
+ANSWER = """Answer every unit above in one JSON array, and nothing else that could be
+mistaken for one. One object per unit:
+
+```json
+[{"id": "<unit id>", "choose": "<candidate>", "accept": ["<candidate>"],
+  "reject": ["<candidate>"], "missing": []}]
+```
+
+Two rules an answer is checked against, and a unit that breaks either is thrown away:
+
+1. `accept` and `reject` together name every candidate that unit offered, once each.
+   Not a subset. Every one, including the candidate you would make.
+2. `choose` is one of the names in your own `accept` list.
+   If you would make a candidate, you accept it.
+
+Leave `missing` empty unless the repair you would make is not on the list; when it is
+not, put the lines you would write there instead, and leave `choose` out of that unit."""
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("name")
@@ -94,8 +113,14 @@ def main(argv=None):
             + "\nnothing was laid out"
         )
 
-    units = {unit["id"]: unit for unit in sample["units"]}
-    batches = repair_batches(sample["units"], args.name)
+    # A window the generator refused offers nothing to judge,
+    # so it never reaches a pass.
+    # It stays in the sample carrying its position count,
+    # and `collect.py` reports it as the instrument defect it is.
+    drawn = sample["units"]
+    judgeable = [unit for unit in drawn if not unit.get("defect")]
+    units = {unit["id"]: unit for unit in judgeable}
+    batches = repair_batches(judgeable, args.name)
     out = pathlib.Path(args.out) if args.out else HERE.parent / "batches" / args.name
     out.mkdir(parents=True, exist_ok=True)
 
@@ -112,10 +137,13 @@ def main(argv=None):
             render(units[unit["id"]], number)
             for number, unit in enumerate(batch, start=1)
         ]
+        parts.append(ANSWER)
         path = out / f"batch-{index:02d}.md"
         path.write_text("\n\n---\n\n".join(parts) + "\n", encoding="utf-8")
 
+    refused = len(drawn) - len(judgeable)
     print(f"{len(batches)} batch(es) for {args.name} -> {out}")
+    print(f"{len(judgeable)} units laid out; {refused} left the sample as defects")
 
 
 if __name__ == "__main__":

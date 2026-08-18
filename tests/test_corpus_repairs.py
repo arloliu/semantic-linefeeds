@@ -1085,6 +1085,7 @@ from corpus_harness import (  # noqa: E402
     REPAIR_BATCH,
     attach_candidates,
     file_digest,
+    pass_answers,
     repair_batches,
     repair_stimulus,
 )
@@ -1807,3 +1808,43 @@ def test_promotion_refuses_to_leave_the_lock_disagreeing_with_the_manifest(tmp_p
     repinned = json.loads(lock.read_text(encoding="utf-8"))
     assert repinned["digest"] == file_digest(manifest)
     assert "repair round" in repinned["reason"]
+
+
+def test_a_pass_that_restates_its_template_is_still_read(tmp_path):
+    """The longest array of objects carrying an id is the answer.
+
+    A pass often echoes the shape it was given before writing its own,
+    and one regex spanning from the first `[` to the last `]` parses as neither.
+    """
+    out = tmp_path / "claude-01.out"
+    out.write_text(
+        'Sure.\n```json\n[{"id": "<unit id>", "choose": "<candidate>"}]\n```\n'
+        'Here they are:\n[{"id": "a", "choose": "c00"}, {"id": "b", "choose": "c01"}]\n',
+        encoding="utf-8",
+    )
+    assert [answer["id"] for answer in pass_answers(out)] == ["a", "b"]
+
+
+def test_an_answer_that_is_not_a_list_of_units_is_read_as_nothing(tmp_path):
+    out = tmp_path / "claude-01.out"
+    out.write_text('["a", "b"]\nI could not answer.', encoding="utf-8")
+    assert pass_answers(out) == []
+
+
+def test_a_window_the_generator_refused_never_reaches_a_pass():
+    """It leaves the sample carrying its position count, and is not put to anyone.
+
+    Sixty of the round's 368 units are refused this way,
+    every one of them for offering more cut positions than a pass can judge.
+    """
+    sample = json.loads(
+        (REPO / "tests" / "corpus" / "repairs" / "sample.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    refused = [unit for unit in sample["units"] if unit.get("defect")]
+    assert refused
+    for unit in refused:
+        assert unit["candidates"] == []
+        assert unit["positions"] > MAX_POSITIONS
+        assert str(unit["positions"]) in unit["defect"]

@@ -44,6 +44,34 @@ Three things, every time.
    A repair the list does not offer means the list was built wrongly,
    and saying so is more useful than an answer fitted to a list.
 
+## The shape of an answer
+
+Return one JSON array, and nothing else that could be mistaken for one.
+One object per unit, in any order, covering every unit in the batch.
+
+```json
+[
+  {
+    "id": "<the unit id, copied exactly>",
+    "choose": "<the candidate you would make>",
+    "accept": ["<candidate>", "..."],
+    "reject": ["<candidate>", "..."],
+    "missing": []
+  }
+]
+```
+
+`accept` and `reject` together must name every candidate the unit offered, once each.
+`choose` must be one of the candidates you accepted.
+
+`missing` is empty unless the repair you would make is not on the list.
+When it is not, put the lines you would write there instead,
+as one array of strings per repair.
+Do not pick the nearest candidate and do not add it to `accept`.
+
+Prose around the array is fine.
+The array is what is read.
+
 ## What acceptance means
 
 A candidate is acceptable when the prose it produces is correct.

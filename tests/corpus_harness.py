@@ -1374,18 +1374,33 @@ def repair_resolution(passes, candidates):
     }
 
 
-_ANSWER_ARRAY_RE = re.compile(r"\[\s*\{.*}\s*]", re.DOTALL)
-
-
 def pass_answers(path):
-    """The JSON array a pass returned, however much prose it wrapped around it."""
-    match = _ANSWER_ARRAY_RE.search(path.read_text(encoding="utf-8"))
-    if not match:
-        return []
-    try:
-        return json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return []
+    """The answers a pass returned, however much prose it wrapped around them.
+
+    Every `[` is tried as a start rather than the first one alone.
+    A pass often restates the template it was given before its own array,
+    and one regex spanning both parses as neither.
+    The longest array of objects carrying an `id` is the answer;
+    a shorter one earlier in the text is the template or an example.
+    """
+    text = path.read_text(encoding="utf-8")
+    decoder = json.JSONDecoder()
+    best = []
+    at = text.find("[")
+    while at >= 0:
+        try:
+            found, _end = decoder.raw_decode(text, at)
+        except ValueError:
+            found = None
+        if (
+            isinstance(found, list)
+            and found
+            and all(isinstance(one, dict) and "id" in one for one in found)
+            and len(found) > len(best)
+        ):
+            best = found
+        at = text.find("[", at + 1)
+    return best
 
 
 def repair_pass_verdicts(answer, candidates):
