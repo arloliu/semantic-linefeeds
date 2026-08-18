@@ -1771,3 +1771,39 @@ def test_the_manifest_states_what_round_four_must_be_before_it_is_drawn():
     ):
         assert phrase in note
     assert "no class is admissible" in note.lower()
+
+
+def test_promotion_refuses_to_leave_the_lock_disagreeing_with_the_manifest(tmp_path):
+    """The lock is a digest of the manifest, and promoting rewrites the manifest.
+
+    Refused before the write rather than after it.
+    The write is the expensive part of a round.
+    A refusal arriving afterwards arrives at the end of hours of elicitation.
+    """
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(answers, units, original_id)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    lock = tmp_path / "manifest.lock"
+    lock.write_text(json.dumps({"digest": "sha256:" + "0" * 64, "reason": "before"}))
+
+    done = run(PROMOTE, repairs, answers, FIXTURES.parent, "--manifest", manifest)
+    assert done.returncode != 0
+    assert "--reason" in done.stderr
+    assert "Nothing was promoted" in done.stderr
+    assert json.loads(manifest.read_text(encoding="utf-8")) == {"schema_version": 1}
+
+    done = run(
+        PROMOTE,
+        repairs,
+        answers,
+        FIXTURES.parent,
+        "--manifest",
+        manifest,
+        "--reason",
+        "the repair round was promoted, and no label changes",
+    )
+    assert done.returncode == 0, done.stderr
+    repinned = json.loads(lock.read_text(encoding="utf-8"))
+    assert repinned["digest"] == file_digest(manifest)
+    assert "repair round" in repinned["reason"]

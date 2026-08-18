@@ -78,12 +78,26 @@ def main(argv=None):
     parser.add_argument("answers")
     parser.add_argument("root")
     parser.add_argument("--manifest", default=str(TESTS / "corpus" / "manifest.json"))
+    parser.add_argument("--reason", default="")
     args = parser.parse_args(argv)
 
     repairs = pathlib.Path(args.repairs).resolve()
     answers_dir = pathlib.Path(args.answers).resolve()
     root = pathlib.Path(args.root).resolve()
     manifest_path = pathlib.Path(args.manifest)
+
+    # The lock is a digest of the manifest.
+    # Writing one without repinning the other leaves the pair disagreeing.
+    # Refused here rather than after the write:
+    # the write is the expensive part of a round,
+    # and a refusal that arrives afterwards arrives too late.
+    lock_path = manifest_path.with_name("manifest.lock")
+    if lock_path.exists() and not args.reason.strip():
+        sys.exit(
+            "promoting rewrites the manifest, and its lock has to say what changed.\n"
+            "Pass --reason with a line a reviewer can read.\n"
+            "Nothing was promoted."
+        )
 
     sample = json.loads((repairs / "sample.json").read_text(encoding="utf-8"))
     units = {unit["id"]: unit for unit in sample["units"]}
@@ -184,10 +198,21 @@ def main(argv=None):
     manifest_path.write_text(
         json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
+    if lock_path.exists():
+        lock_path.write_text(
+            json.dumps(
+                {"digest": file_digest(manifest_path), "reason": args.reason.strip()},
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     suggested = [r for r in out if r["baseline_suggestion"]["lines"] is not None]
     right = sum(1 for r in suggested if r["baseline_suggestion"]["acceptable"])
     print(f"{len(out)} repair record(s) -> {manifest_path}")
+    if lock_path.exists():
+        print(f"repinned {lock_path.name}")
     print(
         f"the shipped predicate repaired {len(suggested)} of them, "
         f"{right} landing in the acceptable set"
