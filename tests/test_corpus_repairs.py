@@ -1748,3 +1748,26 @@ def test_a_broken_repair_record_reaches_the_manifest_gate():
     assert any(
         "empty acceptable set" in problem for problem in manifest_problems(document)
     )
+
+
+def test_the_manifest_states_what_round_four_must_be_before_it_is_drawn():
+    """Stating it now is what stops any of it being chosen once the round is in hand.
+
+    A requirement written after a round exists is one the round satisfies by existing.
+    """
+    document = json.loads(
+        (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
+    )
+    (note,) = [
+        line for line in document["protocol_notes"] if line.startswith("the round that")
+    ]
+    declared = {source["id"] for source in document["sources"]}
+    assert len(declared) == 12
+    for phrase in (
+        "round 4",
+        "none of the twelve",
+        "did not tune that predicate",
+        "qualify.py",
+    ):
+        assert phrase in note
+    assert "no class is admissible" in note.lower()

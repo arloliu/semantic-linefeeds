@@ -60,6 +60,45 @@ The gate fails when the record and reality disagree in **either** direction,
 because a case that was silently fixed is as worth knowing about as one that appeared.
 Regenerate it deliberately, never to make a red test go green.
 
+## `repairs/`
+
+A second corpus beside the first, sharing its instrument rather than copying it.
+
+The first corpus measures whether a finding is correct.
+This one measures what happens next:
+given a `fused` finding delivered the way the hook delivers one,
+what does a repairing agent do with the line, and was it right.
+
+**Its units are conditional on delivery.**
+The population is every `fused` boundary the detector raises on the calibration sources,
+not every prose boundary in them.
+A repair exists only where a finding was delivered.
+That conditional is what the corpus measures,
+and it is not the denominator [ADR-0003](../../docs/decisions/0003-precision-measured-against-labels.md) forbids:
+the detector's firing is in the condition rather than in the denominator,
+and a finding the detector never raises has no repair to measure.
+
+**Its strata are exact sets of withholding classes.**
+Class membership overlaps, so a quota on one class biases another class's marginal.
+Exact sets are disjoint, so the draw has known inclusion probabilities
+and a class marginal is a weighted derived report labelled as one.
+
+**Its unit is a window of one or two judged lines**, not a boundary,
+because the repair that matters rejoins before it splits.
+Leaving the window alone is a candidate like any other,
+so a finding whose right answer is to change nothing is an outcome here rather than a hole.
+
+**What it does not measure.**
+A pass is shown the report body the checker renders,
+and not the suggested replacement a host appends beside it.
+So the defect rates describe agents given a blinded body rather than full hook feedback.
+They are a floor on how well agents repair, not an estimate of it.
+
+And nothing in it admits a class.
+Every number here is measured on the calibration side,
+and admission is scored on a holdout round drawn after a widened predicate is frozen
+([ADR-0023](../../docs/decisions/0023-what-a-repair-corpus-measures.md)).
+
 ## `manifest.json`
 
 Everything a reviewer needs to recompute a reported rate without trusting the run that produced it:
@@ -68,7 +107,8 @@ the rules that decide when a rate may be printed at all,
 the digest of the published rule the labels were judged against,
 and one record per labeled unit: its text, its nine covariates, its three blind passes, and its frozen expected status.
 
-It holds nine sources and 718 unit records over 359 boundaries.
+It holds twelve sources and 718 unit records over 359 boundaries:
+three on the calibration side and nine holdout sources across three rounds.
 Every unit record is from the calibration side.
 The holdout sources carry no unit records at all:
 their labels live inside a sealed bundle and never in the working tree.
