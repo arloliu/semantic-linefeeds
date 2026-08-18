@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A way to ask why the checker declined to suggest a repair.**
+  The checker offers a two-line replacement for some run-on lines and not for others.
+  Until now it did not say which reason applied.
+  Each reason it can have now has a name,
+  and a caller may ask for those names alongside a finding.
+  This is off by default and changes nothing about what the checker reports or prints.
+
+- **The measurement work behind a wider automatic repair.**
+  This project widens an automatic fix only once it is scored on text nobody has read.
+  What was missing was the thing to score:
+  what a repairing agent actually does with a reported line, and whether it was right.
+  The tooling that builds that population now exists,
+  along with the bar a wider fix has to clear.
+  The bar was written down before any of it was measured.
+  Nothing about the checker's own behaviour changes here.
+
+### Changed
+
+- **A measurement round now commits to more than the rule it is testing.**
+  A round is also decided by how its sample is drawn,
+  which sources it draws from, and what counts as passing.
+  Any of those could previously move after a round committed to its prediction,
+  right up until it was sealed.
+  A round now records all of them up front, and sealing refuses if any has moved since.
+
 ### Fixed
 
 - **A measurement round can no longer commit to its answer after seeing the question.**
