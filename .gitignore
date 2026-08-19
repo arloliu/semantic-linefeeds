@@ -19,3 +19,7 @@ tests/corpus/holdout/*/labels/
 # so committing three copies of the same prose buys nothing history does not already hold.
 # The sample and the answers are evidence and are committed.
 tests/corpus/repairs/batches/
+
+# Pinned upstream sources the corpus draws from, materialized by commit from manifest.json.
+# Reconstructible, large, and not ours to vendor.
+tests/corpus/checkouts/
