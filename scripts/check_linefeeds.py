@@ -825,10 +825,20 @@ def prose_lines_markdown(text):
     in_pre = False
     after_refdef = False
     in_table = False
+    # The content column of the list item currently open, or None outside one.
+    # A continuation sits on that column,
+    # and once the marker itself is indented
+    # that column reaches the four spaces that mean code at the left margin.
+    # Measuring the four-space rule from column 0 reads the continuation as code
+    # and drops the item's own second thought out of the walk.
+    item_indent = None
     lines = text.splitlines()
     for i, raw in enumerate(lines, 1):
         content = strip_quote_markers(raw)
         stripped = content.strip()
+        indent = len(content) - len(content.lstrip(" "))
+        if not stripped:
+            item_indent = None
         if i == 1 and stripped == "---":
             in_frontmatter = True
             yield i, None, None
@@ -871,7 +881,11 @@ def prose_lines_markdown(text):
         if fence is not None:
             yield i, None, None
             continue
-        if content.startswith(("    ", "\t")):
+        if content.startswith(("    ", "\t")) and not (
+            item_indent is not None and indent == item_indent
+        ):
+            # Four spaces past the content column is a code block inside the item,
+            # so only a line sitting exactly on that column is a continuation.
             yield i, None, None
             continue
         if PRE_OPEN_RE.match(stripped):
@@ -919,8 +933,12 @@ def prose_lines_markdown(text):
         # A new list item starts a new paragraph.
         # One item measured against the next is two thoughts compared as though they were one,
         # and the break between them was never a wrap.
-        if LIST_ITEM_RE.match(stripped):
+        opener = LIST_ITEM_RE.match(stripped)
+        if opener:
+            item_indent = indent + len(opener.group(0))
             yield i, None, None
+        elif item_indent is not None and indent < item_indent:
+            item_indent = None
         prose = LIST_ITEM_RE.sub("", stripped)
         yield i, raw, prose
 

@@ -501,6 +501,42 @@ def test_a_continuation_line_inside_one_item_is_still_measured():
     ) == [(1, "wrap")]
 
 
+def test_an_indented_items_continuation_is_still_measured():
+    """A list item does not stop being one because it is indented.
+
+    Its continuation sits at the item's content column,
+    which is four spaces once the marker itself is indented —
+    the same width that means code at the left margin.
+    Measured from column 0 the continuation reads as a code block,
+    so the item's second thought leaves the walk,
+    and the fusion above it is reported with no line to repair it onto.
+    """
+    assert kinds(
+        "  - a slice of the type that the caller supplies\n    of that type\n"
+    ) == [(1, "wrap")]
+
+
+def test_an_indented_item_still_fuses_across_its_continuation():
+    assert (
+        kinds(
+            "  * It can be exported later if needed.\n    The opposite is not true.\n"
+        )
+        == []
+    )
+
+
+def test_code_indented_past_an_items_content_column_is_still_code():
+    """Four spaces past the content column is a code block inside the item."""
+    assert (
+        kinds(
+            "- Intro line here.\n"
+            "      for _, s := range items {\n"
+            "          process(s)\n"
+        )
+        == []
+    )
+
+
 def test_a_paragraph_is_still_measured_against_itself():
     assert kinds(
         "a line that ends mid-clause because it was\nwrapped at a column.\n"
