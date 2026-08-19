@@ -624,6 +624,7 @@ from corpus_harness import (  # noqa: E402
     cut_positions,
     original_cuts,
     repair_candidates,
+    repair_pass_verdicts,
     repair_resolution,
     score_repair,
     set_acceptable,
@@ -841,6 +842,31 @@ def test_a_pass_that_rejected_the_repair_it_would_make_is_an_error():
     broken["chosen"] = ()
     with pytest.raises(ValueError):
         repair_resolution([broken], candidates)
+
+
+def test_a_pass_reporting_a_missing_repair_names_no_choice():
+    """A pass with nothing acceptable to name has no choice to give.
+
+    `REPAIRING.md` requires the chosen repair to be one the pass accepted,
+    so a pass that accepted none of them names none,
+    and the resolution reads `missing` before it ever reads a choice.
+    """
+    candidates = [{"id": "c00", "cuts": []}, {"id": "c01", "cuts": [9]}]
+    supplied = [["one line,", "and its continuation."]]
+    got = repair_pass_verdicts(
+        {"accept": [], "reject": ["c00", "c01"], "missing": supplied}, candidates
+    )
+    assert got["chosen"] is None
+    assert got["missing"] == supplied
+
+
+def test_a_pass_naming_neither_a_choice_nor_a_missing_repair_is_an_error():
+    """Malformed is not an outcome, and saying nothing about either is malformed."""
+    candidates = [{"id": "c00", "cuts": []}]
+    with pytest.raises(ValueError):
+        repair_pass_verdicts(
+            {"accept": ["c00"], "reject": [], "missing": []}, candidates
+        )
 
 
 def test_every_pass_omitting_a_valid_candidate_still_puts_it_to_them():
@@ -1114,6 +1140,7 @@ def test_a_class_the_population_never_produced_is_a_line_rather_than_an_absence(
 # The elicited rates therefore describe agents given a blinded body,
 # not agents given complete hook feedback.
 
+import importlib.util  # noqa: E402
 import subprocess  # noqa: E402
 
 from corpus_harness import (  # noqa: E402
@@ -1452,6 +1479,47 @@ def test_a_split_referral_reaches_the_worksheet_grouped_by_its_shape(tmp_path):
     assert {entry["shape"] for entry in entries} == {"split"}
     assert all(entry["referred"] for entry in entries)
     assert all(entry["outcome"] is None for entry in entries)
+
+
+def test_a_decision_names_candidates_the_way_the_worksheet_asks_for_them(tmp_path):
+    """The worksheet asks for candidate ids, so resolution has to read candidate ids.
+
+    A decision that survives the form but not its reader is a decision silently lost,
+    and the loss surfaces as a unit that scores wrong rather than as an error.
+    """
+    # `tests/corpus/collect.py` shadows this one by name, so load it by path.
+    spec = importlib.util.spec_from_file_location("repairs_collect", COLLECT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    resolved = module.resolved
+
+    repairs, answers, units = round_dir(tmp_path)
+    everything = [candidate["id"] for candidate in units[0]["candidates"]]
+    answer_all(
+        answers, units, original_id, accept=lambda u: everything, names=("claude",)
+    )
+    answer_all(answers, units, original_id, names=("codex", "agy"))
+    run(ADJUDICATE, "worksheet", repairs, answers)
+    entries = json.loads((repairs / "adjudications.json").read_text(encoding="utf-8"))
+    assert entries
+    for entry in entries:
+        entry["outcome"] = "settled"
+        entry["acceptable"] = [entry["candidates"][0]["id"]]
+        entry["reason"] = "the original is the only correct answer here"
+    sample = json.loads((repairs / "sample.json").read_text(encoding="utf-8"))
+    by_id = {unit["id"]: unit for unit in sample["units"]}
+    decisions = {entry["id"]: entry for entry in entries}
+    outcomes, _names = resolved(sample, answers, decisions)
+
+    entry = entries[0]
+    named = entry["acceptable"][0]
+    cuts = next(
+        candidate["cuts"]
+        for candidate in by_id[entry["id"]]["candidates"]
+        if candidate["id"] == named
+    )
+    assert outcomes[entry["id"]]["outcome"] == "settled"
+    assert outcomes[entry["id"]]["acceptable"] == frozenset({tuple(cuts)})
 
 
 def test_a_repair_the_generator_missed_is_its_own_shape(tmp_path):

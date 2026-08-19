@@ -74,10 +74,23 @@ def resolved(sample, answers_dir, decisions=None):
         got = repair_resolution(verdicts, candidates)
         decided = decisions.get(uid)
         if got["outcome"] == "adjudicated" and decided:
+            # The worksheet asks for candidate ids, because a maintainer reads ids.
+            # The cuts they stand for are what everything downstream compares.
+            named = {
+                candidate["id"]: tuple(candidate["cuts"])
+                for candidate in unit["candidates"]
+            }
+            unknown = sorted(set(decided["acceptable"]) - set(named))
+            if unknown:
+                out[uid] = {
+                    "outcome": "error",
+                    "reason": f"a decision named candidates the unit never had: {unknown}",
+                }
+                continue
             got = dict(
                 got,
                 outcome=decided["outcome"],
-                acceptable=frozenset(tuple(cuts) for cuts in decided["acceptable"]),
+                acceptable=frozenset(named[one] for one in decided["acceptable"]),
                 reason=decided["reason"],
             )
         out[uid] = got

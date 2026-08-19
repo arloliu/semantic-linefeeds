@@ -1465,8 +1465,15 @@ def repair_pass_verdicts(answer, candidates):
     unknown = sorted(named - {None} - set(cuts))
     if unknown:
         raise ValueError(f"a pass named candidates it was not shown: {unknown}")
+    choose = answer.get("choose")
+    if choose is None and not answer.get("missing"):
+        raise ValueError(
+            "a pass must name a repair it would make, or report one missing"
+        )
     return {
-        "chosen": cuts[answer["choose"]],
+        # A pass that accepted nothing has nothing to name,
+        # and `repair_resolution` reads `missing` before it reads this.
+        "chosen": cuts[choose] if choose is not None else None,
         "accept": [cuts[name] for name in answer.get("accept", [])],
         "reject": [cuts[name] for name in answer.get("reject", [])],
         "missing": answer.get("missing") or [],
