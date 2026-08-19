@@ -219,6 +219,36 @@ SHAPES = {
         ["// Stop now!", "Go later."],
         (False, None, False, False),
     ),
+    # A list marker may not be repeated: two lines opening `4. ` are two items.
+    # What replaces it is the continuation the window itself shows.
+    "an ordered item split onto its continuation indent": (
+        "4. It ends mid-clause and.\n   then it keeps running on.\n",
+        "doc.md",
+        0,
+        ["4. It ends mid-clause and.", "   then it keeps running on."],
+        (True, (23,), True, True),
+    ),
+    "a bulleted item split onto its continuation indent": (
+        "- It ends mid-clause and.\n  then it keeps running on.\n",
+        "doc.md",
+        0,
+        ["- It ends mid-clause and.", "  then it keeps running on."],
+        (True, (23,), True, True),
+    ),
+    "a bulleted item split with a second marker": (
+        "- It ends mid-clause and.\n  then it keeps running on.\n",
+        "doc.md",
+        0,
+        ["- It ends mid-clause and.", "- then it keeps running on."],
+        (False, None, False, False),
+    ),
+    "a lazily continued item keeps the file's own lazy continuation": (
+        "* It ends mid-clause and.\nthen it keeps running on.\n",
+        "doc.md",
+        0,
+        ["* It ends mid-clause and.", "then it keeps running on."],
+        (True, (23,), True, True),
+    ),
     "a rejoin dropping the absorbed leader": (
         "> It ends mid-clause and\n> then it keeps running on.\n",
         "doc.md",
@@ -342,6 +372,10 @@ NAMED_SHAPES = (
     "different leaders above and below",
     "a split repeating the anchor's leader",
     "a split forgetting the anchor's leader",
+    "an ordered item split onto its continuation indent",
+    "a bulleted item split onto its continuation indent",
+    "a bulleted item split with a second marker",
+    "a lazily continued item keeps the file's own lazy continuation",
     "a rejoin dropping the absorbed leader",
     "a rejoin keeping the absorbed leader",
     "a carrier kept where it was",
@@ -586,6 +620,7 @@ from corpus_harness import (  # noqa: E402
     MAX_POSITIONS,
     ScoringRefused,
     candidate_is_valid,
+    continuation_leader,
     cut_positions,
     original_cuts,
     repair_candidates,
@@ -1848,3 +1883,89 @@ def test_a_window_the_generator_refused_never_reaches_a_pass():
         assert unit["candidates"] == []
         assert unit["positions"] > MAX_POSITIONS
         assert str(unit["positions"]) in unit["defect"]
+
+
+def test_a_list_item_split_carries_a_continuation_rather_than_a_second_marker():
+    """Two lines both opening `4. ` are two list items, not one item on two lines.
+
+    Found by putting the round in front of real agents:
+    on the first batch each of them saw,
+    two of the three model families reported the correct repair as one nobody offered.
+    """
+    text = "4. One thing here. Another thing here.\n   and it continues on.\n"
+    window, found = universe(text, "doc.md")
+    # A candidate that splits the anchor, not merely one that differs from the original:
+    # the full rejoin also differs, and it needs no continuation at all.
+    anchor_cut = original_cuts(window)[0]
+    split = [
+        candidate["lines"]
+        for cuts, candidate in found["candidates"].items()
+        if candidate_is_valid(candidate) and any(cut < anchor_cut for cut in cuts)
+    ]
+    assert split, "a list item with a continuation has a split it can express"
+    for lines in split:
+        assert lines[0].startswith("4. ")
+        for line in lines[1:]:
+            assert not line.startswith("4. "), lines
+        assert lines[1].startswith("   "), lines
+
+
+def test_the_continuation_is_the_one_the_window_shows():
+    """Markdown allows an indent or nothing at all, and the file has already chosen.
+
+    Copying the file's own answer keeps that choice out of the generator.
+    """
+    indented = window_at("- One thing here. Another.\n  and it goes on.\n", "doc.md")
+    assert continuation_leader(indented, 0) == "  "
+    lazy = window_at("* One thing here. Another.\nand it goes on lazily.\n", "doc.md")
+    assert continuation_leader(lazy, 0) == ""
+
+
+def test_a_list_window_with_nothing_below_falls_back_to_the_marker_width():
+    alone = window_at("- One thing here. Another thing here.\n", "doc.md")
+    assert alone.form == "one-line"
+    assert continuation_leader(alone, 0) == "  "
+    numbered = window_at("10. One thing here. Another thing here.\n", "doc.md")
+    assert continuation_leader(numbered, 0) == "    "
+
+
+def test_two_list_items_are_two_paragraphs_so_a_window_never_spans_them():
+    """The extractor already separates siblings, so no window holds two items."""
+    text = "- One thing here. Another thing here.\n- a second item entirely.\n"
+    records, _suppressions = clf.judged_lines(text, "doc.md")
+    assert [record["leader"] for record in records] == ["- ", "- "]
+    assert records[0]["paragraph"] != records[1]["paragraph"]
+    assert repair_window(records, 0).form == "one-line"
+
+
+def test_a_sibling_item_below_is_not_copied_from():
+    """Constructed, because the extractor never puts two items in one window.
+
+    The rule still has to say what it would do.
+    A leader copied from a sibling would open a third item rather than continue the first.
+    """
+    window = window_at("- One thing here. Another thing here.\n", "doc.md")
+    sibling = window._replace(
+        records=(
+            window.records[0],
+            clf._judged_record(
+                "", [0, 0, 0], 2, "- a second item.", "a second item.", "", None, 0
+            ),
+        )
+    )
+    assert sibling.records[1]["leader"] == "- "
+    assert continuation_leader(sibling, 0) == "  "
+
+
+def test_every_other_leader_still_repeats_byte_for_byte():
+    """The rule changed for list markers and for nothing else."""
+    for text, path in (
+        ("> One thing here. Another thing here.\n> and it goes on.\n", "doc.md"),
+        ("// One thing here. Another thing here.\n// and it goes on.\n", "x.go"),
+        ("    One thing here. Another thing here.\n    and it goes on.\n", "doc.md"),
+    ):
+        records, _suppressions = clf.judged_lines(text, path)
+        if not records:
+            continue
+        window = repair_window(records, 0)
+        assert continuation_leader(window, 0) == window.records[0]["leader"], text

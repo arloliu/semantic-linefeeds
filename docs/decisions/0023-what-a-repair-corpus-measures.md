@@ -2,6 +2,10 @@
 
 **Status:** accepted
 **Date:** 2026-08-18
+**Amended:** 2026-08-19 by
+[ADR-0025](0025-a-split-list-item-carries-a-continuation.md),
+which corrects the leader rule for list items:
+a line split out of one carries a continuation rather than a second marker.
 **Relates to:** [ADR-0003](0003-precision-measured-against-labels.md),
 [ADR-0007](0007-fixability-classes.md),
 [ADR-0008](0008-a-holdout-is-spent-by-being-opened.md),

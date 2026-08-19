@@ -1068,9 +1068,18 @@ def carrier_valid(window, replacement, produced):
     if not all(owners):
         return False
 
+    opened = set()
     for record, owned in zip(produced, owners):
         source = window.records[owned[0]]
-        if source["leader"] is None or record["leader"] != source["leader"]:
+        if source["leader"] is None:
+            return False
+        wanted = (
+            continuation_leader(window, owned[0])
+            if owned[0] in opened
+            else source["leader"]
+        )
+        opened.add(owned[0])
+        if record["leader"] != wanted:
             return False
         for absorbed in owned[1:]:
             leader = window.records[absorbed]["leader"]
@@ -1193,6 +1202,35 @@ def _prose_bounds(window):
     return bounds
 
 
+def continuation_leader(window, index):
+    """The leader a second or later line split out of one window line carries.
+
+    Usually the same leader, byte for byte: a blockquote marker, a comment marker,
+    and an indent all repeat correctly on the line below.
+
+    A list marker does not.
+    Two lines both opening `4. ` are two list items, not one item on two lines,
+    and every repairing agent that met one of these said so.
+    What replaces it is the continuation the window itself shows, where it shows one,
+    and otherwise an indent of the marker's width.
+    Markdown allows two forms, an indent or nothing at all.
+    Copying the file's own continuation keeps that choice out of this function.
+    A lower line that opens its own marker is a sibling item rather than a continuation,
+    and is not copied from.
+    """
+    import check_linefeeds
+
+    # The detector's own pattern, because `prefix_list_marker` is decided by it.
+    marker = check_linefeeds._LIST_MARKER_RE
+    leader = window.records[index]["leader"] or ""
+    if not marker.match(leader):
+        return leader
+    below = window.records[index + 1] if index + 1 < len(window.records) else None
+    if below is not None and not marker.match(below["leader"] or ""):
+        return below["leader"]
+    return "".join(letter if letter in " \t" else " " for letter in leader)
+
+
 def _suffix_of(record):
     """Everything the raw line carries behind its prose: its tail, and any carrier."""
     return record["original_raw"][len(record["leader"]) + len(record["prose"]) :]
@@ -1212,6 +1250,7 @@ def candidate_lines(window, cuts):
     bounds = _prose_bounds(window)
     edges = [0, *cuts, len(prose)]
     lines = []
+    opened = set()
     for opening, closing in zip(edges, edges[1:]):
         chunk = prose[opening:closing]
         start = opening + len(chunk) - len(chunk.lstrip(" "))
@@ -1222,11 +1261,17 @@ def candidate_lines(window, cuts):
             for index, (low, high) in enumerate(bounds)
             if low < end and start < high
         )
+        leader = (
+            continuation_leader(window, owner)
+            if owner in opened
+            else window.records[owner]["leader"]
+        )
+        opened.add(owner)
         suffix = ""
         for index, (_low, high) in enumerate(bounds):
             if start <= high - 1 < end:
                 suffix = _suffix_of(window.records[index])
-        lines.append(window.records[owner]["leader"] + text + suffix)
+        lines.append(leader + text + suffix)
     return lines
 
 
@@ -1527,7 +1572,11 @@ def exact_set_key(classes):
 # How many units one pass judges at a sitting.
 # Smaller than a labeling batch.
 # A unit here carries a body and a candidate list, not two lines and two questions.
-REPAIR_BATCH = 15
+# Eight rather than fifteen, measured rather than guessed:
+# fifteen units render about 46KB, which one of the three model families barely answers.
+# Eight render about 39KB, preamble included, which all three answer in minutes.
+# The number is grouping and nothing else — it is in no digest and no unit sees it.
+REPAIR_BATCH = 8
 
 
 def repair_stimulus(text, path, line):
