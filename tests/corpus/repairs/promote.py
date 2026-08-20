@@ -29,7 +29,7 @@ sys.path.insert(0, str(HERE.parent))
 from collect import resolved, votes_for  # noqa: E402
 from corpus_harness import (  # noqa: E402
     candidate_for_breaks,
-    compose,
+    composed,
     file_digest,
     normalize_repair,
     repair_window,
@@ -43,8 +43,8 @@ PREDICATE = REPO / "scripts" / "check_linefeeds.py"
 def baseline_for(unit, text, path):
     """What the shipped repair does to this window, composed and normalized.
 
-    The shipped suggestion replaces the anchor and says nothing about the line below,
-    so it is composed into a whole-window replacement before it is normalized.
+    The suggestion says how many raw lines it replaces,
+    and `composed` maps that into a whole-window replacement before it is normalized.
     A class the predicate withholds produces nothing.
     That is recorded as nothing rather than as a failure.
     """
@@ -67,7 +67,7 @@ def baseline_for(unit, text, path):
             "breaks": None,
             "predicate": file_digest(PREDICATE),
         }
-    lines = compose(window, finding["suggestion"]["lines"])
+    lines = composed(window, finding["suggestion"])
     got = normalize_repair(window, lines, text, path)
     return dict(got, lines=lines, predicate=file_digest(PREDICATE))
 

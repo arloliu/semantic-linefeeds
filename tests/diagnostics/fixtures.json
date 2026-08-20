@@ -243,6 +243,53 @@
       "ownership_basis": "token"
     }
   ],
+  "tests/diagnostics/fixtures/paired_absorbed.md": [
+    {
+      "anchor": {
+        "end": 25,
+        "start": 0
+      },
+      "evidence": {
+        "end": 25,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later to the",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 12,
+        "start": 5
+      },
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "Stop now!",
+          "Go later to the place we talked about."
+        ],
+        "replaces": 2
+      }
+    },
+    {
+      "anchor": {
+        "end": 25,
+        "start": 0
+      },
+      "evidence": {
+        "end": 48,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later to the",
+      "kind": "wrap",
+      "line": 1,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 31,
+        "start": 22
+      },
+      "ownership_basis": "token"
+    }
+  ],
   "tests/diagnostics/fixtures/paired_below_withheld.md": [
     {
       "anchor": {
@@ -498,53 +545,6 @@
         ],
         "replaces": 1
       }
-    }
-  ],
-  "tests/diagnostics/fixtures/suggestion_paired_absorbed.md": [
-    {
-      "anchor": {
-        "end": 25,
-        "start": 0
-      },
-      "evidence": {
-        "end": 25,
-        "start": 0
-      },
-      "excerpt": "Stop now! Go later to the",
-      "kind": "fused",
-      "line": 1,
-      "message": "two sentences on one line \u2014 one sentence per line",
-      "ownership": {
-        "end": 12,
-        "start": 5
-      },
-      "ownership_basis": "token",
-      "suggestion": {
-        "lines": [
-          "Stop now!",
-          "Go later to the place we talked about."
-        ],
-        "replaces": 2
-      }
-    },
-    {
-      "anchor": {
-        "end": 25,
-        "start": 0
-      },
-      "evidence": {
-        "end": 48,
-        "start": 0
-      },
-      "excerpt": "Stop now! Go later to the",
-      "kind": "wrap",
-      "line": 1,
-      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
-      "ownership": {
-        "end": 31,
-        "start": 22
-      },
-      "ownership_basis": "token"
     }
   ],
   "tests/diagnostics/fixtures/suggestion_question.md": [

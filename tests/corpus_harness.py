@@ -1122,16 +1122,32 @@ def _carrier_text(record):
     return record["carrier"]["text"] if record["carrier"] else None
 
 
-def compose(window, lines):
-    """An anchor-only algorithm's output, as a replacement for the whole window.
+def composed(window, suggestion):
+    """A suggestion object's output, as a replacement for the whole window.
 
-    `_fused_suggestion` returns two lines replacing the anchor
-    and says nothing about the line below, so scoring it here keeps that line as it is.
-    From `original_raw` rather than `raw`:
+    The one mapping from `replaces` to a full window replacement,
+    shared by promotion and scoring so `same_algorithm` is a checked fact.
+    `replaces == 2` uses the suggested lines alone;
+    `replaces == 1` on a two-line window keeps the lower line as it is,
+    from `original_raw` rather than `raw`:
     the judged view has had any suppression carrier taken off it,
     and splicing that view back would delete the carrier from the file.
+    Anything else refuses rather than scores —
+    a malformed extent silently composed is a repair scored that nothing delivered.
     """
-    if window.form == "one-line":
+    lines = suggestion.get("lines") if isinstance(suggestion, dict) else None
+    replaces = suggestion.get("replaces") if isinstance(suggestion, dict) else None
+    if (
+        not isinstance(lines, list)
+        or len(lines) != 2
+        or any(not isinstance(line, str) for line in lines)
+    ):
+        raise ScoringRefused(f"a suggestion's lines must be two strings: {lines!r}")
+    if replaces not in (1, 2):
+        raise ScoringRefused(f"a suggestion replaces 1 or 2 lines, not {replaces!r}")
+    if replaces == 2 and window.form == "one-line":
+        raise ScoringRefused("a one-line window has no second line to replace")
+    if window.form == "one-line" or replaces == 2:
         return list(lines)
     return list(lines) + [window.records[1]["original_raw"]]
 

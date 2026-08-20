@@ -86,9 +86,11 @@ def test_the_wild_repair_population_is_too_thin_to_score_a_widening():
 sys.path.insert(0, str(REPO / "tests"))
 
 from corpus_harness import (  # noqa: E402
+    ScoringRefused,
     carrier_valid,
     collapsed,
-    compose,
+    composed,
+    cut_positions,
     normalize_repair,
     repair_window,
     splice,
@@ -491,10 +493,10 @@ def test_composing_an_anchor_only_repair_keeps_the_lower_line_byte_for_byte():
         for d in clf.diagnose(text, "doc.md")
         if d["kind"] == "fused" and d["line"] == 1
     ]
-    composed = compose(window, finding["suggestion"]["lines"])
-    assert composed[-1] == window.records[1]["original_raw"]
-    assert "<!-- semlf-ignore wrap -->" in composed[-1]
-    got = normalize_repair(window, composed, text, "doc.md")
+    replacement = composed(window, finding["suggestion"])
+    assert replacement[-1] == window.records[1]["original_raw"]
+    assert "<!-- semlf-ignore wrap -->" in replacement[-1]
+    got = normalize_repair(window, replacement, text, "doc.md")
     assert got == {
         "preserving": True,
         "breaks": (9, 19),
@@ -505,7 +507,60 @@ def test_composing_an_anchor_only_repair_keeps_the_lower_line_byte_for_byte():
 
 def test_composing_into_a_one_line_window_adds_nothing():
     window = window_at("Stop now! Go later.\n", "doc.md")
-    assert compose(window, ["Stop now!", "Go later."]) == ["Stop now!", "Go later."]
+    suggestion = {"lines": ["Stop now!", "Go later."], "replaces": 1}
+    assert composed(window, suggestion) == ["Stop now!", "Go later."]
+
+
+def test_an_absorbed_suggestion_replaces_the_whole_window():
+    """No trace of the old lower line may survive beside the absorbed replacement,
+    and the repair must normalize to the one fused-boundary cut the universe offers.
+    """
+    text = "Stop now! Go later to the\nplace we talked about.\n"
+    window = window_at(text, "doc.md")
+    assert window.form == "two-line"
+    suggestion = {
+        "lines": ["Stop now!", "Go later to the place we talked about."],
+        "replaces": 2,
+    }
+    lines = composed(window, suggestion)
+    assert lines == ["Stop now!", "Go later to the place we talked about."]
+    got = normalize_repair(window, lines, text, "doc.md")
+    assert got["preserving"] and got["carrier_valid"] and got["intact"]
+    assert got["breaks"] == (9,)
+    assert 9 in cut_positions(window)
+
+
+def test_an_anchor_only_suggestion_keeps_the_lower_line_of_a_two_line_window():
+    text = "Stop now! Go later to the\nplace we talked about.\n"
+    window = window_at(text, "doc.md")
+    suggestion = {"lines": ["Stop now!", "Go later to the"], "replaces": 1}
+    assert composed(window, suggestion) == [
+        "Stop now!",
+        "Go later to the",
+        "place we talked about.",
+    ]
+
+
+@pytest.mark.parametrize(
+    "suggestion",
+    [
+        {"lines": ["a", "b"], "replaces": 0},
+        {"lines": ["a", "b"], "replaces": 3},
+        {"lines": ["a", "b"]},
+        {"lines": "not a list", "replaces": 1},
+        {"lines": ["a", 2], "replaces": 1},
+        {"lines": ["a", "b", "c"], "replaces": 1},
+        {"lines": ["a", "b"], "replaces": 2},
+    ],
+)
+def test_a_malformed_suggestion_refuses_rather_than_scores(suggestion):
+    """Every malformed extent or content refuses.
+
+    The last row is a two-line replacement asked of a one-line window.
+    """
+    window = window_at("Stop now! Go later.\n", "doc.md")
+    with pytest.raises(ScoringRefused):
+        composed(window, suggestion)
 
 
 def test_the_collapse_is_what_makes_two_rewrites_comparable():
@@ -618,10 +673,8 @@ def test_a_line_in_the_middle_of_a_split_carries_no_tail_of_its_own():
 
 from corpus_harness import (  # noqa: E402
     MAX_POSITIONS,
-    ScoringRefused,
     candidate_is_valid,
     continuation_leader,
-    cut_positions,
     original_cuts,
     repair_candidates,
     repair_pass_verdicts,
@@ -1024,7 +1077,10 @@ def test_the_drawing_path_never_reaches_the_shipped_repair(monkeypatch):
     monkeypatch.setattr(
         clf,
         "_fused_suggestion",
-        lambda record, match, below=None: {"lines": [secret, secret], "replaces": 1},
+        lambda record, match, below=None, admitted=frozenset(): {
+            "lines": [secret, secret],
+            "replaces": 1,
+        },
     )
     root = REPO / "tests" / "diagnostics" / "fixtures"
     population = repair_population(
