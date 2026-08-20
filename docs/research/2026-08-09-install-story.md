@@ -73,11 +73,11 @@ This is the closest thing to the "platform adaptation doc" the task asked about,
   which the doc calls "the entire integration."
 - Per-harness differences are collapsed into exactly **three structural shapes**:
   - **Shape A (shell-hook):** a hook system runs a command at session start and reads JSON from stdout.
-    Reference: `hooks/session-start` (one script, detects the harness from env vars and emits
-    one of three JSON shapes), `hooks/run-hook.cmd` (a Windows/Unix polyglot dispatcher),
+    Reference: `hooks/session-start` (one script, detects the harness from env vars and emits one of three JSON shapes),
+    `hooks/run-hook.cmd` (a Windows/Unix polyglot dispatcher),
     and per-harness hook configs `hooks/hooks.json` (Claude Code) / `hooks/hooks-cursor.json` (Cursor).
-  - **Shape B (in-process plugin):** a JS/TS module with lifecycle callbacks that mutates the message array
-    in code. Reference: `.opencode/plugins/superpowers.js` and `.pi/extensions/superpowers.ts`.
+  - **Shape B (in-process plugin):** a JS/TS module with lifecycle callbacks that mutates the message array in code.
+    Reference: `.opencode/plugins/superpowers.js` and `.pi/extensions/superpowers.ts`.
   - **Shape C (instructions-file):** no hook and no plugin —
     only an extension-declared context file the harness always loads.
     Reference: `gemini-extension.json`'s `contextFileName` field pointing at `GEMINI.md`,

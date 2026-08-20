@@ -46,8 +46,7 @@ or for an air-gapped machine with no package index — use the checkout door the
    - remove the sentence
      "(If `CLAUDE_PLUGIN_ROOT` is unset, the script is at `../../scripts/check_linefeeds.py` relative to this SKILL.md.)"
      entirely — it only makes sense inside this checkout;
-   - rewrite the `../../README.md` suppression-section link
-     to the neutral root's `README.md`, published beside the checker.
+   - rewrite the `../../README.md` suppression-section link to the neutral root's `README.md`, published beside the checker.
 
    The result must be byte-identical to what `semlf install codex` writes;
    `semlf status` reports whether an installed copy matches.

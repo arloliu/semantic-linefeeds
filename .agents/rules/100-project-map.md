@@ -78,13 +78,13 @@ run it under Python 3.9, and reject any import outside the stdlib allowlist.
 
   - **Advisory only.**
     A blocking kind may never be raised by a count.
-    `long` never blocks (ADR-0001), which is what makes an over-long line with nowhere to break
-    cost attention rather than a rejected edit.
+    `long` never blocks (ADR-0001),
+    which is what makes an over-long line with nowhere to break cost attention rather than a rejected edit.
   - **Length only, of the prose only.**
     Not a count of commas, of capitals, or of any other feature,
     which would be a guess about prose dressed as arithmetic;
-    and not of `raw`, whose indentation and comment marker this release already removed from the
-    measurement because counting them accused correct text.
+    and not of `raw`, whose indentation and comment marker this release already removed from the measurement
+    because counting them accused correct text.
   - **A heuristic may refine the message, never gate the report.**
     `long` consults the boundary hint to choose which advice to print.
     That is the difference between deciding *what to say* and deciding *whether to speak*,

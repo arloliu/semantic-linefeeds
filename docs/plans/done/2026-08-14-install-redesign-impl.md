@@ -3750,8 +3750,7 @@ def test_dry_run_reports_a_diverged_skill_at_exit_zero(tmp_path):
 16. `test_codex_refuses_a_hooks_bak_symlink_without_following` keeps passing:
     `publish_shared` raises on a non-regular slot exactly as `atomic_write` did.
 17. `test_help_mentions_the_skill_and_the_widened_force_scope` keeps its pinned strings:
-    extend the `--codex` help text for the neutral-root publishing
-    without dropping "native semantic-linefeeds skill" or "codex-skill".
+    extend the `--codex` help text for the neutral-root publishing without dropping "native semantic-linefeeds skill" or "codex-skill".
 
 **Category D — the composed request and the composed status.**
 
@@ -3822,9 +3821,8 @@ def test_both_doors_render_identical_artifacts(tmp_path):
 
 20. The composed status keeps the cli line:
     `test_a_fifo_at_the_cli_destination_refuses_install_and_status_reports_not_runnable`
-    and `test_status_handles_an_encrypted_member_pyz_at_the_cli_destination`
-    stay green because `install.py status()` is the cli section
-    plus `lifecycle.status_command([])` (Step 3) —
+    and `test_status_handles_an_encrypted_member_pyz_at_the_cli_destination` stay green
+    because `install.py status()` is the cli section plus `lifecycle.status_command([])` (Step 3) —
     verify both, do not edit them.
 
 - [ ] **Step 2: Run to verify the updated tests fail**
