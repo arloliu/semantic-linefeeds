@@ -1429,22 +1429,38 @@ def round_dir(tmp_path, pattern="suggestion_*.md"):
     return repairs, answers, units
 
 
-def answer_all(answers, units, choose, accept=None, missing=None, names=PASSES):
-    """Write one `.out` per pass, each answering every unit the same way."""
+def answer_all(
+    answers, units, choose, accept=None, missing=None, names=PASSES, unanswered=None
+):
+    """Write one `.out` per pass, each answering every unit the same way.
+
+    The shapes here are the ones a real pass produces, not tidier ones.
+    A pass reporting a repair the list never offered names no choice:
+    `REPAIRING.md` requires the chosen repair to be one the pass accepted,
+    and a pass that accepted none of them has none to name.
+    A fixture that always wrote a `choose` could not reach that shape,
+    and a shape no fixture reaches is a shape no test guards.
+
+    `unanswered` names candidates to leave out of both verdict lists,
+    for the partial answer that is malformed rather than merely refusing.
+    """
     for name in names:
         payload = []
         for unit in units:
-            names_shown = [candidate["id"] for candidate in unit["candidates"]]
-            taken = accept(unit) if accept else [choose(unit)]
-            payload.append(
-                {
-                    "id": unit["id"],
-                    "choose": choose(unit),
-                    "accept": taken,
-                    "reject": [one for one in names_shown if one not in taken],
-                    "missing": missing(unit) if missing else [],
-                }
-            )
+            shown = [candidate["id"] for candidate in unit["candidates"]]
+            absent = set(unanswered(unit) if unanswered else ())
+            ruled = [one for one in shown if one not in absent]
+            refused = missing(unit) if missing else []
+            taken = [] if refused else (accept(unit) if accept else [choose(unit)])
+            answer = {
+                "id": unit["id"],
+                "accept": [one for one in ruled if one in taken],
+                "reject": [one for one in ruled if one not in taken],
+                "missing": refused,
+            }
+            if not refused:
+                answer["choose"] = choose(unit)
+            payload.append(answer)
         (answers / f"{name}-01.out").write_text(
             json.dumps(payload, indent=2), encoding="utf-8"
         )
@@ -1650,6 +1666,88 @@ def test_a_decision_without_a_reason_is_refused(tmp_path):
         entry["reason"] = "the second break severs a clause"
     (repairs / "adjudications.json").write_text(json.dumps(entries), encoding="utf-8")
     assert run(ADJUDICATE, "check", repairs, answers).returncode == 0
+
+
+def test_a_round_carrying_every_referral_shape_reaches_the_manifest(tmp_path):
+    """The whole chain, on the shapes a real round actually produces.
+
+    Each stage of this pipeline had a test and the composition had none,
+    so four readers ignored the form their own writer fills in,
+    and every one of them was reachable only through a shape the fixtures could not build:
+    a pass refusing a unit without naming a choice,
+    a decision naming candidates by the id the worksheet asks for,
+    and a decision on a unit no candidate could repair.
+    A round that cannot be promoted is the only symptom they share,
+    so promotion is what this asserts.
+    """
+    repairs, answers, units = round_dir(tmp_path, "suggestion_*.md")
+    refused = units[0]["id"]
+    everything = [candidate["id"] for candidate in units[0]["candidates"]]
+
+    # One pass splits from the others, and every pass refuses the first unit.
+    def taken(unit):
+        return everything if unit["id"] != refused else []
+
+    def absent(unit):
+        return (
+            [["a line the generator never offered", "and its continuation"]]
+            if (unit["id"] == refused)
+            else []
+        )
+
+    answer_all(answers, units, original_id, missing=absent, names=("claude",))
+    answer_all(
+        answers,
+        units,
+        original_id,
+        accept=taken,
+        missing=absent,
+        names=("codex", "agy"),
+    )
+    assert run(COLLECT, repairs, answers).returncode == 0
+
+    assert run(ADJUDICATE, "worksheet", repairs, answers).returncode == 0
+    entries = json.loads((repairs / "adjudications.json").read_text(encoding="utf-8"))
+    shapes = {entry["id"]: entry["shape"] for entry in entries}
+    assert shapes[refused] == "missing"
+    assert set(shapes.values()) >= {"missing", "split"}
+
+    for entry in entries:
+        entry["reason"] = "decided by the test"
+        if entry["shape"] == "missing":
+            # Its acceptable set cannot be completed, so it leaves the rate.
+            entry["outcome"] = "ambiguous"
+            entry["supplied"] = [["a line the generator never offered", "and more"]]
+        else:
+            # Named by id, which is what the worksheet asks a maintainer for.
+            entry["outcome"] = "settled"
+            entry["acceptable"] = [entry["candidates"][0]["id"]]
+    (repairs / "adjudications.json").write_text(json.dumps(entries), encoding="utf-8")
+    assert run(ADJUDICATE, "check", repairs, answers).returncode == 0
+
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    done = run(PROMOTE, repairs, answers, FIXTURES.parent, "--manifest", manifest)
+    assert done.returncode == 0, done.stdout + done.stderr
+
+    records = json.loads(manifest.read_text(encoding="utf-8"))["repairs"]
+    assert len(records) == len(units)
+    outcomes = {record["id"]: record["outcome"] for record in records}
+    assert outcomes[refused] == "ambiguous"
+    assert set(outcomes.values()) == {"ambiguous", "settled"}
+    # A decision named by id has to arrive as the cuts it stands for,
+    # or the acceptable set is empty and nothing it protects is scored.
+    settled = [r for r in records if r["outcome"] == "settled"]
+    assert settled and all(r["acceptable"] for r in settled)
+    for record in records:
+        assert record["baseline_suggestion"]["predicate"] == file_digest(
+            REPO / "scripts" / "check_linefeeds.py"
+        )
+        assert record["passes"], record["id"]
+    # A refused unit records what the repair should have been,
+    # and carries no acceptable set, because it has none to carry.
+    refusal = next(r for r in records if r["id"] == refused)
+    assert refusal["acceptable"] == []
 
 
 def promoted(tmp_path, pattern="suggestion_*.md"):
