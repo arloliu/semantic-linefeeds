@@ -2569,3 +2569,118 @@ def test_every_other_leader_still_repeats_byte_for_byte():
             continue
         window = repair_window(records, 0)
         assert continuation_leader(window, 0) == window.records[0]["leader"], text
+
+
+# --- score.py: the calibration dry-run, which decides nothing ---------------
+
+SCORE = REPO / "tests" / "corpus" / "repairs" / "score.py"
+
+
+def accept_everything(unit):
+    return [candidate["id"] for candidate in unit["candidates"]]
+
+
+def scored_report(tmp_path, repairs, answers, predicate, root=None):
+    out = tmp_path / f"score-{predicate}.json"
+    done = run(
+        SCORE,
+        root or FIXTURES.parent,
+        "--sample",
+        repairs / "sample.json",
+        "--answers",
+        answers,
+        "--predicate",
+        predicate,
+        "--json",
+        out,
+    )
+    assert done.returncode == 0, done.stderr
+    return done, json.loads(out.read_text(encoding="utf-8"))
+
+
+def test_score_counts_a_shipped_repair_that_lands_in_the_acceptable_set(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(answers, units, original_id, accept=accept_everything)
+    done, report = scored_report(tmp_path, repairs, answers, "shipped")
+    assert "calibration admits nothing" in done.stdout
+    assert "calibration admits nothing" in report["header"]
+    fired = sum(body["fired"] for body in report["strata"].values())
+    landed = sum(body["acceptable"] for body in report["strata"].values())
+    assert fired > 0
+    assert landed >= fired  # accept-everything answers admit every valid repair
+    zero = {
+        name: count
+        for body in report["strata"].values()
+        for name, count in body["zero_tolerance"].items()
+        if count
+    }
+    assert zero == {}
+
+
+def test_score_candidate_fires_where_shipped_withholds(tmp_path):
+    """The two sides differ by the admitted set alone."""
+    repairs, answers, units = round_dir(tmp_path, pattern="period_boundary.md")
+    answer_all(answers, units, original_id, accept=accept_everything)
+    _, shipped = scored_report(tmp_path, repairs, answers, "shipped")
+    _, candidate = scored_report(tmp_path, repairs, answers, "candidate")
+    assert sum(body["fired"] for body in shipped["strata"].values()) == 0
+    assert sum(body["fired"] for body in candidate["strata"].values()) > 0
+    # The withheld side still scores: leaving the window alone is an answer,
+    # and accept-everything answers accept it.
+    assert sum(body["acceptable"] for body in shipped["strata"].values()) > 0
+
+
+def test_score_reports_an_inexpressible_repair_by_name(tmp_path):
+    """A repair outside the universe is a failure with a unit id, never silence."""
+    repairs, answers, units = round_dir(tmp_path)
+    sample_path = repairs / "sample.json"
+    sample = json.loads(sample_path.read_text(encoding="utf-8"))
+    tampered = None
+    for unit in sample["units"]:
+        if not unit["withheld_by"] and len(unit["candidates"]) > 1:
+            unit["candidates"] = [
+                candidate
+                for candidate in unit["candidates"]
+                if candidate["cuts"] == unit["original_cut"]
+            ]
+            tampered = unit["id"]
+            break
+    assert tampered is not None
+    sample_path.write_text(
+        json.dumps(sample, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    answer_all(answers, sample["units"], original_id, accept=accept_everything)
+    _, report = scored_report(tmp_path, repairs, answers, "shipped")
+    named = [uid for body in report["strata"].values() for uid in body["inexpressible"]]
+    assert tampered in named
+
+
+def test_score_accepts_exactly_the_two_predicate_names(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(answers, units, original_id, accept=accept_everything)
+    done = run(
+        SCORE,
+        FIXTURES.parent,
+        "--sample",
+        repairs / "sample.json",
+        "--answers",
+        answers,
+        "--predicate",
+        "periods",
+    )
+    assert done.returncode != 0
+    assert "shipped" in done.stderr and "candidate" in done.stderr
+
+
+def test_a_referred_unit_leaves_the_denominator(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(
+        answers,
+        units,
+        original_id,
+        accept=accept_everything,
+        names=("claude", "codex"),
+    )
+    answer_all(answers, units, original_id, names=("agy",))
+    _, report = scored_report(tmp_path, repairs, answers, "shipped")
+    assert sum(body["ambiguous"] for body in report["strata"].values()) > 0
