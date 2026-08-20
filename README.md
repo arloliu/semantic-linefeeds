@@ -339,6 +339,18 @@ Three more modes check a git snapshot instead of files you name:
   staged and unstaged together.
 
 All three accept `--json` and `--long-limit N`, the same as `--file`.
+
+A fourth verb answers a different question about the same snapshots.
+`semlf reflow [REF]` verifies that the worktree differs from `REF` (default `HEAD`)
+only in where its prose breaks:
+no word changed, no code or markup changed, no paragraph appeared or disappeared.
+A reflow-only diff looks like a content change in review —
+lines vanish and reappear —
+and this is the one-line proof that it is not,
+so a commit that only moves breaks can say so and be believed.
+Any other change — a word, a code line, a deleted file,
+a file outside prose scope — fails it with the first difference named.
+
 Only tracked changes are enumerated;
 an untracked file needs `git add` before any mode can see it.
 Symlinks are never checked, in any mode.
