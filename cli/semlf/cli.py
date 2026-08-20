@@ -29,6 +29,9 @@ modes:
   --staged               check staged content (the index, not the worktree)
   --diff                 check unstaged changes against the index
   --changed              check all changes against HEAD
+  --base REF             check files changed since merge-base(REF, HEAD),
+                         reporting only diagnostics the changed lines own
+  --all                  check every tracked file under the configured excludes
   --hook [claude|codex]  run as a PostToolUse hook reading JSON on stdin
   reflow [REF]           verify the worktree differs from REF (default HEAD)
                          only in where its prose breaks; exit 1 on any other change
@@ -44,15 +47,16 @@ options forwarded to the core: --json, --long-limit N (git modes accept both)
 options: install takes --yes, --dry-run, --force; uninstall takes --dry-run, --force
 """
 
-GIT_MODE_FLAGS = ("--staged", "--diff", "--changed")
+GIT_MODE_FLAGS = ("--staged", "--diff", "--changed", "--base", "--all")
 
 
 def _git_mode(argv):
     """One git snapshot, checked through the core's shared runner."""
     ap = argparse.ArgumentParser(prog="semlf", add_help=False, allow_abbrev=False)
     mode = ap.add_mutually_exclusive_group(required=True)
-    for flag in GIT_MODE_FLAGS:
+    for flag in ("--staged", "--diff", "--changed", "--all"):
         mode.add_argument(flag, action="store_true")
+    mode.add_argument("--base", metavar="REF")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--long-limit", type=int, default=None, metavar="N")
     try:
@@ -62,13 +66,20 @@ def _git_mode(argv):
     if args.long_limit is not None and args.long_limit < 0:
         print("semlf: --long-limit must be >= 0", file=sys.stderr)
         return 64
-    provider = (
-        providers.staged_sources
-        if args.staged
-        else providers.diff_sources
-        if args.diff
-        else providers.changed_sources
-    )
+    if args.base:
+
+        def provider(root, ref=args.base):
+            return providers.base_sources(root, ref)
+    else:
+        provider = (
+            providers.staged_sources
+            if args.staged
+            else providers.diff_sources
+            if args.diff
+            else providers.all_sources
+            if args.all
+            else providers.changed_sources
+        )
     saved_limit = core.CLI_LONG_LIMIT
     if args.long_limit is not None:
         core.CLI_LONG_LIMIT = args.long_limit

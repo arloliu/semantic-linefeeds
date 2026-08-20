@@ -780,3 +780,143 @@ def test_excluded_normalizes_backslash_config_patterns(tmp_path):
     target.parent.mkdir(parents=True)
     target.write_text("text\n", encoding="utf-8")
     assert check_linefeeds.excluded(str(target))
+
+
+import json  # noqa: E402
+
+# --- the CI selection modes: --base and --all -------------------------------
+#
+# --base reports span-owned diagnostics:
+# a CI run annotates someone's pull request,
+# and a finding that predates the branch is not that author's to answer.
+# The spans come from one coordinate system, the core's own line partition —
+# git's LF-only hunk arithmetic never enters.
+
+
+def pr_shaped(tmp_path, base_text, branch_text, name="doc.md"):
+    """main holds base_text; a branch holds branch_text; checkout is clean."""
+    root = repo(tmp_path)
+    # The isolated environment has no init.defaultBranch, so name it explicitly.
+    git("symbolic-ref", "HEAD", "refs/heads/main", cwd=root)
+    commit_file(root, name, base_text)
+    git("checkout", "-q", "-b", "feature", cwd=root)
+    commit_file(root, name, branch_text, message="change")
+    return root
+
+
+def run_semlf(argv, cwd, monkeypatch):
+    monkeypatch.chdir(cwd)
+    return semlf_cli.main(argv)
+
+
+def test_base_sees_the_pr_where_changed_sees_nothing(tmp_path, monkeypatch, capsys):
+    root = pr_shaped(
+        tmp_path,
+        "One clean line.\n",
+        "One clean line.\nTwo sentences. On one line.\n",
+    )
+    assert run_semlf(["--changed", "--json"], root, monkeypatch) == 0
+    assert json.loads(capsys.readouterr().out) == []
+    code = run_semlf(["--base", "main", "--json"], root, monkeypatch)
+    documents = json.loads(capsys.readouterr().out)
+    assert code == 1
+    assert [d["kind"] for doc in documents for d in doc["diagnostics"]] == ["fused"]
+
+
+def test_base_reports_only_what_the_change_owns(tmp_path, monkeypatch, capsys):
+    """One pre-existing finding, one finding on a changed line; only the second."""
+    root = pr_shaped(
+        tmp_path,
+        "Old fused pair. Sitting here already.\n\nA clean paragraph.\n",
+        "Old fused pair. Sitting here already.\n\nNew fused pair. Added by the branch.\n",
+    )
+    assert run_semlf(["--base", "main", "--json"], root, monkeypatch) == 1
+    documents = json.loads(capsys.readouterr().out)
+    lines = [d["line"] for doc in documents for d in doc["diagnostics"]]
+    assert lines == [3]
+
+
+def test_base_owns_a_finding_created_by_deleting_a_newline(
+    tmp_path, monkeypatch, capsys
+):
+    """The deletion leaves a zero-width boundary, and the boundary owns the fusion."""
+    root = pr_shaped(
+        tmp_path,
+        "One whole sentence here.\nAnother whole sentence.\n",
+        "One whole sentence here. Another whole sentence.\n",
+    )
+    assert run_semlf(["--base", "main", "--json"], root, monkeypatch) == 1
+    documents = json.loads(capsys.readouterr().out)
+    assert [d["kind"] for doc in documents for d in doc["diagnostics"]] == ["fused"]
+
+
+def test_base_owns_a_change_after_a_form_feed(tmp_path, monkeypatch, capsys):
+    """No LF arithmetic: the form feed is a line boundary to the core, not to git."""
+    root = pr_shaped(
+        tmp_path,
+        "Intro line.\x0cA clean line here.\n",
+        "Intro line.\x0cTwo sentences. On one line.\n",
+    )
+    assert run_semlf(["--base", "main", "--json"], root, monkeypatch) == 1
+    documents = json.loads(capsys.readouterr().out)
+    assert [d["line"] for doc in documents for d in doc["diagnostics"]] == [2]
+
+
+def test_an_unresolvable_base_names_the_remedy(tmp_path, monkeypatch, capsys):
+    root = pr_shaped(tmp_path, "One line.\n", "One line.\nTwo. Fused here.\n")
+    assert run_semlf(["--base", "no-such-ref", "--json"], root, monkeypatch) == 1
+    err = capsys.readouterr().err
+    assert "no-such-ref" in err
+    assert "fetch-depth" in err or "deepen" in err or "does not resolve" in err
+
+
+def test_all_respects_excludes_where_file_does_not(tmp_path, monkeypatch, capsys):
+    root = repo(tmp_path)
+    commit_file(root, ".semlf.ini", "[semlf]\nexclude = vendored/**\n")
+    commit_file(root, "vendored/x.md", FUSED)
+    commit_file(root, "doc.md", FUSED)
+    assert run_semlf(["--all", "--json"], root, monkeypatch) == 1
+    documents = json.loads(capsys.readouterr().out)
+    paths = {os.path.basename(doc["path"]) for doc in documents if doc["diagnostics"]}
+    assert paths == {"doc.md"}
+
+
+def test_all_skips_a_symlink_by_its_recorded_mode(tmp_path, monkeypatch, capsys):
+    root = repo(tmp_path)
+    commit_file(root, "doc.md", CLEAN)
+    (root / "link.md").symlink_to("doc.md")
+    git("add", "link.md", cwd=root)
+    git("commit", "-q", "-m", "link", cwd=root)
+    assert run_semlf(["--all", "--json"], root, monkeypatch) == 0
+    documents = json.loads(capsys.readouterr().out)
+    assert all("link.md" not in doc["path"] for doc in documents)
+
+
+def test_all_refuses_an_unmerged_index_loudly(tmp_path, monkeypatch, capsys):
+    root = repo(tmp_path)
+    commit_file(root, "doc.md", CLEAN)
+    git("checkout", "-q", "-b", "one", cwd=root)
+    commit_file(root, "doc.md", "One side.\n", message="one")
+    git("checkout", "-q", "-b", "two", "HEAD~1", cwd=root)
+    commit_file(root, "doc.md", "Two side.\n", message="two")
+    merge = subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "merge", "one"],
+        cwd=str(root),
+        capture_output=True,
+    )
+    assert merge.returncode == 1, merge.stderr  # a conflict, not a git refusal
+    assert git_out("ls-files", "-u", cwd=root)
+    assert run_semlf(["--all", "--json"], root, monkeypatch) == 1
+    assert "unmerged" in capsys.readouterr().err
+
+
+def test_all_survives_a_newline_bearing_name(tmp_path, monkeypatch, capsys):
+    root = repo(tmp_path)
+    commit_file(root, "doc.md", CLEAN)
+    weird = root / "we\nird.md"
+    weird.write_text(FUSED, encoding="utf-8")
+    git("add", "we\nird.md", cwd=root)
+    git("commit", "-q", "-m", "weird", cwd=root)
+    assert run_semlf(["--all", "--json"], root, monkeypatch) == 1
+    documents = json.loads(capsys.readouterr().out)
+    assert any("ird.md" in doc["path"] for doc in documents)

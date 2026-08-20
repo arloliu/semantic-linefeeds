@@ -201,6 +201,110 @@ def _worktree_sources(root, records):
     return sources
 
 
+def _new_line_starts(text):
+    """The absolute offset each line of `text` starts at, in the core's partition."""
+    starts = [0]
+    for line in text.splitlines(keepends=True):
+        starts.append(starts[-1] + len(line))
+    return starts
+
+
+def _changed_spans(base_text, new_text):
+    """The after-image spans a change owns, in one coordinate system: the core's.
+
+    Git's hunk arithmetic never enters —
+    git counts LF-delimited records
+    while the core partitions on every `str.splitlines` boundary,
+    so a hunk line number after a bare CR or a form feed selects the wrong offset.
+    The two texts are diffed here instead, in the core's own line partition.
+    A delete-only opcode has an empty after-image range
+    and yields the zero-width boundary the deletion leaves,
+    which is the boundary the hook's placement logic already models.
+    """
+    import difflib
+
+    old_lines = base_text.splitlines(keepends=True)
+    new_lines = new_text.splitlines(keepends=True)
+    starts = _new_line_starts(new_text)
+    spans = []
+    matcher = difflib.SequenceMatcher(a=old_lines, b=new_lines, autojunk=False)
+    for tag, _i1, _i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
+            continue
+        spans.append({"start": starts[j1], "end": starts[j2]})
+    return spans
+
+
+def base_sources(root, ref):
+    """Every file changed since `merge-base(ref, HEAD)`, with the spans it owns.
+
+    Read from the worktree, gated like every git mode,
+    and returned as (display, text, spans) triples
+    so the runner reports only what the change owns:
+    a CI run annotates someone's pull request,
+    and a finding that predates the branch is not that author's to answer.
+    """
+    try:
+        _git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
+    except SourceError:
+        raise SourceError(
+            f"semlf: {ref} does not resolve to a commit here; "
+            "in CI this usually means a shallow checkout — "
+            "set fetch-depth: 0 or deepen the clone"
+        ) from None
+    try:
+        merge_base = os.fsdecode(_git(root, "merge-base", ref, "HEAD")).strip()
+    except SourceError:
+        raise SourceError(
+            f"semlf: no merge base between {ref} and HEAD; "
+            "in CI this usually means a shallow checkout — "
+            "set fetch-depth: 0 or deepen the clone"
+        ) from None
+    sources = []
+    for rel, _, display in _selected(root, _raw_records(root, merge_base)):
+        full = os.path.join(root, rel)
+        if os.path.islink(full) or os.path.isdir(full):
+            continue
+        try:
+            with open(full, encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+        except OSError as exc:
+            raise SourceError(f"semlf: cannot read {display}: {exc}") from exc
+        try:
+            base_text = _git(root, "show", f"{merge_base}:{rel}").decode(
+                "utf-8", "replace"
+            )
+        except SourceError:
+            base_text = ""  # added since the base: the whole file is the change
+        sources.append((display, text, _changed_spans(base_text, text)))
+    return sources
+
+
+def all_sources(root):
+    """Every tracked checkable file under the configured excludes, whole-file.
+
+    The enumeration is `git ls-files -z -s`,
+    whose `mode oid stage\tpath` records feed the gate every diff-backed mode already applies —
+    so a full-tree run does not inherit `--file`'s explicit-paths-bypass-excludes policy,
+    a symlink or gitlink falls to the recorded-mode gate,
+    and a NUL-delimited hostile path stays one token.
+    """
+    out = _git(root, "ls-files", "-z", "-s")
+    records = []
+    for token in out.split(b"\0"):
+        if not token:
+            continue
+        meta, path = token.split(b"\t", 1)
+        mode, oid, stage = meta.split(b" ")
+        if stage != b"0":
+            raise SourceError(
+                "semlf: the index has unmerged entries; "
+                "resolve the merge before a full-tree check"
+            )
+        records.append((os.fsdecode(path), os.fsdecode(mode), os.fsdecode(oid)))
+    return _worktree_sources(root, records)
+
+
 def reflow_pairs(root, ref):
     """Every file changed against `ref`, as (display, old text, new text).
 
