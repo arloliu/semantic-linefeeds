@@ -1364,6 +1364,19 @@ def repair_resolution(passes, candidates):
     """
     universe = set(candidates)
     for record in passes:
+        # Before any refusal short-circuits the rest.
+        # A pass reporting one repair as absent still owes a verdict on every candidate,
+        # and a refusal that returned first would carry a partial answer out as a whole one.
+        accept = {tuple(key) for key in record["accept"]}
+        reject = {tuple(key) for key in record["reject"]}
+        # A candidate named that was never shown is the generator being wrong about the universe,
+        # which is a refusal below rather than an error.
+        # What is an error is a candidate shown and never answered.
+        if accept & reject or universe - (accept | reject):
+            raise ValueError(
+                "a pass must accept or reject every candidate, exactly once each"
+            )
+    for record in passes:
         if record.get("missing"):
             return {
                 "outcome": "defect",
@@ -1389,11 +1402,6 @@ def repair_resolution(passes, candidates):
             }
     for record in passes:
         accept = {tuple(key) for key in record["accept"]}
-        reject = {tuple(key) for key in record["reject"]}
-        if accept & reject or accept | reject != universe:
-            raise ValueError(
-                "a pass must accept or reject every candidate, exactly once each"
-            )
         if tuple(record["chosen"]) not in accept:
             raise ValueError("a pass must accept the repair it says it would make")
 

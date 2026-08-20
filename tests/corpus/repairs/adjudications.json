@@ -176,7 +176,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -187,7 +187,7 @@
         "Free stacks."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/11970-decentralized-gc.md:50:0#repair",
@@ -898,7 +898,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -909,7 +909,7 @@
         "If this is a"
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/12166-subtests.md:214:0#repair",
@@ -1535,7 +1535,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -1544,7 +1544,7 @@
         "  Here"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs (list item, so the continuations take the two-space content indent)"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs (list item, so the continuations take the two-space content indent). The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/13432-mobile-audio.md:240:0#repair",
@@ -1715,7 +1715,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -1725,7 +1725,7 @@
         "Even if float values are supported,"
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/13432-mobile-audio.md:246:0#repair",
@@ -1847,7 +1847,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -1856,7 +1856,7 @@
         "The media libraries on the desktop are"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/14951-soft-heap-limit.md:223:0#repair",
@@ -3230,7 +3230,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -3240,7 +3240,7 @@
         "While it may be possible to construct complex resolution rules, the Go syntax avoids that sort of ambiguity for good reason."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/15292/2013-12-type-params.md:156:1#repair",
@@ -3534,7 +3534,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -3544,7 +3544,7 @@
         "While it may be possible to construct complex resolution rules, the Go syntax avoids that sort of ambiguity for good reason."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/15292/2013-12-type-params.md:156:2#repair",
@@ -3838,7 +3838,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -3848,7 +3848,7 @@
         "While it may be possible to construct complex resolution rules, the Go syntax avoids that sort of ambiguity for good reason."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/15292/2013-12-type-params.md:157:0#repair",
@@ -4642,7 +4642,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -4652,7 +4652,7 @@
         "(It would be odd if they ended up in"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/16339-alias-decls.md:442:0#repair",
@@ -5620,7 +5620,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -5631,7 +5631,7 @@
         "And potential users can run “go get github.com/constabulary/example-gsftp/cmd/gsftp” without needing to have an additional vendoring tool installed or special GOPATH configuration."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/26903-simplify-mark-termination.md:139:0#repair",
@@ -6219,7 +6219,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -6229,7 +6229,7 @@
         "We’ll end with conclusions and an implementation schedule followed by examples and FAQs."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/32437-try-builtin.md:13:1#repair",
@@ -6619,7 +6619,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -6628,7 +6628,7 @@
         "For instance, to augment an error returned by a \"copy\" function, one might write"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/32437-try-builtin.md:172:0#repair",
@@ -6912,7 +6912,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -6923,7 +6923,7 @@
         "Therefore we suggest to disallow `try` as the called function in a `go` statement."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/32437-try-builtin.md:182:0#repair",
@@ -7217,7 +7217,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -7228,7 +7228,7 @@
         "We can always revisit this decision if sensible applications are found."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/32437-try-builtin.md:182:3#repair",
@@ -7520,7 +7520,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -7531,7 +7531,7 @@
         "We can always revisit this decision if sensible applications are found."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/32437-try-builtin.md:214:0#repair",
@@ -7761,7 +7761,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -7771,7 +7771,7 @@
         "Adding a new built-in is a comparatively trivial and completely orthogonal language change."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/32437-try-builtin.md:216:1#repair",
@@ -7902,7 +7902,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -7912,7 +7912,7 @@
         "Adding a new built-in is a comparatively trivial and completely orthogonal language change."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/32437-try-builtin.md:216:2#repair",
@@ -8036,7 +8036,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -8046,7 +8046,7 @@
         "Adding a new built-in is a comparatively trivial and completely orthogonal language change."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/32437-try-builtin.md:220:0#repair",
@@ -8436,7 +8436,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -8446,7 +8446,7 @@
         "We do not anticipate support for such variadic generic functions."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/32437-try-builtin.md:49:0#repair",
@@ -8513,7 +8513,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -8522,7 +8522,7 @@
         "Calling `try` in a different context leads to a compile-time error."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/33974-add-public-lockedfile-pkg.md:181:0#repair",
@@ -10560,7 +10560,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -10569,7 +10569,7 @@
         "[`runtime.AlignedN` may or may not"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/37112-unstable-runtime-metrics.md:282:0#repair",
@@ -12849,7 +12849,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -12858,7 +12858,7 @@
         "It suffices to say that in order to keep"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/45713-workspace.md:12:0#repair",
@@ -13749,7 +13749,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -13758,7 +13758,7 @@
         "Function type arguments are an [expression list]."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/47781-parameterized-go-ast.md:66:0#repair",
@@ -14041,7 +14041,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -14051,7 +14051,7 @@
         "However, it overloads the meaning of `CallExpr` and adds an additional field."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/47781-parameterized-go-ast.md:66:1#repair",
@@ -14334,7 +14334,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -14344,7 +14344,7 @@
         "However, it overloads the meaning of `CallExpr` and adds an additional field."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/47781-parameterized-go-ast.md:67:0#repair",
@@ -14894,7 +14894,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -14904,7 +14904,7 @@
         "There is further discussion of this in the [instantiation](#instantiation) section below."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/47916-parameterized-go-types.md:200:1#repair",
@@ -15129,7 +15129,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -15140,7 +15140,7 @@
         "doing so will result in a non-nil error being returned."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/47916-parameterized-go-types.md:53:0#repair",
@@ -15438,7 +15438,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -15450,7 +15450,7 @@
         "The `Index()` method returns the index of the type parameter in its type parameter list, or `-1` if the type parameter has not yet been bound to a type."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/47916-parameterized-go-types.md:90:1#repair",
@@ -15750,7 +15750,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -15758,7 +15758,7 @@
         "For"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/51082-godocfmt.md:101:0#repair",
@@ -16286,7 +16286,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -16295,7 +16295,7 @@
         "Proper typesetting of bullet lists sometimes does use dashes, but never uses asterisks, so"
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/55022-pgo.md:113:0#repair",
@@ -16362,7 +16362,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -16371,7 +16371,7 @@
         "A command line flag can be useful in the cases of"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/55022-pgo.md:13:2#repair",
@@ -16597,7 +16597,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -16607,7 +16607,7 @@
         "Hence, we propose a design that centers user experience and ease of deployment and fits naturally into the broader Go build ecosystem."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/55022-pgo.md:86:1#repair",
@@ -17649,7 +17649,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -17659,7 +17659,7 @@
         "Instead, the client should collect the user's answers and call `command/resolve` with the answers populated in `formAnswers`."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:296:2#repair",
@@ -17955,7 +17955,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -17965,7 +17965,7 @@
         "Instead, the client should collect the user's answers and call `command/resolve` with the answers populated in `formAnswers`."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:443:0#repair",
@@ -18252,7 +18252,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -18262,7 +18262,7 @@
         "Instead, the client should collect the user's answers and call `workspaceEdit/resolve` with the answers populated in `formAnswers`."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:600:0#repair",
@@ -18597,7 +18597,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -18607,7 +18607,7 @@
         "At this point, the `edit` or `command` property is usually computed and ready to be applied or executed."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:718:0#repair",
@@ -18727,7 +18727,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -18736,7 +18736,7 @@
         "that would also benefit from interactivity."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:760:0#repair",
@@ -19488,7 +19488,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -19497,7 +19497,7 @@
         "Therefore, as mentioned above, we actually add the index of the type parameter to the shape type, so that different type arguments can be fully distinguished correctly."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:79:0#repair",
@@ -19786,7 +19786,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -19797,7 +19797,7 @@
         "We compute this extra information (dictionary format, etc.) as the final step of creating an instantiation."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/generics-implementation-dictionaries.md:269:0#repair",
@@ -19988,7 +19988,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -19997,7 +19997,7 @@
         "Only callsites in `f` which use one or more of `f`’s type parameters need to be a subdictionary of `f`’s dictionary.)"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/generics-implementation-dictionaries.md:272:0#repair",
@@ -20222,7 +20222,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -20231,7 +20231,7 @@
         "Converting from a proto-dictionary to a dictionary would involve listing all the stack objects and their types, computing all the outargs section offsets, and adding up all the pieces of the frame to come up with an overall frame size."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/generics-implementation-dictionaries.md:29:0#repair",
@@ -20460,7 +20460,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -20471,7 +20471,7 @@
         "Putting it last means less argument shuffling in the case where wrappers are required (not sure where those might be yet)."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/generics-implementation-dictionaries.md:316:0#repair",
@@ -20639,7 +20639,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -20649,7 +20649,7 @@
         "it could be complicated to get that data into a memory location so we can take the address of it."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/generics-implementation-dictionaries.md:77:0#repair",
@@ -20779,7 +20779,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -20789,7 +20789,7 @@
         "which lets the callsite know what derived types are needed."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/generics-implementation-gcshape.md:166:0#repair",
@@ -20982,7 +20982,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -20992,7 +20992,7 @@
         "Only callsites in `f` which use one or more of `f`’s type parameters need to be a subdictionary of `f`’s dictionary.)"
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/generics-implementation-gcshape.md:83:0#repair",
@@ -21121,7 +21121,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -21130,7 +21130,7 @@
         "For now, just assume that there will be summary information for each function which lets the callsite know what derived types are needed."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/generics-implementation-stenciling.md:124:0#repair",
@@ -21515,7 +21515,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -21525,7 +21525,7 @@
         "This is targeted for Go 1.4."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/go13compiler.md:40:1#repair",
@@ -21749,7 +21749,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -21759,7 +21759,7 @@
         "This is targeted for Go 1.4."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs; \"_Phase 3_.\" is a run-in label the detector reads as a sentence, so it takes its own line"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs; \"_Phase 3_.\" is a run-in label the detector reads as a sentence, so it takes its own line. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/go13compiler.md:42:1#repair",
@@ -22058,7 +22058,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -22068,7 +22068,7 @@
         "Some basic profiling and optimization may be done earlier, in Phase 3."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/go13compiler.md:44:0#repair",
@@ -22287,7 +22287,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -22298,7 +22298,7 @@
         "It may be based on SSA and if so would certainly take advantage of the lessons learned from Alan Donovan’s go.tools/ssa package."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/go13compiler.md:62:0#repair",
@@ -22529,7 +22529,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -22540,7 +22540,7 @@
         "but it also makes sense to wait until the compiler is structured more like a Go program, into documented sub-packages of its own with defined boundaries and unit tests."
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; all three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/go13compiler.md:68:1#repair",
@@ -22662,7 +22662,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -22672,7 +22672,7 @@
         "It is not guaranteed to happen in this way or at all."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct; supplied here as one sentence per line, carrying the leader each line needs. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/go13linker.md:44:0#repair",
@@ -22796,7 +22796,7 @@
         ]
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -22805,7 +22805,7 @@
         "It may require changing the Go runtime to simply panic, not crash, on SIGSEGV on non-nil addresses."
       ]
     ],
-    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break"
+    "reason": "the candidate universe combines at most two cut positions and this window needs more, so no candidate can be correct and the repair is supplied here; one pass supplied it and it reproduces the window prose exactly, differing only in where the lines break. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "go-proposal:design/go13linker.md:49:0#repair",
@@ -25169,7 +25169,7 @@
         "missing": []
       }
     },
-    "outcome": "settled",
+    "outcome": "ambiguous",
     "acceptable": [],
     "supplied": [
       [
@@ -25178,7 +25178,7 @@
         "// The stream is PUBLISHED here (the opener holds it), so the transition"
       ]
     ],
-    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair"
+    "reason": "the candidate universe offers no correct repair — it combines at most two cut positions and this window needs more — so the repair is supplied here; two of the three passes independently supplied this same repair. The unit leaves the rate rather than carrying one: a repair supplied after three-pass coverage of the universe failed has no coverage, so `supplied` records what the repair should have been rather than an acceptable set"
   },
   {
     "id": "styx:internal/testutil/require_no_leak.go:49:0#repair",
