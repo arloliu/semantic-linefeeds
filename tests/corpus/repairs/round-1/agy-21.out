@@ -1,0 +1,124 @@
+```json
+[
+  {
+    "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:247:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c01",
+      "c02",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:258:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:50:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/43810-go-pmem.md:101:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/errors.go:117:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:259:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13linker.md:49:0#repair",
+    "choose": "c06",
+    "accept": [
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44167-gc-pacer-redesign.md:240:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c01",
+      "c02",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  }
+]
+```

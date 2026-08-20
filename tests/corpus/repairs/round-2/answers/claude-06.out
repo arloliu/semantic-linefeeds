@@ -1,0 +1,67 @@
+Working through each unit against the semantic-linefeeds rule (one sentence per line; wrap findings get a full rejoin-then-resplit at sentence boundaries within the window; fused-only findings get a narrower fix that respects unflagged neighboring lines).
+
+```json
+[
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:63:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:drain_quiescence.go:85:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:376:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/testutil/require_no_leak.go:110:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:190:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/shm/recovery.go:400:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:262:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/stream.go:43:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```
+
+Notable judgment calls:
+- Units 2, 3, 4, 6 (fused+wrap together) got a full rejoin-then-resplit at sentence ends, per the wrap repair rule — for unit 6 that meant a 3-line result since three sentence-starts were visible in the window.
+- Unit 8 had only a fused finding scoped to line 43; the pre-existing "Use with caution. See StreamPurgeOpt..." fusion on the untouched line was left alone (scope discipline), which ruled out every candidate except c02.
+- Unit 5's two separate fused findings both needed resolving, so only the fully-split 3-line candidate (c02) qualified.

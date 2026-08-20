@@ -1,0 +1,176 @@
+```json
+[
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:212:0#repair",
+    "choose": "c06",
+    "accept": [
+      "c06"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/stream.go:85:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:856:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:165:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:35:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "In order to create the dictionary entries, we often need to substitute the shape type arguments with the real type arguments associated with the dictionary.",
+        "The shape type arguments must therefore be fully distinguishable, even if several of the type arguments happen to have the same shape (e.g. they are both pointer types).",
+        "Therefore, as mentioned above, we actually add the index of the type parameter to the shape type, so that different type arguments can be fully distinguished correctly."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/33974-add-public-lockedfile-pkg.md:181:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-publishing-confirmStored/main.go:32:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:326:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": []
+  }
+]
+```

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:251:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:290:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44167-gc-pacer-redesign.md:292:0#repair",
+    "choose": "c04",
+    "accept": ["c03", "c04"],
+    "reject": ["c00", "c01", "c02", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:353:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:182:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [["Only when the enclosing function is about to return does `try` test for an error returned by `f`.", "Without changes to the behavior of `try`, such an error might then overwrite another error currently being returned by the enclosing function.", "This is at best confusing, and at worst error-prone.", "Therefore we suggest to disallow `try` as the called function in a `defer` statement as well.", "We can always revisit this decision if sensible applications are found."]]
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:692:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:354:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:152:0#repair",
+    "choose": "c10",
+    "accept": ["c10"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09"],
+    "missing": []
+  }
+]

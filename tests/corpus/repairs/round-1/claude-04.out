@@ -1,0 +1,73 @@
+Applying the semantic-linefeeds rule (one sentence per line; splits only at real clause boundaries where both sides stand alone; leave over-long lines alone when no boundary exists; never re-sever a sentence that already fits under ~120 chars). For units 2, 4, and 7 no candidate matches the correct repair — each offered list either leaves multiple sentences fused or splits at an invalid point (a compound-object "and", a list-closing "and", or a bare comma after "D," that isn't a clause boundary) — so I've filled `missing` for those.
+
+```json
+[
+  {
+    "id": "styx:errors.go:367:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:182:3#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      ["Only when the enclosing function is about to return does `try` test for an error returned by `f`."],
+      ["Without changes to the behavior of `try`, such an error might then overwrite another error currently being returned by the enclosing function."],
+      ["This is at best confusing, and at worst error-prone."],
+      ["Therefore we suggest to disallow `try` as the called function in a `defer` statement as well."],
+      ["We can always revisit this decision if sensible applications are found."]
+    ]
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:678:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:272:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      ["*   Stack layout information."],
+      ["    The proto-dictionary needs a list of all of the stack objects and their types (which could be one of the derived types, above), and all callsites and their types (maybe one representative for each arg/result shape)."],
+      ["    Converting from a proto-dictionary to a dictionary would involve listing all the stack objects and their types, computing all the outargs section offsets, and adding up all the pieces of the frame to come up with an overall frame size."]
+    ]
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:342:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/12800-sweep-free-alloc.md:305:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13073-code-of-conduct.md:391:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      ["* D, another regular replies (compensating for C) “Hi, welcome to the list."],
+      ["  As I’m sure you can appreciate, this topic has come up many times before."],
+      ["  Here"]
+    ]
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:286:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```

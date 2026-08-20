@@ -19,10 +19,12 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from corpus_harness import (  # noqa: E402
     KINDS,
+    REPAIR_ADMISSION,
     REPORTED_STRATA,
     REPORTING,
     floor_problems,
     recall,
+    repair_admission_problems,
     wilson,
 )
 
@@ -339,3 +341,175 @@ def test_a_floor_nothing_missed_carries_no_acknowledgement():
     """An acknowledgement for a round that has not answered is a floor excused in advance."""
     scored = {str(number) for number, _ in scored_rounds()}
     assert set(acknowledged_misses()) <= scored
+
+
+# --- what a widened automatic repair must clear ---------------------------
+
+
+def candidate(strata, **overrides):
+    """A candidate class described by its counts, clearing everything not under test."""
+    record = {
+        "class": "terminator_period",
+        "algorithm": "absorb-the-line-below",
+        "baseline_algorithm": "absorb-the-line-below",
+        "zero_tolerance": dict.fromkeys(REPAIR_ADMISSION["zero_tolerance"], 0),
+        "strata": {
+            name: {"scored": scored, "acceptable": acceptable, "ambiguous": 0}
+            for name, (acceptable, scored) in strata.items()
+        },
+    }
+    record.update(overrides)
+    return record
+
+
+def test_a_candidate_that_clears_every_clause_is_admitted():
+    """Thirty-seven of forty is the smallest count at forty units whose bound clears."""
+    assert repair_admission_problems(candidate({"{period}": (37, 40)})) == []
+
+
+def test_a_point_rate_well_above_the_floor_does_not_clear_it():
+    """Nine in ten repairs correct, and the interval still reaches below the floor.
+
+    The bar is on the lower bound rather than on the rate,
+    because a rate on forty units is compatible with a population rate ten points worse.
+    Reading 0.900 against 0.80 and calling it cleared is the arithmetic this refuses.
+    """
+    problems = repair_admission_problems(candidate({"{period}": (36, 40)}))
+    assert len(problems) == 1
+    assert "0.769" in problems[0] and "0.80" in problems[0]
+
+
+def test_a_class_scored_through_another_algorithm_than_the_shipped_one_is_refused():
+    """Two algorithms in one round cannot say which of the two moved the result.
+
+    The candidate absorbs the line below and the shipped repair replaces the anchor,
+    so a comparison across them changes the repair shape and the eligibility class at once.
+    """
+    problems = repair_admission_problems(
+        candidate({"{period}": (40, 40)}, baseline_algorithm="replace-the-anchor")
+    )
+    assert any("one algorithm" in problem for problem in problems)
+
+
+def test_a_candidate_naming_no_algorithm_on_one_side_is_refused():
+    """An unnamed algorithm cannot be shown to be the same one."""
+    problems = repair_admission_problems(
+        candidate({"{period}": (40, 40)}, baseline_algorithm=None)
+    )
+    assert any("algorithm" in problem for problem in problems)
+
+
+def test_one_condition_hit_once_refuses_a_class_that_scores_perfectly():
+    """The three conditions are conditions and not rates.
+
+    Repairing a line that should have been left alone is the worst outcome this tool has,
+    and a class does not buy its way past one by being right everywhere else.
+    """
+    perfect = candidate({"{period}": (40, 40)})
+    perfect["zero_tolerance"]["fired_where_only_the_original_is_acceptable"] = 1
+    problems = repair_admission_problems(perfect)
+    assert any("however well it scores" in problem for problem in problems)
+
+
+def test_a_condition_that_was_not_measured_refuses_the_class():
+    """An unmeasured condition is not a satisfied one.
+
+    Absent counts read as zero everywhere else in this harness.
+    Here that reading would let a round admit a class by not looking.
+    """
+    unmeasured = candidate({"{period}": (40, 40)})
+    del unmeasured["zero_tolerance"]["carrier_changed"]
+    problems = repair_admission_problems(unmeasured)
+    assert any("not measured" in problem for problem in problems)
+
+
+def test_a_candidate_activating_nothing_has_not_been_scored():
+    """No stratum is not a clean sheet."""
+    assert repair_admission_problems(candidate({})) != []
+
+
+def test_an_activated_stratum_with_nothing_scored_refuses_rather_than_clears():
+    """There is no interval on an empty denominator, and no interval is not a pass."""
+    problems = repair_admission_problems(candidate({"{period}": (0, 0)}))
+    assert any("cannot rate" in problem for problem in problems)
+
+
+def test_an_unreportable_activated_stratum_refuses_the_whole_candidate():
+    """A candidate that reaches prose the round cannot score has not been scored.
+
+    Dropping the stratum admits the class exactly where the least is known about it.
+    """
+    problems = repair_admission_problems(
+        candidate({"{period}": (40, 40), "{period,colon}": (20, 20)})
+    )
+    assert any("{period,colon}" in problem for problem in problems)
+    assert all("{period}:" not in problem for problem in problems)
+
+
+def test_a_large_stratum_clearing_the_floor_does_not_carry_a_small_one_that_fails():
+    """Each activated stratum is gated on its own bound rather than on their combination.
+
+    Pooled, these are 156 of 170 at a lower bound of 0.866, which would clear.
+    Taken apart, the smaller stratum is ten points worse and does not.
+    """
+    problems = repair_admission_problems(
+        candidate({"{period}": (120, 130), "{period,dash}": (36, 40)})
+    )
+    assert len(problems) == 1
+    assert "{period,dash}" in problems[0]
+
+
+def test_a_stratum_large_enough_to_draw_but_too_wide_to_rate_is_refused():
+    """The minimum size is a floor on the draw, and the half-width is the rule on the answer.
+
+    Twenty-six units clears the first and says nothing about the second.
+    Half of them repaired correctly spans eighteen points,
+    and the frozen rules print no rate at that width.
+    """
+    problems = repair_admission_problems(candidate({"{period}": (13, 26)}))
+    assert len(problems) == 1
+    assert "interval wider" in problems[0]
+    assert "below the floor" not in problems[0]
+
+
+def test_a_stratum_a_quarter_of_which_is_ambiguous_cannot_be_rated():
+    """The same rule the recall rates answer to, on the repair rates."""
+    heavy = candidate({"{period}": (30, 30)})
+    heavy["strata"]["{period}"].update(ambiguous=11, labeled=41)
+    problems = repair_admission_problems(heavy)
+    assert any("ambiguous" in problem for problem in problems)
+
+
+def test_the_minimum_stratum_size_is_recorded_as_policy_and_not_as_a_derivation():
+    """Twenty-six is a floor taken on a stated ground, which is not the same as proven.
+
+    What the frozen rules make reportable depends on the realized count,
+    the half-width and the ambiguous fraction, none of them known before labeling,
+    so nothing can prove a smaller stratum intrinsically unreportable.
+    The stated ground is the arithmetic below.
+    A rate of 0.80 fits inside the frozen half-width at twenty-six units, not at twenty-five.
+    """
+    rules = REPAIR_ADMISSION["reportable"]
+    assert rules["min_scored"] == 26
+    assert "policy minimum rather than a derivation" in rules["min_scored_note"]
+    bound = REPORTING["max_interval_half_width"]
+    fits, misses = wilson(21, 26), wilson(20, 25)
+    assert (fits[1] - fits[0]) / 2 <= bound < (misses[1] - misses[0]) / 2
+
+
+def test_a_stratum_at_the_minimum_is_rated_and_then_refused_on_its_bound():
+    """Being large enough to print a rate is not the same as clearing one.
+
+    Twenty-six units at just over 0.80 is reportable and its bound is 0.62,
+    so the message names the floor rather than naming a reason it could not be rated.
+    """
+    problems = repair_admission_problems(candidate({"{period}": (21, 26)}))
+    assert len(problems) == 1
+    assert "below the floor" in problems[0]
+    assert "cannot rate" not in problems[0]
+
+
+def test_more_acceptable_repairs_than_scored_units_is_refused_rather_than_computed():
+    """A proportion above one is a defect in the count, not a very good class."""
+    problems = repair_admission_problems(candidate({"{period}": (41, 40)}))
+    assert any("not a proportion" in problem for problem in problems)

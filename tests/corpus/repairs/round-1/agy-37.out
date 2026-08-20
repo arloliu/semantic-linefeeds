@@ -1,0 +1,187 @@
+```json
+[
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:88:1#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "  termination.",
+        "  Clear sync pools.",
+        "  Initialize GC state and statistics.",
+        "  Enable write barriers, assists, and background workers.",
+        "  If this is a"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:452:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:718:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:9:1#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:156:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "* Use angle brackets, as in `Vector<int>`.",
+        "  This has the advantage of being familiar to C++ and Java programmers.",
+        "  Unfortunately, it means that `f<T>(true)` can be parsed as either a call to function `f<T>` or a comparison of `f<T` (an expression that tests whether `f` is less than `T`) with `(true)`.",
+        "  While it may be possible to construct complex resolution rules,",
+        "  the Go syntax avoids that sort of ambiguity for good reason."
+      ]
+    ]
+  },
+  {
+    "id": "styx:internal/event/eventfd.go:141:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/25719-go15vendor.md:74:1#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "In this example, all the dependencies needed by gsftp are (recursively) supplied in the vendor directory,",
+        "so “go install” does not read any source files outside the gsftp Git checkout.",
+        "Therefore the gsftp build is reproducible given only the content of the gsftp Git repo and not any other code.",
+        "And the dependencies need not be edited when copying them into the gsftp repo.",
+        "And potential users can run “go get github.com/constabulary/example-gsftp/cmd/gsftp” without needing to have an additional vendoring tool installed or special GOPATH configuration."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/12416-cgo-pointers.md:151:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  }
+]
+```

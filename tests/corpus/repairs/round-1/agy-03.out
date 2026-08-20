@@ -1,0 +1,125 @@
+```json
+[
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:263:1#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543/safe-points-everywhere.md:165:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo-implementation.md:167:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/object.go:1232:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:286:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:46:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:139:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:errors.go:388:0#repair",
+    "choose": "c06",
+    "accept": [
+      "c02",
+      "c06",
+      "c09"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c04",
+      "c05",
+      "c07",
+      "c08",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  }
+]
+```

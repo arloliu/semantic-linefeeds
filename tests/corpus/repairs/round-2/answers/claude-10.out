@@ -1,0 +1,75 @@
+Looking at each unit, I worked through the sentence boundaries, checked which candidates preserve or fix the mid-clause severance, and verified line lengths against the ~120-char guidance.
+
+Unit 3 (go13compiler.md) is a special case: none of the 16 candidates fully resolves all three required sentence splits (after "C copies.", after "C program.", after "aggressive.") simultaneously — each candidate leaves at least one fused pair merged. I'm flagging that one as missing with my own lines.
+
+```json
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:139:0#repair",
+    "choose": "c02",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:883:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:38:1#repair",
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "accept": [],
+    "missing": [
+      ["_Phase 2_. Use the translator to convert the compilers from C to Go and delete the C copies."],
+      ["At this point we have transitioned to Go and still have a working compiler,"],
+      ["but the compiler is still very much a C program."],
+      ["This may happen for Go 1.3, but that\u2019s pretty aggressive."],
+      ["It is more likely to happen for Go 1.4."]
+    ]
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:689:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:725:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:296:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/shm/layout.go:649:0#repair",
+    "choose": "c04",
+    "accept": ["c01", "c04"],
+    "reject": ["c00", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:host.go:776:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  }
+]
+```
+
+Notable judgment calls:
+- **Unit 1 & 7**: chose the candidate that further splits at a genuine clause boundary (comma / em-dash) rather than leaving a ~120+ char line whole, since a real boundary was available; also accepted the minimal rejoin-only candidate as a legitimate alternative since `long` is advisory.
+- **Unit 3**: no candidate applies all three required sentence splits at once — every option leaves at least one fused pair merged, so I rejected all and supplied the missing 5-line repair.
+- **Unit 5**: rejected every candidate that splits the short first sentence at "yet" — valid boundary word, but the clause is only ~65 chars, so splitting it serves no purpose under the rule.
+- **Unit 8**: rejected candidates splitting at "so" — the left side ("Taken once, here") isn't an independent clause, so it fails the both-sides-independent test for `so`.

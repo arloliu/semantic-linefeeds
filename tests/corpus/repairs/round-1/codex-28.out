@@ -1,0 +1,71 @@
+[
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:1620:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:12:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:208:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/37720-gopls-workspaces.md:58:0#repair",
+    "choose": "c09",
+    "accept": ["c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:79:1#repair",
+    "choose": "c10",
+    "accept": ["c10", "c19"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c20", "c21"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:101:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:62:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      [
+        "_Translate just the back ends and connect to go/parser and go/types immediately_.",
+        "The data structures in the compiler that convey information from the front end to the back ends look nothing like the APIs presented by go/parser and go/types.",
+        "Replacing the front end by those libraries would require writing code to convert from the go/parser and go/types data structures into the ones expected by the back ends, a very broad and error-prone undertaking.",
+        "We do believe that it makes sense to use these packages,",
+        "but it also makes sense to wait until the compiler is structured more like a Go program, into documented sub-packages of its own with defined boundaries and unit tests."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:40:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      [
+        "_Phase 3_.",
+        "Use some tools, perhaps derived from gofix and the Go oracle to split the compiler into packages, cleaning up and documenting the code, and adding unit tests as appropriate.",
+        "This phase turns the compiler into an idiomatic Go program.",
+        "This is targeted for Go 1.4."
+      ]
+    ]
+  }
+]

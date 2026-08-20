@@ -1,0 +1,20 @@
+Both `missing` calls check out against a recount of the candidate lists — reasoning below, verdicts follow.
+
+**Unit 4**: no candidate hits all three required breaks (after `copies.`, after `program.`, after `aggressive.`) — best is 2/3. `_Phase 2_.` stays fused to the next sentence (verbless label; confirmed by 3, not 4, fused findings and all 16 candidates agreeing). S3 (124 chars) splits at `but`, a valid two-independent-clause boundary.
+
+**Unit 7**: only 1 fused finding was reported, but S2+S3 are two independent sentences left on one ~221-char line in every candidate — that's wrong prose regardless of what the checker flagged.
+
+I also widened acceptance on a couple of units — a candidate is acceptable whenever its break lands on a real boundary with coherent prose on both sides, not only when it's the minimal fix (Unit 3's em-dash split, Unit 5's colon split both qualify alongside my top pick).
+
+```json
+[
+  {"id": "styx:testdata/chunkplugin/main.go:60:0#repair", "choose": "c01", "accept": ["c01"], "reject": ["c00", "c02", "c03"], "missing": []},
+  {"id": "go-proposal:design/45713-workspace.md:762:0#repair", "choose": "c01", "accept": ["c01"], "reject": ["c00", "c02", "c03"], "missing": []},
+  {"id": "styx:errors.go:294:0#repair", "choose": "c01", "accept": ["c01", "c02"], "reject": ["c00", "c03", "c04", "c05", "c06"], "missing": []},
+  {"id": "go-proposal:design/go13compiler.md:38:2#repair", "accept": [], "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"], "missing": [["_Phase 2_. Use the translator to convert the compilers from C to Go and delete the C copies.", "At this point we have transitioned to Go and still have a working compiler,", "but the compiler is still very much a C program.", "This may happen for Go 1.3, but that’s pretty aggressive.", "It is more likely to happen for Go 1.4."]]},
+  {"id": "styx:clientconn.go:612:0#repair", "choose": "c01", "accept": ["c01", "c03"], "reject": ["c00", "c02", "c04", "c05", "c06", "c07", "c08", "c09", "c10"], "missing": []},
+  {"id": "go-proposal:design/36606-64-bit-field-alignment.md:179:0#repair", "choose": "c01", "accept": ["c01"], "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"], "missing": []},
+  {"id": "go-proposal:design/76331-lsp-interactive-refactoring.md:602:0#repair", "accept": [], "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"], "missing": [["Now, while the focus remains the same—to make the `edit` or `command` available—the process becomes iterative.", "The client must keep resolving the action as long as it contains non-empty `formFields` (questions).", "The client collects the user's answers and calls `codeAction/resolve` again with the answers populated in `formAnswers`."]]},
+  {"id": "go-proposal:design/48815-custom-fuzz-input-types.md:218:0#repair", "choose": "c03", "accept": ["c03"], "reject": ["c00", "c01", "c02", "c04", "c05", "c06"], "missing": []}
+]
+```

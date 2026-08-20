@@ -1,0 +1,66 @@
+```json
+[
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:248:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo-implementation.md:186:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:42:1#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": [
+      "_Phase 4a_. Apply standard profiling and measurement techniques to understand and optimize the memory and CPU usage of the compiler.",
+      "This may include introducing parallelization; if so, the race detector is likely to be a significant help.",
+      "This is targeted for Go 1.4, but parts may slip to Go 1.5.",
+      "Some basic profiling and optimization may be done earlier, in Phase 3."
+    ]
+  },
+  {
+    "id": "go-proposal:design/27935-unbounded-queue-package.md:996:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:157:0#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/18802-percpu-sharded.md:40:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-shaping-the-stream-setLimits/main.go:30:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:1239:0#repair",
+    "choose": "c09",
+    "accept": ["c08", "c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c10"],
+    "missing": []
+  }
+]
+```
+
+Notable judgment call: Unit 3 has no acceptable candidate — every one of the 22 leaves at least one real sentence pair fused (S1/S2, S2/S3, or S3/S4) or severs a sentence unnecessarily at a comma/semicolon that doesn't need splitting. The correct repair needs three breaks (after "compiler.", after "help.", after "Go 1.5."), producing four lines, and the label `_Phase 4a_.` stays attached to the first sentence since it has no verb of its own — none of the given pairwise-break candidates hit that combination, so I rejected all and supplied the repair under `missing`.

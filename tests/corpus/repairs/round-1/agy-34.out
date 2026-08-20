@@ -1,0 +1,149 @@
+```json
+[
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:18:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:110:2#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:77:1#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/35112-scaling-the-page-allocator.md:116:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:113:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:423:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:77:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": [
+      [
+        "How will the caller know what derived types the body of f needs?",
+        "This is a very important question, and will be discussed at length later (see the proto-dictionary section).",
+        "For now, just assume that there will be summary information for each function which lets the callsite know what derived types are needed."
+      ]
+    ]
+  },
+  {
+    "id": "styx:internal/event/eventfd.go:130:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  }
+]
+```

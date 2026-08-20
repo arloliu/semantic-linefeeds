@@ -1,0 +1,150 @@
+```json
+[
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:324:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:156:2#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "* Use angle brackets, as in `Vector<int>`.",
+        "  This has the advantage of being familiar to C++ and Java programmers.",
+        "  Unfortunately, it means that `f<T>(true)` can be parsed as either a call to function `f<T>` or a comparison of `f<T` (an expression that tests whether `f` is less than `T`) with `(true)`.",
+        "  While it may be possible to construct complex resolution rules,",
+        "  the Go syntax avoids that sort of ambiguity for good reason."
+      ]
+    ]
+  },
+  {
+    "id": "styx:stream.go:490:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c01",
+      "c02",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:28:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:js.go:1544:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go2draft-generics-overview.md:59:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:833:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44309-user-configurable-memory-target.md:474:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  }
+]
+```

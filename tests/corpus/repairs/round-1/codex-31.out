@@ -1,0 +1,58 @@
+[
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:219:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:13:1#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/shm/intent.go:52:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:291:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:59:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/event/eventfd.go:130:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:68:1#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:10:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  }
+]

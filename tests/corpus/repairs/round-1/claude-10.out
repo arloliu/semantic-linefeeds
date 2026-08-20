@@ -1,0 +1,71 @@
+Answering as a data-labeling task per the repair procedure — no code changes needed here, just judging candidates against the semantic-linefeeds rule.
+
+```json
+[
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:71:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:141:0#repair",
+    "choose": "c09",
+    "accept": ["c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:354:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:nats.go:6351:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:101:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44309-user-configurable-memory-target.md:474:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      "expose when a GC ends?",
+      "What if the new GC design is fully incremental, and there is no well-defined notion of \"GC end\"?",
+      "It suffices to say that in order to keep"
+    ]
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:417:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:947:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  }
+]
+```
+
+Notes on judgment calls:
+
+- **Unit 1, 2**: The trailing text after the rejoin ("That's been one" / "Any other value is an") is itself a fresh sentence opening (capitalized, preceded by a period). Leaving it merged onto the rejoined line just relocates the fused violation, so a third line is required — that's why c01-style "rejoin but stop" candidates were rejected in favor of the fuller split (c03/c09).
+- **Unit 6**: none of the seven candidates both (a) split the `ends?`/`What` fusion and (b) rejoin `there`/`is` *and* (c) split off the newly-fused `"GC end"?`/`It suffices` boundary — every candidate leaves at least one of the three unresolved, so the correct repair isn't on the list.
+- Candidates that split at commas not preceded by a subordinator/coordinating conjunction meeting the "both sides stand alone" test (e.g., breaking right before "and disabled otherwise", or before "the vast majority of which") were rejected as severing a clause rather than following a real boundary.

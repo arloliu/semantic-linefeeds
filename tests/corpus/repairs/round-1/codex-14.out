@@ -1,0 +1,70 @@
+[
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:1429:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:104:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:246:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "- Playback on desktop.",
+        "The playback may directly use AudioUnit on iOS, and libmedia (or stagefright) on Android.",
+        "The media libraries on the desktop are"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:762:0#repair",
+    "choose": "c03",
+    "accept": ["c02", "c03"],
+    "reject": ["c00", "c01"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:200:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      [
+        "A new `Instantiate` function is added to allow the creation of type and function instances.",
+        "The `orig` argument supplies the parameterized `*Named` or `*Signature` type being instantiated,",
+        "and the `targs` argument supplies the type arguments to be substituted for type parameters.",
+        "It is an error to call `Instantiate` with anything other than a `*Named` or `*Signature` type for `orig`, or with a `targs` value that has length different from the number of type parameters on the parameterized type;",
+        "doing so will result in a non-nil error being returned."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:162:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:480:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:examples/slow-handler/plugin/main.go:10:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  }
+]

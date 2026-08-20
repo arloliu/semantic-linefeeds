@@ -1,0 +1,69 @@
+Based on careful application of the semantic-linefeeds rule (splitting only at true sentence boundaries, and additionally at clause boundaries when a resulting line still exceeds ~120 chars with an available boundary), here are my verdicts:
+
+```json
+[
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:206:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:290:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/56986-godebug.md:165:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543/safe-points-everywhere.md:156:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13073-code-of-conduct.md:201:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:167:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:stream.go:490:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:clientconn.go:816:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```
+
+Notes on the closer calls:
+
+- **Unit 2/Unit 6**: multi-sentence blocks where the checker reported only one finding but the window actually contains more than two sentences fused together — I applied one-sentence-per-line to the whole block, then re-checked the resulting lines against the ~120-char limit, splitting at the first rightward (or, failing that, backward) clause boundary. Unit 6's remaining first line (164 chars) stays long because the only usable boundary (`, because`) was already spent.
+- **Unit 3**: rejected every candidate that broke inside the backtick-quoted `` //go:debug `` span — splitting inside an inline code token corrupts it regardless of whether it counts as a "real" directive.
+- **Unit 7**: rejected candidates that further split the second sentence (`Open already half-closed...`) at `when`/`so` — that sentence sits at ~126 chars but the checker did not raise a `long` finding on it, and it's a single sentence, so it stays whole.
+- **Unit 8**: rejected `c01`, which fixes fused+wrap but leaves a resulting 135-char line unsplit despite a valid, both-sides-standalone `and` boundary at index 76 (found via backward scan since nothing qualifies rightward of 120). `c03` applies that split correctly.

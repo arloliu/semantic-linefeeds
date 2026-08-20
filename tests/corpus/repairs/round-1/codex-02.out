@@ -1,0 +1,58 @@
+[
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:452:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:stream.go:490:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:240:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:269:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/12416-cgo-pointers.md:151:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/37112-unstable-runtime-metrics.md:282:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:280:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-stenciling.md:124:0#repair",
+    "choose": "c02",
+    "accept": ["c02", "c05"],
+    "reject": ["c00", "c01", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  }
+]

@@ -1,0 +1,161 @@
+```json
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:271:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:18:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:128:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:types.go:217:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c05",
+      "c07"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c06",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:123:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:182:3#repair",
+    "choose": "c20",
+    "accept": [
+      "c20"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c21"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:200:1#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "A new `Instantiate` function is added to allow the creation of type and function instances.",
+        "The `orig` argument supplies the parameterized `*Named` or `*Signature` type being instantiated,",
+        "and the `targs` argument supplies the type arguments to be substituted for type parameters.",
+        "It is an error to call `Instantiate` with anything other than a `*Named` or `*Signature` type for `orig`, or with a `targs` value that has length different from the number of type parameters on the parameterized type;",
+        "doing so will result in a non-nil error being returned."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:280:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c01",
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  }
+]
+```

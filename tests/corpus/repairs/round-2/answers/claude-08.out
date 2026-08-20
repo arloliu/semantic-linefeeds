@@ -1,0 +1,76 @@
+Working through each unit against the semantic-linefeeds rule (real clause boundaries only: `;`, `:`, `—`, coordinating conjunctions with both sides standalone, and relative pronouns/subordinators — not bare commas or comma splices).
+
+```json
+[
+  {
+    "id": "go-proposal:design/68723-crypto-ssh-v2.md:94:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:98:1#repair",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "The call to g needs a dictionary.",
+        "At the callsite to g from f, f has no way to know what dictionary it should use,",
+        "because the type parameterizing the instantiation of g is a generic type.",
+        "So the caller of f must provide that dictionary."
+      ]
+    ]
+  },
+  {
+    "id": "styx:examples/slow-handler/host/main.go:422:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c03"],
+    "reject": ["c00", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:711:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:41:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:139:0#repair",
+    "choose": "c02",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:nats.go:5789:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/plugin_reload.go:90:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  }
+]
+```
+
+Notes on the trickier calls:
+
+- **Unit 1**: the comma after "APIs," and after "net.http`," are comma splices (no conjunction/subordinator), not real boundaries — only the sentence-ending period between the two full sentences is a valid split point.
+- **Unit 2**: none of the listed candidates split at the real subordinator "because," which is needed since the isolated middle sentence runs ~154 chars with a findable boundary via backward scan — flagged as missing. c04 fixes both `fused` reports correctly and is acceptable but not maximal.
+- **Unit 3**: `and the slices are joined once at the end` passes the stand-alone test on both sides, so both the minimal split (c01) and the extra split at "and" (c03) are valid; c02's "so the workers"/"never contend" split severs a clause mid-way and is wrong.
+- **Unit 5**: "If a constant X..., L may trivially..." is a genuine fronted subordinate clause, so splitting at that comma (c02) is defensible alongside the minimal fix (c01); c03/c05's "trivially"/"depend" split reproduces the original mid-clause wrap error.
+- **Unit 8**: only c03 resolves both real sentence fusions without introducing the ungrammatical "DrainAck," / "or was never admitted" split (that "or" joins a compound predicate sharing one subject, not two independent clauses).

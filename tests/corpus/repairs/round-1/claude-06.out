@@ -1,0 +1,76 @@
+Here are the answers for all 8 units:
+
+```json
+[
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:296:2#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": [[
+      "The `command/resolve` request is sent from the client to the server to check whether a command is ready for execution or requires additional user input.",
+      "Before executing any command that supports interactive resolution, the client must call `command/resolve` at least once to determine if the command arguments are comprehensive.",
+      "As long as the `ExecuteCommandParams` contains non-empty `formFields` (questions), the client should not execute the command.",
+      "Instead, the client should collect the user's answers and call `command/resolve` with the answers populated in `formAnswers`."
+    ]]
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:23:1#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00","c01","c02","c04","c05","c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:156:2#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": [[
+      "* Use angle brackets, as in `Vector<int>`.",
+      "  This has the advantage of being familiar to C++ and Java programmers.",
+      "  Unfortunately, it means that `f<T>(true)` can be parsed as either a call to function `f<T>` or a comparison of `f<T` (an expression that tests whether `f` is less than `T`) with `(true)`.",
+      "  While it may be possible to construct complex resolution rules, the Go syntax avoids that sort of ambiguity for good reason."
+    ]]
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:223:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00","c01","c02","c03","c04","c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:398:0#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15"],
+    "missing": [[
+      "A: Implementing `try` requires the ability to return from the function enclosing the `try` call.",
+      "Absent such a \u201csuper return\u201d statement, `try` cannot be implemented in Go even if there were generic functions.",
+      "`try` also requires a variadic parameter list with parameters of different types.",
+      "We do not anticipate support for such variadic generic functions."
+    ]]
+  },
+  {
+    "id": "go-proposal:design/43810-go-pmem.md:101:0#repair",
+    "choose": "c01",
+    "accept": ["c01","c03"],
+    "reject": ["c00","c02","c04","c05","c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:examples/slow-handler/plugin/main.go:10:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00","c02","c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:762:0#repair",
+    "choose": "c03",
+    "accept": ["c02","c03"],
+    "reject": ["c00","c01"],
+    "missing": []
+  }
+]
+```
+
+Notes on the reasoning that shapes the reject-everything units (1, 3, 5): each has 4 fused sentences requiring 3 splits to fully resolve, but every listed candidate applies at most 2 breaks — so every candidate leaves at least one line with two complete sentences still fused, which fails "one sentence per line" regardless of how carefully placed the breaks that *are* there are. None is a complete repair, so I rejected all and supplied the full split under `missing`. Units 2, 4, 6, 7, 8 each had a candidate (or two) that fully resolved the fused sentences without severing any clause, so those got a normal accept/choose.

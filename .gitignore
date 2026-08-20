@@ -12,3 +12,19 @@ build/
 tests/corpus/holdout/*/sample.json
 tests/corpus/holdout/*/adjudications.json
 tests/corpus/holdout/*/labels/
+
+# The repair batches, which are derived rather than evidence.
+# A batch is reproducible byte for byte from the sample and two files in this tree,
+# and a test asserts exactly that,
+# so committing three copies of the same prose buys nothing history does not already hold.
+# The sample and the answers are evidence and are committed.
+tests/corpus/repairs/batches/
+
+# Pinned upstream sources the corpus draws from, materialized by commit from manifest.json.
+# Reconstructible, large, and not ours to vendor.
+tests/corpus/checkouts/
+
+# Regenerable from the round's sample: `batch.py <pass> --sample <sample.json> --out <dir>`.
+tests/corpus/repairs/*/batches/
+tests/corpus/repairs/batches/
+tests/corpus/repairs/*/todo.json

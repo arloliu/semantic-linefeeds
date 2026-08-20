@@ -1,0 +1,76 @@
+Working through these directly against the rule — most units resolve to a single correct sentence-boundary split, but three (units 2, 4, 8) have no candidate that fully resolves the fusion without either leaving a mid-clause severance, a fused remainder, or an invalid mid-list/mid-word break, so I've flagged those as missing.
+
+```json
+[
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:319:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:88:1#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": [
+      ["  termination.", "  Clear sync pools.", "  Initialize GC state and statistics.", "  Enable write barriers, assists, and background workers. If this is a"]
+    ]
+  },
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:442:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:156:1#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": [
+      [
+        "* Use angle brackets, as in `Vector<int>`.",
+        "  This has the advantage of being familiar to C++ and Java programmers.",
+        "  Unfortunately, it means that `f<T>(true)` can be parsed as either a call to function `f<T>` or a comparison of `f<T` (an expression that tests whether `f` is less than `T`) with `(true)`.",
+        "  While it may be possible to construct complex resolution rules, the Go syntax avoids that sort of ambiguity for good reason."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:324:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:149:0#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:20:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/rpcruntime/stream.go:1331:0#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10"],
+    "missing": [
+      [
+        "// cannot put on the wire.",
+        "// A deadline records DEADLINE; every other cause records CANCELED.",
+        "// The stream is PUBLISHED here (the opener holds it), so the transition"
+      ]
+    ]
+  }
+]
+```
+
+Notes on the three missing cases: in each, every candidate either leaves two sentences fused on one line, breaks mid-word/mid-list (not a real clause boundary), or severs a clause the wrap finding was trying to fix — so I judged none acceptable and supplied the sentence-per-line split the list should have offered.

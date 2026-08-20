@@ -1,0 +1,64 @@
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:762:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:24:0#repair",
+    "choose": "c05",
+    "accept": ["c02", "c05"],
+    "reject": ["c00", "c01", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:panic_policy.go:36:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c03"],
+    "reject": ["c00", "c02", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:74:1#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:46:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/draft-embed.md:704:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "styx:stream.go:199:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:13:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      [
+        "We propose adding support for profile-guided optimization (PGO) to the Go gc toolchain.",
+        "PGO will enable the toolchain to perform application- and workload-specific optimizations based on run-time information.",
+        "Unlike many compiler optimizations, PGO requires user involvement to collect profiles and feed them back into the build process.",
+        "Hence, we propose a design that centers user experience and ease of deployment and fits naturally into the broader Go build ecosystem."
+      ]
+    ]
+  }
+]

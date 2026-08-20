@@ -1,0 +1,78 @@
+Here is the batch analysis. Full reasoning below the JSON.
+
+```json
+[
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:371:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/errors.go:117:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:53:0#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": [
+      "Type parameter names are represented by a `*TypeName` with a `*TypeParam`-valued `Type()`.",
+      "They are declared by type parameter lists, or by type parameters on method receivers.",
+      "Type parameters are scoped to the type or function declaration on which they are defined.",
+      "Notably, this introduces a new `*Scope` for parameterized type declarations (for parameterized function declarations the scope is the function scope).",
+      "The `Obj()` method returns the `*TypeName` corresponding to the type parameter (its receiver).",
+      "The `Index()` method returns the index of the type parameter in its type parameter list,",
+      "or `-1` if the type parameter has not yet been bound to a type."
+    ]
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:154:0#repair",
+    "choose": "c04",
+    "accept": ["c01", "c04"],
+    "reject": ["c00", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go2draft-generics-overview.md:59:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:types.go:217:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:codec/codec.go:77:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:73:0#repair",
+    "choose": "c07",
+    "accept": ["c07", "c11"],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c08","c09","c10","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": []
+  }
+]
+```
+
+Key judgment calls:
+
+- **Unit 1/2/5**: fused fix + rejoin the wrapped clause fully onto one line (no forced further split, since neither "and provides a..." nor the "or by..." clause has a standalone second half, and neither remainder line was flagged/measured as over-length).
+- **Unit 3**: none of the 22 candidates come close to full correctness — every one leaves 3–5 real sentences crammed onto one line somewhere in the tail. That's not "correct prose" under one-sentence-per-line, so I rejected all and supplied the full 7-line split as `missing` (S4 and S6 individually exceed ~120 chars; S4 has no usable boundary so it stays long, S6 splits at its one comma).
+- **Unit 4**: the rejoined sentence is genuinely ~127 chars with a real comma boundary near the end ("...packed struct type, / and vice versa."), so I accepted both the plain rejoin (c01) and the boundary-split version (c04), choosing c04 as the more length-compliant one.
+- **Unit 6**: rejected all candidates that split the list-closing "and retried Starts alike" (invalid list boundary) or left the fused/wrap issues unresolved; c05 is the clean minimal fix. Rejected the optional semicolon split (c07) since the merged sentence is well under 120 chars.
+- **Unit 7**: only c02 fixes both fused pairs without any invalid split; everything else leaves at least one fused pair intact or reintroduces the mid-clause wrap.
+- **Unit 8**: c07 is the minimal fix matching exactly the reported fused+wrap; c11 additionally splits a second, pre-existing fused pair ("...is performed. Mutators perform") that sits in the trailing context line. Since that's a genuine sentence-fusion (not an optional clause split), I accepted both, choosing c07 as the more tightly-scoped repair.

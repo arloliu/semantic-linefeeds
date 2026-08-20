@@ -1,0 +1,60 @@
+```json
+[
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:53:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44167-gc-pacer-redesign.md:339:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:158:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:445:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:107:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:79:1#repair",
+    "choose": "c10",
+    "accept": ["c10", "c11"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:220:0#repair",
+    "choose": "c07",
+    "accept": ["c05", "c07"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:362:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  }
+]
+```

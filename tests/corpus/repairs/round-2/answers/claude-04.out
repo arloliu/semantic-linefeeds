@@ -1,0 +1,75 @@
+Went through all 8 units, judging each candidate against the semantic-linefeeds rule (fused → split at sentence ends only; wrap → rejoin then re-split only at real clause boundaries — `;`, `:`, `—`, and/but/so joining two independent clauses, or a subordinator/relative pronoun opening a clause — and only when the resulting line still exceeds ~120 chars). Unit 3 has no candidate that achieves full one-sentence-per-line without leaving multiple sentences fused together, so I've supplied a `missing` repair for it.
+
+```json
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:515:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:498:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:70:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [[
+      "A compile-time instantiation of a generic function or method of a generic type is created for a specific set of gcshape type arguments.",
+      "As mentioned above, we sometimes call such an instantiation a **shape instantiation**.",
+      "We determine on-the-fly during compilation which shape instantiations need to be created,",
+      "as described below in \u201cCompiler processing for calls to generic functions and methods\u201d.",
+      "Given a set of gcshape type arguments,",
+      "we create an instantiated function or method by substituting the shape type arguments for the corresponding type parameters throughout the function/method body and header.",
+      "The function body includes any closures contained in the function."
+    ]]
+  },
+  {
+    "id": "go-proposal:design/57001-gotoolchain.md:248:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:175:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/consume.go:31:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/arena/arena.go:69:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:445:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  }
+]
+```
+
+A few notes on the judgment calls:
+
+- **Unit 3**: every candidate leaves at least two full sentences fused on one line (mostly sentences 2/3, or 2/3/4). None reaches one-sentence-per-line, so I rejected all and supplied the full repair. Sentence 1 and the tail of sentence 4 have no recognized clause boundary at all (confirmed by the checker's own `long`-with-no-boundary advisory quoting sentence 1) and stay long by design.
+- **Units 5–6**: candidates that split inside `` `//go:packed` `` mid-token, or split a short (<120-char) sentence at an unneeded comma/em-dash, were rejected — the rule only re-splits at sentence ends unless the line is still over length.
+- **Unit 8**: only c05 both fixes the fused `repo. Of course...` boundary and picks the one real boundary (`released, and then...`, a coordinating conjunction joining two independent clauses) needed because the rejoined sentence exceeds 120 chars; all others either leave `repo.`/`Of course,` fused or split at a non-boundary comma (`course,`, `modules,`).

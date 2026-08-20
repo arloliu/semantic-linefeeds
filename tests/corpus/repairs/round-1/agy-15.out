@@ -1,0 +1,176 @@
+```json
+[
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:871:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:205:1#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:73:0#repair",
+    "choose": "c11",
+    "accept": [
+      "c11"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:216:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": [
+      [
+        "- Choosing a built-in function rather than an operator has several advantages.",
+        "  There is no need for a new keyword such as `check` which would have made the design not backward compatible with existing parsers.",
+        "  There is also no need for extending the expression syntax with the new operator.",
+        "  Adding a new built-in is a comparatively trivial and completely orthogonal language change."
+      ],
+      [
+        "- Choosing a built-in function rather than an operator has several advantages.",
+        "  There is no need for a new keyword such as `check`",
+        "  which would have made the design not backward compatible with existing parsers.",
+        "  There is also no need for extending the expression syntax with the new operator.",
+        "  Adding a new built-in is a comparatively trivial and completely orthogonal language change."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:105:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c04",
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:nats.go:3031:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:296:2#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "The `command/resolve` request is sent from the client to the server to check whether a command is ready for execution or requires additional user input.",
+        "Before executing any command that supports interactive resolution, the client must call `command/resolve` at least once to determine if the command arguments are comprehensive.",
+        "As long as the `ExecuteCommandParams` contains non-empty `formFields` (questions), the client should not execute the command.",
+        "Instead, the client should collect the user's answers and call `command/resolve` with the answers populated in `formAnswers`."
+      ],
+      [
+        "The `command/resolve` request is sent from the client to the server to check whether a command is ready for execution or requires additional user input.",
+        "Before executing any command that supports interactive resolution,",
+        "the client must call `command/resolve` at least once to determine if the command arguments are comprehensive.",
+        "As long as the `ExecuteCommandParams` contains non-empty `formFields` (questions),",
+        "the client should not execute the command.",
+        "Instead, the client should collect the user's answers and call `command/resolve` with the answers populated in `formAnswers`."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:248:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  }
+]
+```

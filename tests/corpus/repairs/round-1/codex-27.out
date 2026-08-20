@@ -1,0 +1,63 @@
+[
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:342:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:67:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44167-gc-pacer-redesign.md:339:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:161:0#repair",
+    "choose": "c11",
+    "accept": ["c11"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:113:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01"],
+    "missing": [
+      [
+        "We will also add a `-pgo=<path>` command line flag to `go build`",
+        "that specifies an explicit profile location to use for a PGO build.",
+        "A command line flag can be useful in the cases of"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/12800-sweep-free-alloc.md:305:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:128:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c03"],
+    "reject": ["c00", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:537:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  }
+]

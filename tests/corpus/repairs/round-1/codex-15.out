@@ -1,0 +1,56 @@
+[
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:139:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:49:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01"],
+    "missing": [["The `try` built-in may _only_ be used inside a function with at least one result parameter", "where the last result is of type `error`.", "Calling `try` in a different context leads to a compile-time error."]]
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:468:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/35112-scaling-the-page-allocator.md:116:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/43810-go-pmem.md:101:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:296:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:295:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [["for numbers.", "(Why dashes and not asterisks?", "Proper typesetting of bullet lists sometimes does use dashes, but never uses asterisks, so"]]
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:110:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  }
+]

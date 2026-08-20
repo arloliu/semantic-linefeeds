@@ -1,0 +1,75 @@
+Looking at each unit, I worked through the sentence boundaries directly against the semantic-linefeeds rule (no need to invoke the skill tool for this — it's a labeling task, not code editing).
+
+For unit 4, the correct repair requires an additional split the candidate set doesn't offer: "...package scope." is a genuine sentence boundary (terminal period + new capitalized sentence), distinct from the colon case in unit 1 where the residual line-length is merely advisory. None of c00–c06 fully resolve it, so I'm flagging that one as missing.
+
+```json
+[
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:13:1#repair",
+    "choose": "c09",
+    "accept": ["c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:243:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:36:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:263:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "re-exported.",
+        "It is crucial for aliases to be re-exportable.",
+        "Thus alias imports would need to end up in package scope.",
+        "(It would be odd if they ended up in"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:284:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:582:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/37720-gopls-workspaces.md:59:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:118:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  }
+]
+```
+
+Notes on judgment calls:
+- **Unit 1**: c09 fully resolves both reported `fused` boundaries (the two mid-line sentence periods) without severing any clause. The colon after "as follows:" stays fused to the first sentence — that's a `long`-advisory boundary, not a `fused` one, so leaving it is legitimate per "long findings are advisories you judge, not obey."
+- **Unit 4**: the leftover `scope. (It` boundary is a real terminal period followed by a new sentence (the checker's simple regex likely misses it because a `(` sits between the period and the capital letter, but the grammar is unambiguous). None of the 7 candidates split there, so I flagged it under `missing` rather than picking the closest imperfect option (c02).
+- Units 2, 3, 5, 6, 7, 8 each had exactly one candidate producing a clean, fully-resolved sentence-per-line split with no mid-clause severs; the rest either left a fused pair intact or broke inside a clause.

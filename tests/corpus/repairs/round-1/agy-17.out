@@ -1,0 +1,147 @@
+```json
+[
+  {
+    "id": "go-proposal:design/60078-loopvar.md:947:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44253-generic-array-sizes.md:250:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:223:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo-implementation.md:186:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:101:1#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:299:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:154:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:66:1#repair",
+    "choose": "c14",
+    "accept": [
+      "c14"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": []
+  }
+]
+```

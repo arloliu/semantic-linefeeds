@@ -1,0 +1,150 @@
+```json
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:141:0#repair",
+    "choose": "c09",
+    "accept": [
+      "c09"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:161:1#repair",
+    "choose": "c11",
+    "accept": [
+      "c11"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/consumer_config.go:184:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/freeze-syscall.md:38:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c05",
+      "c07"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c06",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:157:0#repair",
+    "choose": "c08",
+    "accept": [
+      "c08",
+      "c09"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/27935-unbounded-queue-package.md:988:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/12800-sweep-free-alloc.md:305:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:24:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  }
+]
+```

@@ -1,0 +1,123 @@
+```json
+[
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:223:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:887:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:134:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/27935-unbounded-queue-package.md:966:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/18802-percpu-sharded.md:261:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:291:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:586:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:771:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  }
+]
+```

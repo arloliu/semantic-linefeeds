@@ -1,0 +1,70 @@
+Reviewed each unit against the semantic-linefeeds rule (one sentence per line; rejoin before splitting when a wrap finding shares the line with a fused one; split long lines only at genuine clause boundaries; never sever a token like `:=`).
+
+Unit 8 is the one exception: none of the offered candidates fully resolve the window into one-sentence-per-line — every candidate leaves at least one output line holding two sentences (e.g. "...decoding. Even if float values are supported," fused together). The correct repair — splitting all four sentence boundaries — isn't on the list.
+
+```json
+[
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:161:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:537:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:102:0#repair",
+    "choose": "c02",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:nats.go:3031:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:799:0#repair",
+    "choose": "c03",
+    "accept": ["c01", "c03", "c04"],
+    "reject": ["c00", "c02", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/draft-fuzzing.md:311:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36460-lazy-module-loading.md:248:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:240:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "values is unpopular.",
+        "Should we consider supporting float values?",
+        "Float values mean more expensive encoding and decoding.",
+        "Even if float values are supported,"
+      ]
+    ]
+  }
+]
+```

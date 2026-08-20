@@ -1,0 +1,70 @@
+Working through each unit against the semantic-linefeeds rule (rejoin-before-split for shared fused+wrap findings, treat `long` as advisory but prefer a found clause boundary, never break inside code spans or numbers, never split a fragment off alone).
+
+**Unit 2** and **Unit 7** required judgment calls: several candidates broke inside a backtick code span or mid-number (`13,`/`874`) — rejected outright. **Unit 8** has no candidate that performs the required fused-sentence split cleanly (all of them keep `(Note:` glued to the first sentence's line instead of starting a new line with it) — flagging that as missing rather than force-fitting.
+
+```json
+[
+  {
+    "id": "go-proposal:design/27935-unbounded-queue-package.md:988:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:158:0#repair",
+    "choose": "c09",
+    "accept": ["c08", "c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24301-versioned-go.md:325:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/draft-gobuild.md:211:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:232:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13073-code-of-conduct.md:389:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:474:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:270:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "*   Any sub-proto-dictionaries for callsites in `f`.",
+        "    (Note: any callsites in `f` which use only concrete type parameters do not need to be in the dictionary of `f`,",
+        "    because they can be generated at that callsite.",
+        "    Only callsites in `f` which use one or more of `f`’s type parameters need to be a subdictionary of `f`’s dictionary.)"
+      ]
+    ]
+  }
+]
+```

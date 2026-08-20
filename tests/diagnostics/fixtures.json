@@ -1,0 +1,1484 @@
+{
+  "tests/diagnostics/fixtures/carrier_line_comment.go": [],
+  "tests/diagnostics/fixtures/carrier_other_kind.md": [
+    {
+      "anchor": {
+        "end": 46,
+        "start": 0
+      },
+      "evidence": {
+        "end": 46,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 12,
+        "start": 5
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/carrier_then_prose.md": [
+    {
+      "anchor": {
+        "end": 50,
+        "start": 0
+      },
+      "evidence": {
+        "end": 76,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later and",
+      "kind": "wrap",
+      "line": 1,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 55,
+        "start": 19
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/closing_delimiter.md": [
+    {
+      "anchor": {
+        "end": 35,
+        "start": 0
+      },
+      "evidence": {
+        "end": 35,
+        "start": 0
+      },
+      "excerpt": "He said \"stop!\" Then he left again.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 20,
+        "start": 9
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/crlf.md": [
+    {
+      "anchor": {
+        "end": 19,
+        "start": 0
+      },
+      "evidence": {
+        "end": 19,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 12,
+        "start": 5
+      },
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "Stop now!",
+          "Go later."
+        ]
+      }
+    }
+  ],
+  "tests/diagnostics/fixtures/directive_malformed.md": [
+    {
+      "anchor": {
+        "end": 61,
+        "start": 42
+      },
+      "evidence": {
+        "end": 61,
+        "start": 42
+      },
+      "excerpt": "Stop now! Go later.",
+      "kind": "fused",
+      "line": 2,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 54,
+        "start": 47
+      },
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "Stop now!",
+          "Go later."
+        ]
+      }
+    }
+  ],
+  "tests/diagnostics/fixtures/docstring_prefix.py": [
+    {
+      "anchor": {
+        "end": 38,
+        "start": 9
+      },
+      "evidence": {
+        "end": 38,
+        "start": 9
+      },
+      "excerpt": "Stop now! Go later.",
+      "kind": "fused",
+      "line": 2,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 28,
+        "start": 21
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/gap_nbsp.md": [
+    {
+      "anchor": {
+        "end": 19,
+        "start": 0
+      },
+      "evidence": {
+        "end": 19,
+        "start": 0
+      },
+      "excerpt": "Stop now!\u00a0Go later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 12,
+        "start": 5
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/gap_tab.md": [
+    {
+      "anchor": {
+        "end": 19,
+        "start": 0
+      },
+      "evidence": {
+        "end": 19,
+        "start": 0
+      },
+      "excerpt": "Stop now!\tGo later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 12,
+        "start": 5
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/gap_two_spaces.md": [
+    {
+      "anchor": {
+        "end": 20,
+        "start": 0
+      },
+      "evidence": {
+        "end": 20,
+        "start": 0
+      },
+      "excerpt": "Stop now!  Go later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 13,
+        "start": 5
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/many_boundaries.md": [
+    {
+      "anchor": {
+        "end": 28,
+        "start": 0
+      },
+      "evidence": {
+        "end": 28,
+        "start": 0
+      },
+      "excerpt": "Go now? Come here! Stay put.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 12,
+        "start": 3
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 28,
+        "start": 0
+      },
+      "evidence": {
+        "end": 28,
+        "start": 0
+      },
+      "excerpt": "Go now? Come here! Stay put.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 23,
+        "start": 13
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/period_boundary.md": [
+    {
+      "anchor": {
+        "end": 44,
+        "start": 0
+      },
+      "evidence": {
+        "end": 44,
+        "start": 0
+      },
+      "excerpt": "One sentence here. Another sentence follows.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 26,
+        "start": 13
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/prefix_list_marker.md": [
+    {
+      "anchor": {
+        "end": 21,
+        "start": 0
+      },
+      "evidence": {
+        "end": 21,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 14,
+        "start": 7
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/protected_angle.md": [
+    {
+      "anchor": {
+        "end": 35,
+        "start": 0
+      },
+      "evidence": {
+        "end": 35,
+        "start": 0
+      },
+      "excerpt": "Run it now! Then read a <tag> here.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 16,
+        "start": 7
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/protected_angle_entity.md": [
+    {
+      "anchor": {
+        "end": 41,
+        "start": 0
+      },
+      "evidence": {
+        "end": 41,
+        "start": 0
+      },
+      "excerpt": "Run it now! Then read a &lt;tag&gt; here.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 16,
+        "start": 7
+      },
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "Run it now!",
+          "Then read a &lt;tag&gt; here."
+        ]
+      }
+    }
+  ],
+  "tests/diagnostics/fixtures/protected_backtick_after.md": [
+    {
+      "anchor": {
+        "end": 39,
+        "start": 0
+      },
+      "evidence": {
+        "end": 39,
+        "start": 0
+      },
+      "excerpt": "Run it now! Then read `the file` again.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 16,
+        "start": 7
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/protected_span.md": [
+    {
+      "anchor": {
+        "end": 29,
+        "start": 0
+      },
+      "evidence": {
+        "end": 29,
+        "start": 0
+      },
+      "excerpt": "Run `make now`! Then read it.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 20,
+        "start": 4
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/suggestion_blockquote.md": [
+    {
+      "anchor": {
+        "end": 21,
+        "start": 0
+      },
+      "evidence": {
+        "end": 21,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 14,
+        "start": 7
+      },
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "> Stop now!",
+          "> Go later."
+        ]
+      }
+    }
+  ],
+  "tests/diagnostics/fixtures/suggestion_comment.py": [
+    {
+      "anchor": {
+        "end": 21,
+        "start": 0
+      },
+      "evidence": {
+        "end": 21,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 14,
+        "start": 7
+      },
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "# Stop now!",
+          "# Go later."
+        ]
+      }
+    }
+  ],
+  "tests/diagnostics/fixtures/suggestion_indented.md": [
+    {
+      "anchor": {
+        "end": 28,
+        "start": 0
+      },
+      "evidence": {
+        "end": 28,
+        "start": 0
+      },
+      "excerpt": "Is this right? Yes it is.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 21,
+        "start": 11
+      },
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "   Is this right?",
+          "   Yes it is."
+        ]
+      }
+    }
+  ],
+  "tests/diagnostics/fixtures/suggestion_question.md": [
+    {
+      "anchor": {
+        "end": 25,
+        "start": 0
+      },
+      "evidence": {
+        "end": 25,
+        "start": 0
+      },
+      "excerpt": "Is this right? Yes it is.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 18,
+        "start": 8
+      },
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "Is this right?",
+          "Yes it is."
+        ]
+      }
+    }
+  ],
+  "tests/diagnostics/fixtures/suggestion_slashes.go": [
+    {
+      "anchor": {
+        "end": 22,
+        "start": 0
+      },
+      "evidence": {
+        "end": 22,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 15,
+        "start": 8
+      },
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "// Stop now!",
+          "// Go later."
+        ]
+      }
+    }
+  ],
+  "tests/diagnostics/fixtures/suppression_standalone.md": [],
+  "tests/diagnostics/fixtures/suppression_trailing.md": [],
+  "tests/diagnostics/fixtures/tail_rejected.c": [
+    {
+      "anchor": {
+        "end": 25,
+        "start": 0
+      },
+      "evidence": {
+        "end": 25,
+        "start": 0
+      },
+      "excerpt": "Stop now! Go later.",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 15,
+        "start": 8
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/diagnostics/fixtures/wrap_pair.md": [
+    {
+      "anchor": {
+        "end": 22,
+        "start": 0
+      },
+      "evidence": {
+        "end": 48,
+        "start": 0
+      },
+      "excerpt": "It ends mid-clause and",
+      "kind": "wrap",
+      "line": 1,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 27,
+        "start": 19
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/extractor/in/0.go": [],
+  "tests/extractor/in/1.md": [],
+  "tests/extractor/in/2.rs": [],
+  "tests/extractor/in/3.java": [],
+  "tests/extractor/in/4.py": [],
+  "tests/extractor/in/5.c": [],
+  "tests/fixtures/cfamily/bad_license_then_block.c": [
+    {
+      "anchor": {
+        "end": 108,
+        "start": 52
+      },
+      "evidence": {
+        "end": 108,
+        "start": 52
+      },
+      "excerpt": "This block doc is checked. It has two sentences. {fused}",
+      "kind": "fused",
+      "line": 3,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 81,
+        "start": 70
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/cfamily/bad_wrapped.java": [
+    {
+      "anchor": {
+        "end": 69,
+        "start": 4
+      },
+      "evidence": {
+        "end": 69,
+        "start": 4
+      },
+      "excerpt": "Returns the cached value for the key. The cache {fused} {wrap}",
+      "kind": "fused",
+      "line": 2,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 48,
+        "start": 40
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 69,
+        "start": 4
+      },
+      "evidence": {
+        "end": 121,
+        "start": 4
+      },
+      "excerpt": "Returns the cached value for the key. The cache {fused} {wrap}",
+      "kind": "wrap",
+      "line": 2,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 79,
+        "start": 63
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 121,
+        "start": 70
+      },
+      "evidence": {
+        "end": 166,
+        "start": 70
+      },
+      "excerpt": "evicts the oldest entry when full and the {wrap}",
+      "kind": "wrap",
+      "line": 3,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 131,
+        "start": 115
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/cfamily/good_directives.ts": [],
+  "tests/fixtures/cfamily/good_javadoc.java": [],
+  "tests/fixtures/cfamily/good_license.c": [],
+  "tests/fixtures/cfamily/good_pre_block.java": [],
+  "tests/fixtures/cfamily/good_scope_edges.c": [],
+  "tests/fixtures/elixir/bad_comments.ex": [
+    {
+      "anchor": {
+        "end": 52,
+        "start": 0
+      },
+      "evidence": {
+        "end": 52,
+        "start": 0
+      },
+      "excerpt": "Starts the worker. It links to the caller. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 23,
+        "start": 13
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/elixir/good_comments.ex": [],
+  "tests/fixtures/go/advisory_long_without_boundary.go": [
+    {
+      "anchor": {
+        "end": 304,
+        "start": 106
+      },
+      "evidence": {
+        "end": 304,
+        "start": 106
+      },
+      "excerpt": "A line can run past the limit with no boundary this checker's short word list matches at all, reporting nothing for it read exactly like approval to an agent just told to rejoin two lines. {long}",
+      "kind": "long",
+      "line": 4,
+      "message": "advisory: 195 chars and no boundary recognized \u2014 the words this checker matches are a short list, not the whole grammar, so look for a comma-led phrase or any other real clause boundary yourself; if the line genuinely has none, leaving it long is the right answer",
+      "ownership": {
+        "end": 304,
+        "start": 109
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/go/bad_license_then_doc.go": [
+    {
+      "anchor": {
+        "end": 116,
+        "start": 50
+      },
+      "evidence": {
+        "end": 116,
+        "start": 50
+      },
+      "excerpt": "Package demo is documented badly. It has two sentences. {fused}",
+      "kind": "fused",
+      "line": 3,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 89,
+        "start": 80
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/go/bad_wrapped.go": [
+    {
+      "anchor": {
+        "end": 92,
+        "start": 0
+      },
+      "evidence": {
+        "end": 92,
+        "start": 0
+      },
+      "excerpt": "Package cache provides fixed-capacity, in-memory key/value caches. A cache {fused} {wrap}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 71,
+        "start": 62
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 92,
+        "start": 0
+      },
+      "evidence": {
+        "end": 168,
+        "start": 0
+      },
+      "excerpt": "Package cache provides fixed-capacity, in-memory key/value caches. A cache {fused} {wrap}",
+      "kind": "wrap",
+      "line": 1,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 101,
+        "start": 86
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 250,
+        "start": 169
+      },
+      "evidence": {
+        "end": 250,
+        "start": 169
+      },
+      "excerpt": "when it is full. This package implements the storage layer: insertion, {fused}",
+      "kind": "fused",
+      "line": 3,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 193,
+        "start": 183
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 250,
+        "start": 169
+      },
+      "evidence": {
+        "end": 340,
+        "start": 169
+      },
+      "excerpt": "when it is full. This package implements the storage layer: insertion, {fused}",
+      "kind": "wrap",
+      "line": 3,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 260,
+        "start": 243
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 340,
+        "start": 251
+      },
+      "evidence": {
+        "end": 340,
+        "start": 251
+      },
+      "excerpt": "lookup, eviction, and read-only statistics. Expiry policies and on-disk {fused} {wrap}",
+      "kind": "fused",
+      "line": 4,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 304,
+        "start": 286
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 340,
+        "start": 251
+      },
+      "evidence": {
+        "end": 410,
+        "start": 251
+      },
+      "excerpt": "lookup, eviction, and read-only statistics. Expiry policies and on-disk {fused} {wrap}",
+      "kind": "wrap",
+      "line": 4,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 353,
+        "start": 334
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/go/good_columns.go": [],
+  "tests/fixtures/go/good_commented_out_code.go": [],
+  "tests/fixtures/go/good_dividers.go": [],
+  "tests/fixtures/go/good_generated.go": [],
+  "tests/fixtures/go/good_license.go": [],
+  "tests/fixtures/go/good_license_multiparagraph.go": [],
+  "tests/fixtures/go/good_second_license.go": [],
+  "tests/fixtures/go/good_sembr.go": [],
+  "tests/fixtures/haskell/bad_comments.hs": [
+    {
+      "anchor": {
+        "end": 48,
+        "start": 0
+      },
+      "evidence": {
+        "end": 48,
+        "start": 0
+      },
+      "excerpt": "Parses the config. It validates keys. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 24,
+        "start": 14
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/haskell/good_comments.hs": [],
+  "tests/fixtures/kotlin/bad_comments.kt": [
+    {
+      "anchor": {
+        "end": 50,
+        "start": 0
+      },
+      "evidence": {
+        "end": 50,
+        "start": 0
+      },
+      "excerpt": "Parses the manifest. It caches results. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 26,
+        "start": 14
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/kotlin/good_comments.kt": [],
+  "tests/fixtures/lua/bad_comments.lua": [
+    {
+      "anchor": {
+        "end": 67,
+        "start": 0
+      },
+      "evidence": {
+        "end": 67,
+        "start": 0
+      },
+      "excerpt": "This helper trims the cache. It also rebuilds the index. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 34,
+        "start": 25
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 111,
+        "start": 68
+      },
+      "evidence": {
+        "end": 137,
+        "start": 68
+      },
+      "excerpt": "The rebuild walks every entry and {wrap}",
+      "kind": "wrap",
+      "line": 2,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 123,
+        "start": 105
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/lua/good_comments.lua": [],
+  "tests/fixtures/markdown/advisory_long.md": [
+    {
+      "anchor": {
+        "end": 185,
+        "start": 25
+      },
+      "evidence": {
+        "end": 185,
+        "start": 25
+      },
+      "excerpt": "Once close is called the pool stops accepting new work, drains and waits for every in-flight task to finish, and only then returns control to the caller. {long}",
+      "kind": "long",
+      "line": 3,
+      "message": "advisory: 160 chars with a possible clause boundary \u2014 scan from ~120 rightward for ';' ':' '\u2014' or an independent-clause 'and/but/so' / 'which/that/where', else backward; split only at a boundary where both sides stand alone, else leave the line long",
+      "ownership": {
+        "end": 185,
+        "start": 25
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/markdown/bad_list_continuation.md": [
+    {
+      "anchor": {
+        "end": 94,
+        "start": 17
+      },
+      "evidence": {
+        "end": 109,
+        "start": 17
+      },
+      "excerpt": "define and use composite types that use those types, such as a slice {wrap}",
+      "kind": "wrap",
+      "line": 3,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 99,
+        "start": 88
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/markdown/bad_quoted_prose.md": [
+    {
+      "anchor": {
+        "end": 70,
+        "start": 16
+      },
+      "evidence": {
+        "end": 70,
+        "start": 16
+      },
+      "excerpt": "One sentence here. Another sentence follows. {fused}",
+      "kind": "fused",
+      "line": 3,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 44,
+        "start": 31
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 123,
+        "start": 72
+      },
+      "evidence": {
+        "end": 146,
+        "start": 72
+      },
+      "excerpt": "A line that ends mid-clause because it was {wrap}",
+      "kind": "wrap",
+      "line": 5,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 133,
+        "start": 117
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 213,
+        "start": 148
+      },
+      "evidence": {
+        "end": 213,
+        "start": 148
+      },
+      "excerpt": "Nested quoting still yields prose. Two sentences here. {fused}",
+      "kind": "fused",
+      "line": 8,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 189,
+        "start": 179
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/markdown/bad_trailing_code_span.md": [
+    {
+      "anchor": {
+        "end": 93,
+        "start": 23
+      },
+      "evidence": {
+        "end": 109,
+        "start": 23
+      },
+      "excerpt": "The compiler will assume all functions provide an `ABIInternal` {wrap}",
+      "kind": "wrap",
+      "line": 3,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 108,
+        "start": 87
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 181,
+        "start": 111
+      },
+      "evidence": {
+        "end": 233,
+        "start": 111
+      },
+      "excerpt": "One incompatibility is changing `testing.Cover.CoveredPackages` {wrap}",
+      "kind": "wrap",
+      "line": 6,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 187,
+        "start": 175
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/markdown/bad_wrapped.md": [
+    {
+      "anchor": {
+        "end": 97,
+        "start": 15
+      },
+      "evidence": {
+        "end": 188,
+        "start": 15
+      },
+      "excerpt": "The pool starts one worker per configured slot and hands each submission to {wrap}",
+      "kind": "wrap",
+      "line": 3,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 101,
+        "start": 91
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 188,
+        "start": 98
+      },
+      "evidence": {
+        "end": 188,
+        "start": 98
+      },
+      "excerpt": "the first idle worker. A submission that arrives while every worker is busy {fused} {wrap}",
+      "kind": "fused",
+      "line": 4,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 122,
+        "start": 113
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 188,
+        "start": 98
+      },
+      "evidence": {
+        "end": 215,
+        "start": 98
+      },
+      "excerpt": "the first idle worker. A submission that arrives while every worker is busy {fused} {wrap}",
+      "kind": "wrap",
+      "line": 4,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 195,
+        "start": 182
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/markdown/good_abbreviations.md": [],
+  "tests/fixtures/markdown/good_blockquotes.md": [],
+  "tests/fixtures/markdown/good_fence_marks.md": [],
+  "tests/fixtures/markdown/good_indented_code.md": [],
+  "tests/fixtures/markdown/good_list_items.md": [],
+  "tests/fixtures/markdown/good_pre_block.md": [],
+  "tests/fixtures/markdown/good_refdefs.md": [],
+  "tests/fixtures/markdown/good_sembr.md": [],
+  "tests/fixtures/markdown/good_tables.md": [],
+  "tests/fixtures/markdown/good_trailing_emphasis.md": [],
+  "tests/fixtures/perl/bad_comments.pl": [
+    {
+      "anchor": {
+        "end": 48,
+        "start": 0
+      },
+      "evidence": {
+        "end": 48,
+        "start": 0
+      },
+      "excerpt": "Reads the manifest. It skips symlinks. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 24,
+        "start": 12
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/perl/good_comments.pl": [],
+  "tests/fixtures/powershell/bad_comments.ps1": [
+    {
+      "anchor": {
+        "end": 45,
+        "start": 0
+      },
+      "evidence": {
+        "end": 45,
+        "start": 0
+      },
+      "excerpt": "Loads settings. It merges defaults. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 20,
+        "start": 8
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/powershell/good_comments.ps1": [],
+  "tests/fixtures/python/bad_docstring.py": [
+    {
+      "anchor": {
+        "end": 84,
+        "start": 16
+      },
+      "evidence": {
+        "end": 84,
+        "start": 16
+      },
+      "excerpt": "Fetch the URL and return its body. Retries are {fused} {wrap}",
+      "kind": "fused",
+      "line": 2,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 65,
+        "start": 52
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 84,
+        "start": 16
+      },
+      "evidence": {
+        "end": 145,
+        "start": 16
+      },
+      "excerpt": "Fetch the URL and return its body. Retries are {fused} {wrap}",
+      "kind": "wrap",
+      "line": 2,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 98,
+        "start": 78
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 145,
+        "start": 85
+      },
+      "evidence": {
+        "end": 177,
+        "start": 85
+      },
+      "excerpt": "performed with exponential backoff and the caller {wrap}",
+      "kind": "wrap",
+      "line": 3,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 154,
+        "start": 139
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 269,
+        "start": 203
+      },
+      "evidence": {
+        "end": 304,
+        "start": 203
+      },
+      "excerpt": "A trailing comment sentence that wraps mid-clause is also {wrap}",
+      "kind": "wrap",
+      "line": 9,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 278,
+        "start": 263
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/python/good_doctest.py": [],
+  "tests/fixtures/python/good_python.py": [],
+  "tests/fixtures/python/good_sig_states.py": [],
+  "tests/fixtures/rlang/bad_comments.r": [
+    {
+      "anchor": {
+        "end": 43,
+        "start": 0
+      },
+      "evidence": {
+        "end": 43,
+        "start": 0
+      },
+      "excerpt": "Fits the model. It scales inputs. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 20,
+        "start": 11
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/rlang/good_comments.r": [],
+  "tests/fixtures/ruby/bad_comments.rb": [
+    {
+      "anchor": {
+        "end": 68,
+        "start": 30
+      },
+      "evidence": {
+        "end": 98,
+        "start": 30
+      },
+      "excerpt": "The importer batches rows and {wrap}",
+      "kind": "wrap",
+      "line": 2,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 78,
+        "start": 62
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/ruby/good_comments.rb": [],
+  "tests/fixtures/rust/bad_wrapped.rs": [
+    {
+      "anchor": {
+        "end": 63,
+        "start": 0
+      },
+      "evidence": {
+        "end": 63,
+        "start": 0
+      },
+      "excerpt": "Reads the whole file into memory. The buffer {fused} {wrap}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 41,
+        "start": 30
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 63,
+        "start": 0
+      },
+      "evidence": {
+        "end": 120,
+        "start": 0
+      },
+      "excerpt": "Reads the whole file into memory. The buffer {fused} {wrap}",
+      "kind": "wrap",
+      "line": 1,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 73,
+        "start": 57
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 120,
+        "start": 64
+      },
+      "evidence": {
+        "end": 154,
+        "start": 64
+      },
+      "excerpt": "grows geometrically and the read stops at EOF {wrap}",
+      "kind": "wrap",
+      "line": 2,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 132,
+        "start": 114
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/rust/good_rustdoc.rs": [],
+  "tests/fixtures/shell/bad_shell.sh": [
+    {
+      "anchor": {
+        "end": 84,
+        "start": 20
+      },
+      "evidence": {
+        "end": 84,
+        "start": 20
+      },
+      "excerpt": "Rotates the log files. The rotation keeps seven {fused} {wrap}",
+      "kind": "fused",
+      "line": 2,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 48,
+        "start": 38
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 84,
+        "start": 20
+      },
+      "evidence": {
+        "end": 132,
+        "start": 20
+      },
+      "excerpt": "Rotates the log files. The rotation keeps seven {fused} {wrap}",
+      "kind": "wrap",
+      "line": 2,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 91,
+        "start": 78
+      },
+      "ownership_basis": "token"
+    },
+    {
+      "anchor": {
+        "end": 132,
+        "start": 85
+      },
+      "evidence": {
+        "end": 149,
+        "start": 85
+      },
+      "excerpt": "days of history and the oldest file is {wrap}",
+      "kind": "wrap",
+      "line": 3,
+      "message": "ends mid-clause (column-wrapped?) \u2014 break at sentence or clause boundaries, not at a column",
+      "ownership": {
+        "end": 142,
+        "start": 126
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/shell/good_shell.sh": [],
+  "tests/fixtures/sql/bad_comments.sql": [
+    {
+      "anchor": {
+        "end": 42,
+        "start": 0
+      },
+      "evidence": {
+        "end": 42,
+        "start": 0
+      },
+      "excerpt": "Counts users. It excludes bots. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 19,
+        "start": 10
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/sql/good_comments.sql": [],
+  "tests/fixtures/vbnet/bad_comments.vb": [
+    {
+      "anchor": {
+        "end": 56,
+        "start": 0
+      },
+      "evidence": {
+        "end": 56,
+        "start": 0
+      },
+      "excerpt": "Renders the report. Callers must dispose it. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 31,
+        "start": 16
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/vbnet/good_comments.vb": [],
+  "tests/fixtures/zig/bad_comments.zig": [
+    {
+      "anchor": {
+        "end": 51,
+        "start": 0
+      },
+      "evidence": {
+        "end": 51,
+        "start": 0
+      },
+      "excerpt": "Allocates the pool. The caller owns it. {fused}",
+      "kind": "fused",
+      "line": 1,
+      "message": "two sentences on one line \u2014 one sentence per line",
+      "ownership": {
+        "end": 27,
+        "start": 18
+      },
+      "ownership_basis": "token"
+    }
+  ],
+  "tests/fixtures/zig/good_comments.zig": []
+}

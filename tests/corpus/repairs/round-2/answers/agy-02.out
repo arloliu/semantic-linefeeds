@@ -1,0 +1,150 @@
+```json
+[
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:190:1#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:98:1#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": [
+      [
+        "The call to g needs a dictionary.",
+        "At the callsite to g from f, f has no way to know what dictionary it should use,",
+        "because the type parameterizing the instantiation of g is a generic type.",
+        "So the caller of f must provide that dictionary."
+      ]
+    ]
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-acknowledgment-termPoison/main.go:43:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/rpcruntime/lease.go:82:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/shm/recovery.go:400:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:panic_policy.go:36:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/supervisor/supervisor.go:1656:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/spawn.go:168:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c02",
+      "c04",
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  }
+]
+```

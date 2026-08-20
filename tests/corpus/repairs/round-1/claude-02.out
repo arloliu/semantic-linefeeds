@@ -1,0 +1,67 @@
+Working through each unit against the semantic-linefeeds rule (one sentence per line, rejoin-then-split at sentence boundaries for fused+wrap pairs, never sever a real clause, don't split compliant-length lines unnecessarily, never break inside inline code spans).
+
+```json
+[
+  {
+    "id": "styx:internal/transport/transport.go:231:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:760:0#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:326:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:350:0#repair",
+    "choose": "c06",
+    "accept": ["c06"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/68723-crypto-ssh-v2.md:430:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo-implementation.md:167:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:219:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:136:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  }
+]
+```
+
+Notes on the closer calls:
+- Unit 2: only c08 splits all three sentences one-per-line without severing a clause; the checker's two `fused` findings match the S1|S2 and S2|S3 boundaries, not the label:S1 attachment (colon isn't a sentence end), so header+S1 sharing a line is correct, not a defect.
+- Unit 4 and Unit 8: rejected candidates that added extra splits at semicolons/commas beyond what fused+wrap called for — those lines were already under the length threshold, so the "wrap" fix is to rejoin then split only at the sentence end, not to further fragment a compliant clause.
+- Unit 3: rejected the `and`-boundary split (c05) despite `and` being a listed boundary type, because the window truncates before the second clause's verb is visible — can't confirm both sides stand alone, so per the false-positive-judgment rule I left it unsplit beyond the sentence boundary.

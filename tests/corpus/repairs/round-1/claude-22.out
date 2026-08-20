@@ -1,0 +1,66 @@
+```json
+[
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:246:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:393:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:245:0#repair",
+    "choose": "c06",
+    "accept": ["c06"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/26903-simplify-mark-termination.md:139:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:12:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:452:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:480:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/supervisor/supervisor.go:612:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  }
+]
+```
+
+Key judgment calls worth flagging:
+
+- **Unit 1** and **Unit 5**: rejoining the two reported lines produces a line over 120 chars, but the only valid clause boundary sits at a sentence period whose split would push text into a third line outside the finding's scope — so per the bounded-repair rule, the line is left long rather than split further.
+- **Unit 3**: many candidates split at `Go,` or `However,` — neither is a real clause boundary needed under the 120-char threshold, so only the sentence-end split (c06) is correct.
+- Several candidates in units 3/4/8 split at commas or coordinators (`so`, `since`) that are grammatically valid boundaries but unnecessary since the resulting line is well under the length limit — rejected consistently, since the rule reserves clause-boundary splits for over-length lines, not every sentence.

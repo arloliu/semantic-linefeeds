@@ -1,0 +1,69 @@
+[
+  {
+    "id": "go-proposal:design/18802-percpu-sharded.md:261:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/freeze-syscall.md:38:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:445:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "The `workspaceEdit/resolve` request is sent from the client to the server to resolve the final edits",
+        "that should be applied to the workspace.",
+        "As long as the `WorkspaceEdit` contains non-empty `formFields` (questions), the client should not apply the edits.",
+        "Instead, the client should collect the user's answers and call `workspaceEdit/resolve` with the answers populated in `formAnswers`."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:17:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "- Parameterized functions may be instantiated with one or more type arguments",
+        "  when they are called or used as function values, as in `g := f[int]` or `x := f[int]()`.",
+        "  Function type arguments are an [expression list]."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:206:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13073-code-of-conduct.md:201:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/object.go:1232:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:604:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  }
+]

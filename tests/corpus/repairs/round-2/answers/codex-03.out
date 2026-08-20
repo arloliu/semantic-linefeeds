@@ -1,0 +1,70 @@
+[
+  {
+    "id": "go-proposal:design/60078-loopvar.md:725:0#repair",
+    "choose": "c05",
+    "accept": ["c02", "c05"],
+    "reject": ["c00", "c01", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:139:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:445:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:42:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      [
+        "_Phase 4a_. Apply standard profiling and measurement techniques to understand and optimize the memory and CPU usage of the compiler.",
+        "This may include introducing parallelization; if so, the race detector is likely to be a significant help.",
+        "This is targeted for Go 1.4, but parts may slip to Go 1.5.",
+        "Some basic profiling and optimization may be done earlier, in Phase 3."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/go15bootstrap.md:62:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "After that first step, we can convert the remaining C programs in whatever order makes sense.",
+        "Each conversion will require minor modifications to cmd/dist to build the Go version instead of the C version.",
+        "I am not sure whether the new linker or the new assemblers will be converted first.",
+        "I expect the Go compiler to be converted last."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:569:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-acknowledgment-termPoison/main.go:43:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-ordered-consumer-read/main.go:30:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c03"],
+    "reject": ["c00", "c02", "c04", "c05", "c06"],
+    "missing": []
+  }
+]

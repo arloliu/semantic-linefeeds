@@ -1,0 +1,86 @@
+Working through each unit against the semantic-linefeeds rule (one sentence per line; rejoin+resplit only at real clause boundaries; list-item commas are not boundaries; don't touch text no finding was raised about).
+
+**Unit 1 & 5** (identical text): 4 sentences are fused. Every candidate (c00–c06) leaves at least one sentence-pair still fused on a single line, so none is a correct complete repair — the full 4-way split isn't offered.
+
+**Unit 2**: only c01 fixes the fused split without introducing a bad break at a list-item comma ("level 1,", "level 2," are enumeration commas, not clause boundaries).
+
+**Unit 3**: c01 splits the fused sentence and rejoins the wrapped remainder (no real boundary inside "need to be able to be ordered... and with a goroutine..." — that `and` joins two prepositional phrases, not two independent clauses).
+
+**Unit 4, 8**: straightforward fused-sentence splits; the split candidate is correct.
+
+**Unit 6**: only the fused sentence needed splitting; line 2 had no finding against it, so the minimal correct fix (c02) leaves it untouched at its existing colon boundary.
+
+**Unit 7**: c01 splits the fused sentence and rejoins "Therefore, we do not usually run..." as one line — splitting between "we" and "do not usually" (c03, original) severs subject from verb, and isolating "Therefore," (c02) severs the adverb from its clause.
+
+```json
+[
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:216:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "- Choosing a built-in function rather than an operator has several advantages.",
+        "  There is no need for a new keyword such as `check` which would have made the design not backward compatible with existing parsers.",
+        "  There is also no need for extending the expression syntax with the new operator.",
+        "  Adding a new built-in is a comparatively trivial and completely orthogonal language change."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/12166-subtests.md:214:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:163:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-10-gen.md:20:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:216:2#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "- Choosing a built-in function rather than an operator has several advantages.",
+        "  There is no need for a new keyword such as `check` which would have made the design not backward compatible with existing parsers.",
+        "  There is also no need for extending the expression syntax with the new operator.",
+        "  Adding a new built-in is a comparatively trivial and completely orthogonal language change."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/44167-gc-pacer-redesign.md:240:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:122:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:1618:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  }
+]
+```

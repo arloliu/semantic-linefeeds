@@ -1,0 +1,63 @@
+[
+  {
+    "id": "nats.go:object.go:404:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/shm/writer.go:1670:0#repair",
+    "choose": "c02",
+    "accept": ["c01", "c02", "c04"],
+    "reject": ["c00", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:371:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "   alignment of the following field.",
+        "   This is easy to describe and understand, and provides a natural way to control both field and struct alignment.",
+        "   [`runtime.AlignedN` may or may not "
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:182:3#repair",
+    "choose": "c06",
+    "accept": ["c06"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:139:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/draft-fuzzing.md:311:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:418:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:71:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  }
+]

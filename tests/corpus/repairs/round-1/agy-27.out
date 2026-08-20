@@ -1,0 +1,134 @@
+```json
+[
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:445:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:243:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:84:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-shaping-the-stream-setLimits/main.go:30:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/57001-gotoolchain.md:42:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:150:0#repair",
+    "choose": "c09",
+    "accept": [
+      "c08",
+      "c09"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/12302-release-proposal.md:161:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/shm/recovery.go:79:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  }
+]
+```

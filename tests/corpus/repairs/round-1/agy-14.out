@@ -1,0 +1,157 @@
+```json
+[
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:182:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "Only when the enclosing function is about to return does `try` test for an error returned by `f`.",
+        "Without changes to the behavior of `try`, such an error might then overwrite another error currently being returned by the enclosing function.",
+        "This is at best confusing, and at worst error-prone.",
+        "Therefore we suggest to disallow `try` as the called function in a `defer` statement as well.",
+        "We can always revisit this decision if sensible applications are found."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:353:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:342:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:319:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/cryptography-principles.md:17:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13073-code-of-conduct.md:389:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:445:1#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:83:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": [
+      [
+        "How will the caller know what derived types the body of f needs?",
+        "This is a very important question, and will be discussed at length later (see the proto-dictionary section).",
+        "For now, just assume that there will be summary information for each function which lets the callsite know what derived types are needed."
+      ]
+    ]
+  }
+]
+```

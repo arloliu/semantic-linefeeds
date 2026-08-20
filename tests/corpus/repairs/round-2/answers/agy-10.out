@@ -1,0 +1,149 @@
+```json
+[
+  {
+    "id": "styx:internal/lifecycle/reload.go:153:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/testutil/require_no_leak.go:110:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:831:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/stream.go:43:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/consume.go:31:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:296:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:63:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:64:2#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "_Discard the current compilers and use gccgo (or go/parser + go/types + LLVM, or …)_.",
+        "The current compilers are a large part of Go’s flexibility.",
+        "Tying development of Go to a comparatively larger code base like GCC or LLVM seems likely to hurt that flexibility.",
+        "Also, GCC is a large C (now partly C++) program and LLVM a large C++ program.",
+        "All the reasons listed above justifying a move away from the current compiler code apply as much or more to these code bases."
+      ]
+    ]
+  }
+]
+```

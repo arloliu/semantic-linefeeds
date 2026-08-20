@@ -1,0 +1,79 @@
+Working through each unit against the semantic-linefeeds rule (one sentence per line; sub-splits only at real clause boundaries where both sides stand alone; `long` is advisory).
+
+Unit 6 is the outlier: none of the 22 candidates fully separates all three fused sentences (every candidate either splits at an invalid point — the comma after the introductory "In order to create the dictionary entries," which isn't a recognized boundary — or leaves sentence 2 and sentence 3 still fused together). So I'm reporting a `missing` repair for that one.
+
+```json
+[
+  {
+    "id": "go-proposal:design/12302-release-proposal.md:164:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/event/eventfd.go:141:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:268:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:134:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:258:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:35:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      [
+        "In order to create the dictionary entries, we often need to substitute the shape type arguments with the real type arguments associated with the dictionary."
+      ],
+      [
+        "The shape type arguments must therefore be fully distinguishable, even if several of the type arguments happen to have the same shape (e.g. they are both pointer types)."
+      ],
+      [
+        "Therefore, as mentioned above, we actually add the index of the type parameter to the shape type, so that different type arguments can be fully distinguished correctly."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:24:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:600:0#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10"],
+    "missing": []
+  }
+]
+```
+
+A few notes on the judgment calls:
+
+- **Unit 1**: rejected every candidate that splits at "so it should have" — that fragment is truncated at the window edge and doesn't stand alone as a complete sentence, so `so` doesn't qualify as a coordinating boundary there.
+- **Unit 6**: rejected all candidates because none resolves both sentence-fusion points (S1/S2 and S2/S3) correctly — most either sever the non-boundary intro comma after "entries," or leave S2 and S3 glued together on one line. My proposed repair does the mandatory one-sentence-per-line split and leaves each resulting long line alone, since `long` is advisory and none of the resulting sentences has a recognized clause boundary.
+- **Units 4 & 8**: rejected candidates that split at intro adverbs ("Originally,", "Typically,", "In standard LSP,") since those aren't subordinators/relative pronouns and the split isn't needed for length either.

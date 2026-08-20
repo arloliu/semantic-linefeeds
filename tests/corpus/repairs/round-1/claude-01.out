@@ -1,0 +1,70 @@
+```json
+[
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:77:1#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/35112-scaling-the-page-allocator.md:63:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:40:0#repair",
+    "choose": "c14",
+    "accept": ["c14"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:83:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "How will the caller know what derived types the body of f needs?",
+        "This is a very important question, and will be discussed at length later (see the proto-dictionary section).",
+        "For now, just assume that there will be summary information for each function which lets the callsite know what derived types are needed."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/37112-unstable-runtime-metrics.md:302:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:host.go:1017:0#repair",
+    "choose": "c02",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:242:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:106:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  }
+]
+```
+
+Notes on the two non-trivial calls:
+
+- **Unit 4**: no candidate splits at the real sentence boundary before "For now" while leaving "and will be discussed at length later" unsplit (that "and" has no subject on its right side, so it's not a boundary). Every candidate either leaves two sentences fused on one line or severs a clause at "and"/"For now,". Reported as missing.
+- **Unit 6**: the rejoined "and" clause ("A negative duration or count has no meaning, **and** a heartbeat wait shorter than...") has independent subject+verb on both sides, so it's a genuine boundary — I accepted both the conservative fix (c01, stops at fused+wrap) and the fuller fix (c02, also splits at "and"), choosing c02.

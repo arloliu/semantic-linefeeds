@@ -1,0 +1,64 @@
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:771:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:host.go:976:0#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:28:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:283:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:156:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      [
+        "* Use angle brackets, as in `Vector<int>`.",
+        "  This has the advantage of being familiar to C++ and Java programmers.",
+        "  Unfortunately, it means that `f<T>(true)` can be parsed as either a call to function `f<T>` or a comparison of `f<T` (an expression that tests whether `f` is less than `T`) with `(true)`.",
+        "  While it may be possible to construct complex resolution rules, the Go syntax avoids that sort of ambiguity for good reason."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:223:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:242:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/26903-simplify-mark-termination.md:433:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  }
+]

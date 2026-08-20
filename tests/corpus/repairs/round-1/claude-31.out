@@ -1,0 +1,66 @@
+```json
+[
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:18:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:66:0#repair",
+    "choose": "c14",
+    "accept": ["c14"],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:418:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00","c02","c03","c04","c05","c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:299:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00","c02","c03","c04","c05","c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:159:0#repair",
+    "choose": "c09",
+    "accept": ["c07", "c09"],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c08","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:259:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:208:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00","c01","c02","c03","c04","c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:66:1#repair",
+    "choose": "c14",
+    "accept": ["c14"],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": []
+  }
+]
+```
+
+Notes on the judgment calls:
+
+- **Units 2 & 8** (identical text): the only candidate that resolves both fused boundaries without severing a clause fragment (`but with Brackets set to true` and `and allows...` are not independent-clause splits) or leaving any sentence pair still fused is c14 — a clean one-sentence-per-line split with no internal sub-splits.
+- **Unit 5**: `which` is the checker's algorithmic rightward-scan hit, but no candidate offers a clean split there without severing the inline-code span `MakePair(int, string)`. Between the two clause-safe options, c07 (sentence-only split) and c09 (also splits at the valid independent-clause `and`), I chose c09 since a real boundary is available and the line is well over the long threshold — but both are legitimate, so both are accepted.
+- **Units 3 & 4**: these are column-wrapped `wrap`+`fused` windows whose sentence continues past the shown lines, so per the rule I only rejoin the severed word and split at the one sentence boundary I can see (c01) — not forcing further splits into text I can't verify.

@@ -1,0 +1,161 @@
+```json
+[
+  {
+    "id": "styx:internal/transport/difftest/harness.go:534:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03",
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:128:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:44:0#repair",
+    "choose": "c09",
+    "accept": [
+      "c09"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:151:0#repair",
+    "choose": "c09",
+    "accept": [
+      "c07",
+      "c09"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c08",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/shm/intent.go:52:1#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:443:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c02",
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/testdata/deathsig_helper/main.go:2:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:197:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  }
+]
+```

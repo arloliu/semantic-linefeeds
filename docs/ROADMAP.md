@@ -160,7 +160,13 @@ in either direction, because the freeze removes the room a port would need to co
   Entry condition: the labeled corpus must show masking creates no false positives around protected content.
 - **Feedback persistence.**
   A session log of findings would show whether agents actually repaired what was reported.
-  Deferred to v0.9, alongside the real-agent corpus that needs the same data.
+  Measured and deferred.
+  Across 219 commits, this repository's own history holds at most ten such repairs,
+  and that is an over-count.
+  A log cannot reach a population worth scoring at that rate,
+  so the repair corpus elicits its population instead.
+  Entry condition: enough repairs happening in the field to score a change against,
+  rather than an argument that a log would be useful.
 - **Testing whether an `and` joins two independent clauses.**
   `CONNECTORS` exempts every lower line opening with `and`,
   while the skill calls a compound-object `and` a mistake to avoid,

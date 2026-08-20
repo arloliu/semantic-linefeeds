@@ -1,0 +1,34 @@
+```json
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:584:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:host.go:976:0#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:10:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:864:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  }
+]
+```
+
+Notes on unit 2, per the advisor's catch: the lone `fused` finding's own repair instruction says that when the text after the stop doesn't finish its sentence and the next line opens on a lowercase word, join it down rather than leaving it stranded. `The host authors geometry` doesn't finish its sentence, and the next line opens on `(converted` — lowercase — so c08 (rejoin, then split only at the real sentence boundary, landing under 120 chars) is correct; c09 leaves a fragment line standing alone and is wrong despite looking like the "minimal" fix.

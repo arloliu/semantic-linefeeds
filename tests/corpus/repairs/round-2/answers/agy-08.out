@@ -1,0 +1,152 @@
+```json
+[
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:95:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "Dictionaries are named similarly to the associated instantiated function or method, but with “.dict” preprended.",
+        "So, examples include: `.dict.Max[float64]` and `.dict.(*value[int]).get` .",
+        "A dictionary is always defined for a concrete set of types,",
+        "so there are never any type params or shape types in a dictionary name."
+      ]
+    ]
+  },
+  {
+    "id": "styx:internal/arena/arena.go:69:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44253-generic-array-sizes.md:246:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:262:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:515:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:41:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:221:2#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": [
+      [
+        "Another option in this space is to change the calling convention to pass all values of generic type by pointer.",
+        "This will simplify the layout problem for the arguments sections.",
+        "But it requires implementing wrapper functions for calls from generic code to non-generic code or vice-versa.",
+        "It is not entirely clear what the rules would be for where those wrappers get generated and instantiated."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:445:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  }
+]
+```

@@ -1,0 +1,66 @@
+```json
+[
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:252:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:291:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/46136-vet-std-references.md:124:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:24:0#repair",
+    "choose": "c03",
+    "accept": ["c02", "c03"],
+    "reject": ["c00", "c01"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:257:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:101:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:150:0#repair",
+    "choose": "c09",
+    "accept": ["c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:162:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```
+
+Notes on the closer calls:
+
+- **Unit 3**: the merged continuation (131 chars) needed a further split. A rightward scan from ~120 lands almost exactly on `and` (cols 118–120), and both sides stand alone as clauses — so c04 (split before `and we'll need`) is the rule-compliant choice, not c03, which breaks at a bare comma with no licensed boundary word there.
+- **Unit 4**: both c02 (splits at the colon too) and c03 (minimal fix) produce correct prose — the colon is a legitimate boundary but not a required one since the line fits under 120 either way. Chose c03 as the minimal fix, accepted both.
+- **Unit 7**: rejected c08 despite it correctly isolating sentence 1, because the leftover second sentence (~124–126 chars) is over the limit with an available `but` boundary sitting right at the clause split — c09 is the complete fix.

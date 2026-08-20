@@ -1,0 +1,72 @@
+Working through each unit against the semantic-linefeeds rule (one sentence per line, rejoin-before-split when fused+wrap share a line, never break code spans/directives, don't over-split short sentences without a long trigger).
+
+For units 2 and 7, none of the candidates fully resolves all the fused sentence boundaries in the paragraph — every candidate leaves at least one pair of sentences still fused — so I'm flagging those as missing.
+
+```json
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:771:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:13:2#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15"],
+    "missing": [
+      "We propose adding support for profile-guided optimization (PGO) to the Go gc toolchain.",
+      "PGO will enable the toolchain to perform application- and workload-specific optimizations based on run-time information.",
+      "Unlike many compiler optimizations, PGO requires user involvement to collect profiles and feed them back into the build process.",
+      "Hence, we propose a design that centers user experience and ease of deployment and fits naturally into the broader Go build ecosystem."
+    ]
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:15:0#repair",
+    "choose": "c03",
+    "accept": ["c03", "c06"],
+    "reject": ["c00", "c01", "c02", "c04", "c05"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:199:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00","c01","c02","c03","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/consumer_config.go:184:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:796:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:68:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      "Carried to completion, this plan still leaves the rest of the Plan 9 toolchain written in C.",
+      "In the long term it would be nice to eliminate all C from the tree.",
+      "This section speculates on how that might happen.",
+      "It is not guaranteed to happen in this way or at all."
+    ]
+  },
+  {
+    "id": "go-proposal:design/43810-go-pmem.md:243:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```

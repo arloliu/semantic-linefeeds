@@ -1,0 +1,69 @@
+[
+  {
+    "id": "go-proposal:design/55022-pgo.md:13:2#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      [
+        "We propose adding support for profile-guided optimization (PGO) to the Go gc toolchain.",
+        "PGO will enable the toolchain to perform application- and workload-specific optimizations based on run-time information.",
+        "Unlike many compiler optimizations, PGO requires user involvement to collect profiles and feed them back into the build process.",
+        "Hence, we propose a design that centers user experience and ease of deployment and fits naturally into the broader Go build ecosystem."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:149:0#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo-implementation.md:167:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:205:1#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:760:1#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:316:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "Register calling convention: argument stack objects?",
+        "Use ABI0?",
+        "If arguments come in registers, and those registers contain data for a generic type, it could be complicated to get that data into a memory location so we can take the address of it."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:600:0#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/18802-percpu-sharded.md:40:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  }
+]
