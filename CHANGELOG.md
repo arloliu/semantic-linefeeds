@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **A suggested repair now mends the whole sentence, not just the line it starts on.**
+  When a run-on sentence continues onto the next line,
+  the suggested replacement now rejoins that continuation and splits at the right place,
+  and it says which lines it replaces.
+  A few repairs the checker used to suggest are withheld instead,
+  because they would have repaired only half the sentence —
+  when the checker cannot fix the whole thing, it now says so rather than guessing.
+  Tools reading the checker's JSON output should note the document version is now 2:
+  a suggestion's lines replace the counted range, not always one line.
+
 ### Added
 
 - **The checker runs in CI and reports where the team reads.**
