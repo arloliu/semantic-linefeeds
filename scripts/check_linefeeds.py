@@ -2518,8 +2518,11 @@ def run_sources(sources, as_json=False):
     """
     violations = 0
     reports = []
-    for path, text in sources:
-        findings = diagnose(text, path)
+    for source in sources:
+        # A three-part source carries the changed spans that own its findings;
+        # a two-part source is a whole file, which every local mode still is.
+        path, text, spans = source if len(source) == 3 else (*source, None)
+        findings = diagnose(text, path, spans=spans)
         if findings:
             violations += sum(1 for d in findings if d["kind"] != "long")
             if as_json:

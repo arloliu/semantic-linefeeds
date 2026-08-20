@@ -109,7 +109,7 @@ because a guardrail nobody can install cleanly has no team to integrate with.
   Its shape today is a two-line replacement for the anchor line alone,
   and over the pinned evidence base a third of all `fused` lines carry a `wrap` as well,
   so widening the class without widening the shape would write that many stranded openings into files unattended.
-- GitHub Action, SARIF, and annotations as serializers over the diagnostic schema.
+- GitHub Action, SARIF, and annotations as serializers over the diagnostic schema. **Done.**
 - A real-agent regression corpus.
 
 ### v1.0 — Stable contracts

@@ -355,6 +355,67 @@ Only tracked changes are enumerated;
 an untracked file needs `git add` before any mode can see it.
 Symlinks are never checked, in any mode.
 
+Two more selection modes exist for CI, where a clean checkout has no local delta:
+`semlf --base REF` checks the files changed since `merge-base(REF, HEAD)`
+and reports only the diagnostics the changed lines own,
+because a CI run annotates someone's pull request
+and a finding that predates the branch is not that author's to answer;
+`semlf --all` checks every tracked file under the configured excludes.
+`semlf render sarif|github` turns a captured `--json` documents list into a SARIF report or GitHub workflow annotations,
+re-analyzing nothing.
+
+## The GitHub Action
+
+The Action installs the checker it shipped with —
+pinning the Action pins everything —
+checks the pull request against its base,
+annotates the changed lines,
+and fails only on the kinds you ask for.
+
+| input | default | meaning |
+|---|---|---|
+| `fail-on` | `fused` | kinds that fail the build; `fused,wrap` for the stricter gate; `long` is refused, it never fails a build |
+| `mode` | `base` | `base` checks changed files against the PR base; `all` checks the whole tree |
+| `base` | the PR's base | the ref for `mode: base`; required on non-PR events |
+| `sarif-file` | none | write a SARIF report here and expose it as the `sarif-file` output; never uploaded |
+
+The default, annotations only:
+
+```yaml
+on: pull_request
+jobs:
+  prose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # mode "base" needs history reaching the merge base
+      - uses: arloliu/semantic-linefeeds@main
+```
+
+With a SARIF report, whose upload — and its permission — belongs to your workflow:
+
+```yaml
+on: pull_request
+permissions:
+  security-events: write
+jobs:
+  prose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: arloliu/semantic-linefeeds@main
+        id: semlf
+        with:
+          sarif-file: semlf.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always() && steps.semlf.outputs.sarif-file != ''
+        with:
+          sarif_file: ${{ steps.semlf.outputs.sarif-file }}
+```
+
 Policy — `.semlf.ini`, including `exclude` — is always read from the working tree,
 even for `--staged`: its content is the index, but its policy is the checkout it runs in.
 A config that is staged but not yet on disk does not yet govern `--staged` (ADR-0013).

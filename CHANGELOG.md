@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The checker runs in CI and reports where the team reads.**
+  A GitHub Action checks the files a pull request changed,
+  annotates the changed lines in the PR view,
+  and fails the build only on fused sentences —
+  the one kind whose precision is measured —
+  while mid-clause breaks annotate as warnings
+  and a team that wants them blocking can opt in.
+  Only findings on lines the pull request itself touched are reported,
+  so nobody is flagged for prose that predates their branch.
+  `semlf --base REF` and `semlf --all` bring the same selection to any CI,
+  and `semlf render sarif|github` turns one captured `--json` run into a SARIF report or workflow annotations,
+  re-analyzing nothing.
+
 - **A way to ask why the checker declined to suggest a repair.**
   The checker offers a two-line replacement for some run-on lines and not for others.
   Until now it did not say which reason applied.

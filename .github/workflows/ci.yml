@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    name: the full local gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: oven-sh/setup-bun@v2
+      - name: Tests
+        run: |
+          python3 -m pip install --quiet pytest
+          python3 -m pytest tests/ -q
+      - name: Lint
+        run: |
+          python3 -m pip install --quiet "ruff==0.16.3"
+          ruff check .
+          ruff format --check .
+      - name: Adapter tests
+        run: bun test adapters/opencode/
+      - name: Self-hosting check
+        run: |
+          # tests/ is the declared exception: its files exist to carry text
+          # the checker must flag, so their findings are the measurement.
+          git ls-files '*.md' ':!tests/*' | xargs python3 scripts/check_linefeeds.py --file
+
+  dogfood:
+    name: the Action on this PR
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # mode "base" needs history that reaches the merge base;
+          # actions/checkout fetches one commit by default.
+          fetch-depth: 0
+      - uses: ./
+        with:
+          mode: base
