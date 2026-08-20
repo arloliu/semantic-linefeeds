@@ -14,6 +14,7 @@ they must present the semlf surface, not the core's internal name.
 """
 
 import argparse
+import json
 import sys
 
 import check_linefeeds as core
@@ -31,6 +32,9 @@ modes:
   --hook [claude|codex]  run as a PostToolUse hook reading JSON on stdin
   reflow [REF]           verify the worktree differs from REF (default HEAD)
                          only in where its prose breaks; exit 1 on any other change
+  render sarif|github [DOCS.json|-]
+                         render a --json documents list (file or stdin) as SARIF
+                         or GitHub annotations; never analyzes, never gates
   doctor                 replay a synthetic payload end to end and report evidence
   install [TARGET...]    detect agents, list every path the plan writes, ask y/N;
                          naming a target (codex, opencode, agentsmd PATH) applies it immediately
@@ -76,6 +80,45 @@ def _git_mode(argv):
         return 1
     finally:
         core.CLI_LONG_LIMIT = saved_limit
+
+
+def _render(argv):
+    """Render a documents list somebody already analyzed.
+
+    Exit 0 however many findings the documents hold —
+    what a finding means for a build is the gate's decision —
+    and nonzero only for arguments (64) or unusable input (1).
+    """
+    from semlf import render
+
+    if len(argv) not in (1, 2) or argv[0] not in ("sarif", "github"):
+        print("usage: semlf render sarif|github [DOCUMENTS.json|-]", file=sys.stderr)
+        return 64
+    source = argv[1] if len(argv) == 2 else "-"
+    try:
+        raw = (
+            sys.stdin.read() if source == "-" else open(source, encoding="utf-8").read()
+        )
+    except OSError as exc:
+        print(f"semlf render: cannot read {source}: {exc}", file=sys.stderr)
+        return 1
+    try:
+        documents = json.loads(raw)
+        if not isinstance(documents, list) or not all(
+            isinstance(one, dict) and "diagnostics" in one for one in documents
+        ):
+            raise ValueError("not a documents list")
+        if argv[0] == "sarif":
+            print(json.dumps(render.sarif(documents), indent=2))
+        else:
+            for line in render.github_annotations(documents):
+                print(line)
+    except (ValueError, KeyError, TypeError) as exc:
+        print(
+            f"semlf render: {source} is not what --json emits: {exc}", file=sys.stderr
+        )
+        return 1
+    return 0
 
 
 def _reflow(argv):
@@ -136,6 +179,8 @@ def main(argv=None):
         return 64
     if argv and argv[0] == "check":
         argv = ["--file"] + argv[1:]
+    if argv[:1] == ["render"]:
+        return _render(argv[1:])
     if argv[:1] == ["reflow"]:
         return _reflow(argv[1:])
     if argv[:1] == ["doctor"]:
