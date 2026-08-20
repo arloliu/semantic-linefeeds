@@ -835,6 +835,39 @@ def test_a_pass_that_did_not_answer_every_candidate_is_an_error():
         repair_resolution([{"chosen": (), "accept": [()], "reject": []}], candidates)
 
 
+def test_a_pass_reporting_a_missing_repair_still_answers_every_candidate():
+    """Reporting one repair as absent does not excuse skipping the rest.
+
+    `REPAIRING.md` asks for a verdict on every candidate, the unchanged one included,
+    and a `missing` report is an addition to that rather than a replacement for it.
+    Resolution short-circuited on `missing` before it checked,
+    so a partial answer travelled all the way to the manifest schema.
+    """
+    candidates = synthetic()
+    partial = {
+        "chosen": None,
+        "accept": [],
+        "reject": [()],
+        "missing": [["a line", "another line"]],
+    }
+    with pytest.raises(ValueError):
+        repair_resolution([partial], candidates)
+
+
+def test_a_pass_reporting_a_missing_repair_that_answered_them_all_is_a_defect():
+    """The refusal still stands once the verdicts are complete."""
+    candidates = synthetic()
+    keys = list(candidates)
+    complete = {
+        "chosen": None,
+        "accept": [],
+        "reject": [tuple(key) for key in keys],
+        "missing": [["a line", "another line"]],
+    }
+    got = repair_resolution([complete], candidates)
+    assert got["outcome"] == "defect"
+
+
 def test_a_pass_that_rejected_the_repair_it_would_make_is_an_error():
     candidates = synthetic()
     keys = list(candidates)
