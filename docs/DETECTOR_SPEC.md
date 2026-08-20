@@ -496,6 +496,9 @@ The detector withholds the suggestion unless all of these conditions hold:
 - The raw prefix contains only approved whitespace, comment, or blockquote leaders.
 - The raw suffix contains only spaces or tabs.
 - No trailing suppression carrier was stripped.
+- The prose begins the sentence it splits: its first word is not lowercase.
+- Unpaired, the prose ends at a place a line may end,
+  unless a suppression directive for `wrap` on that line blessed the open ending.
 
 When the detector's own `wrap` pairing says the anchor's sentence continues on the line below,
 and that `wrap` is not suppressed on the anchor line,

@@ -792,7 +792,7 @@ def test_a_bare_cr_pair_reaches_below_terminator_through_the_record():
 def test_a_lower_line_with_its_own_boundary_still_reports_independently():
     """`below_boundary` withholds the anchor's repair without eating the lower finding."""
     text = "Stop now! Go later to the\nplace stands empty here! Then we left town.\n"
-    assert withheld(text) == [("below_boundary",), ()]
+    assert withheld(text) == [("below_boundary",), ("anchor_open",)]
     kinds = [(d["line"], d["kind"]) for d in diags(text)]
     assert (1, "fused") in kinds and (2, "fused") in kinds
 
@@ -904,11 +904,55 @@ BELOW_CLASS_CASES = {
     ),
 }
 
+# The anchor-side condition the calibration dry-run earned:
+# a lowercase opening word says the split's first line continues something above,
+# and the rule is rejoin before you split.
+ANCHOR_OPEN_CASE = ("then acks! A call follows here.\n", "doc.md")
+
 # The two below classes no extractor path reaches, tested by construction above.
 BELOW_CONSTRUCTED = {
     "below_prose_not_unique",
     "below_tail_rejected",
 }
+
+
+def test_a_mid_sentence_anchor_is_its_own_class():
+    (classes,) = withheld(ANCHOR_OPEN_CASE[0])
+    assert classes == ("anchor_open",)
+    (d,) = diags(ANCHOR_OPEN_CASE[0])
+    assert "suggestion" not in d
+
+
+def test_a_sentence_initial_anchor_carries_no_anchor_open():
+    (classes,) = withheld("Stop now! Go later.\n")
+    assert "anchor_open" not in classes
+
+
+def test_an_unpaired_anchor_whose_ending_no_line_may_end_on_withholds():
+    """The detector cannot pair a continuation opening with a capital,
+    and splitting would strand the open fragment ahead of it.
+    """
+    text = "Stop now! Go later to the\nI mean the other place entirely.\n"
+    (classes,) = [c for c in withheld(text) if c is not None][:1]
+    assert classes == ("anchor_unclosed",)
+    fused = [d for d in diags(text) if d["kind"] == "fused"]
+    assert all("suggestion" not in d for d in fused)
+
+
+def test_a_comma_ending_is_a_place_a_line_may_end():
+    """Sembr's own break points stay suggestible: line2 may end at a comma."""
+    (classes,) = withheld("Stop now! Go later to the store,\nand buy the rest there.\n")
+    assert "anchor_unclosed" not in classes
+
+
+def test_a_suppressed_wrap_blesses_the_open_ending():
+    """The directive targets exactly this ending, so the one-line fallback stands."""
+    text = (
+        "<!-- semlf-ignore-next wrap -->\n"
+        "Stop now! Go later to the\nplace we talked about.\n"
+    )
+    (d,) = [x for x in diags(text) if x["kind"] == "fused"]
+    assert d["suggestion"]["replaces"] == 1
 
 
 @pytest.mark.parametrize("name", sorted(BELOW_CLASS_CASES))
@@ -938,6 +982,7 @@ def test_every_declared_class_has_a_case():
         | set(CONSTRUCTED_CASES)
         | set(BELOW_CLASS_CASES)
         | BELOW_CONSTRUCTED
+        | {"anchor_open", "anchor_unclosed"}
     )
     assert covered == set(check_linefeeds.WITHHOLDING_CLASSES)
     assert len(set(check_linefeeds.WITHHOLDING_CLASSES)) == len(

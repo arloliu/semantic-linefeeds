@@ -1351,6 +1351,15 @@ WITHHOLDING_CLASSES = (
     "below_prefix_mismatch",
     "below_tail_rejected",
     "below_carrier_stripped",
+    # The anchor does not begin the sentence it would split:
+    # a lowercase first word says the text before the boundary continues something above,
+    # and splitting would strand that fragment on its own line.
+    # The skill's rule is rejoin before you split, and this class is that rule as a refusal.
+    "anchor_open",
+    # No pairing absorbed the anchor's ending, and that ending is not a place a line may end:
+    # the split's second line would strand an open fragment ahead of whatever continues it.
+    # A pairing the user suppressed is exempt, because the suppression blessed exactly that ending.
+    "anchor_unclosed",
 )
 
 
@@ -1429,6 +1438,15 @@ def _fused_withholding(record, match, below=None):
     """
     prose, raw = record["prose"], record["raw"]
     found = set()
+
+    if re.match(r"[a-z]", prose):
+        found.add("anchor_open")
+    if (
+        below is None
+        and not line_ending(prose).endswith(OK_LINE_ENDERS)
+        and "wrap" not in record.get("suppressed_kinds", ())
+    ):
+        found.add("anchor_unclosed")
 
     if below is not None:
         below_prose = below["prose"]
