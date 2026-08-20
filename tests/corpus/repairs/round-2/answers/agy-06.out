@@ -1,0 +1,152 @@
+```json
+[
+  {
+    "id": "go-proposal:design/40276-go-install.md:351:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:stream.go:199:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:218:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:70:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "A compile-time instantiation of a generic function or method of a generic type is created for a specific set of gcshape type arguments.",
+        "As mentioned above, we sometimes call such an instantiation a **shape instantiation**.",
+        "We determine on-the-fly during compilation which shape instantiations need to be created,",
+        "as described below in “Compiler processing for calls to generic functions and methods”.",
+        "Given a set of gcshape type arguments,",
+        "we create an instantiated function or method by substituting the shape type arguments for the corresponding type parameters throughout the function/method body and header.",
+        "The function body includes any closures contained in the function."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:725:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c02",
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c04",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:83:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/draft-embed.md:704:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:errors.go:294:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  }
+]
+```

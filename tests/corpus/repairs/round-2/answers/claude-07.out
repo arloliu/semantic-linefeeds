@@ -1,0 +1,76 @@
+Working through these as straightforward mechanical judgments against the semantic-linefeeds rule (fused → split at sentence end; wrap → rejoin then resplit only at real clause boundaries; don't over-split sentences that fit under ~120 chars; don't push text into a line the window didn't show).
+
+For Unit 6, none of the 11 candidates actually produces the correct 4-sentences/4-lines split without either an unnecessary comma-split or a remaining fused pair — so that one goes to `missing`.
+
+```json
+[
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:90:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:153:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:184:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/rpcruntime/stream_table.go:390:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:62:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go15bootstrap.md:62:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "After that first step, we can convert the remaining C programs in whatever order makes sense.",
+        "Each conversion will require minor modifications to cmd/dist to build the Go version instead of the C version.",
+        "I am not sure whether the new linker or the new assemblers will be converted first.",
+        "I expect the Go compiler to be converted last."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:831:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:geometry.go:12:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```
+
+Key judgment calls worth flagging:
+- Units 2, 5, 8: rejected candidates that split an already-short (< 120 char) sentence at a technically-valid boundary (semicolon/"so") — unnecessary fragmentation when the whole sentence fits on one line.
+- Unit 3: kept "It" attached to the rejoined line rather than pushing it to a third line, per the bounded-repair rule — even though grammatically a clean split would isolate it.
+- Unit 4: the checker only flagged `fused` here, but the resulting long sentence still needed a real-boundary split (I picked the colon over the original mid-clause "lookup" break, which isn't a recognized boundary).
+- Unit 6: no candidate cleanly separates all four sentences without either an unneeded comma-split or a leftover fused pair, so I reported the correct 4-line split under `missing`.

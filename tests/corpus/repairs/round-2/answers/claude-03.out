@@ -1,0 +1,81 @@
+Looked closely at each window — sentence boundaries, clause-boundary validity (subject+verb test for and/but/so), and whether a repair oversteps the two-line window into unseen text. Two units (the very long fused paragraphs in go13compiler.md and generics-implementation-dictionaries-go1.18.md) have no candidate that fully resolves all the fused sentence pairs visible in the window, so I've flagged those as missing rather than force-fitting an answer.
+
+```json
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:667:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:42:0#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21"],
+    "missing": [
+      [
+        "_Phase 4a_. Apply standard profiling and measurement techniques to understand and optimize the memory and CPU usage of the compiler.",
+        "This may include introducing parallelization; if so, the race detector is likely to be a significant help.",
+        "This is targeted for Go 1.4, but parts may slip to Go 1.5.",
+        "Some basic profiling and optimization may be done earlier, in Phase 3."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:95:0#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15"],
+    "missing": [
+      [
+        "Dictionaries are named similarly to the associated instantiated function or method, but with \u201c.dict\u201d preprended.",
+        "So, examples include: `.dict.Max[float64]` and `.dict.(*value[int]).get` .",
+        "A dictionary is always defined for a concrete set of types,",
+        "so there are never any type params or shape types in a dictionary name."
+      ]
+    ]
+  },
+  {
+    "id": "styx:internal/supervisor/supervisor.go:1656:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:23:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-acknowledgment-termPoison/main.go:43:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:181:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:200:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  }
+]
+```
+
+Notes on the two `missing` calls, since they're the unusual ones:
+
+- **Unit 2** (`go13compiler.md`): every candidate leaves at least one genuine two-sentences-on-one-line pair unresolved (either the opening run stays fused, or "Go 1.5." and "Some basic..." stay fused together). The whole paragraph is visible in the window, so nothing here required guessing at unseen text — full resolution was possible but wasn't on the list.
+- **Unit 3** (`generics-implementation-dictionaries-go1.18.md`): every candidate that splits before "but with…" breaks an invalid boundary (no subject/verb on the right side), and every candidate that avoids that either leaves "So, examples include…" fused with the prior or next sentence. Same situation — the correct split was constructible from the visible text but wasn't offered.
+
+For unit 5, I rejected c04 even though it targets a real fused pair ("process." / "Admission") because completing that split would touch how the unseen line beneath the window wraps — exactly the case the procedure says to leave alone and rejoin instead.

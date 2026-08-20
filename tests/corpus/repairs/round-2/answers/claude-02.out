@@ -1,0 +1,78 @@
+Working through all 8 units against the semantic-linefeeds rule (one sentence per line, splits only at real clause boundaries, minimal necessary changes).
+
+Two units (3 and 5) have no fully-correct candidate on their list — every option either leaves a fused sentence boundary or severs a non-boundary — so I've flagged those as missing with the lines I'd actually write.
+
+```json
+[
+  {
+    "id": "styx:internal/transport/transport.go:139:0#repair",
+    "choose": "c02",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:46:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:25:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "are some issues with the tool in its current state.",
+        "First, the tool is out of sync with the heaps dumped by Go.",
+        "In addition, that tool got its type information from"
+      ]
+    ]
+  },
+  {
+    "id": "styx:stream.go:199:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:13:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      [
+        "We propose adding support for profile-guided optimization (PGO) to the Go gc toolchain.",
+        "PGO will enable the toolchain to perform application- and workload-specific optimizations based on run-time information.",
+        "Unlike many compiler optimizations, PGO requires user involvement to collect profiles and feed them back into the build process.",
+        "Hence, we propose a design",
+        "that centers user experience and ease of deployment and fits naturally into the broader Go build ecosystem."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:24:0#repair",
+    "choose": "c05",
+    "accept": ["c02", "c05"],
+    "reject": ["c00", "c01", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:109:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:clientconn.go:880:0#repair",
+    "choose": "c06",
+    "accept": ["c06", "c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c07", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  }
+]
+```
+
+Notable judgment calls: unit 3's window has S2-complete fused with S3's opening fragment ("...by Go. In addition,") on every candidate that otherwise looks close (e.g. c04) — none isolate "In addition, that tool got..." on its own line, so I flagged it missing. Unit 5's 472-char line has 4 sentences; every candidate leaves at least two of them sharing a line (usually S1+S2), so none pass — my version keeps S2/S3 whole (no internal boundary, borderline/no-boundary long lines left alone) but splits S4 at "that" (a genuine relative-pronoun boundary, and S4 alone runs ~134 chars).

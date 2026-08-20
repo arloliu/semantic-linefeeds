@@ -1,0 +1,81 @@
+Worked through all eight units by reconstructing each paragraph's sentence boundaries and checking every candidate against the fused/wrap/long rules. Two units (3 and 4) have no candidate that fully resolves the fused sentences without leaving several sentences still combined on one line, so I've flagged those as missing with the repair I'd actually make.
+
+```json
+[
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:83:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44253-generic-array-sizes.md:246:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:74:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "For a code change that is local to a small number of functions,",
+        "most functions are not changed and therefore profiles can still apply.",
+        "For the unchanged functions their absolute locations may change (such as line number shifts or code moving).",
+        "We propose using function-relative line numbers so PGO tolerates location shifts.",
+        "Using only the function name and relative line number also handles source file renames."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:64:2#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      [
+        "_Discard the current compilers and use gccgo (or go/parser + go/types + LLVM, or …)_.",
+        "The current compilers are a large part of Go’s flexibility.",
+        "Tying development of Go to a comparatively larger code base like GCC or LLVM seems likely to hurt that flexibility.",
+        "Also, GCC is a large C (now partly C++) program and LLVM a large C++ program.",
+        "All the reasons listed above justifying a move away from the current compiler code apply as much or more to these code bases."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:564:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-ordered-consumer-read/main.go:30:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/shm/failpoint_export.go:6:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/rpcruntime/lease.go:82:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```
+
+Notes on the two missing units:
+
+- **Unit 3** (`55022-pgo.md`): every candidate leaves at least two of the four sentences fused on one line (the list only varies where the *first* sentence gets split, never separating sentences 2–4). None qualify.
+- **Unit 4** (`go13compiler.md`): same pattern — no candidate puts the opening italicized sentence on its own line; they all fuse it with the second (and often third) sentence, or sever the parenthetical list at a non-boundary comma. None qualify.

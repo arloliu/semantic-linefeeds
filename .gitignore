@@ -23,3 +23,8 @@ tests/corpus/repairs/batches/
 # Pinned upstream sources the corpus draws from, materialized by commit from manifest.json.
 # Reconstructible, large, and not ours to vendor.
 tests/corpus/checkouts/
+
+# Regenerable from the round's sample: `batch.py <pass> --sample <sample.json> --out <dir>`.
+tests/corpus/repairs/*/batches/
+tests/corpus/repairs/batches/
+tests/corpus/repairs/*/todo.json

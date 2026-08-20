@@ -1,0 +1,64 @@
+[
+  {
+    "id": "styx:internal/arena/arena.go:69:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:296:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/spawn.go:168:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:38:1#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/transport.go:139:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/68723-crypto-ssh-v2.md:94:0#repair",
+    "choose": "c02",
+    "accept": ["c02", "c03"],
+    "reject": ["c00", "c01", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:98:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "The call to g needs a dictionary.",
+        "At the callsite to g from f, f has no way to know what dictionary it should use,",
+        "because the type parameterizing the instantiation of g is a generic type.",
+        "So the caller of f must provide that dictionary."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:95:0#repair",
+    "choose": "c09",
+    "accept": ["c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  }
+]

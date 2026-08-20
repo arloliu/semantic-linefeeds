@@ -1,0 +1,71 @@
+```json
+[
+  {
+    "id": "go-proposal:design/68723-crypto-ssh-v2.md:94:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:98:1#repair",
+    "accept": ["c04"],
+    "reject": ["c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "The call to g needs a dictionary.",
+        "At the callsite to g from f, f has no way to know what dictionary it should use,",
+        "because the type parameterizing the instantiation of g is a generic type.",
+        "So the caller of f must provide that dictionary."
+      ]
+    ]
+  },
+  {
+    "id": "styx:examples/slow-handler/host/main.go:422:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:711:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:41:0#repair",
+    "choose": "c02",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:139:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:nats.go:5789:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/plugin_reload.go:90:0#repair",
+    "choose": "c03",
+    "accept": ["c02", "c03"],
+    "reject": ["c00", "c01", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  }
+]
+```
+
+Notes on the two judgment calls worth flagging:
+
+- **Unit 2**: no candidate both separates all three sentences correctly *and* splits the 155-char middle sentence at its `because` boundary — only c04 gets sentence separation right, but leaves that line long without using the available boundary. Accepted c04 (long is advisory) and surfaced the better 4-line split under `missing`.
+- **Unit 8**: c02 preserves the original wrap-style break at "DrainAck, or was never admitted" — a comma before "or" joining a compound predicate, not a licensed boundary (same logic the rule uses to reject "and" joining a compound object). Rejected it in favor of c03, which rejoins that clause (it fits under 120 once rejoined) and correctly separates all three sentences.

@@ -1,0 +1,63 @@
+Using the semantic-linefeeds repair procedure to judge each candidate against the rule (real clause boundaries only; list-item commas and list-closing conjunctions don't count as boundaries; fused sentences must be fully separated; mid-clause wraps must be rejoined).
+
+Key judgment calls:
+- **Unit 1**: many candidates leave "status." fused with "It is..." (invalid), or keep the mid-clause "ClientConn"/"is wired" split (invalid, that's the wrap the finding is about). Only c01/c02/c04/c05 fix both; I'd make the split after the "when...is wired," subordinate clause (c04).
+- **Unit 2**: only c03 fully resolves both the reported fused split *and* the pre-existing internal fusion of "...workspace mode. This removes the" — every other candidate leaves a fused pair somewhere.
+- **Unit 6**: the "or guarding" list has no real clause boundary available (parenthetical and list commas don't count), so per the rule "leave the line long" — only c01 (rejoin-only) is correct; every other split lands on a non-boundary or leaves fused text.
+- **Unit 7**: none of the 7 candidates fully separates all four sentences — every one leaves at least one fused pair. This is a **missing** case.
+
+```json
+[
+  {"id": "styx:internal/lifecycle/spawn.go:168:0#repair",
+   "choose": "c04",
+   "accept": ["c01", "c02", "c04", "c05"],
+   "reject": ["c00", "c03", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+   "missing": []},
+
+  {"id": "go-proposal:design/45713-workspace.md:499:0#repair",
+   "choose": "c03",
+   "accept": ["c03"],
+   "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+   "missing": []},
+
+  {"id": "go-proposal:design/draft-embed.md:704:0#repair",
+   "choose": "c01",
+   "accept": ["c01"],
+   "reject": ["c00"],
+   "missing": []},
+
+  {"id": "styx:panic_policy.go:36:0#repair",
+   "choose": "c01",
+   "accept": ["c01", "c03"],
+   "reject": ["c00", "c02", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+   "missing": []},
+
+  {"id": "go-proposal:design/45713-workspace.md:569:0#repair",
+   "choose": "c01",
+   "accept": ["c01"],
+   "reject": ["c00", "c02", "c03"],
+   "missing": []},
+
+  {"id": "go-proposal:design/46136-vet-std-references.md:114:0#repair",
+   "choose": "c01",
+   "accept": ["c01"],
+   "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+   "missing": []},
+
+  {"id": "go-proposal:design/generics-implementation-dictionaries.md:221:2#repair",
+   "accept": [],
+   "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+   "missing": [[
+     "Another option in this space is to change the calling convention to pass all values of generic type by pointer.",
+     "This will simplify the layout problem for the arguments sections.",
+     "But it requires implementing wrapper functions for calls from generic code to non-generic code or vice-versa.",
+     "It is not entirely clear what the rules would be for where those wrappers get generated and instantiated."
+   ]]},
+
+  {"id": "go-proposal:design/40276-go-install.md:351:0#repair",
+   "choose": "c01",
+   "accept": ["c01", "c03"],
+   "reject": ["c00", "c02", "c04", "c05", "c06"],
+   "missing": []}
+]
+```

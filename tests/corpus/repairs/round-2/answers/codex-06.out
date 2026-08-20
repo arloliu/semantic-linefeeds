@@ -1,0 +1,63 @@
+[
+  {
+    "id": "go-proposal:design/44253-generic-array-sizes.md:246:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:25:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "are some issues with the tool in its current state.",
+        "First, the tool is out of sync with the heaps dumped by Go.",
+        "In addition, that tool got its type information from"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:41:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/stream.go:43:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:23:0#repair",
+    "choose": "c04",
+    "accept": ["c03", "c04"],
+    "reject": ["c00", "c01", "c02", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:62:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c02", "c03"],
+    "reject": ["c00", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/57001-gotoolchain.md:248:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:711:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  }
+]

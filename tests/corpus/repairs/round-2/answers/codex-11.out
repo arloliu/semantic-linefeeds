@@ -1,0 +1,1 @@
+[{"id":"styx:internal/transport/consume.go:31:0#repair","choose":"c01","accept":["c01","c03"],"reject":["c00","c02","c04","c05","c06","c07","c08","c09","c10"],"missing":[]}]
