@@ -141,7 +141,131 @@
           }
         ]
       }
-    }
+    },
+    "repair_measured": {
+      "rounds": "calibration rounds 1 and 2 under tests/corpus/repairs/; round 2 is the promoted one, drawn 2026-08-20 against the detector once the four-space rule measured from a list item's content column, carrying 226 of round 1's units forward on identical candidate ids and cuts and answering 81 afresh",
+      "context_not_bar": "every number here describes the calibration side and decides nothing; no class is admissible from it (repair_admission.admissible_from), and the shipped class's rate is context beside any candidate, never the bar",
+      "shipped_class": {
+        "fired": 34,
+        "on_scored_units": 29,
+        "acceptable": 11,
+        "wilson95": [
+          0.227,
+          0.56
+        ],
+        "single_source": "32 of its 34 suggestions are in go-proposal",
+        "note": "reported with its interval as Task 1 requires of context; the frozen reporting rules would refuse this as a rate, its half-width being 0.167 against a cap of 0.15"
+      },
+      "zero_tolerance": {
+        "not_preserving": 0,
+        "carrier_changed": 0,
+        "fired_where_only_the_original_is_acceptable": 0,
+        "note": "conditions rather than rates: any nonzero count refuses a class however well it scores (repair_admission.zero_tolerance)"
+      },
+      "strata": {
+        "": {
+          "scored": 29,
+          "ambiguous": 5,
+          "suggested": 29,
+          "acceptable": 11,
+          "population": 34,
+          "drawn": 34,
+          "admissible": true,
+          "rate": "11/29",
+          "rate_note": "no percentage: the frozen rules refuse one, the interval half-width is 0.167 against a cap of 0.15"
+        },
+        "closing_delimiter,terminator_period": {
+          "scored": 33,
+          "ambiguous": 0,
+          "suggested": 0,
+          "acceptable": 0,
+          "population": 33,
+          "drawn": 33,
+          "admissible": true
+        },
+        "gap_multiple_spaces,terminator_period": {
+          "scored": 38,
+          "ambiguous": 1,
+          "suggested": 0,
+          "acceptable": 0,
+          "population": 49,
+          "drawn": 40,
+          "admissible": true
+        },
+        "many_boundaries,prefix_list_marker,protected_span,terminator_period": {
+          "scored": 8,
+          "ambiguous": 8,
+          "suggested": 0,
+          "acceptable": 0,
+          "population": 36,
+          "drawn": 36,
+          "admissible": false
+        },
+        "many_boundaries,protected_span,terminator_period": {
+          "scored": 8,
+          "ambiguous": 12,
+          "suggested": 0,
+          "acceptable": 0,
+          "population": 217,
+          "drawn": 40,
+          "admissible": false
+        },
+        "many_boundaries,terminator_period": {
+          "scored": 6,
+          "ambiguous": 17,
+          "suggested": 0,
+          "acceptable": 0,
+          "population": 289,
+          "drawn": 40,
+          "admissible": false
+        },
+        "prefix_list_marker,protected_span,terminator_period": {
+          "scored": 22,
+          "ambiguous": 4,
+          "suggested": 0,
+          "acceptable": 0,
+          "population": 26,
+          "drawn": 26,
+          "admissible": false
+        },
+        "prefix_list_marker,terminator_period": {
+          "scored": 34,
+          "ambiguous": 4,
+          "suggested": 0,
+          "acceptable": 0,
+          "population": 39,
+          "drawn": 39,
+          "admissible": true
+        },
+        "protected_span,terminator_period": {
+          "scored": 35,
+          "ambiguous": 4,
+          "suggested": 0,
+          "acceptable": 0,
+          "population": 343,
+          "drawn": 40,
+          "admissible": true
+        },
+        "terminator_period": {
+          "scored": 38,
+          "ambiguous": 1,
+          "suggested": 0,
+          "acceptable": 0,
+          "population": 3867,
+          "drawn": 40,
+          "admissible": true
+        }
+      },
+      "inadmissible": [
+        "many_boundaries,prefix_list_marker,protected_span,terminator_period",
+        "many_boundaries,protected_span,terminator_period",
+        "many_boundaries,terminator_period",
+        "prefix_list_marker,protected_span,terminator_period"
+      ],
+      "inadmissible_because": "fewer scored units than the preregistered minimum of 26, or more than a quarter of the labels ambiguous; an activated stratum the round cannot rate refuses the candidate that activates it, and is never dropped so the remaining strata can carry the claim",
+      "floors_pending": "no repair floor is set: a floor keys to a declared round, round 4's sources are deliberately not yet declared (repair_admission.round_4), and when they are, a floor may name only a stratum this record holds as admissible"
+    },
+    "repair_floors": null
   },
   "repair_admission": {
     "interval": "wilson-95",
