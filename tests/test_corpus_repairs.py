@@ -1174,6 +1174,7 @@ def test_a_class_the_population_never_produced_is_a_line_rather_than_an_absence(
 # not agents given complete hook feedback.
 
 import importlib.util  # noqa: E402
+import os  # noqa: E402
 import subprocess  # noqa: E402
 
 from corpus_harness import (  # noqa: E402
@@ -1410,6 +1411,8 @@ def test_a_batch_holds_no_more_units_than_a_sitting():
 COLLECT = REPO / "tests" / "corpus" / "repairs" / "collect.py"
 ADJUDICATE = REPO / "tests" / "corpus" / "repairs" / "adjudicate.py"
 PROMOTE = REPO / "tests" / "corpus" / "repairs" / "promote.py"
+STATUS = REPO / "tests" / "corpus" / "repairs" / "status.py"
+RUN_ROUND = REPO / "tests" / "corpus" / "repairs" / "run_round.sh"
 
 PASSES = ("claude", "codex", "agy")
 
@@ -1748,6 +1751,99 @@ def test_a_round_carrying_every_referral_shape_reaches_the_manifest(tmp_path):
     # and carries no acceptable set, because it has none to carry.
     refusal = next(r for r in records if r["id"] == refused)
     assert refusal["acceptable"] == []
+
+
+def a_round_of(tmp_path, batches=2):
+    """A batches directory and somewhere to put the answers, with no provider behind it."""
+    where = tmp_path / "batches"
+    where.mkdir()
+    for index in range(1, batches + 1):
+        (where / f"batch-{index:02d}.md").write_text("a batch\n", encoding="utf-8")
+    out = tmp_path / "answers"
+    return where, out
+
+
+def a_stub_pass(tmp_path, silent_on):
+    """Stand in for a provider, answering every batch but the one named."""
+    stub = tmp_path / "stub_pass.sh"
+    stub.write_text(
+        "#!/bin/sh\n"
+        'case "$2" in\n'
+        f'  *batch-{silent_on}.md) : > "$3" ;;\n'
+        '  *) printf \'[{"id": "u", "choose": "c00", "accept": [], '
+        '"reject": [], "missing": []}]\' > "$3" ;;\n'
+        "esac\n",
+        encoding="utf-8",
+    )
+    return stub
+
+
+def test_a_round_short_a_batch_does_not_report_that_it_finished(tmp_path):
+    """A loop that ended is not a round that finished.
+
+    A pass can fail, or return something nothing can read,
+    and leave the family short by a whole batch while the file count looks complete.
+    Round-1 lost eight units that way and reported the family finished.
+    """
+    batches, out = a_round_of(tmp_path)
+    stub = a_stub_pass(tmp_path, silent_on="02")
+    done = subprocess.run(
+        ["sh", str(RUN_ROUND), "agy", str(batches), str(out)],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+        env={**os.environ, "RUN_PASS": str(stub)},
+    )
+    assert done.returncode == 1, done.stdout
+    assert "DID NOT FINISH" in done.stderr
+    assert "02" in done.stderr
+    assert "finished, every batch answered" not in done.stdout
+
+
+def test_a_round_that_answered_every_batch_says_so(tmp_path):
+    batches, out = a_round_of(tmp_path)
+    stub = a_stub_pass(tmp_path, silent_on="99")
+    done = subprocess.run(
+        ["sh", str(RUN_ROUND), "agy", str(batches), str(out)],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+        env={**os.environ, "RUN_PASS": str(stub)},
+    )
+    assert done.returncode == 0, done.stderr
+    assert "finished, every batch answered" in done.stdout
+
+
+def test_status_counts_a_family_that_has_answered_nothing_yet(tmp_path):
+    """A family in the round with nothing readable back still constrains the count.
+
+    `answered by every family` is the number a round is watched by,
+    and it is most misleading exactly when it matters most —
+    early, while one family is still on its first batch.
+    Intersecting only over families that parsed an answer drops the one holding it up.
+    """
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(answers, units, original_id, names=("codex", "agy"))
+    # The shape a family looks like while its first batch is still running.
+    (answers / "claude-01.out").write_text("", encoding="utf-8")
+
+    done = subprocess.run(
+        [
+            sys.executable,
+            str(STATUS),
+            str(answers),
+            "--sample",
+            str(repairs / "sample.json"),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    assert done.returncode == 0, done.stderr
+    line = next(one for one in done.stdout.splitlines() if "answered by all of" in one)
+    # Named rather than counted, so a reader can see which families are in it.
+    assert "claude" in line
+    assert line.split()[-3] == "0", line
 
 
 def promoted(tmp_path, pattern="suggestion_*.md"):
