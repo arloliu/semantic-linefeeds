@@ -73,6 +73,28 @@ def resolved(sample, answers_dir, decisions=None):
             continue
         got = repair_resolution(verdicts, candidates)
         decided = decisions.get(uid)
+        if got["outcome"] == "defect" and decided:
+            # The universe was incomplete,
+            # so this unit's acceptable set cannot be completed either:
+            # a repair supplied after three-pass coverage failed has no coverage.
+            # The decision moves the unit out of the rate rather than into one,
+            # and it still has to move, or nothing ever promotes.
+            if decided["outcome"] != "ambiguous":
+                out[uid] = {
+                    "outcome": "error",
+                    "reason": (
+                        "a unit no candidate could repair leaves the rate; "
+                        "it cannot be settled against an acceptable set it cannot have"
+                    ),
+                }
+                continue
+            out[uid] = dict(
+                got,
+                outcome="ambiguous",
+                acceptable=frozenset(),
+                reason=decided["reason"],
+            )
+            continue
         if got["outcome"] == "adjudicated" and decided:
             # The worksheet asks for candidate ids, because a maintainer reads ids.
             # The cuts they stand for are what everything downstream compares.

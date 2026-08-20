@@ -1522,6 +1522,67 @@ def test_a_decision_names_candidates_the_way_the_worksheet_asks_for_them(tmp_pat
     assert outcomes[entry["id"]]["acceptable"] == frozenset({tuple(cuts)})
 
 
+def test_a_unit_no_candidate_could_repair_leaves_the_rate_once_decided(tmp_path):
+    """A refused unit still has to stop being pending, or nothing can ever promote.
+
+    Its acceptable set cannot be completed —
+    three-pass coverage of a universe is what makes a set complete,
+    and a candidate supplied after that coverage failed has none.
+    So the maintainer's decision moves it out of the rate rather than into one,
+    and `ambiguous` is the outcome that says so.
+    """
+    spec = importlib.util.spec_from_file_location("repairs_collect", COLLECT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(
+        answers, units, original_id, missing=lambda u: [["a line", "another line"]]
+    )
+    run(ADJUDICATE, "worksheet", repairs, answers)
+    entries = json.loads((repairs / "adjudications.json").read_text(encoding="utf-8"))
+    assert {entry["shape"] for entry in entries} == {"missing"}
+    for entry in entries:
+        entry["outcome"] = "ambiguous"
+        entry["supplied"] = [["a line", "another line"]]
+        entry["reason"] = "no candidate in the universe is a correct repair"
+    sample = json.loads((repairs / "sample.json").read_text(encoding="utf-8"))
+    decisions = {entry["id"]: entry for entry in entries}
+    outcomes, _names = module.resolved(sample, answers, decisions)
+
+    got = outcomes[entries[0]["id"]]
+    assert got["outcome"] == "ambiguous"
+    assert got["acceptable"] == frozenset()
+    # Nothing may stay pending, or `promote.py` refuses the round forever.
+    assert not [
+        uid
+        for uid, one in outcomes.items()
+        if one["outcome"] in ("adjudicated", "defect")
+    ]
+
+
+def test_a_unit_no_candidate_could_repair_cannot_be_settled(tmp_path):
+    """Settled means somebody named the correct answers, and here nobody can."""
+    spec = importlib.util.spec_from_file_location("repairs_collect", COLLECT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(
+        answers, units, original_id, missing=lambda u: [["a line", "another line"]]
+    )
+    run(ADJUDICATE, "worksheet", repairs, answers)
+    entries = json.loads((repairs / "adjudications.json").read_text(encoding="utf-8"))
+    for entry in entries:
+        entry["outcome"] = "settled"
+        entry["supplied"] = [["a line", "another line"]]
+        entry["reason"] = "supplied by hand"
+    sample = json.loads((repairs / "sample.json").read_text(encoding="utf-8"))
+    decisions = {entry["id"]: entry for entry in entries}
+    outcomes, _names = module.resolved(sample, answers, decisions)
+    assert outcomes[entries[0]["id"]]["outcome"] == "error"
+
+
 def test_a_repair_the_generator_missed_is_its_own_shape(tmp_path):
     repairs, answers, units = round_dir(tmp_path)
     answer_all(
@@ -1832,15 +1893,21 @@ def test_a_repair_floor_for_a_round_nobody_declared_is_rejected():
     assert "round 9" in problems[0]
 
 
-def test_the_repairs_section_is_required_even_while_it_is_empty():
-    """A reader must be able to tell an empty corpus from a section nobody wrote."""
+def test_the_repairs_section_is_required_whether_or_not_it_holds_a_round():
+    """A reader must be able to tell an empty corpus from a section nobody wrote.
+
+    The section held nothing until a round was promoted into it,
+    so what is asserted is that it is present and readable,
+    not how many records a given round happened to leave there.
+    """
     document = json.loads(
         (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
     )
-    assert document["repairs"] == []
+    assert isinstance(document["repairs"], list)
     assert manifest_problems(document) == []
     del document["repairs"]
     assert any("repairs" in problem for problem in manifest_problems(document))
+    assert manifest_problems(dict(document, repairs=[])) == []
 
 
 def test_a_broken_repair_record_reaches_the_manifest_gate():
