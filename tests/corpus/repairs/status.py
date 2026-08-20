@@ -1,6 +1,6 @@
 """How far the round has got, and whether what has come back is answerable.
 
-    python3 tests/corpus/repairs/status.py [<round-dir>]
+    python3 tests/corpus/repairs/status.py <answers-dir> --sample <round>/sample.json
 
 Counts per family rather than in total.
 A family that has stopped answering looks like a slow one until the counts sit together.
@@ -19,8 +19,7 @@ sys.path.insert(0, str(TESTS))
 from corpus_harness import pass_answers  # noqa: E402
 
 
-def main(round_dir, sample_path=None):
-    sample_path = sample_path or HERE.parent / "sample.json"
+def main(round_dir, sample_path):
     sample = json.loads(sample_path.read_text(encoding="utf-8"))
     judgeable = {unit["id"]: unit for unit in sample["units"] if not unit.get("defect")}
     shown = {
@@ -78,14 +77,9 @@ def main(round_dir, sample_path=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("round_dir", nargs="?", default=str(HERE.parent / "round-1"))
+    parser.add_argument("round_dir")
     parser.add_argument(
-        "--sample",
-        default=None,
-        help="the sample the round was drawn from, when it does not sit beside this script",
+        "--sample", required=True, help="the sample the round was drawn from"
     )
     args = parser.parse_args()
-    main(
-        pathlib.Path(args.round_dir).resolve(),
-        pathlib.Path(args.sample).resolve() if args.sample else None,
-    )
+    main(pathlib.Path(args.round_dir).resolve(), pathlib.Path(args.sample).resolve())

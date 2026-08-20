@@ -1,6 +1,6 @@
 """Draw the repair round from the calibration sources.
 
-    python3 tests/corpus/repairs/draw.py <checkout-root> [--out <sample.json>]
+    python3 tests/corpus/repairs/draw.py <checkout-root> --out <round>/sample.json
 
 The population is every `fused` boundary the detector raises on the calibration sources,
 enumerated through each source's own selection command.
@@ -69,7 +69,7 @@ assert FLOOR == REPAIR_ADMISSION["reportable"]["min_scored"]
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root")
-    parser.add_argument("--out", default=str(HERE.parent / "sample.json"))
+    parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     root = pathlib.Path(args.root).resolve()
 

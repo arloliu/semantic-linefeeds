@@ -1412,6 +1412,7 @@ COLLECT = REPO / "tests" / "corpus" / "repairs" / "collect.py"
 ADJUDICATE = REPO / "tests" / "corpus" / "repairs" / "adjudicate.py"
 PROMOTE = REPO / "tests" / "corpus" / "repairs" / "promote.py"
 STATUS = REPO / "tests" / "corpus" / "repairs" / "status.py"
+CHECKOUT = REPO / "tests" / "corpus" / "repairs" / "checkout.py"
 RUN_ROUND = REPO / "tests" / "corpus" / "repairs" / "run_round.sh"
 
 PASSES = ("claude", "codex", "agy")
@@ -1751,6 +1752,113 @@ def test_a_round_carrying_every_referral_shape_reaches_the_manifest(tmp_path):
     # and carries no acceptable set, because it has none to carry.
     refusal = next(r for r in records if r["id"] == refused)
     assert refusal["acceptable"] == []
+
+
+def a_pinned_source(tmp_path):
+    """A repository with two commits, and a manifest pinning the older one."""
+    origin = tmp_path / "origin"
+    origin.mkdir()
+
+    def git(*args):
+        return subprocess.run(
+            ["git", "-C", str(origin), *args],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    git("init", "--quiet", "-b", "main")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    (origin / "a.md").write_text("first\n", encoding="utf-8")
+    git("add", "a.md")
+    git("commit", "--quiet", "-m", "first")
+    pinned = git("rev-parse", "HEAD").stdout.strip()
+    (origin / "a.md").write_text("second\n", encoding="utf-8")
+    git("commit", "--quiet", "-am", "second")
+    moved = git("rev-parse", "HEAD").stdout.strip()
+
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "sources": [
+                    {
+                        "id": "pinned",
+                        "side": "calibration",
+                        "url": str(origin),
+                        "commit": pinned,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    return manifest, pinned, moved
+
+
+def checkout(manifest, root, *extra):
+    return subprocess.run(
+        [
+            sys.executable,
+            str(CHECKOUT),
+            "--manifest",
+            str(manifest),
+            "--root",
+            str(root),
+            *extra,
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+
+
+def test_a_pinned_source_is_fetched_at_the_commit_the_manifest_names(tmp_path):
+    """The tree a round is drawn from is reconstructible rather than vendored."""
+    manifest, pinned, _moved = a_pinned_source(tmp_path)
+    root = tmp_path / "checkouts"
+    done = checkout(manifest, root)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "fetched" in done.stdout
+    at = subprocess.run(
+        ["git", "-C", str(root / "pinned"), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    assert at.stdout.strip() == pinned
+    # Running it again is a verification rather than a second clone.
+    again = checkout(manifest, root)
+    assert again.returncode == 0
+    assert "present" in again.stdout
+
+
+def test_a_checkout_that_moved_is_reported_rather_than_corrected(tmp_path):
+    """A tree that quietly moved is how a round stops being comparable."""
+    manifest, _pinned, moved = a_pinned_source(tmp_path)
+    root = tmp_path / "checkouts"
+    assert checkout(manifest, root).returncode == 0
+    subprocess.run(
+        ["git", "-C", str(root / "pinned"), "checkout", "--quiet", moved], check=True
+    )
+    done = checkout(manifest, root)
+    assert done.returncode == 1
+    assert "MOVED" in done.stdout
+    still = subprocess.run(
+        ["git", "-C", str(root / "pinned"), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    assert still.stdout.strip() == moved, "reported, not corrected"
+
+
+def test_verify_reports_a_missing_checkout_without_fetching_it(tmp_path):
+    manifest, _pinned, _moved = a_pinned_source(tmp_path)
+    root = tmp_path / "checkouts"
+    done = checkout(manifest, root, "--verify")
+    assert done.returncode == 1
+    assert "MISSING" in done.stdout
+    assert not (root / "pinned").exists()
 
 
 def a_round_of(tmp_path, batches=2):
@@ -2228,17 +2336,19 @@ def test_an_answer_that_is_not_a_list_of_units_is_read_as_nothing(tmp_path):
     assert pass_answers(out) == []
 
 
-def test_a_window_the_generator_refused_never_reaches_a_pass():
+ROUNDS = sorted((REPO / "tests" / "corpus" / "repairs").glob("round-*/sample.json"))
+
+
+@pytest.mark.parametrize("sample_path", ROUNDS, ids=[p.parent.name for p in ROUNDS])
+def test_a_window_the_generator_refused_never_reaches_a_pass(sample_path):
     """It leaves the sample carrying its position count, and is not put to anyone.
 
-    Sixty of the round's 368 units are refused this way,
-    every one of them for offering more cut positions than a pass can judge.
+    Every drawn round refuses some units this way,
+    each for offering more cut positions than a pass can judge.
+    How many is a fact about a given round rather than about the rule,
+    so what is asserted is the shape a refusal leaves behind.
     """
-    sample = json.loads(
-        (REPO / "tests" / "corpus" / "repairs" / "sample.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    sample = json.loads(sample_path.read_text(encoding="utf-8"))
     refused = [unit for unit in sample["units"] if unit.get("defect")]
     assert refused
     for unit in refused:

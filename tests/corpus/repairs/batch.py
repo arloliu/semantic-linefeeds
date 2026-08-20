@@ -1,6 +1,6 @@
 """Lay out one pass's repair batches from a drawn sample.
 
-    python3 tests/corpus/repairs/batch.py <pass name> [--sample <sample.json>] [--out <dir>]
+    python3 tests/corpus/repairs/batch.py <pass name> --sample <round>/sample.json [--out <dir>]
 
 Everything a pass reads comes from the sample and from two files in this repository.
 Nothing is recomputed from the checkout the units were drawn from,
@@ -99,7 +99,7 @@ not, put the lines you would write there instead, and leave `choose` out of that
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("name")
-    parser.add_argument("--sample", default=str(HERE.parent / "sample.json"))
+    parser.add_argument("--sample", required=True)
     parser.add_argument("--out", default=None)
     args = parser.parse_args(argv)
 
