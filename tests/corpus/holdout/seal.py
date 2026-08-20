@@ -160,7 +160,9 @@ def main(number):
     # The sample carries what the freeze recorded, and all three must agree.
     # A contract that moved everywhere at once, mid-round, was chosen after the reading.
     bound = sample.get("binds") or {}
-    binds = {name: repair_round_bindings(manifest)[name] for name in bound} or None
+    binds = {
+        name: repair_round_bindings(manifest, number)[name] for name in bound
+    } or None
     if binds and binds != bound:
         moved = sorted(name for name in bound if bound[name] != binds[name])
         sys.exit(

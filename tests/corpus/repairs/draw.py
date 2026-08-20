@@ -1,6 +1,15 @@
-"""Draw the repair round from the calibration sources.
+"""Draw a repair round: from the calibration sources, or a ledger-bound holdout round.
 
     python3 tests/corpus/repairs/draw.py <checkout-root> --out <round>/sample.json
+    python3 tests/corpus/repairs/draw.py <checkout-root> --round 4
+
+`--round` is the holdout mode, and the ledger governs it:
+it refuses unless the round's repair freeze exists with its full binds,
+draws only from the sources the manifest declares for that round
+(validated as the preregistered selection before anything is written),
+records `drawn_under` and every binding in the sample,
+and refuses to run twice.
+The calibration mode stays exactly as it was.
 
 The population is every `fused` boundary the detector raises on the calibration sources,
 enumerated through each source's own selection command.
@@ -33,12 +42,16 @@ import check_linefeeds as clf  # noqa: E402
 from corpus_harness import (  # noqa: E402
     REPAIR_ADMISSION,
     REPAIR_DRAW,
+    Holdout,
+    ScoringRefused,
     attach_candidates,
     contract_digest,
     draw_strata,
     file_digest,
     repair_admission_digest,
     repair_population,
+    repair_round_bindings,
+    repair_round_sources,
     stratum_shortfalls,
 )
 
@@ -69,23 +82,66 @@ assert FLOOR == REPAIR_ADMISSION["reportable"]["min_scored"]
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root")
-    parser.add_argument("--out", required=True)
+    parser.add_argument("--out")
+    parser.add_argument("--round", type=int, default=None)
+    parser.add_argument("--manifest", default=str(MANIFEST))
     args = parser.parse_args(argv)
     root = pathlib.Path(args.root).resolve()
+    if (args.out is None) == (args.round is None):
+        sys.exit("pass exactly one of --out (calibration) or --round (holdout)")
 
-    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    manifest_path = pathlib.Path(args.manifest)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    drawn_under = None
+    binds = None
+    if args.round is not None:
+        round_dir = manifest_path.parent / "repairs" / f"round-{args.round}"
+        out = round_dir / "sample.json"
+        # Refused before any directory exists:
+        # a draw that has already run has read the prose,
+        # and a second one would be drawn by a reader.
+        if out.exists() or (round_dir / "bundle.json").exists():
+            sys.exit(
+                f"round {args.round} already holds a sample or a bundle; "
+                "a repair round draws once"
+            )
+        try:
+            selected = repair_round_sources(manifest, args.round)
+            binds = repair_round_bindings(manifest, args.round)
+        except ScoringRefused as refused:
+            sys.exit(f"nothing was drawn: {refused}")
+        holdout = Holdout(
+            round_dir / "bundle.json",
+            manifest_path.parent / "freeze.jsonl",
+            REPO / "scripts" / "check_linefeeds.py",
+            manifest_path,
+            round=args.round,
+        )
+        try:
+            frozen = holdout.require_predicate_freeze(binds=binds)
+        except ScoringRefused as refused:
+            sys.exit(f"nothing was drawn: {refused}")
+        drawn_under = frozen["id"]
+        sources = [dict(source) for source in selected]
+    else:
+        out = pathlib.Path(args.out)
+        sources = [
+            source for source in manifest["sources"] if source["side"] == "calibration"
+        ]
+
     population = []
-    for source in manifest["sources"]:
-        if source["side"] == "calibration":
-            population += repair_population(source, root / source["id"])
+    for source in sources:
+        population += repair_population(source, root / source["id"])
     if not population:
-        sys.exit("no calibration source produced a unit; check the checkout root")
+        sys.exit("no selected source produced a unit; check the checkout root")
 
     drawn, strata = draw_strata(population, QUOTAS, SEED)
     attach_candidates(drawn, root)
     shortfalls = stratum_shortfalls(population, strata, QUOTAS)
 
-    out = pathlib.Path(args.out)
+    if args.round is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(
             {
@@ -112,11 +168,14 @@ def main(argv=None):
                     "repairing": file_digest(REPAIRING),
                     "renderer": file_digest(REPO / "scripts" / "check_linefeeds.py"),
                 },
-                "sources": {
-                    source["id"]: source["commit"]
-                    for source in manifest["sources"]
-                    if source["side"] == "calibration"
-                },
+                "sources": {source["id"]: source["commit"] for source in sources},
+                # The freeze this prose was drawn under, and what that freeze bound.
+                # The seal recomputes both and refuses whichever moved (ADR-0022, ADR-0024).
+                **(
+                    {"round": args.round, "drawn_under": drawn_under, "binds": binds}
+                    if drawn_under
+                    else {}
+                ),
                 "units": drawn,
             },
             indent=2,

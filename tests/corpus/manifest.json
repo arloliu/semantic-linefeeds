@@ -288,7 +288,7 @@
       "carrier_changed": "a machine repair that changes a carrier",
       "fired_where_only_the_original_is_acceptable": "a machine repair that fires on a unit whose acceptable set holds only the original; automatically repairing a line that should have been left alone is the worst outcome this tool can produce"
     },
-    "baseline": "the shipped class is measured and reported beside every candidate as context; it is 34 boundaries with 32 of them in one source, and it is never the bar",
+    "baseline": "the shipped class is measured and reported beside every candidate as context; under the window predicate it is 11 boundaries, all in one source, and it is never the bar; the anchor-only predicate measured 34",
     "admissible_from": "no class is admissible on the calibration side; every number above is scored on a holdout round drawn after the widened predicate is frozen"
   },
   "repairs": [
@@ -118565,5 +118565,3145 @@
       "label": "true",
       "expected": "detected"
     }
-  ]
+  ],
+  "repair_baselines_v2": {
+    "predicate": "sha256:efb1c9c8ce80332e08f534d2843a3fd54ba3256589908056977b8f50688e4ed8",
+    "units": {
+      "go-proposal:design/11970-decentralized-gc.md:143:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/11970-decentralized-gc.md:50:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/11970-decentralized-gc.md:73:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/11970-decentralized-gc.md:88:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/12166-subtests.md:214:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/12302-release-proposal.md:161:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/12302-release-proposal.md:164:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/12416-cgo-pointers.md:151:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/12800-sweep-free-alloc.md:305:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13073-code-of-conduct.md:201:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13073-code-of-conduct.md:356:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13073-code-of-conduct.md:389:0#repair": {
+        "lines": [
+          "  \"What's the deal with Go's error handling mechanism?",
+          "  It's brain dead and stupid.\""
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          52
+        ],
+        "candidate": "c01",
+        "acceptable": true
+      },
+      "go-proposal:design/13073-code-of-conduct.md:391:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13432-mobile-audio.md:104:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13432-mobile-audio.md:106:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13432-mobile-audio.md:240:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13432-mobile-audio.md:243:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13432-mobile-audio.md:246:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13432-mobile-audio.md:251:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13432-mobile-audio.md:252:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/13432-mobile-audio.md:53:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/14951-soft-heap-limit.md:223:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/14951-soft-heap-limit.md:248:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/14951-soft-heap-limit.md:257:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/14951-soft-heap-limit.md:286:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/14951-soft-heap-limit.md:299:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2010-06-type-functions.md:642:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2011-03-gen.md:149:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2011-03-gen.md:150:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2011-03-gen.md:151:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2011-03-gen.md:152:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2011-03-gen.md:21:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2011-03-gen.md:714:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-10-gen.md:186:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-10-gen.md:20:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:1239:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:1429:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:156:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:156:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:156:2#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:157:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:158:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:159:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:1618:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:161:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:161:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:1620:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/15292/2013-12-type-params.md:20:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/16085-conversions-ignore-tags.md:175:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/16339-alias-decls.md:263:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/16339-alias-decls.md:41:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/16339-alias-decls.md:445:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/16410-heap-viewer.md:25:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/16410-heap-viewer.md:63:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/16410-heap-viewer.md:83:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/17503-eliminate-rescan.md:796:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/17503-eliminate-rescan.md:799:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/17503-eliminate-rescan.md:833:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/17503-eliminate-rescan.md:856:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/17503-eliminate-rescan.md:867:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/17503-eliminate-rescan.md:871:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/17503-eliminate-rescan.md:884:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/17503-eliminate-rescan.md:887:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/18802-percpu-sharded.md:261:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/18802-percpu-sharded.md:40:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/24301-versioned-go.md:325:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/24543-non-cooperative-preemption.md:418:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/24543-non-cooperative-preemption.md:423:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/24543-non-cooperative-preemption.md:452:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/24543-non-cooperative-preemption.md:468:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/24543-non-cooperative-preemption.md:480:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/24543/safe-points-everywhere.md:156:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/24543/safe-points-everywhere.md:165:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/25719-go15vendor.md:74:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/26903-simplify-mark-termination.md:139:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/26903-simplify-mark-termination.md:142:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/26903-simplify-mark-termination.md:433:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/27935-unbounded-queue-package.md:510:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/27935-unbounded-queue-package.md:966:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/27935-unbounded-queue-package.md:988:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/27935-unbounded-queue-package.md:996:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/30333-smarter-scavenging.md:30:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:105:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:118:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:13:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:13:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:150:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:172:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:182:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:182:3#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:214:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:216:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:216:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:216:2#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:220:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:23:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:258:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:258:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:259:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:398:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/32437-try-builtin.md:49:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/33974-add-public-lockedfile-pkg.md:181:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/35112-scaling-the-page-allocator.md:116:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/35112-scaling-the-page-allocator.md:63:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36460-lazy-module-loading.md:248:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:122:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:136:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:154:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:158:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:165:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:175:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:179:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:181:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:188:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:18:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:199:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:206:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:20:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:212:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:222:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:245:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:283:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:284:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:286:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:290:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:291:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:296:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:319:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:324:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:326:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:33:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:354:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:362:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:36:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:376:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/36606-64-bit-field-alignment.md:89:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/37112-unstable-runtime-metrics.md:282:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/37112-unstable-runtime-metrics.md:302:0#repair": {
+        "lines": [
+          "Why should the unit be a part of the name?",
+          "Mainly to help maintain the first property mentioned above."
+        ],
+        "replaces": 2,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          42
+        ],
+        "candidate": "c01",
+        "acceptable": true
+      },
+      "go-proposal:design/37720-gopls-workspaces.md:58:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/37720-gopls-workspaces.md:59:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:107:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:123:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:128:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:162:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:288:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:336:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:351:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:406:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:459:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:474:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/40276-go-install.md:498:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/43810-go-pmem.md:101:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/43810-go-pmem.md:243:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44167-gc-pacer-redesign.md:240:0#repair": {
+        "lines": [
+          "So what's this more fundamental value?",
+          "Suppose we model a Go program as such:",
+          "the world is split in two while a GC is active: the application is either"
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          38,
+          77
+        ],
+        "candidate": "c02",
+        "acceptable": true
+      },
+      "go-proposal:design/44167-gc-pacer-redesign.md:292:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44167-gc-pacer-redesign.md:339:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44167-gc-pacer-redesign.md:390:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44167/gc-pacer-redesign.src.md:247:0#repair": {
+        "lines": [
+          "So what's this more fundamental value?",
+          "Suppose we model a Go program as such:",
+          "the world is split in two while a GC is active: the application is either"
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          38,
+          77
+        ],
+        "candidate": "c02",
+        "acceptable": true
+      },
+      "go-proposal:design/44167/gc-pacer-redesign.src.md:293:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44167/gc-pacer-redesign.src.md:340:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44167/gc-pacer-redesign.src.md:393:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44253-generic-array-sizes.md:246:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44253-generic-array-sizes.md:250:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44309-user-configurable-memory-target.md:472:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44309-user-configurable-memory-target.md:473:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/44309-user-configurable-memory-target.md:474:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:109:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:139:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:184:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:200:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:24:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:262:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:445:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:499:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:515:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:564:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:569:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:582:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:667:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:689:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/45713-workspace.md:762:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/46136-vet-std-references.md:114:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47781-parameterized-go-ast.md:102:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47781-parameterized-go-ast.md:15:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47781-parameterized-go-ast.md:17:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47781-parameterized-go-ast.md:18:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47781-parameterized-go-ast.md:66:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47781-parameterized-go-ast.md:66:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47781-parameterized-go-ast.md:67:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47781-parameterized-go-ast.md:79:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47916-parameterized-go-types.md:110:2#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47916-parameterized-go-types.md:200:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47916-parameterized-go-types.md:223:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47916-parameterized-go-types.md:232:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47916-parameterized-go-types.md:24:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47916-parameterized-go-types.md:53:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47916-parameterized-go-types.md:77:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/47916-parameterized-go-types.md:90:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/48815-custom-fuzz-input-types.md:139:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/48815-custom-fuzz-input-types.md:218:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/48815-custom-fuzz-input-types.md:46:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/51082-godocfmt.md:101:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/51082-godocfmt.md:101:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/51082-godocfmt.md:105:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/51082-godocfmt.md:295:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/51082-godocfmt.md:342:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/55022-pgo-implementation.md:167:0#repair": {
+        "lines": [
+          "__Why not inline every hot callee?",
+          "Why introduce a budget for hot callee?__"
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          34
+        ],
+        "candidate": "c01",
+        "acceptable": true
+      },
+      "go-proposal:design/55022-pgo-implementation.md:186:0#repair": {
+        "lines": [
+          "__Why use the Protobuf format?",
+          "Why not use other formats similar to LLVM?__"
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          30
+        ],
+        "candidate": "c01",
+        "acceptable": true
+      },
+      "go-proposal:design/55022-pgo.md:105:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/55022-pgo.md:13:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/55022-pgo.md:74:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/56986-godebug.md:165:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/56986-godebug.md:230:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/57001-gotoolchain.md:248:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/57001-gotoolchain.md:42:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/60078-loopvar.md:725:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/60078-loopvar.md:831:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/60078-loopvar.md:883:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/60773-execution-tracer-overhaul.md:134:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/60773-execution-tracer-overhaul.md:163:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/60773-execution-tracer-overhaul.md:234:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/60773-execution-tracer-overhaul.md:280:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/68723-crypto-ssh-v2.md:94:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/70257-memory-regions.md:789:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/74299-runtime-freegc.md:128:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/74299-runtime-freegc.md:139:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/74299-runtime-freegc.md:711:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/74299-runtime-freegc.md:90:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/76331-lsp-interactive-refactoring.md:296:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/76331-lsp-interactive-refactoring.md:296:2#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/76331-lsp-interactive-refactoring.md:445:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/76331-lsp-interactive-refactoring.md:602:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/76331-lsp-interactive-refactoring.md:604:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/76331-lsp-interactive-refactoring.md:718:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/76331-lsp-interactive-refactoring.md:760:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/76331-lsp-interactive-refactoring.md:760:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/76331-lsp-interactive-refactoring.md:762:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/draft-embed.md:704:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries-go1.18.md:35:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries-go1.18.md:70:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries-go1.18.md:95:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries.md:205:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries.md:221:2#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries.md:269:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries.md:270:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries.md:272:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries.md:296:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries.md:316:0#repair": {
+        "lines": [
+          "Register calling convention: argument stack objects?",
+          "Use ABI0? If arguments come in registers, and those registers contain data for a generic type, it could be complicated to get that data into a memory location so we can take the address of it."
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          52
+        ],
+        "candidate": "c05",
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries.md:77:0#repair": {
+        "lines": [
+          "How will the caller know what derived types the body of f needs?",
+          "This is a very important question, and will be discussed at length later (see the proto-dictionary section). For now, just assume that there will be summary information for each function which lets the callsite know what derived types are needed."
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          64
+        ],
+        "candidate": "c01",
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-dictionaries.md:98:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-gcshape.md:10:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-gcshape.md:166:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-gcshape.md:167:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-gcshape.md:190:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-gcshape.md:208:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-gcshape.md:83:0#repair": {
+        "lines": [
+          "How will the caller know what derived types the body of f needs?",
+          "This is a very important question, and will be discussed at length later (see the proto-dictionary section). For now, just assume that there will be summary information for each function which lets the callsite know what derived types are needed."
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          64
+        ],
+        "candidate": "c01",
+        "acceptable": false
+      },
+      "go-proposal:design/generics-implementation-stenciling.md:124:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go13compiler.md:38:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go13compiler.md:38:2#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go13compiler.md:40:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go13compiler.md:42:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go13compiler.md:44:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go13compiler.md:64:2#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go13linker.md:44:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go13linker.md:49:0#repair": {
+        "lines": [
+          "If the new Go linker is written in Go, there is a bootstrapping problem: how do you link the linker?",
+          "There are two approaches."
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          100
+        ],
+        "candidate": "c06",
+        "acceptable": true
+      },
+      "go-proposal:design/go15bootstrap.md:62:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go2draft-generics-overview.md:45:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go2draft-generics-overview.md:59:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "go-proposal:design/go2draft-generics-overview.md:861:0#repair": {
+        "lines": [
+          "How are generic types, funcs, or methods declared?",
+          "How are generic types, funcs, or methods used?"
+        ],
+        "replaces": 1,
+        "preserving": true,
+        "carrier_valid": true,
+        "intact": true,
+        "breaks": [
+          50
+        ],
+        "candidate": "c10",
+        "acceptable": true
+      },
+      "nats.go:examples/docs/learn-jetstream-acknowledgment-termPoison/main.go:43:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:examples/docs/learn-jetstream-ordered-consumer-read/main.go:30:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:jetstream/consumer_config.go:184:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:jetstream/consumer_config.go:290:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:jetstream/object.go:1232:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:jetstream/stream.go:43:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:nats.go:3031:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:nats.go:5789:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:nats.go:6351:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:nats.go:6520:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "nats.go:object.go:1018:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:clientconn.go:612:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:clientconn.go:880:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:drain_quiescence.go:85:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:errors.go:294:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:examples/slow-handler/host/main.go:422:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:geometry.go:12:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:host.go:776:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/arena/arena.go:69:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/event/eventfd.go:130:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/event/eventfd.go:141:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/lifecycle/plugin_reload.go:90:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/lifecycle/reload.go:153:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/lifecycle/reload.go:23:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/lifecycle/reload.go:62:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/lifecycle/spawn.go:168:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/rpcruntime/lease.go:82:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/rpcruntime/stream_table.go:390:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/shm/layout.go:649:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/supervisor/supervisor.go:1656:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/testutil/require_no_leak.go:110:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/transport/consume.go:31:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/transport/shm/failpoint_export.go:6:1#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/transport/shm/recovery.go:400:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:internal/transport/transport.go:139:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:panic_policy.go:36:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:stream.go:199:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      },
+      "styx:testdata/chunkplugin/main.go:60:0#repair": {
+        "lines": null,
+        "replaces": null,
+        "preserving": false,
+        "carrier_valid": false,
+        "intact": false,
+        "breaks": null,
+        "candidate": null,
+        "acceptable": false
+      }
+    },
+    "measured": {
+      "": {
+        "suggested": 11,
+        "acceptable": 8
+      }
+    }
+  }
 }

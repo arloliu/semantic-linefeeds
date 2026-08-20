@@ -10,12 +10,18 @@ Run it, then commit the ledger line, then draw.
 The draw and the seal both refuse while no record here names the predicate in front of them,
 and `git log` is where the order becomes checkable by someone who was not present.
 
-`--repair` binds four more things: the admission contract, the class taxonomy,
-the draw configuration, and which sources the round draws from.
-A repair round's meaning depends on all four,
+`--repair` binds five more things: the admission contract, the class taxonomy,
+the draw configuration, which sources the round draws from,
+and the scoring code that turns the frozen candidate into a normalized repair.
+A repair round's meaning depends on all five,
 and comparing a manifest against an in-code constant catches nothing
 once both copies move together while the round is underway.
+The source selection is validated before it is bound —
+a freeze is one per round, and binding an invalid selection makes it immutable,
+not valid.
 A labeling round binds none of them, because it never reads them.
+A repair round's bundle lives under `tests/corpus/repairs/round-<n>/`,
+beside the sample it seals.
 """
 
 import argparse
@@ -39,13 +45,15 @@ def main(number, intent, repair=False):
 
     binds = (
         repair_round_bindings(
-            json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))
+            json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8")),
+            number,
         )
         if repair
         else None
     )
+    rounds = CORPUS / "repairs" if repair else HERE.parent
     holdout = Holdout(
-        HERE.parent / f"round-{number}" / "bundle.json",
+        rounds / f"round-{number}" / "bundle.json",
         CORPUS / "freeze.jsonl",
         TESTS.parent / "scripts" / "check_linefeeds.py",
         CORPUS / "manifest.json",

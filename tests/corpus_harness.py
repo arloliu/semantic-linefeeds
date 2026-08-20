@@ -186,7 +186,8 @@ REPAIR_ADMISSION = {
     },
     "baseline": (
         "the shipped class is measured and reported beside every candidate as context; "
-        "it is 34 boundaries with 32 of them in one source, and it is never the bar"
+        "under the window predicate it is 11 boundaries, all in one source, "
+        "and it is never the bar; the anchor-only predicate measured 34"
     ),
     "admissible_from": (
         "no class is admissible on the calibration side; "
@@ -870,7 +871,7 @@ def repair_admission_result_problems(document):
     return problems
 
 
-def admission_guard_problems(document, admitted):
+def admission_guard_problems(document, admitted, ledger=None):
     """The two-state precision guard's evidence check.
 
     An empty shipped set needs no evidence.
@@ -878,6 +879,8 @@ def admission_guard_problems(document, admitted):
     with an admitted outcome —
     a floor entry or an ADR file on disk proves nothing here,
     because presence is not a decision.
+    `ledger` is the parsed append-only ledger when the caller holds one;
+    passing it adds the cross-check that the named evidence actually happened.
     """
     if not admitted:
         return []
@@ -887,6 +890,8 @@ def admission_guard_problems(document, admitted):
             "ADMITTED is non-empty and the manifest holds no repair_admission_result"
         ]
     problems = repair_admission_result_problems(document)
+    if ledger is not None:
+        problems += repair_admission_result_ledger_problems(document, ledger)
     if isinstance(record.get("admitted"), list) and record["admitted"] != sorted(
         admitted
     ):
@@ -896,6 +901,128 @@ def admission_guard_problems(document, admitted):
         )
     if record.get("outcome") != "admitted":
         problems.append("the recorded outcome does not admit the class")
+    return problems
+
+
+def repair_admission_result_ledger_problems(document, records):
+    """The ledger half of admission-record validation.
+
+    The field validator proves the record is internally consistent;
+    this proves the evidence it names actually happened, in the append-only ledger:
+    the pre-draw freeze it cites exists, for its round, over its predicate digest;
+    one spend opened the ciphertext it names;
+    and that spend was completed with a result agreeing on the outcome.
+    A spend with no completion is an evaluation that never finished,
+    and it can validate no admission.
+    """
+    record = document.get("repair_admission_result")
+    if record is None:
+        return []
+    problems = []
+
+    def bad(message):
+        problems.append(f"repair_admission_result: {message}")
+
+    def bare(digest):
+        """The ledger prefixes its digests with the algorithm; the record stores hex."""
+        return str(digest or "").split(":")[-1]
+
+    freezes = [
+        entry
+        for entry in records
+        if entry.get("record") == "predicate_freeze"
+        and entry.get("id") == record.get("freeze_id")
+    ]
+    if not freezes:
+        bad(f"the ledger holds no predicate_freeze named {record.get('freeze_id')!r}")
+    else:
+        (frozen,) = freezes[:1]
+        if frozen.get("round") != record.get("round"):
+            bad(
+                f"the cited freeze is for round {frozen.get('round')!r}, "
+                f"not {record.get('round')!r}"
+            )
+        if bare(frozen.get("predicate_digest")) != record.get("predicate_digest"):
+            bad("the cited freeze froze a different predicate digest")
+    spends = [
+        entry
+        for entry in records
+        if entry.get("record") == "evaluation"
+        and bare(entry.get("ciphertext_digest")) == record.get("evaluation_digest")
+    ]
+    if not spends:
+        bad(
+            f"no evaluation in the ledger spends ciphertext "
+            f"{record.get('evaluation_digest')!r}"
+        )
+    results = [
+        entry
+        for entry in records
+        if entry.get("record") == "evaluation_result"
+        and bare(entry.get("ciphertext_digest")) == record.get("evaluation_digest")
+    ]
+    if spends and not results:
+        bad(
+            "the evaluation was opened but never completed; an unfinished round admits nothing"
+        )
+    for entry in results[:1]:
+        got = entry.get("result") or {}
+        if got.get("outcome") != record.get("outcome"):
+            bad(
+                f"the sealed evaluation's outcome {got.get('outcome')!r} "
+                f"is not the record's {record.get('outcome')!r}"
+            )
+    return problems
+
+
+def repair_baselines_v2_problems(document):
+    """The window-predicate baseline sidecar, validated against the records it shadows.
+
+    Accepted repair records are never edited,
+    so the shape predicate's baselines live beside them in one versioned section,
+    keyed by unit id.
+    The keys must be exactly the promoted unit ids —
+    a missing one is an unmeasured unit, an unknown one is an invented one —
+    and the derived summary must be the entries' own arithmetic.
+    """
+    sidecar = document.get("repair_baselines_v2")
+    if sidecar is None:
+        return []
+    problems = []
+
+    def bad(message):
+        problems.append(f"repair_baselines_v2: {message}")
+
+    predicate = sidecar.get("predicate")
+    if not (isinstance(predicate, str) and predicate.startswith("sha256:")):
+        bad(f"predicate must be a sha256-prefixed digest: {predicate!r}")
+    units = sidecar.get("units")
+    if not isinstance(units, dict):
+        bad("units must map unit id to a baseline entry")
+        return problems
+    promoted = {record["id"]: record for record in document.get("repairs", [])}
+    missing = sorted(set(promoted) - set(units))
+    unknown = sorted(set(units) - set(promoted))
+    if missing:
+        bad(
+            f"{len(missing)} promoted unit(s) carry no v2 baseline, first {missing[:3]}"
+        )
+    if unknown:
+        bad(f"{len(unknown)} v2 baseline(s) name no promoted unit, first {unknown[:3]}")
+    measured = collections.defaultdict(lambda: {"suggested": 0, "acceptable": 0})
+    for uid, entry in units.items():
+        if uid not in promoted:
+            continue
+        if not isinstance(entry.get("acceptable"), bool):
+            bad(f"{uid}: acceptable must be a bool")
+        stratum = promoted[uid].get("stratum", {}).get("set", "")
+        if entry.get("lines") is not None:
+            measured[stratum]["suggested"] += 1
+            if entry.get("acceptable"):
+                measured[stratum]["acceptable"] += 1
+    recorded = sidecar.get("measured")
+    if recorded != {key: dict(body) for key, body in measured.items()}:
+        bad("the measured summary is not the entries' own arithmetic")
     return problems
 
 
@@ -1689,25 +1816,84 @@ def source_selection_digest(document):
     return contract_digest(declared)
 
 
-def repair_round_bindings(document):
+def repair_round_sources(document, round):
+    """The canonical selection object a repair round's sources binding hashes, validated.
+
+    Binding an invalid selection would make it immutable rather than valid,
+    and a freeze is one per round,
+    so every violation refuses here, before anything is written:
+    a repair round draws exactly one source per composition,
+    every selected source carries its qualification record,
+    and no identity is reused —
+    neither an id nor a repository url already declared for another purpose.
+    The returned object is what the digest covers,
+    so freeze, draw, and seal hash the same round-specific selection or refuse together.
+    """
+    declared = document.get("sources", [])
+    selected = [source for source in declared if source.get("round") == round]
+    others = [source for source in declared if source.get("round") != round]
+
+    compositions = collections.Counter(source.get("composition") for source in selected)
+    if dict(compositions) != dict.fromkeys(COMPOSITIONS, 1):
+        raise ScoringRefused(
+            f"round {round} needs exactly one source per composition "
+            f"{list(COMPOSITIONS)}, and the manifest declares {dict(compositions)}"
+        )
+    unqualified = [
+        source["id"]
+        for source in selected
+        if not str(source.get("qualification") or "").strip()
+    ]
+    if unqualified:
+        raise ScoringRefused(
+            f"round {round} sources without a qualification record: {unqualified}"
+        )
+    reused = [
+        source["id"]
+        for source in selected
+        if any(
+            source.get("id") == other.get("id") or source.get("url") == other.get("url")
+            for other in others
+        )
+    ]
+    if reused:
+        raise ScoringRefused(
+            f"round {round} reuses a declared source identity: {reused}; "
+            "the preregistered round draws sources none of the declared twelve"
+        )
+    fields = SOURCE_FIELDS + ("round", "wrapping_column", "qualification")
+    canonical = [{name: source.get(name) for name in fields} for source in selected]
+    canonical.sort(key=lambda source: str(source["id"]))
+    return canonical
+
+
+def repair_round_bindings(document, round):
     """Everything a repair round means beyond its predicate and its manifest.
 
     ADR-0022 bound the predicate and the sample.
     It said in as many words what it did not claim:
     a round is also decided by its admission contract, its class taxonomy,
-    its draw configuration, and which sources it draws from,
-    and any of those could move between the freeze and the seal without being noticed.
-    The admission contract is the sharpest of the four.
+    its draw configuration, which sources it draws from,
+    and the scoring code that turns the frozen candidate into a normalized repair —
+    any of which could move between the freeze and the seal without being noticed.
+    The admission contract is the sharpest.
     Comparing the manifest against an in-code constant catches one copy moving,
     and catches nothing once both move together while a round is underway.
+    The candidate itself needs no entry here:
+    it is a constant in the predicate file, which the predicate digest already hashes.
     """
     import check_linefeeds
 
+    here = pathlib.Path(__file__).resolve()
+    score = here.parent / "corpus" / "repairs" / "score.py"
     return {
         "admission": repair_admission_digest(),
         "taxonomy": contract_digest(list(check_linefeeds.WITHHOLDING_CLASSES)),
         "draw": contract_digest(REPAIR_DRAW),
-        "sources": source_selection_digest(document),
+        "sources": contract_digest(repair_round_sources(document, round)),
+        "scoring": contract_digest(
+            {"score": file_digest(score), "harness": file_digest(here)}
+        ),
     }
 
 
@@ -2698,6 +2884,66 @@ class Holdout:
         self._require_freeze()
         self._require_unspent()
         return self._decrypt(passphrase)
+
+    def open_spending(self, passphrase):
+        """Decrypt the bundle and record the spend before the plaintext is returned.
+
+        `open` returns plaintext and leaves spending to a later `record_evaluation`,
+        which is two calls with a gap a crash can fall into,
+        leaving opened prose looking unspent.
+        This is the one-call form for a repair round:
+        the spend record lands in the ledger first,
+        so no decrypted byte escapes an operation the ledger has not yet marked,
+        and a second open refuses however the first one ended.
+        The result arrives later through `complete_evaluation`,
+        or never, which `repair_admission_result` validation treats as a refusal.
+        """
+        frozen = self._require_freeze()
+        self._require_unspent()
+        text = self._decrypt(passphrase)
+        self._append(
+            {
+                "record": "evaluation",
+                "predicate_digest": frozen["predicate_digest"],
+                "manifest_digest": frozen["manifest_digest"],
+                "ciphertext_digest": frozen["ciphertext_digest"],
+                "reporting_rules": frozen["reporting_rules"],
+                "result": {"state": "opened"},
+            }
+        )
+        return text
+
+    def complete_evaluation(self, result):
+        """Attach the one result to a bundle `open_spending` already spent."""
+        ciphertext = self._ciphertext_digest()
+        opened = [
+            record
+            for record in self._records()
+            if record.get("record") == "evaluation"
+            and record.get("ciphertext_digest") == ciphertext
+            and (record.get("result") or {}).get("state") == "opened"
+        ]
+        if not opened:
+            raise ScoringRefused(
+                "no spend record opened this bundle; complete_evaluation answers open_spending"
+            )
+        done = [
+            record
+            for record in self._records()
+            if record.get("record") == "evaluation_result"
+            and record.get("ciphertext_digest") == ciphertext
+        ]
+        if done:
+            raise ScoringRefused(
+                "this bundle's evaluation already carries a result; one open, one answer"
+            )
+        self._append(
+            {
+                "record": "evaluation_result",
+                "ciphertext_digest": ciphertext,
+                "result": result,
+            }
+        )
 
     def record_evaluation(self, result):
         """Spend this bundle, against the freeze record it answers."""

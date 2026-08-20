@@ -92,6 +92,7 @@ from corpus_harness import (  # noqa: E402
     composed,
     cut_positions,
     normalize_repair,
+    repair_baselines_v2_problems,
     repair_window,
     splice,
 )
@@ -2684,3 +2685,40 @@ def test_a_referred_unit_leaves_the_denominator(tmp_path):
     answer_all(answers, units, original_id, names=("agy",))
     _, report = scored_report(tmp_path, repairs, answers, "shipped")
     assert sum(body["ambiguous"] for body in report["strata"].values()) > 0
+
+
+# --- the repair_baselines_v2 sidecar ----------------------------------------
+
+
+def test_the_manifest_sidecar_is_the_entries_own_arithmetic():
+    document = json.loads(
+        (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert repair_baselines_v2_problems(document) == []
+    assert set(document["repair_baselines_v2"]["units"]) == {
+        record["id"] for record in document["repairs"]
+    }
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d["repair_baselines_v2"]["units"].pop(
+            sorted(d["repair_baselines_v2"]["units"])[0]
+        ),
+        lambda d: d["repair_baselines_v2"]["units"].__setitem__(
+            "invented:unit#repair", {"lines": None, "acceptable": False}
+        ),
+        lambda d: d["repair_baselines_v2"].__setitem__("predicate", "not-a-digest"),
+        lambda d: next(iter(d["repair_baselines_v2"]["measured"].values())).__setitem__(
+            "acceptable", 999
+        ),
+    ],
+    ids=["missing-unit", "unknown-unit", "predicate", "measured-count"],
+)
+def test_a_mutated_sidecar_refuses(mutate):
+    document = json.loads(
+        (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
+    )
+    mutate(document)
+    assert repair_baselines_v2_problems(document)

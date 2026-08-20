@@ -20,8 +20,11 @@ from corpus_harness import (  # noqa: E402
     Holdout,
     ScoringRefused,
     _freeze_id,
+    contract_digest,
+    file_digest,
     repair_admission_digest,
     repair_round_bindings,
+    repair_round_sources,
     source_selection_digest,
 )
 
@@ -514,15 +517,124 @@ def test_the_source_selection_digest_moves_with_a_commit_and_not_with_a_label():
     assert source_selection_digest(document) != before
 
 
-def test_a_repair_round_binds_all_four_things_the_amendment_names():
+def round_four_sources():
+    """Three valid round-4 declarations, one per composition, none of the twelve."""
+    rows = [
+        ("self-authored", "fresh-one"),
+        ("third-party-code", "fresh-two"),
+        ("third-party-markdown", "fresh-three"),
+    ]
+    return [
+        {
+            "id": ident,
+            "side": "holdout",
+            "round": 4,
+            "composition": composition,
+            "url": f"https://example.invalid/{ident}",
+            "commit": "0" * 40,
+            "license": "MIT",
+            "selection_command": "git ls-files '*.md'",
+            "wrapping_column": 80,
+            "qualification": "mode of raw line lengths is column 80, "
+            "measured from line lengths, licence, and prior exposure only",
+        }
+        for composition, ident in rows
+    ]
+
+
+def round_four_manifest():
     document = json.loads(
         (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
     )
-    binds = repair_round_bindings(document)
-    assert sorted(binds) == ["admission", "draw", "sources", "taxonomy"]
+    document["sources"] = document["sources"] + round_four_sources()
+    return document
+
+
+def test_a_repair_round_binds_all_five_things_the_amendment_names():
+    document = round_four_manifest()
+    binds = repair_round_bindings(document, 4)
+    assert sorted(binds) == ["admission", "draw", "scoring", "sources", "taxonomy"]
     assert binds["admission"] == repair_admission_digest()
-    assert binds["sources"] == source_selection_digest(document)
+    assert binds["sources"] == contract_digest(repair_round_sources(document, 4))
     assert all(digest.startswith("sha256:") for digest in binds.values())
+
+
+def test_the_scoring_binding_covers_the_scorer_and_the_harness():
+    """Deleting either dependency from the digest would let it move after the freeze."""
+    document = round_four_manifest()
+    before = repair_round_bindings(document, 4)["scoring"]
+    score = REPO / "tests" / "corpus" / "repairs" / "score.py"
+    harness = REPO / "tests" / "corpus_harness.py"
+    assert before == contract_digest(
+        {"score": file_digest(score), "harness": file_digest(harness)}
+    )
+
+
+def test_a_wrong_source_count_refuses_before_anything_binds():
+    document = round_four_manifest()
+    document["sources"] = document["sources"][:-1]
+    with pytest.raises(ScoringRefused, match="one source per composition"):
+        repair_round_sources(document, 4)
+
+
+def test_a_duplicated_composition_refuses():
+    document = round_four_manifest()
+    document["sources"][-1] = dict(document["sources"][-1], composition="self-authored")
+    with pytest.raises(ScoringRefused, match="one source per composition"):
+        repair_round_sources(document, 4)
+
+
+def test_a_missing_qualification_refuses():
+    document = round_four_manifest()
+    document["sources"][-1] = dict(document["sources"][-1], qualification="  ")
+    with pytest.raises(ScoringRefused, match="qualification"):
+        repair_round_sources(document, 4)
+
+
+def test_a_reused_id_refuses():
+    document = round_four_manifest()
+    document["sources"][-1] = dict(document["sources"][-1], id="styx")
+    with pytest.raises(ScoringRefused, match="reuses a declared source identity"):
+        repair_round_sources(document, 4)
+
+
+def test_a_reused_repository_url_under_a_fresh_id_refuses():
+    document = round_four_manifest()
+    document["sources"][-1] = dict(
+        document["sources"][-1], url="https://github.com/arloliu/styx"
+    )
+    with pytest.raises(ScoringRefused, match="reuses a declared source identity"):
+        repair_round_sources(document, 4)
+
+
+def test_a_source_outside_the_round_never_moves_its_binding():
+    """Freeze, draw, and seal hash the round's own selection, nothing wider."""
+    document = round_four_manifest()
+    before = repair_round_bindings(document, 4)["sources"]
+    for source in document["sources"]:
+        if source.get("round") != 4:
+            source["commit"] = "1" * 40
+    assert repair_round_bindings(document, 4)["sources"] == before
+    for source in document["sources"]:
+        if source.get("round") == 4:
+            source["commit"] = "2" * 40
+    assert repair_round_bindings(document, 4)["sources"] != before
+
+
+def test_a_valid_round_binds_while_an_invalid_one_refuses():
+    """The round is threaded through, so each consumer answers for its own round."""
+    document = round_four_manifest()
+    document["sources"].append(
+        dict(
+            round_four_sources()[0],
+            id="lonely",
+            round=5,
+            url="https://example.invalid/lonely",
+        )
+    )
+    assert repair_round_bindings(document, 4)
+    with pytest.raises(ScoringRefused, match="one source per composition"):
+        repair_round_bindings(document, 5)
 
 
 def test_the_draw_configuration_is_one_copy_rather_than_two():
