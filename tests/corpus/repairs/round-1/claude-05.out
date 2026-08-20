@@ -1,0 +1,71 @@
+```json
+[
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:21:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44309-user-configurable-memory-target.md:472:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/stream.go:85:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:js.go:1544:0#repair",
+    "choose": "c03",
+    "accept": ["c01", "c03"],
+    "reject": ["c00", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:288:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/37720-gopls-workspaces.md:58:0#repair",
+    "choose": "c09",
+    "accept": ["c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:205:1#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:156:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      [
+        "* Use angle brackets, as in `Vector<int>`.",
+        "  This has the advantage of being familiar to C++ and Java programmers.",
+        "  Unfortunately, it means that `f<T>(true)` can be parsed as either a call to function `f<T>` or a comparison of `f<T` (an expression that tests whether `f` is less than `T`) with `(true)`.",
+        "  While it may be possible to construct complex resolution rules, the Go syntax avoids that sort of ambiguity for good reason."
+      ]
+    ]
+  }
+]
+```
+
+Notes on the two judgment calls worth flagging:
+
+- **Unit 4**: the sentence "Make sure to give the channel enough capacity..." runs ~156 chars after rejoining the wrap, with a valid backward-scan comma boundary before "for example." I accepted both leaving it long (c01) and splitting there (c03), choosing c03 since the boundary is real and the overage is substantial.
+- **Unit 8**: no candidate achieves one-sentence-per-line without also introducing a bad mid-clause split (most split at "brackets," or "Unfortunately," which aren't real boundaries). My repair keeps all four sentences on separate lines with the list continuation indent, and leaves the ~187-char sentence 3 unsplit since its only comma is the introductory "Unfortunately," and the "that" inside the parenthetical is a poor split point.

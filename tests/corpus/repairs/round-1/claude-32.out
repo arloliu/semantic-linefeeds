@@ -1,0 +1,20 @@
+Reviewed all 8 units against the semantic-linefeeds rule (sentence boundaries only, list-item commas and compound-predicate conjunctions are not boundaries, rejoin-before-split for paired fused+wrap findings, and only add an extra long-line split when the rejoined remainder actually exceeds ~120 chars at a real boundary).
+
+Key judgment calls:
+- **Unit 1**: only `c10` splits purely at the sentence boundary without touching the list-item commas in "types, funcs, or methods."
+- **Unit 4**: none of the candidates fully separate all three merged sentences ("for numbers." / "(Why...?" / "Proper typesetting..."); every candidate leaves at least two of them fused, so all are rejected and the correct split is reported under `missing`.
+- **Unit 5**: the rejoined remainder is 121 chars, just over the limit, with a real semicolon boundary near the limit and a valid "and" boundary further back — accepted both plus the no-further-split option, chose the semicolon split as closest to the scan-from-limit algorithm.
+- **Unit 2/7/8**: rejoin-then-split-once suffices since remainders stay well under 120 chars; extra splits at "which"/comma boundaries in those units are unnecessary over-repair.
+
+```json
+[
+  {"id": "go-proposal:design/go2draft-generics-overview.md:861:0#repair", "choose": "c10", "accept": ["c10"], "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c11","c12","c13","c14","c15"], "missing": []},
+  {"id": "go-proposal:design/freeze-syscall.md:38:0#repair", "choose": "c05", "accept": ["c05"], "reject": ["c00","c01","c02","c03","c04","c06","c07","c08","c09","c10"], "missing": []},
+  {"id": "styx:internal/lifecycle/testdata/deathsig_helper/main.go:2:0#repair", "choose": "c01", "accept": ["c01"], "reject": ["c00","c02","c03"], "missing": []},
+  {"id": "go-proposal:design/51082-godocfmt.md:295:0#repair", "accept": [], "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10"], "missing": [["for numbers.", "(Why dashes and not asterisks?", "Proper typesetting of bullet lists sometimes does use dashes, but never uses asterisks, so"]]},
+  {"id": "go-proposal:design/44167-gc-pacer-redesign.md:292:0#repair", "choose": "c04", "accept": ["c01","c03","c04"], "reject": ["c00","c02","c05","c06","c07","c08","c09","c10"], "missing": []},
+  {"id": "go-proposal:design/generics-implementation-dictionaries.md:9:1#repair", "choose": "c03", "accept": ["c03"], "reject": ["c00","c01","c02","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15"], "missing": []},
+  {"id": "go-proposal:design/16085-conversions-ignore-tags.md:175:0#repair", "choose": "c01", "accept": ["c01"], "reject": ["c00","c02","c03","c04","c05","c06"], "missing": []},
+  {"id": "go-proposal:design/45713-workspace.md:271:0#repair", "choose": "c01", "accept": ["c01"], "reject": ["c00","c02","c03"], "missing": []}
+]
+```

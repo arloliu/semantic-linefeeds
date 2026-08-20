@@ -1,0 +1,86 @@
+## Unit-by-unit verdicts
+
+**Unit 1** — rejoin+split at the sentence boundary is required; the resulting sentence-2 line sits right at ~120–121 chars with two legitimate boundaries (`and`, `;`), so I treat leaving it whole and splitting at either boundary as all defensible. Anything that still ends mid-clause at "of" fails.
+
+**Unit 2** — straightforward rejoin+split; result is well under 120, so no further splitting is warranted.
+
+**Unit 3** — none of the candidates fully resolve the fused finding (all leave at least two of the three sentences glued together on one line); my repair isn't offered.
+
+**Unit 4** — rejoin+split at the sentence boundary; splitting the short first sentence at the em dash is unnecessary and produces a fragment, so those variants are rejected.
+
+**Unit 5** — none of the candidates achieve one-sentence-per-line for all five sentences (they all leave 2+ sentences fused somewhere); my repair isn't offered. Note sentence 2 (142 chars, no real clause boundary) should stay as one long line per the "leave it long" rule.
+
+**Unit 6** — rejoin+split; result under 120, no further split needed.
+
+**Unit 7** — rejoin+split; result short, no further split needed.
+
+**Unit 8** — the pre-existing "because" break is a valid subordinator-led split (consistent with the checker not flagging it as wrap), so leaving it as a separate line is my primary choice, though merging it back (also correct, since it's under 120) is acceptable too.
+
+```json
+[
+  {
+    "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:293:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c03", "c04"],
+    "reject": ["c00", "c02", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543/safe-points-everywhere.md:165:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13linker.md:44:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      " - We should make sure that object files are usable via mmap.",
+      "   This would reduce copying during I/O.",
+      "   It may require changing the Go runtime to simply panic, not crash, on SIGSEGV on non-nil addresses."
+    ]
+  },
+  {
+    "id": "styx:pluginserver.go:1134:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:182:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      "Only when the enclosing function is about to return does `try` test for an error returned by `f`.",
+      "Without changes to the behavior of `try`, such an error might then overwrite another error currently being returned by the enclosing function.",
+      "This is at best confusing, and at worst error-prone.",
+      "Therefore we suggest to disallow `try` as the called function in a `defer` statement as well.",
+      "We can always revisit this decision if sensible applications are found."
+    ]
+  },
+  {
+    "id": "go-proposal:design/70257-memory-regions.md:789:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:286:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:887:0#repair",
+    "choose": "c02",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03"],
+    "missing": []
+  }
+]
+```

@@ -1,0 +1,67 @@
+Working through each unit against the semantic-linefeeds rule (rejoin-before-split for wrap+fused pairs, preserve existing valid clause breaks, only add new splits at real boundaries when a line exceeds ~120 chars).
+
+```json
+[
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:84:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:113:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:884:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:161:0#repair",
+    "choose": "c11",
+    "accept": ["c11"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:28:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44309-user-configurable-memory-target.md:473:0#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:459:0#repair",
+    "choose": "c02",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-publishing-confirmStored/main.go:32:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```
+
+Notes on the two judgment calls:
+
+- **Unit 1**: the original text already breaks correctly at "so" (both sides stand alone). c02 preserves that existing valid split while fixing only the reported fused boundary — c01 would needlessly undo a correct pre-existing break.
+- **Unit 7**: this is the one case in the batch where, after the sentence split, the remaining line (~131 chars) both exceeds ~120 *and* has a genuine boundary (`but`, both sides independent clauses). Since `long` is advisory, I accept both leaving it long (c01) and splitting at `but` (c02), but c02 is my pick since the boundary is real and applying it costs nothing.

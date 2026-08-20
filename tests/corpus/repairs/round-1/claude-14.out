@@ -1,0 +1,44 @@
+Notes on the two non-trivial calls:
+
+- **Unit 3**: none of the 16 candidates fully resolve the fused sentences (each leaves at least two sentences sharing a line, or severs a clause at a list-comma). The correct repair is a full 5-way sentence split; I judged the two resulting >120-char lines (S4/S5) as acceptable to leave long, since their only mechanical boundary word (`which`/`where`) sits inside a tight parenthetical aside and severing there reads worse than the minor overage — `long` is advisory per this repo's own convention.
+- **Unit 4**: the existing line break after `as such:` was already a real clause boundary (colon), so the fix only needed to split off the first sentence, not rejoin the whole paragraph — hence c02, not c01.
+- **Unit 7 / Unit 8**: here the existing wrap break was *not* a real boundary (severed a noun phrase / adverb+PP), and the continuing sentence fits well under 120 chars, so the right fix rejoins that remainder onto one line rather than preserving the bad break or inventing a new one.
+
+```json
+[
+  {"id": "go-proposal:design/12416-cgo-pointers.md:151:0#repair",
+   "choose": "c01", "accept": ["c01"], "reject": ["c00"], "missing": []},
+
+  {"id": "go-proposal:design/45713-workspace.md:197:0#repair",
+   "choose": "c03", "accept": ["c03"],
+   "reject": ["c00", "c01", "c02", "c04", "c05", "c06"], "missing": []},
+
+  {"id": "go-proposal:design/generics-implementation-dictionaries.md:29:0#repair",
+   "accept": [],
+   "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15"],
+   "missing": [
+     "The implementation of f will have an additional argument which is the pointer to the dictionary structure.",
+     "We could put the additional argument first or last, or in its own register.",
+     "Reserving a register for it seems overkill.",
+     "Putting it first is similar to how receivers are passed (speaking of which, would the receiver or the dictionary come first?).",
+     "Putting it last means less argument shuffling in the case where wrappers are required (not sure where those might be yet)."
+   ]},
+
+  {"id": "go-proposal:design/44167/gc-pacer-redesign.src.md:247:0#repair",
+   "choose": "c02", "accept": ["c02"],
+   "reject": ["c00", "c01", "c03", "c04", "c05", "c06"], "missing": []},
+
+  {"id": "go-proposal:design/15292/2010-06-type-functions.md:642:0#repair",
+   "choose": "c01", "accept": ["c01"], "reject": ["c00", "c02", "c03"], "missing": []},
+
+  {"id": "go-proposal:design/45713-workspace.md:505:0#repair",
+   "choose": "c01", "accept": ["c01"], "reject": ["c00", "c02", "c03"], "missing": []},
+
+  {"id": "go-proposal:design/74299-runtime-freegc.md:139:0#repair",
+   "choose": "c01", "accept": ["c01"], "reject": ["c00", "c02", "c03"], "missing": []},
+
+  {"id": "styx:internal/transport/difftest/harness.go:534:0#repair",
+   "choose": "c01", "accept": ["c01"],
+   "reject": ["c00","c02","c03","c04","c05","c06","c07","c08","c09","c10"], "missing": []}
+]
+```

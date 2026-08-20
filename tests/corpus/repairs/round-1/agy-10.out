@@ -1,0 +1,160 @@
+```json
+[
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:161:0#repair",
+    "choose": "c11",
+    "accept": [
+      "c11"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:36:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:13:2#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "We propose adding support for profile-guided optimization (PGO) to the Go gc toolchain.",
+        "PGO will enable the toolchain to perform application- and workload-specific optimizations based on run-time information.",
+        "Unlike many compiler optimizations, PGO requires user involvement to collect profiles and feed them back into the build process.",
+        "Hence, we propose a design that centers user experience and ease of deployment and fits naturally into the broader Go build ecosystem."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/26903-simplify-mark-termination.md:139:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/rpcruntime/stream.go:1331:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": [
+      [
+        "// cannot put on the wire.",
+        "// A deadline records DEADLINE; every other cause records CANCELED.",
+        "// The stream is PUBLISHED here (the opener holds it), so the transition"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:102:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/27935-unbounded-queue-package.md:996:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:17:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04",
+      "c10"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09"
+    ],
+    "missing": []
+  }
+]
+```

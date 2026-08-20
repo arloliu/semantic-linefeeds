@@ -1,0 +1,67 @@
+```json
+[
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:296:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/51082-godocfmt.md:105:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:161:1#repair",
+    "choose": "c11",
+    "accept": ["c11"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/35112-scaling-the-page-allocator.md:116:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/freeze-syscall.md:74:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:33:0#repair",
+    "choose": "c13",
+    "accept": ["c13"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:406:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:49:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  }
+]
+```
+
+Notes on the harder calls:
+
+- **Unit 2**: the comma after "documentation" is an appositive-style prepositional phrase, not a boundary — rejected all splits there. The second sentence (~188 chars) has a genuine standalone-both-sides `but` boundary and exceeds ~120, so per the rule's "long" procedure it should be broken there (c05), not left long (c04 rejected as under-applying a found boundary).
+- **Unit 3**: every split around `` `gen` `` severs an appositive. Only correct fix keeps sentence 1 intact (no real boundary inside it despite being ~138 chars) and separates the three sentences cleanly — that's c11.
+- **Unit 4**: only c01 both rejoins the column-wrap and splits at the real sentence boundary; the resulting second sentence is short (~79 chars), so no colon split is warranted (c03 rejected as an unmotivated split, plus later candidates break inside inline code).
+- **Unit 6**: numeric list items (`1, 2, 4, or 8`) are never boundaries; the `and` in the second sentence joins an elliptical predicate (right side has no explicit subject/verb), so it doesn't qualify either — c13 is the only candidate that avoids both traps.

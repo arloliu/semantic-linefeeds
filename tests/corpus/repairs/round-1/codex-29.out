@@ -1,0 +1,65 @@
+[
+  {
+    "id": "go-proposal:design/35112-scaling-the-page-allocator.md:63:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/37112-unstable-runtime-metrics.md:302:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/25719-go15vendor.md:74:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      [
+        "In this example, all the dependencies needed by gsftp are (recursively) supplied in the vendor directory,",
+        "so “go install” does not read any source files outside the gsftp Git checkout.",
+        "Therefore the gsftp build is reproducible given only the content of the gsftp Git repo and not any other code.",
+        "And the dependencies need not be edited when copying them into the gsftp repo.",
+        "And potential users can run “go get github.com/constabulary/example-gsftp/cmd/gsftp” without needing to have an additional vendoring tool installed or special GOPATH configuration."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:220:0#repair",
+    "choose": "c07",
+    "accept": ["c07"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:165:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:86:1#repair",
+    "choose": "c10",
+    "accept": ["c10", "c19"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c20", "c21"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:223:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:856:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  }
+]

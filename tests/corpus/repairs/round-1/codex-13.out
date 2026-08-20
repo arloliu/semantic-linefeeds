@@ -1,0 +1,65 @@
+[
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:245:0#repair",
+    "choose": "c06",
+    "accept": ["c06", "c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c07", "c08", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:158:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:examples/docs/learn-jetstream-publishing-confirmStored/main.go:32:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/46136-vet-std-references.md:124:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c04"],
+    "reject": ["c00", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:18:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:158:0#repair",
+    "choose": "c08",
+    "accept": ["c08", "c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:167:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "*   Any sub-proto-dictionaries for callsites in `f`.",
+        "    (Note:",
+        "    any callsites in `f` which use only concrete type parameters do not need to be in the dictionary of `f`,",
+        "    because they can be generated at that callsite.",
+        "    Only callsites in `f` which use one or more of `f`’s type parameters need to be a subdictionary of `f`’s dictionary.)"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:248:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  }
+]

@@ -1,0 +1,71 @@
+I worked through each unit against the fused/wrap/long rules, checking sentence boundaries and rejecting any candidate that mangles inline code, leaves fragments, or fails to resolve a reported fused pair.
+
+```json
+[
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:269:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:17:0#repair",
+    "choose": "c10",
+    "accept": ["c10"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:nats.go:6520:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:90:1#repair",
+    "choose": "c06",
+    "accept": ["c06"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:139:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13linker.md:49:0#repair",
+    "choose": "c06",
+    "accept": ["c06"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:13:0#repair",
+    "choose": "c09",
+    "accept": ["c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:40:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      ["_Phase 3_."],
+      ["Use some tools, perhaps derived from gofix and the Go oracle to split the compiler into packages, cleaning up and documenting the code, and adding unit tests as appropriate."],
+      ["This phase turns the compiler into an idiomatic Go program."],
+      ["This is targeted for Go 1.4."]
+    ]
+  }
+]
+```
+
+Notes on the two non-obvious calls:
+
+- **Unit 2**: every candidate that splits inside the backtick code (`` `g :=` `` / `` `x :=` ``) mangles literal code and was rejected outright. Of the rest, only c10 resolves the fused sentence boundary without severing the long first sentence at a non-boundary comma (the `, as in` phrase isn't an independent clause, so splitting there would leave a fragment) — the long first sentence is left intact as an advisory.
+- **Unit 8**: the checker explicitly flags `_Phase 3_.` and `Use some tools...` as fused sentences, but no candidate ever isolates `_Phase 3_.` onto its own line — every one keeps it glued to the following sentence and only varies where it breaks *inside* that sentence. Since the reported fused pair is never actually resolved by any candidate, I flagged this as missing with the repair that does resolve it, following the same one-sentence-per-line treatment used for the `Derived types.` label in Unit 1.

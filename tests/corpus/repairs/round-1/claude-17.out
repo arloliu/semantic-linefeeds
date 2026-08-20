@@ -1,0 +1,67 @@
+Reviewed all 8 units against the semantic-linefeeds rule (fused → split at sentence ends; wrap → rejoin then re-split; long → split only at a real clause boundary, else leave long; never break directive/code tokens).
+
+Notable case: **Unit 7** — every listed candidate either splits unnecessarily at the semicolon while leaving the later sentences fused, or fails to place the split at the actual sentence-1/sentence-2 boundary (`...fmt.Errorf\`).` / `Using a helper function...`). None resolve all sentence boundaries correctly, so I rejected the whole list and supplied the missing repair.
+
+```json
+[
+  {
+    "id": "go-proposal:design/27935-unbounded-queue-package.md:510:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:67:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:152:0#repair",
+    "choose": "c10",
+    "accept": ["c10"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:212:0#repair",
+    "choose": "c06",
+    "accept": ["c06"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:445:1#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:258:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:150:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [
+      "or similar; the `fmt` package would be a natural place for such helpers (it already provides `fmt.Errorf`).",
+      "Using a helper function, the declaration of an error handler will be reduced to a one-liner in many cases.",
+      "For instance, to augment an error returned by a \"copy\" function, one might write"
+    ]
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:123:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```

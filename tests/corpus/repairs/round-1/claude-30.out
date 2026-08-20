@@ -1,0 +1,62 @@
+```json
+[
+  {
+    "id": "go-proposal:design/40276-go-install.md:498:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:280:0#repair",
+    "choose": "c04",
+    "accept": ["c01", "c04"],
+    "reject": ["c00", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60773-execution-tracer-overhaul.md:234:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/event/eventfd.go:130:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:283:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/18802-percpu-sharded.md:261:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/testutil/require_no_leak.go:49:0#repair",
+    "choose": "c05",
+    "accept": ["c05", "c07"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:760:1#repair",
+    "choose": "c08",
+    "accept": ["c08"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": []
+  }
+]
+```
+
+Key judgment calls: Unit 2 and Unit 7 each had two defensible splits (a minimal fix and one that further splits at a real subordinator/coordinator), so both were accepted with the more thorough one chosen. Unit 5's `c01` was rejected despite fixing the reported findings because it would leave two full sentences ("...correctly." / "In") fused onto one line — the same defect the rule targets, just unreported for that specific line. Unit 8 required picking the sole candidate resolving *both* fused findings without severing an invalid list-comma/list-"and"; the leftover 120+-char lines are the advisory `long` finding, which has no valid nearby boundary to split at (the list commas/"and" are excluded by the "A, B, and C" rule) so were correctly left alone.

@@ -1,0 +1,155 @@
+```json
+[
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:167:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": [
+      [
+        "*   Any sub-proto-dictionaries for callsites in `f`.",
+        "    (Note: any callsites in `f` which use only concrete type parameters do not need to be in the dictionary of `f`,",
+        "    because they can be generated at that callsite.",
+        "    Only callsites in `f` which use one or more of `f`’s type parameters need to be a subdictionary of `f`’s dictionary.)"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:296:1#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:104:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:21:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:host.go:976:0#repair",
+    "choose": "c08",
+    "accept": [
+      "c08"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:79:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "We have a hash table of shape instantiations that have already been created during this package compilation,",
+        "so we do not need to create the same instantiation repeatedly.",
+        "Along with the instantiated function itself, we also save some extra information that is needed for the dictionary pass described below.",
+        "This includes the format of the dictionary associated with the instantiation and other information that is only accessible from the generic function (such as the bounds of the type params) or is hard to access directly from the instantiation body.",
+        "We compute this extra information (dictionary format, etc.) as the final step of creating an instantiation."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:158:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/18802-percpu-sharded.md:40:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  }
+]
+```

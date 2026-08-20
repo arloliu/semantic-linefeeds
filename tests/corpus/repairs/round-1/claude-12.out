@@ -1,0 +1,71 @@
+```json
+[
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:214:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:50:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/55022-pgo.md:86:1#repair",
+    "choose": "c10",
+    "accept": ["c10"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:316:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries-go1.18.md:59:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:166:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:188:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:604:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [
+      [
+        "The server processes the answers and may return a new `CodeAction` with new questions or validation errors.",
+        "This process can repeat for multiple rounds.",
+        "The interactive phase is considered complete when the server returns a response `CodeAction` where `formFields` is omitted.",
+        "At this point, the `edit` or `command` property is usually computed and ready to be applied or executed."
+      ]
+    ]
+  }
+]
+```
+
+Notes on the two harder units:
+
+- **Unit 3**: every candidate except `c10` either leaves `Based on the findings from AutoFDO,` severed from its own clause, or leaves the second/third sentence fused. `c10` gives each sentence its own line; the middle sentence sits a bit over ~120 chars but its only nearby boundary (`that`, opening a complement clause) isn't offered as a split point by any candidate, and the overage is modest enough that leaving it long is the defensible call per the advisory rule.
+- **Unit 8**: no candidate achieves a clean split of all four sentences — every one leaves at least one fused pair (most commonly sentence 1 and 2, or 2 and 3) stuck together, or breaks mid-sentence at a non-boundary comma (`At this point,`). Since none produce correct prose, all are rejected and the four-way sentence split is reported under `missing`.

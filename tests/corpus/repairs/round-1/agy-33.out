@@ -1,0 +1,157 @@
+```json
+[
+  {
+    "id": "styx:errors.go:367:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:692:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:270:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": [
+      [
+        "*   Any sub-proto-dictionaries for callsites in `f`.",
+        "    (Note: any callsites in `f` which use only concrete type parameters do not need to be in the dictionary of `f`, because they can be generated at that callsite.",
+        "    Only callsites in `f` which use one or more of `f`’s type parameters need to be a subdictionary of `f`’s dictionary.)"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:418:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:604:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": [
+      [
+        "The server processes the answers and may return a new `CodeAction` with new questions or validation errors.",
+        "This process can repeat for multiple rounds.",
+        "The interactive phase is considered complete when the server returns a response `CodeAction` where `formFields` is omitted.",
+        "At this point, the `edit` or `command` property is usually computed and ready to be applied or executed."
+      ]
+    ]
+  },
+  {
+    "id": "styx:clientconn.go:816:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:398:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "A: Implementing `try` requires the ability to return from the function enclosing the `try` call.",
+        "Absent such a “super return” statement, `try` cannot be implemented in Go even if there were generic functions.",
+        "`try` also requires a variadic parameter list with parameters of different types.",
+        "We do not anticipate support for such variadic generic functions."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:219:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02"
+    ],
+    "missing": []
+  }
+]
+```

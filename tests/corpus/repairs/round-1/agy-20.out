@@ -1,0 +1,145 @@
+```json
+[
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:762:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c02",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/68723-crypto-ssh-v2.md:430:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:864:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2011-03-gen.md:149:0#repair",
+    "choose": "c08",
+    "accept": [
+      "c08",
+      "c09"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:286:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/draft-fuzzing.md:311:1#repair",
+    "choose": "c02",
+    "accept": [
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:29:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "The implementation of f will have an additional argument which is the pointer to the dictionary structure.",
+        "We could put the additional argument first or last, or in its own register.",
+        "Reserving a register for it seems overkill.",
+        "Putting it first is similar to how receivers are passed (speaking of which, would the receiver or the dictionary come first?).",
+        "Putting it last means less argument shuffling in the case where wrappers are required (not sure where those might be yet)."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/go2draft-generics-overview.md:45:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  }
+]
+```

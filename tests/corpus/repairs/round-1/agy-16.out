@@ -1,0 +1,158 @@
+```json
+[
+  {
+    "id": "go-proposal:design/15292/2010-06-type-functions.md:642:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:139:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  },
+  {
+    "id": "nats.go:object.go:1018:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:67:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c02"
+    ],
+    "reject": [
+      "c00",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/37112-unstable-runtime-metrics.md:282:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c05",
+      "c07"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c06",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:42:1#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "_Phase 4a_. Apply standard profiling and measurement techniques to understand and optimize the memory and CPU usage of the compiler.",
+        "This may include introducing parallelization; if so, the race detector is likely to be a significant help.",
+        "This is targeted for Go 1.4, but parts may slip to Go 1.5.",
+        "Some basic profiling and optimization may be done earlier, in Phase 3."
+      ],
+      [
+        "_Phase 4a_. Apply standard profiling and measurement techniques to understand and optimize the memory and CPU usage of the compiler.",
+        "This may include introducing parallelization;",
+        "if so, the race detector is likely to be a significant help.",
+        "This is targeted for Go 1.4, but parts may slip to Go 1.5.",
+        "Some basic profiling and optimization may be done earlier, in Phase 3."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:537:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:40:1#repair",
+    "choose": "c14",
+    "accept": [
+      "c14"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c15"
+    ],
+    "missing": []
+  }
+]
+```

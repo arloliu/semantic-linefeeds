@@ -1,0 +1,78 @@
+Working through each unit against the semantic-linefeeds rule (one sentence per line, rejoin column-wraps before splitting, only split "long" lines at real clause boundaries).
+
+Two units (5 and 8) have no fully-correct candidate in their lists — every offered option leaves at least one pair of sentences still fused — so those are reported as `missing`.
+
+```json
+[
+  {
+    "id": "go-proposal:design/go2draft-generics-overview.md:45:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/shm/intent.go:52:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:1620:0#repair",
+    "choose": "c03",
+    "accept": ["c02", "c03"],
+    "reject": ["c00", "c01"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:223:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:143:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": [[
+      "  re-mark (optionally).",
+      "  Start the world.",
+      "  Release `worldsema`.",
+      "  Print GC stats.",
+      "  Free stacks."
+    ]]
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:856:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-stenciling.md:124:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:62:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [[
+      "_Translate just the back ends and connect to go/parser and go/types immediately_.",
+      "The data structures in the compiler that convey information from the front end to the back ends look nothing like the APIs presented by go/parser and go/types.",
+      "Replacing the front end by those libraries would require writing code to convert from the go/parser and go/types data structures into the ones expected by the back ends, a very broad and error-prone undertaking.",
+      "We do believe that it makes sense to use these packages,",
+      "but it also makes sense to wait until the compiler is structured more like a Go program, into documented sub-packages of its own with defined boundaries and unit tests."
+    ]]
+  }
+]
+```
+
+Notes on the two `missing` calls:
+- **Unit 5**: every candidate still fuses at least two of the five short imperative sentences on one line; none fully separates them while also fixing the `Print GC / stats.` column-wrap.
+- **Unit 8**: every candidate keeps sentence 1 (`_Translate just...immediately_.`) fused to sentence 2 on the same line — none actually separates all four sentences. My repair leaves the two very long sentences (data-structures, replacing-the-front-end) unsplit since neither has a real clause boundary (no qualifying `and/but/so`, and the only `that` would sever the subject from its verb), but splits the last sentence at `but`, which does join two independent clauses.

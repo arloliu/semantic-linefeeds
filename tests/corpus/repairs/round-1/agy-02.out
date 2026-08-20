@@ -1,0 +1,160 @@
+```json
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:12:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/rpcruntime/stream_table.go:701:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:272:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "*   Stack layout information.",
+        "    The proto-dictionary needs a list of all of the stack objects and their types (which could be one of the derived types, above), and all callsites and their types (maybe one representative for each arg/result shape).",
+        "    Converting from a proto-dictionary to a dictionary would involve listing all the stack objects and their types, computing all the outargs section offsets, and adding up all the pieces of the frame to come up with an overall frame size."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/11970-decentralized-gc.md:143:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": [
+      [
+        "  re-mark (optionally).",
+        "  Start the world.",
+        "  Release `worldsema`.",
+        "  Print GC stats.",
+        "  Free stacks."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:240:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": [
+      [
+        "values is unpopular.",
+        "Should we consider supporting float values?",
+        "Float values mean more expensive encoding and decoding.",
+        "Even if float values are supported,"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/56986-godebug.md:230:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/control/fds.go:44:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:269:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00"
+    ],
+    "missing": []
+  }
+]
+```

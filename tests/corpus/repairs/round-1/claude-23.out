@@ -1,0 +1,68 @@
+```json
+[
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:110:2#repair",
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "accept": [],
+    "missing": [
+      [
+        "Parameterized named types continue to be considered identical (as reported by the `Identical` function) if they satisfy pointer equality.",
+        "Instantiated named types are considered identical if their origin types are identical and their type arguments are pairwise identical.",
+        "Instantiating twice with the same origin type and type arguments _may_ result in pointer-identical `*Named` instances, but this is not guaranteed.",
+        "There is further discussion of this in the [instantiation](#instantiation) section below."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/44253-generic-array-sizes.md:250:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:jetstream/object.go:1232:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c02"],
+    "reject": ["c00", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:89:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/60078-loopvar.md:110:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:18:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/26903-simplify-mark-termination.md:433:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/transport/shm/recovery.go:79:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c03"],
+    "reject": ["c00", "c02", "c04", "c05", "c06"],
+    "missing": []
+  }
+]
+```
+
+Notes on the one disagreement: Unit 1's candidate list never offers the clean four-sentence split — every candidate leaves at least two complete sentences fused on one line somewhere, so all eleven were rejected and the correct repair is reported under `missing`.

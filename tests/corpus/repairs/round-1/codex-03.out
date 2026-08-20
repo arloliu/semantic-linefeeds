@@ -1,0 +1,70 @@
+[
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:263:1#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:188:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/14951-soft-heap-limit.md:257:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:66:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      [
+        " - Overload `ast.CallExpr` to have a `Brackets bool` field,",
+        "   so `f[T]` would be analogous to `f(T)`, but with `Brackets` set to `true`.",
+        "   This is roughly equivalent to the `IndexListExpr` node, and allows us to avoid adding a new type.",
+        "   However, it overloads the meaning of `CallExpr` and adds an additional field."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:871:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:296:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      [
+        "The `command/resolve` request is sent from the client to the server to check whether a command is ready for execution or requires additional user input.",
+        "Before executing any command that supports interactive resolution, the client must call `command/resolve` at least once to determine if the command arguments are comprehensive.",
+        "As long as the `ExecuteCommandParams` contains non-empty `formFields` (questions), the client should not execute the command.",
+        "Instead, the client should collect the user's answers and call `command/resolve` with the answers populated in `formAnswers`."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/24543/safe-points-everywhere.md:165:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/57001-gotoolchain.md:42:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03"],
+    "missing": []
+  }
+]

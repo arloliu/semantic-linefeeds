@@ -1,0 +1,64 @@
+[
+  {
+    "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:247:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c02", "c03"],
+    "reject": ["c00", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/17503-eliminate-rescan.md:799:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/33974-add-public-lockedfile-pkg.md:181:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:288:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/56986-godebug.md:165:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:216:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "- Choosing a built-in function rather than an operator has several advantages.",
+        "  There is no need for a new keyword such as `check` which would have made the design not backward compatible with existing parsers.",
+        "  There is also no need for extending the expression syntax with the new operator.",
+        "  Adding a new built-in is a comparatively trivial and completely orthogonal language change."
+      ]
+    ]
+  },
+  {
+    "id": "styx:internal/supervisor/supervisor.go:612:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:212:0#repair",
+    "choose": "c06",
+    "accept": ["c06"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  }
+]

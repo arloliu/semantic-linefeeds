@@ -1,0 +1,75 @@
+[
+  {
+    "id": "go-proposal:design/16085-conversions-ignore-tags.md:175:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:489:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13linker.md:44:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        " - We should make sure that object files are usable via mmap.",
+        "   This would reduce copying during I/O.",
+        "   It may require changing the Go runtime to simply panic, not crash, on SIGSEGV on non-nil addresses."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:83:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "How will the caller know what derived types the body of f needs?",
+        "This is a very important question, and will be discussed at length later (see the proto-dictionary section).",
+        "For now, just assume that there will be summary information for each function",
+        "which lets the callsite know what derived types are needed."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:582:0#repair",
+    "choose": "c02",
+    "accept": ["c02"],
+    "reject": ["c00", "c01", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44309-user-configurable-memory-target.md:473:0#repair",
+    "choose": "c08",
+    "accept": ["c08", "c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47781-parameterized-go-ast.md:66:1#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [
+      [
+        " - Overload `ast.CallExpr` to have a `Brackets bool` field,",
+        "   so `f[T]` would be analogous to `f(T)`, but with `Brackets` set to `true`.",
+        "   This is roughly equivalent to the `IndexListExpr` node, and allows us to avoid adding a new type.",
+        "   However, it overloads the meaning of `CallExpr` and adds an additional field."
+      ]
+    ]
+  },
+  {
+    "id": "styx:internal/transport/transport.go:231:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  }
+]

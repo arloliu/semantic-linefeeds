@@ -1,0 +1,177 @@
+```json
+[
+  {
+    "id": "styx:internal/lifecycle/spawn.go:170:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go2draft-generics-overview.md:861:0#repair",
+    "choose": "c10",
+    "accept": [
+      "c10"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:62:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": [
+      [
+        "_Translate just the back ends and connect to go/parser and go/types immediately_.",
+        "The data structures in the compiler that convey information from the front end to the back ends look nothing like the APIs presented by go/parser and go/types.",
+        "Replacing the front end by those libraries would require writing code to convert from the go/parser and go/types data structures into the ones expected by the back ends, a very broad and error-prone undertaking.",
+        "We do believe that it makes sense to use these packages,",
+        "but it also makes sense to wait until the compiler is structured more like a Go program, into documented sub-packages of its own with defined boundaries and unit tests."
+      ]
+    ]
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:268:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/27935-unbounded-queue-package.md:510:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c02",
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:290:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:296:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "The `command/resolve` request is sent from the client to the server to check whether a command is ready for execution or requires additional user input.",
+        "Before executing any command that supports interactive resolution, the client must call `command/resolve` at least once to determine if the command arguments are comprehensive.",
+        "As long as the `ExecuteCommandParams` contains non-empty `formFields` (questions), the client should not execute the command.",
+        "Instead, the client should collect the user's answers and call `command/resolve` with the answers populated in `formAnswers`."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/26903-simplify-mark-termination.md:142:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  }
+]
+```

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:89:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/44167-gc-pacer-redesign.md:240:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c02", "c03"],
+    "reject": ["c00", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/48815-custom-fuzz-input-types.md:46:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01"],
+    "missing": [
+      [
+        "  * Raw input values can be cast as (an encoding of) the complex structure.",
+        "    For"
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:340:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-10-gen.md:186:0#repair",
+    "choose": "c08",
+    "accept": ["c08", "c09"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:326:0#repair",
+    "choose": "c01",
+    "accept": ["c01", "c05"],
+    "reject": ["c00", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": []
+  },
+  {
+    "id": "nats.go:nats.go:3031:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/56986-godebug.md:230:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  }
+]

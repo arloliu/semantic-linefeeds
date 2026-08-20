@@ -1,0 +1,70 @@
+Having applied the skill's rules to each unit, here are my answers.
+
+```json
+[
+  {
+    "id": "go-proposal:design/45713-workspace.md:489:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:1429:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/13432-mobile-audio.md:251:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/74299-runtime-freegc.md:128:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/24543-non-cooperative-preemption.md:468:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:353:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:77:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      [
+        "How will the caller know what derived types the body of f needs?",
+        "This is a very important question, and will be discussed at length later (see the proto-dictionary section).",
+        "For now, just assume that there will be summary information for each function",
+        "which lets the callsite know what derived types are needed."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/30333-smarter-scavenging.md:30:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  }
+]
+```
+
+Note on Unit 7: none of the seven candidates split all three sentences correctly — every candidate either leaves the second and third sentences fused together, or severs the third sentence at a non-boundary point ("now," / "just assume"). The correct repair splits all three sentences, then breaks the over-120-char third sentence at its nearest backward clause boundary, `which` — a shape not offered by any candidate.

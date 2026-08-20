@@ -1,0 +1,73 @@
+Based on close reading of each window against the semantic-linefeeds rule (one sentence per line; clause-boundary splits only at `;` `:` `—`, independent-clause `and/but/so`, or a relative/subordinate word; never sever a fragment), here are my verdicts.
+
+```json
+[
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:216:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06"],
+    "missing": [
+      ["- Choosing a built-in function rather than an operator has several advantages.",
+       "  There is no need for a new keyword such as `check` which would have made the design not backward compatible with existing parsers.",
+       "  There is also no need for extending the expression syntax with the new operator.",
+       "  Adding a new built-in is a comparatively trivial and completely orthogonal language change."]
+    ]
+  },
+  {
+    "id": "go-proposal:design/25719-go15vendor.md:74:1#repair",
+    "accept": [],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c09","c10","c11","c12","c13","c14","c15"],
+    "missing": [
+      ["In this example, all the dependencies needed by gsftp are (recursively) supplied in the vendor directory,",
+       "so “go install” does not read any source files outside the gsftp Git checkout.",
+       "Therefore the gsftp build is reproducible given only the content of the gsftp Git repo and not any other code.",
+       "And the dependencies need not be edited when copying them into the gsftp repo.",
+       "And potential users can run “go get github.com/constabulary/example-gsftp/cmd/gsftp” without needing to have an additional vendoring tool installed or special GOPATH configuration."]
+    ]
+  },
+  {
+    "id": "styx:cmd/protoc-gen-go-styx/generate.go:411:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03", "c04", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:44:0#repair",
+    "choose": "c09",
+    "accept": ["c09"],
+    "reject": ["c00","c01","c02","c03","c04","c05","c06","c07","c08","c10","c11","c12","c13","c14","c15"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:105:0#repair",
+    "choose": "c03",
+    "accept": ["c03"],
+    "reject": ["c00", "c01", "c02"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/37112-unstable-runtime-metrics.md:282:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00","c01","c02","c03","c04","c06","c07","c08","c09","c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/12302-release-proposal.md:161:0#repair",
+    "choose": "c04",
+    "accept": ["c04"],
+    "reject": ["c00", "c01", "c02", "c03", "c05", "c06"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:296:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00","c01","c02","c03","c04","c06","c07","c08","c09","c10"],
+    "missing": []
+  }
+]
+```
+
+Notes on the two "missing" units: both offered candidate sets only partially split the fused sentences (some sentence pair always remains fused, or the split lands on a non-boundary word like "In this example,"). Since accepting a candidate that leaves two sentences on one line contradicts the core rule, none qualified — the correct repair (full per-sentence split, with unit 2 also breaking at the independent-clause "so" the checker flagged) isn't among the offered candidates.

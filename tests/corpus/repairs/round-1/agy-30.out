@@ -1,0 +1,177 @@
+```json
+[
+  {
+    "id": "go-proposal:design/76331-lsp-interactive-refactoring.md:760:1#repair",
+    "choose": "c08",
+    "accept": [
+      "c08"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:pluginserver.go:1134:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c02",
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16410-heap-viewer.md:71:0#repair",
+    "choose": "c03",
+    "accept": [
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/16339-alias-decls.md:442:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c03"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:53:0#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21"
+    ],
+    "missing": [
+      [
+        "Type parameter names are represented by a `*TypeName` with a `*TypeParam`-valued `Type()`.",
+        "They are declared by type parameter lists, or by type parameters on method receivers.",
+        "Type parameters are scoped to the type or function declaration on which they are defined.",
+        "Notably, this introduces a new `*Scope` for parameterized type declarations (for parameterized function declarations the scope is the function scope).",
+        "The `Obj()` method returns the `*TypeName` corresponding to the type parameter (its receiver).",
+        "The `Index()` method returns the index of the type parameter in its type parameter list, or `-1` if the type parameter has not yet been bound to a type."
+      ]
+    ]
+  },
+  {
+    "id": "go-proposal:design/44167/gc-pacer-redesign.src.md:340:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/12166-subtests.md:214:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c01",
+      "c02",
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-stenciling.md:124:0#repair",
+    "choose": "c02",
+    "accept": [
+      "c02",
+      "c05"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c03",
+      "c04",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  }
+]
+```

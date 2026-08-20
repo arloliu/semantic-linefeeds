@@ -1,0 +1,156 @@
+```json
+[
+  {
+    "id": "go-proposal:design/47916-parameterized-go-types.md:90:1#repair",
+    "choose": "c06",
+    "accept": [
+      "c06"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:216:2#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": [
+      "- Choosing a built-in function rather than an operator has several advantages.",
+      "  There is no need for a new keyword such as `check` which would have made the design not backward compatible with existing parsers.",
+      "  There is also no need for extending the expression syntax with the new operator.",
+      "  Adding a new built-in is a comparatively trivial and completely orthogonal language change."
+    ]
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:107:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/go13compiler.md:68:1#repair",
+    "accept": [],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06"
+    ],
+    "missing": [
+      "Carried to completion, this plan still leaves the rest of the Plan 9 toolchain written in C.",
+      "In the long term it would be nice to eliminate all C from the tree.",
+      "This section speculates on how that might happen.",
+      "It is not guaranteed to happen in this way or at all."
+    ]
+  },
+  {
+    "id": "styx:internal/lifecycle/reload.go:417:0#repair",
+    "choose": "c04",
+    "accept": [
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c05",
+      "c06"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/37720-gopls-workspaces.md:58:0#repair",
+    "choose": "c09",
+    "accept": [
+      "c09"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15"
+    ],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/70257-memory-regions.md:789:0#repair",
+    "choose": "c01",
+    "accept": [
+      "c01",
+      "c04"
+    ],
+    "reject": [
+      "c00",
+      "c02",
+      "c03",
+      "c05",
+      "c06",
+      "c07",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  },
+  {
+    "id": "styx:internal/testutil/require_no_leak.go:49:0#repair",
+    "choose": "c05",
+    "accept": [
+      "c05",
+      "c07"
+    ],
+    "reject": [
+      "c00",
+      "c01",
+      "c02",
+      "c03",
+      "c04",
+      "c06",
+      "c08",
+      "c09",
+      "c10"
+    ],
+    "missing": []
+  }
+]
+```

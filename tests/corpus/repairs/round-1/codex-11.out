@@ -1,0 +1,56 @@
+[
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:172:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21"],
+    "missing": [["Here, `f` is evaluated when the `go` statement is executed in the current goroutine,", "and then its results are passed as arguments to `try` which is launched in a new goroutine.", "If `f` returns a non-nil error, `try` is expected to return from the enclosing function,", "but there isn’t any such (Go) function (nor a last result parameter of type `error`) since we are running in a separate goroutine.", "Therefore we suggest to disallow `try` as the called function in a `go` statement."]]
+  },
+  {
+    "id": "go-proposal:design/40276-go-install.md:474:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-gcshape.md:166:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/45713-workspace.md:505:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00", "c02", "c03"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/32437-try-builtin.md:259:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/15292/2013-12-type-params.md:1618:0#repair",
+    "choose": "c01",
+    "accept": ["c01"],
+    "reject": ["c00"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/36606-64-bit-field-alignment.md:296:0#repair",
+    "choose": "c05",
+    "accept": ["c05"],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c10"],
+    "missing": []
+  },
+  {
+    "id": "go-proposal:design/generics-implementation-dictionaries.md:29:0#repair",
+    "accept": [],
+    "reject": ["c00", "c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11", "c12", "c13", "c14", "c15"],
+    "missing": [["The implementation of f will have an additional argument which is the pointer to the dictionary structure.", "We could put the additional argument first or last, or in its own register.", "Reserving a register for it seems overkill.", "Putting it first is similar to how receivers are passed (speaking of which, would the receiver or the dictionary come first?).", "Putting it last means less argument shuffling in the case where wrappers are required (not sure where those might be yet)."]]
+  }
+]
