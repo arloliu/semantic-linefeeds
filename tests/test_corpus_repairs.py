@@ -1174,6 +1174,7 @@ def test_a_class_the_population_never_produced_is_a_line_rather_than_an_absence(
 # not agents given complete hook feedback.
 
 import importlib.util  # noqa: E402
+import os  # noqa: E402
 import subprocess  # noqa: E402
 
 from corpus_harness import (  # noqa: E402
@@ -1410,6 +1411,9 @@ def test_a_batch_holds_no_more_units_than_a_sitting():
 COLLECT = REPO / "tests" / "corpus" / "repairs" / "collect.py"
 ADJUDICATE = REPO / "tests" / "corpus" / "repairs" / "adjudicate.py"
 PROMOTE = REPO / "tests" / "corpus" / "repairs" / "promote.py"
+STATUS = REPO / "tests" / "corpus" / "repairs" / "status.py"
+CHECKOUT = REPO / "tests" / "corpus" / "repairs" / "checkout.py"
+RUN_ROUND = REPO / "tests" / "corpus" / "repairs" / "run_round.sh"
 
 PASSES = ("claude", "codex", "agy")
 
@@ -1429,22 +1433,38 @@ def round_dir(tmp_path, pattern="suggestion_*.md"):
     return repairs, answers, units
 
 
-def answer_all(answers, units, choose, accept=None, missing=None, names=PASSES):
-    """Write one `.out` per pass, each answering every unit the same way."""
+def answer_all(
+    answers, units, choose, accept=None, missing=None, names=PASSES, unanswered=None
+):
+    """Write one `.out` per pass, each answering every unit the same way.
+
+    The shapes here are the ones a real pass produces, not tidier ones.
+    A pass reporting a repair the list never offered names no choice:
+    `REPAIRING.md` requires the chosen repair to be one the pass accepted,
+    and a pass that accepted none of them has none to name.
+    A fixture that always wrote a `choose` could not reach that shape,
+    and a shape no fixture reaches is a shape no test guards.
+
+    `unanswered` names candidates to leave out of both verdict lists,
+    for the partial answer that is malformed rather than merely refusing.
+    """
     for name in names:
         payload = []
         for unit in units:
-            names_shown = [candidate["id"] for candidate in unit["candidates"]]
-            taken = accept(unit) if accept else [choose(unit)]
-            payload.append(
-                {
-                    "id": unit["id"],
-                    "choose": choose(unit),
-                    "accept": taken,
-                    "reject": [one for one in names_shown if one not in taken],
-                    "missing": missing(unit) if missing else [],
-                }
-            )
+            shown = [candidate["id"] for candidate in unit["candidates"]]
+            absent = set(unanswered(unit) if unanswered else ())
+            ruled = [one for one in shown if one not in absent]
+            refused = missing(unit) if missing else []
+            taken = [] if refused else (accept(unit) if accept else [choose(unit)])
+            answer = {
+                "id": unit["id"],
+                "accept": [one for one in ruled if one in taken],
+                "reject": [one for one in ruled if one not in taken],
+                "missing": refused,
+            }
+            if not refused:
+                answer["choose"] = choose(unit)
+            payload.append(answer)
         (answers / f"{name}-01.out").write_text(
             json.dumps(payload, indent=2), encoding="utf-8"
         )
@@ -1650,6 +1670,288 @@ def test_a_decision_without_a_reason_is_refused(tmp_path):
         entry["reason"] = "the second break severs a clause"
     (repairs / "adjudications.json").write_text(json.dumps(entries), encoding="utf-8")
     assert run(ADJUDICATE, "check", repairs, answers).returncode == 0
+
+
+def test_a_round_carrying_every_referral_shape_reaches_the_manifest(tmp_path):
+    """The whole chain, on the shapes a real round actually produces.
+
+    Each stage of this pipeline had a test and the composition had none,
+    so four readers ignored the form their own writer fills in,
+    and every one of them was reachable only through a shape the fixtures could not build:
+    a pass refusing a unit without naming a choice,
+    a decision naming candidates by the id the worksheet asks for,
+    and a decision on a unit no candidate could repair.
+    A round that cannot be promoted is the only symptom they share,
+    so promotion is what this asserts.
+    """
+    repairs, answers, units = round_dir(tmp_path, "suggestion_*.md")
+    refused = units[0]["id"]
+    everything = [candidate["id"] for candidate in units[0]["candidates"]]
+
+    # One pass splits from the others, and every pass refuses the first unit.
+    def taken(unit):
+        return everything if unit["id"] != refused else []
+
+    def absent(unit):
+        return (
+            [["a line the generator never offered", "and its continuation"]]
+            if (unit["id"] == refused)
+            else []
+        )
+
+    answer_all(answers, units, original_id, missing=absent, names=("claude",))
+    answer_all(
+        answers,
+        units,
+        original_id,
+        accept=taken,
+        missing=absent,
+        names=("codex", "agy"),
+    )
+    assert run(COLLECT, repairs, answers).returncode == 0
+
+    assert run(ADJUDICATE, "worksheet", repairs, answers).returncode == 0
+    entries = json.loads((repairs / "adjudications.json").read_text(encoding="utf-8"))
+    shapes = {entry["id"]: entry["shape"] for entry in entries}
+    assert shapes[refused] == "missing"
+    assert set(shapes.values()) >= {"missing", "split"}
+
+    for entry in entries:
+        entry["reason"] = "decided by the test"
+        if entry["shape"] == "missing":
+            # Its acceptable set cannot be completed, so it leaves the rate.
+            entry["outcome"] = "ambiguous"
+            entry["supplied"] = [["a line the generator never offered", "and more"]]
+        else:
+            # Named by id, which is what the worksheet asks a maintainer for.
+            entry["outcome"] = "settled"
+            entry["acceptable"] = [entry["candidates"][0]["id"]]
+    (repairs / "adjudications.json").write_text(json.dumps(entries), encoding="utf-8")
+    assert run(ADJUDICATE, "check", repairs, answers).returncode == 0
+
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    done = run(PROMOTE, repairs, answers, FIXTURES.parent, "--manifest", manifest)
+    assert done.returncode == 0, done.stdout + done.stderr
+
+    records = json.loads(manifest.read_text(encoding="utf-8"))["repairs"]
+    assert len(records) == len(units)
+    outcomes = {record["id"]: record["outcome"] for record in records}
+    assert outcomes[refused] == "ambiguous"
+    assert set(outcomes.values()) == {"ambiguous", "settled"}
+    # A decision named by id has to arrive as the cuts it stands for,
+    # or the acceptable set is empty and nothing it protects is scored.
+    settled = [r for r in records if r["outcome"] == "settled"]
+    assert settled and all(r["acceptable"] for r in settled)
+    for record in records:
+        assert record["baseline_suggestion"]["predicate"] == file_digest(
+            REPO / "scripts" / "check_linefeeds.py"
+        )
+        assert record["passes"], record["id"]
+    # A refused unit records what the repair should have been,
+    # and carries no acceptable set, because it has none to carry.
+    refusal = next(r for r in records if r["id"] == refused)
+    assert refusal["acceptable"] == []
+
+
+def a_pinned_source(tmp_path):
+    """A repository with two commits, and a manifest pinning the older one."""
+    origin = tmp_path / "origin"
+    origin.mkdir()
+
+    def git(*args):
+        return subprocess.run(
+            ["git", "-C", str(origin), *args],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    git("init", "--quiet", "-b", "main")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    (origin / "a.md").write_text("first\n", encoding="utf-8")
+    git("add", "a.md")
+    git("commit", "--quiet", "-m", "first")
+    pinned = git("rev-parse", "HEAD").stdout.strip()
+    (origin / "a.md").write_text("second\n", encoding="utf-8")
+    git("commit", "--quiet", "-am", "second")
+    moved = git("rev-parse", "HEAD").stdout.strip()
+
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "sources": [
+                    {
+                        "id": "pinned",
+                        "side": "calibration",
+                        "url": str(origin),
+                        "commit": pinned,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    return manifest, pinned, moved
+
+
+def checkout(manifest, root, *extra):
+    return subprocess.run(
+        [
+            sys.executable,
+            str(CHECKOUT),
+            "--manifest",
+            str(manifest),
+            "--root",
+            str(root),
+            *extra,
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+
+
+def test_a_pinned_source_is_fetched_at_the_commit_the_manifest_names(tmp_path):
+    """The tree a round is drawn from is reconstructible rather than vendored."""
+    manifest, pinned, _moved = a_pinned_source(tmp_path)
+    root = tmp_path / "checkouts"
+    done = checkout(manifest, root)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "fetched" in done.stdout
+    at = subprocess.run(
+        ["git", "-C", str(root / "pinned"), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    assert at.stdout.strip() == pinned
+    # Running it again is a verification rather than a second clone.
+    again = checkout(manifest, root)
+    assert again.returncode == 0
+    assert "present" in again.stdout
+
+
+def test_a_checkout_that_moved_is_reported_rather_than_corrected(tmp_path):
+    """A tree that quietly moved is how a round stops being comparable."""
+    manifest, _pinned, moved = a_pinned_source(tmp_path)
+    root = tmp_path / "checkouts"
+    assert checkout(manifest, root).returncode == 0
+    subprocess.run(
+        ["git", "-C", str(root / "pinned"), "checkout", "--quiet", moved], check=True
+    )
+    done = checkout(manifest, root)
+    assert done.returncode == 1
+    assert "MOVED" in done.stdout
+    still = subprocess.run(
+        ["git", "-C", str(root / "pinned"), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    assert still.stdout.strip() == moved, "reported, not corrected"
+
+
+def test_verify_reports_a_missing_checkout_without_fetching_it(tmp_path):
+    manifest, _pinned, _moved = a_pinned_source(tmp_path)
+    root = tmp_path / "checkouts"
+    done = checkout(manifest, root, "--verify")
+    assert done.returncode == 1
+    assert "MISSING" in done.stdout
+    assert not (root / "pinned").exists()
+
+
+def a_round_of(tmp_path, batches=2):
+    """A batches directory and somewhere to put the answers, with no provider behind it."""
+    where = tmp_path / "batches"
+    where.mkdir()
+    for index in range(1, batches + 1):
+        (where / f"batch-{index:02d}.md").write_text("a batch\n", encoding="utf-8")
+    out = tmp_path / "answers"
+    return where, out
+
+
+def a_stub_pass(tmp_path, silent_on):
+    """Stand in for a provider, answering every batch but the one named."""
+    stub = tmp_path / "stub_pass.sh"
+    stub.write_text(
+        "#!/bin/sh\n"
+        'case "$2" in\n'
+        f'  *batch-{silent_on}.md) : > "$3" ;;\n'
+        '  *) printf \'[{"id": "u", "choose": "c00", "accept": [], '
+        '"reject": [], "missing": []}]\' > "$3" ;;\n'
+        "esac\n",
+        encoding="utf-8",
+    )
+    return stub
+
+
+def test_a_round_short_a_batch_does_not_report_that_it_finished(tmp_path):
+    """A loop that ended is not a round that finished.
+
+    A pass can fail, or return something nothing can read,
+    and leave the family short by a whole batch while the file count looks complete.
+    Round-1 lost eight units that way and reported the family finished.
+    """
+    batches, out = a_round_of(tmp_path)
+    stub = a_stub_pass(tmp_path, silent_on="02")
+    done = subprocess.run(
+        ["sh", str(RUN_ROUND), "agy", str(batches), str(out)],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+        env={**os.environ, "RUN_PASS": str(stub)},
+    )
+    assert done.returncode == 1, done.stdout
+    assert "DID NOT FINISH" in done.stderr
+    assert "02" in done.stderr
+    assert "finished, every batch answered" not in done.stdout
+
+
+def test_a_round_that_answered_every_batch_says_so(tmp_path):
+    batches, out = a_round_of(tmp_path)
+    stub = a_stub_pass(tmp_path, silent_on="99")
+    done = subprocess.run(
+        ["sh", str(RUN_ROUND), "agy", str(batches), str(out)],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+        env={**os.environ, "RUN_PASS": str(stub)},
+    )
+    assert done.returncode == 0, done.stderr
+    assert "finished, every batch answered" in done.stdout
+
+
+def test_status_counts_a_family_that_has_answered_nothing_yet(tmp_path):
+    """A family in the round with nothing readable back still constrains the count.
+
+    `answered by every family` is the number a round is watched by,
+    and it is most misleading exactly when it matters most —
+    early, while one family is still on its first batch.
+    Intersecting only over families that parsed an answer drops the one holding it up.
+    """
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(answers, units, original_id, names=("codex", "agy"))
+    # The shape a family looks like while its first batch is still running.
+    (answers / "claude-01.out").write_text("", encoding="utf-8")
+
+    done = subprocess.run(
+        [
+            sys.executable,
+            str(STATUS),
+            str(answers),
+            "--sample",
+            str(repairs / "sample.json"),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    assert done.returncode == 0, done.stderr
+    line = next(one for one in done.stdout.splitlines() if "answered by all of" in one)
+    # Named rather than counted, so a reader can see which families are in it.
+    assert "claude" in line
+    assert line.split()[-3] == "0", line
 
 
 def promoted(tmp_path, pattern="suggestion_*.md"):
@@ -2034,17 +2336,19 @@ def test_an_answer_that_is_not_a_list_of_units_is_read_as_nothing(tmp_path):
     assert pass_answers(out) == []
 
 
-def test_a_window_the_generator_refused_never_reaches_a_pass():
+ROUNDS = sorted((REPO / "tests" / "corpus" / "repairs").glob("round-*/sample.json"))
+
+
+@pytest.mark.parametrize("sample_path", ROUNDS, ids=[p.parent.name for p in ROUNDS])
+def test_a_window_the_generator_refused_never_reaches_a_pass(sample_path):
     """It leaves the sample carrying its position count, and is not put to anyone.
 
-    Sixty of the round's 368 units are refused this way,
-    every one of them for offering more cut positions than a pass can judge.
+    Every drawn round refuses some units this way,
+    each for offering more cut positions than a pass can judge.
+    How many is a fact about a given round rather than about the rule,
+    so what is asserted is the shape a refusal leaves behind.
     """
-    sample = json.loads(
-        (REPO / "tests" / "corpus" / "repairs" / "sample.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    sample = json.loads(sample_path.read_text(encoding="utf-8"))
     refused = [unit for unit in sample["units"] if unit.get("defect")]
     assert refused
     for unit in refused:

@@ -1,11 +1,12 @@
 """How far the round has got, and whether what has come back is answerable.
 
-    python3 tests/corpus/repairs/status.py [<round-dir>]
+    python3 tests/corpus/repairs/status.py <answers-dir> --sample <round>/sample.json
 
 Counts per family rather than in total.
 A family that has stopped answering looks like a slow one until the counts sit together.
 """
 
+import argparse
 import collections
 import json
 import pathlib
@@ -18,8 +19,8 @@ sys.path.insert(0, str(TESTS))
 from corpus_harness import pass_answers  # noqa: E402
 
 
-def main(round_dir):
-    sample = json.loads((HERE.parent / "sample.json").read_text(encoding="utf-8"))
+def main(round_dir, sample_path):
+    sample = json.loads(sample_path.read_text(encoding="utf-8"))
     judgeable = {unit["id"]: unit for unit in sample["units"] if not unit.get("defect")}
     shown = {
         uid: {candidate["id"] for candidate in unit["candidates"]}
@@ -61,15 +62,24 @@ def main(round_dir):
             f"{family:<10}{row['batches']:>9}{row['answers']:>9}"
             f"{row['covered']:>13}{row['missing']:>9}{row['unknown']:>9}"
         )
-    families = sorted(answered)
+    # Over every family the round has a file for, not every family that parsed one.
+    # A family whose first batch is still running has answered nothing,
+    # and dropping it reports the round as further along than it is,
+    # exactly while that is most misleading.
+    families = sorted(per_family)
     if families:
         complete = set.intersection(*(answered[name] for name in families))
-        print(f"\nanswered by every family so far: {len(complete)} of {len(judgeable)}")
+        print(
+            f"\nanswered by all of {', '.join(families)}: "
+            f"{len(complete)} of {len(judgeable)}"
+        )
 
 
 if __name__ == "__main__":
-    main(
-        pathlib.Path(sys.argv[1]).resolve()
-        if len(sys.argv) > 1
-        else HERE.parent / "round-1"
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("round_dir")
+    parser.add_argument(
+        "--sample", required=True, help="the sample the round was drawn from"
     )
+    args = parser.parse_args()
+    main(pathlib.Path(args.round_dir).resolve(), pathlib.Path(args.sample).resolve())
