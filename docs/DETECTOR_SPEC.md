@@ -28,7 +28,7 @@ The portable core exposes these entry points:
 |---|---|
 | `diagnose(text, path, spans=None)` | Returns rich diagnostic dictionaries for one after-state text snapshot. |
 | `check(text, path)` | Projects each rich diagnostic to `(line, kind, message, excerpt)`. |
-| `to_schema(path, diagnostics)` | Wraps one file's diagnostics in JSON schema version 1. |
+| `to_schema(path, diagnostics)` | Wraps one file's diagnostics in JSON schema version 2. |
 | `run_sources(sources, as_json=False)` | Checks supplied `(path, text)` pairs with file-mode rendering and status. |
 | `run_files(paths, as_json=False)` | Reads named files, then delegates to `run_sources`. |
 | `run_hook_claude()` | Reads a Claude-shaped post-tool payload from standard input. |
@@ -435,7 +435,7 @@ Every rich diagnostic contains:
 | `evidence` | Half-open range containing all text examined for the finding. |
 | `ownership` | Half-open causal range, or `None` when exact location failed. |
 | `ownership_basis` | `token` or `degraded`. |
-| `suggestion` | Optional two-line replacement for a narrow `fused` class. |
+| `suggestion` | Optional replacement for a narrow `fused` class: `lines` holds the two lines to write, and `replaces` counts the raw lines they replace, starting at `line`. Schema version 2 exists for this field: under version 1 a suggestion always replaced the anchor line alone. |
 
 Offsets count Unicode code points in the supplied text.
 A normal span has `start` and `end` offsets.
@@ -496,6 +496,30 @@ The detector withholds the suggestion unless all of these conditions hold:
 - The raw prefix contains only approved whitespace, comment, or blockquote leaders.
 - The raw suffix contains only spaces or tabs.
 - No trailing suppression carrier was stripped.
+
+When the detector's own `wrap` pairing says the anchor's sentence continues on the line below,
+and that `wrap` is not suppressed on the anchor line,
+the lower line is inside the repair and the suggestion absorbs it:
+the second replacement line carries the split-off sentence rejoined with the lower prose,
+one space standing where the anchor's trailing whitespace and terminator were,
+and `replaces` is 2.
+The absorbed form demands the same safety of the lower line,
+each failure named by a `below_` withholding class:
+
+- The anchor's terminator is exactly one LF, and no `\r` sits in the lower raw line.
+- The lower prose contains no `FUSED_RE` match.
+- The lower prose ends its sentence: terminal punctuation, then only closing delimiters.
+- The lower prose contains no backtick, `<`, or `>`.
+- The lower raw line contains its prose exactly once.
+- The lower leader equals the anchor leader, character for character.
+- The lower raw suffix contains only spaces or tabs.
+- No trailing suppression carrier came off the lower line.
+
+A paired window that fails any of these carries no suggestion at all:
+a one-line split there would repair half the sentence,
+which is a wrong repair rather than a smaller right one.
+A suppressed `wrap` means the user blessed the break,
+so the suggestion falls back to the one-line form with `replaces` 1.
 
 The suggestion duplicates the approved raw prefix onto both replacement lines.
 It never edits the file itself.

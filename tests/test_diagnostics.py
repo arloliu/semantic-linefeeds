@@ -296,19 +296,22 @@ def test_a_malformed_span_raises_even_for_a_non_target_path():
 def test_fused_question_gets_a_two_line_suggestion_with_indentation():
     text = "   Is this right? Yes it is.\n"
     (d,) = diags(text)
-    assert d["suggestion"] == {"lines": ["   Is this right?", "   Yes it is."]}
+    assert d["suggestion"] == {
+        "lines": ["   Is this right?", "   Yes it is."],
+        "replaces": 1,
+    }
 
 
 def test_fused_bang_in_a_python_comment_keeps_the_marker_on_both_lines():
     text = "# Stop now! Go later.\n"
     (d,) = diags(text, path="x.py")
-    assert d["suggestion"] == {"lines": ["# Stop now!", "# Go later."]}
+    assert d["suggestion"] == {"lines": ["# Stop now!", "# Go later."], "replaces": 1}
 
 
 def test_fused_bang_in_a_blockquote_keeps_the_quote_marker():
     text = "> Stop now! Go later.\n"
     (d,) = diags(text)
-    assert d["suggestion"] == {"lines": ["> Stop now!", "> Go later."]}
+    assert d["suggestion"] == {"lines": ["> Stop now!", "> Go later."], "replaces": 1}
 
 
 def test_a_period_fused_line_gets_no_suggestion():
@@ -579,7 +582,7 @@ def test_a_suggestion_is_produced_exactly_when_nothing_withholds_it():
     (classes,) = withheld("Stop now! Go later.\n")
     assert classes == ()
     (d,) = diags("Stop now! Go later.\n")
-    assert d["suggestion"] == {"lines": ["Stop now!", "Go later."]}
+    assert d["suggestion"] == {"lines": ["Stop now!", "Go later."], "replaces": 1}
 
 
 def test_a_period_boundary_is_its_own_class():
@@ -709,6 +712,54 @@ PAIRED_CLEAN = "Stop now! Go later to the\nplace we talked about.\n"
 
 def test_a_clean_paired_window_carries_no_class_at_all():
     assert withheld(PAIRED_CLEAN) == [()]
+
+
+def test_a_clean_paired_window_absorbs_the_line_below():
+    """Rejoin, then one split at the fused boundary; two lines replace two lines."""
+    (d,) = [x for x in diags(PAIRED_CLEAN) if x["kind"] == "fused"]
+    assert d["suggestion"] == {
+        "lines": ["Stop now!", "Go later to the place we talked about."],
+        "replaces": 2,
+    }
+
+
+def test_an_unpaired_suggestion_says_it_replaces_one_line():
+    (d,) = diags("Stop now! Go later.\n")
+    assert d["suggestion"] == {"lines": ["Stop now!", "Go later."], "replaces": 1}
+
+
+def test_a_paired_window_with_an_unsafe_below_line_withholds_entirely():
+    """A one-line split on a two-line window repairs half the sentence.
+
+    That is a wrong repair rather than a smaller right one,
+    so the unsafe pairing takes the suggestion with it.
+    """
+    fused = [
+        d
+        for d in diags("Stop now! Go later to the\nplace with `code` in it.\n")
+        if d["kind"] == "fused"
+    ]
+    assert fused
+    assert all("suggestion" not in d for d in fused)
+
+
+def test_an_absorbed_suggestion_keeps_the_shared_leader_on_both_lines():
+    text = "# Stop now! Go later to the\n# place we talked about.\n"
+    (d,) = [x for x in diags(text, "x.py") if x["kind"] == "fused"]
+    assert d["suggestion"] == {
+        "lines": ["# Stop now!", "# Go later to the place we talked about."],
+        "replaces": 2,
+    }
+
+
+def test_a_suppressed_wrap_falls_back_to_the_one_line_shape():
+    """The user blessed the break, so the suggestion repairs the anchor alone."""
+    text = "<!-- semlf-ignore-next wrap -->\nStop now! Go later to the\nplace we talked about.\n"
+    (d,) = [x for x in diags(text) if x["kind"] == "fused"]
+    assert d["suggestion"] == {
+        "lines": ["Stop now!", "Go later to the"],
+        "replaces": 1,
+    }
 
 
 def test_an_unpaired_anchor_never_carries_a_below_class():

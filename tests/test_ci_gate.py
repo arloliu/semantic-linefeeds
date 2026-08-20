@@ -20,7 +20,7 @@ def documents_file(tmp_path, kinds):
         json.dumps(
             [
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "path": "doc.md",
                     "diagnostics": [
                         {"kind": kind, "line": 1, "message": "m", "excerpt": "e"}

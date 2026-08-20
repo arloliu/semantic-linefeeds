@@ -1493,7 +1493,7 @@ def _fused_withholding(record, match, below=None):
     return tuple(name for name in WITHHOLDING_CLASSES if name in found)
 
 
-def _fused_suggestion(record, match):
+def _fused_suggestion(record, match, below=None):
     """A two-line suggested replacement for an automatic-class fused finding, or None.
 
     Maximally conservative rather than a real protected-span engine.
@@ -1505,14 +1505,30 @@ def _fused_suggestion(record, match):
     The judged raw line contains `prose` exactly once,
     and the leader and tail around it both pass the structural whitelist above.
     No carrier came off the line, and no `\r` survived into it.
+
+    `below` is the wrap-paired successor record, or None.
+    A pairing makes the window two lines,
+    and the repair is then rejoin-then-one-split:
+    the second replacement line absorbs the lower prose,
+    and one joining space stands where the anchor's trailing whitespace
+    and its terminator were.
+    A paired window any below class withholds gets no suggestion at all,
+    because a one-line split there repairs half the sentence,
+    which is a wrong repair rather than a smaller right one.
+    `replaces` counts the raw lines the replacement covers, starting at the anchor.
     """
-    if _fused_withholding(record, match):
+    if _fused_withholding(record, match, below):
         return None
     prose, leader, tail = record["prose"], record["leader"], record["tail"]
     cut = match.start() + _match_boundary(match).start(3)
     p1 = prose[:cut]
     p2 = prose[cut:].lstrip(" ")
-    return {"lines": [leader + p1, leader + p2 + tail]}
+    if below is None:
+        return {"lines": [leader + p1, leader + p2 + tail], "replaces": 1}
+    return {
+        "lines": [leader + p1, leader + p2 + " " + below["prose"] + below["tail"]],
+        "replaces": 2,
+    }
 
 
 def judged_lines(text, path):
@@ -1804,7 +1820,7 @@ def diagnose(text, path, spans=None, withholding=False):
             }
             if withholding:
                 finding["withheld_by"] = _fused_withholding(record, match, below)
-            suggestion = _fused_suggestion(record, match)
+            suggestion = _fused_suggestion(record, match, below)
             if suggestion is not None:
                 finding["suggestion"] = suggestion
             findings.append(finding)
@@ -1905,7 +1921,8 @@ def check(text, path):
     ]
 
 
-DIAGNOSTIC_SCHEMA_VERSION = 1
+# Version 2: a suggestion's `lines` replace `replaces` raw lines starting at `line`, not always one.
+DIAGNOSTIC_SCHEMA_VERSION = 2
 
 
 def to_schema(path, diagnostics):
@@ -2333,15 +2350,19 @@ def deliver(reports, transport, note=None):
         for finding in findings:
             if not isinstance(finding, dict) or "suggestion" not in finding:
                 continue
-            label = (
-                f"line {finding['line']} of your edit"
-                if snippet
-                else f"line {finding['line']}"
+            replaces = finding["suggestion"]["replaces"]
+            where = (
+                f"line {finding['line']}"
+                if replaces == 1
+                else f"lines {finding['line']}-{finding['line'] + replaces - 1}"
             )
+            label = f"{where} of your edit" if snippet else where
             if multi:
                 label = f"{label} of {path}"
-            line1, line2 = finding["suggestion"]["lines"]
-            body += f"\nSuggested replacement for {label}:\n    {line1}\n    {line2}"
+            rendered = "".join(
+                f"\n    {line}" for line in finding["suggestion"]["lines"]
+            )
+            body += f"\nSuggested replacement for {label}:{rendered}"
     if note and any(s for _, _, s in reports):
         body += "\n" + note
     body += "\n" + AGENT_JUDGMENT_NOTE

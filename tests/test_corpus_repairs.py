@@ -1022,7 +1022,9 @@ def test_the_drawing_path_never_reaches_the_shipped_repair(monkeypatch):
     """
     secret = "sxJQ7pLeakCanary"
     monkeypatch.setattr(
-        clf, "_fused_suggestion", lambda record, match: {"lines": [secret, secret]}
+        clf,
+        "_fused_suggestion",
+        lambda record, match, below=None: {"lines": [secret, secret], "replaces": 1},
     )
     root = REPO / "tests" / "diagnostics" / "fixtures"
     population = repair_population(

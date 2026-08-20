@@ -9,7 +9,7 @@ def test_schema_wraps_diagnostics_verbatim():
     text = "One sentence here. Another sentence follows.\n"
     diagnostics = check_linefeeds.diagnose(text, "doc.md")
     doc = check_linefeeds.to_schema("doc.md", diagnostics)
-    assert doc["schema_version"] == check_linefeeds.DIAGNOSTIC_SCHEMA_VERSION == 1
+    assert doc["schema_version"] == check_linefeeds.DIAGNOSTIC_SCHEMA_VERSION == 2
     assert doc["path"] == "doc.md"
     assert doc["diagnostics"] == diagnostics
 
