@@ -1,0 +1,96 @@
+name: semantic-linefeeds
+description: >-
+  Check prose linefeeds on the files a pull request changed,
+  annotate the changed lines, and fail only on the kinds you ask for.
+branding:
+  icon: align-left
+  color: blue
+
+inputs:
+  fail-on:
+    description: >-
+      Kinds that fail the build: "fused" (default) or "fused,wrap".
+      "long" is refused as a value; it never fails a build (ADR-0001).
+    default: fused
+  mode:
+    description: >-
+      "base" (default) checks the files changed since the merge base with
+      the base ref, reporting only diagnostics the changed lines own.
+      "all" checks every tracked file under the configured excludes.
+    default: base
+  base:
+    description: >-
+      The base ref for mode "base". Defaults to the pull request's base.
+      Required on non-PR events; an event with no base is an error, never
+      a silent full-tree run.
+    default: ${{ github.event.pull_request.base.sha }}
+  sarif-file:
+    description: >-
+      Optional path to write a SARIF report to. Empty (default) writes
+      none. The file is exposed as the "sarif-file" output and is never
+      uploaded; the upload step and its permissions belong to the caller.
+    default: ""
+
+outputs:
+  sarif-file:
+    description: The SARIF path written, empty when none was requested.
+    value: ${{ steps.check.outputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install the checker this Action shipped with
+      shell: bash
+      run: python3 -m pip install --quiet "$GITHUB_ACTION_PATH"
+
+    - name: Check, annotate, and gate
+      id: check
+      shell: bash
+      env:
+        FAIL_ON: ${{ inputs.fail-on }}
+        MODE: ${{ inputs.mode }}
+        BASE: ${{ inputs.base }}
+        SARIF_FILE: ${{ inputs.sarif-file }}
+      run: |
+        # One analysis pass writes the documents file;
+        # annotations, SARIF, and the gate are pure functions of it.
+        documents="$RUNNER_TEMP/semlf.json"
+
+        case "$MODE" in
+          base)
+            if [ -z "$BASE" ]; then
+              echo "::error title=semlf::mode 'base' needs a base ref; this event carries none — set the 'base' input" >&2
+              exit 1
+            fi
+            selector=(--base "$BASE")
+            ;;
+          all)
+            selector=(--all)
+            ;;
+          *)
+            echo "::error title=semlf::mode must be 'base' or 'all', got '$MODE'" >&2
+            exit 1
+            ;;
+        esac
+
+        set +e
+        semlf "${selector[@]}" --json > "$documents"
+        status=$?
+        set -e
+
+        # 0 and 1 mean the documents file is authoritative
+        # (1 may be a wrap the gate will choose to pass);
+        # anything else is a broken run, never a green build.
+        if [ "$status" -ne 0 ] && [ "$status" -ne 1 ]; then
+          echo "::error title=semlf::the checker failed (exit $status); see the log" >&2
+          exit "$status"
+        fi
+
+        semlf render github < "$documents"
+
+        if [ -n "$SARIF_FILE" ]; then
+          semlf render sarif < "$documents" > "$SARIF_FILE"
+        fi
+        echo "sarif-file=$SARIF_FILE" >> "$GITHUB_OUTPUT"
+
+        python3 "$GITHUB_ACTION_PATH/scripts/ci_gate.py" --fail-on "$FAIL_ON" "$documents"

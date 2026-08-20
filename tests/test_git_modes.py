@@ -920,3 +920,19 @@ def test_all_survives_a_newline_bearing_name(tmp_path, monkeypatch, capsys):
     assert run_semlf(["--all", "--json"], root, monkeypatch) == 1
     documents = json.loads(capsys.readouterr().out)
     assert any("ird.md" in doc["path"] for doc in documents)
+
+
+def test_a_shallow_clone_fails_with_the_promised_remedy(tmp_path, monkeypatch, capsys):
+    """The documented configuration is fetch-depth 0; an unprepared one says so."""
+    (tmp_path / "origin").mkdir()
+    origin = pr_shaped(
+        tmp_path / "origin",
+        "One clean line.\n",
+        "One clean line.\nTwo sentences. On one line.\n",
+    )
+    shallow = tmp_path / "shallow"
+    git("clone", "-q", "--depth", "1", f"file://{origin}", str(shallow), cwd=tmp_path)
+    code = run_semlf(["--base", "main", "--json"], shallow, monkeypatch)
+    err = capsys.readouterr().err
+    assert code == 1
+    assert "fetch-depth: 0" in err or "deepen" in err
