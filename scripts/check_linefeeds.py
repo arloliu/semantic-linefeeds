@@ -1354,6 +1354,19 @@ WITHHOLDING_CLASSES = (
 )
 
 
+# The two admitted-class sets a caller may hand `_fused_suggestion`, and the only two.
+# Only an admission decision recorded as an ADR, citing its sealed holdout round,
+# may change either constant, and no caller may pass anything but these two names.
+# `ADMITTED` is what ships; it stays empty until a round admits a class.
+ADMITTED = frozenset()
+
+# The one candidate under test.
+# Committed here rather than passed at a call site,
+# so the predicate digest a pre-draw freeze records binds the algorithm and the candidate,
+# and nothing chosen after the holdout prose is read can redefine what a round scores.
+CANDIDATE_ADMITTED = frozenset({"terminator_period"})
+
+
 # The sentence-final shapes an absorbed lower line may end with:
 # terminal punctuation, then the same closing delimiters `_BOUNDARY_RE` admits.
 # A lower line ending any other way leaves the joined sentence open,
@@ -1493,7 +1506,7 @@ def _fused_withholding(record, match, below=None):
     return tuple(name for name in WITHHOLDING_CLASSES if name in found)
 
 
-def _fused_suggestion(record, match, below=None):
+def _fused_suggestion(record, match, below=None, admitted=frozenset()):
     """A two-line suggested replacement for an automatic-class fused finding, or None.
 
     Maximally conservative rather than a real protected-span engine.
@@ -1516,8 +1529,15 @@ def _fused_suggestion(record, match, below=None):
     because a one-line split there repairs half the sentence,
     which is a wrong repair rather than a smaller right one.
     `replaces` counts the raw lines the replacement covers, starting at the anchor.
+
+    `admitted` is a set of class names the caller vouches for,
+    and exactly two values may ever reach it:
+    the shipped `ADMITTED` and the frozen `CANDIDATE_ADMITTED`.
+    A suggestion exists when the withholding set minus `admitted` is empty,
+    which scores a class only where every other class is absent —
+    the activation rule the admission contract preregisters.
     """
-    if _fused_withholding(record, match, below):
+    if set(_fused_withholding(record, match, below)) - admitted:
         return None
     prose, leader, tail = record["prose"], record["leader"], record["tail"]
     cut = match.start() + _match_boundary(match).start(3)
@@ -1820,7 +1840,7 @@ def diagnose(text, path, spans=None, withholding=False):
             }
             if withholding:
                 finding["withheld_by"] = _fused_withholding(record, match, below)
-            suggestion = _fused_suggestion(record, match, below)
+            suggestion = _fused_suggestion(record, match, below, admitted=ADMITTED)
             if suggestion is not None:
                 finding["suggestion"] = suggestion
             findings.append(finding)

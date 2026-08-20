@@ -1197,3 +1197,149 @@ def test_a_long_cjk_line_can_draw_the_advisory_but_never_the_blocking_kinds():
     assert kinds("這" * 132 + "——" + "這" * 5 + "\n") == [(1, "long")]
     assert kinds("這" * 140 + "\n") == [(1, "long")]
     assert kinds("這" * 40 + "\n") == []
+
+
+# --- the admitted-class guard ---------------------------------------------
+#
+# Two states, so an admission needs no weakening of this file:
+# an empty ADMITTED ships no period suggestion,
+# and a non-empty one is legitimate only against a validated admission record.
+
+import copy
+import pathlib
+
+import corpus_harness
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
+MANIFEST = REPO / "tests" / "corpus" / "manifest.json"
+
+
+def test_the_two_constants_are_the_only_admitted_sets():
+    assert check_linefeeds.ADMITTED == frozenset()
+    assert check_linefeeds.CANDIDATE_ADMITTED == frozenset({"terminator_period"})
+
+
+def test_the_shipped_surface_carries_no_suggestion_it_lacks_evidence_for(tmp_path):
+    """The two-state precision guard, run against the real manifest.
+
+    When `ADMITTED` is empty,
+    the shipped `--json` surface over clean period boundaries carries no suggestion.
+    When it is not, it must equal the frozen candidate exactly,
+    and the manifest must hold a validated admission record naming that set.
+    """
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    problems = corpus_harness.admission_guard_problems(
+        manifest, check_linefeeds.ADMITTED
+    )
+    assert problems == []
+    if check_linefeeds.ADMITTED:
+        assert check_linefeeds.ADMITTED == check_linefeeds.CANDIDATE_ADMITTED
+    else:
+        doc = tmp_path / "doc.md"
+        doc.write_text(
+            "One sentence here. Another sentence follows.\n"
+            "A second period boundary sits here. And a third one follows it.\n",
+            encoding="utf-8",
+        )
+        result = run_cli(["--file", str(doc), "--json"])
+        (document,) = json.loads(result.stdout)
+        fused = [d for d in document["diagnostics"] if d["kind"] == "fused"]
+        assert fused
+        assert all("suggestion" not in d for d in fused)
+
+
+def valid_admission_result():
+    scored, acceptable = 40, 39
+    lower = corpus_harness.wilson(acceptable, scored)[0]
+    return {
+        "version": corpus_harness.ADMISSION_RESULT_VERSION,
+        "admitted": ["terminator_period"],
+        "round": 4,
+        "freeze_id": "freeze-0007",
+        "evaluation_digest": "a" * 64,
+        "predicate_digest": "b" * 64,
+        "scoring": "score.py --bundle through composed and normalize_repair",
+        "strata": {
+            "terminator_period": {
+                "scored": scored,
+                "acceptable": acceptable,
+                "lower_bound": lower,
+            }
+        },
+        "zero_tolerance": dict.fromkeys(
+            corpus_harness.REPAIR_ADMISSION["zero_tolerance"], 0
+        ),
+        "outcome": "admitted",
+        "adr": "0028",
+    }
+
+
+def test_a_valid_admission_record_satisfies_the_guard():
+    document = {"repair_admission_result": valid_admission_result()}
+    assert corpus_harness.repair_admission_result_problems(document) == []
+    assert (
+        corpus_harness.admission_guard_problems(
+            document, check_linefeeds.CANDIDATE_ADMITTED
+        )
+        == []
+    )
+
+
+def test_an_absent_record_is_valid_only_while_nothing_is_admitted():
+    assert corpus_harness.repair_admission_result_problems({}) == []
+    assert corpus_harness.admission_guard_problems({}, frozenset()) == []
+    assert corpus_harness.admission_guard_problems(
+        {}, check_linefeeds.CANDIDATE_ADMITTED
+    )
+
+
+MUTATIONS = {
+    "version": lambda r: r.__setitem__("version", 2),
+    "admitted_unknown": lambda r: r.__setitem__("admitted", ["not_a_class"]),
+    "admitted_unsorted": lambda r: r.__setitem__(
+        "admitted", ["terminator_period", "closing_delimiter"]
+    ),
+    "admitted_mismatch": lambda r: r.__setitem__("admitted", ["closing_delimiter"]),
+    "round": lambda r: r.__setitem__("round", "four"),
+    "round_early": lambda r: r.__setitem__("round", 2),
+    "freeze_id": lambda r: r.__setitem__("freeze_id", ""),
+    "evaluation_digest": lambda r: r.__setitem__("evaluation_digest", "xyz"),
+    "predicate_digest": lambda r: r.__setitem__("predicate_digest", "B" * 64),
+    "scoring": lambda r: r.__setitem__("scoring", ""),
+    "strata_empty": lambda r: r.__setitem__("strata", {}),
+    "stratum_scored": lambda r: r["strata"]["terminator_period"].__setitem__(
+        "scored", 0
+    ),
+    "stratum_acceptable": lambda r: r["strata"]["terminator_period"].__setitem__(
+        "acceptable", 41
+    ),
+    "stratum_bound": lambda r: r["strata"]["terminator_period"].__setitem__(
+        "lower_bound", r["strata"]["terminator_period"]["lower_bound"] + 0.02
+    ),
+    "stratum_below_floor": lambda r: r["strata"].__setitem__(
+        "terminator_period",
+        {
+            "scored": 40,
+            "acceptable": 30,
+            "lower_bound": corpus_harness.wilson(30, 40)[0],
+        },
+    ),
+    "zero_tolerance_missing": lambda r: r["zero_tolerance"].pop("prose_not_preserved"),
+    "zero_tolerance_hit": lambda r: r["zero_tolerance"].__setitem__(
+        "carrier_changed", 1
+    ),
+    "outcome": lambda r: r.__setitem__("outcome", "maybe"),
+    "adr": lambda r: r.__setitem__("adr", "x"),
+    "refused_outcome": lambda r: r.__setitem__("outcome", "refused"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(MUTATIONS))
+def test_each_mutation_turns_the_guard_red(name):
+    """Every field of the record is load-bearing while ADMITTED is non-empty."""
+    record = copy.deepcopy(valid_admission_result())
+    MUTATIONS[name](record)
+    document = {"repair_admission_result": record}
+    assert corpus_harness.admission_guard_problems(
+        document, check_linefeeds.CANDIDATE_ADMITTED
+    )

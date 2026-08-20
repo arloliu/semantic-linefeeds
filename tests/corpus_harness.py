@@ -777,6 +777,128 @@ def repair_admission_digest():
     return contract_digest(REPAIR_ADMISSION)
 
 
+# The one record that may put a class into the shipped `ADMITTED` set.
+ADMISSION_RESULT_VERSION = 1
+
+_HEX_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def repair_admission_result_problems(document):
+    """Field-level validation of the manifest's `repair_admission_result` record.
+
+    An absent record is the pre-decision state and valid.
+    A present one must be internally consistent down to its arithmetic:
+    the recorded lower bound must be the Wilson bound of its own counts,
+    and an admitted outcome must clear the preregistered floor with every count at zero.
+    Whether the record matches the append-only ledger and the sealed evaluation is another half,
+    layered on top of this one where the ledger lives.
+    """
+    import check_linefeeds
+
+    record = document.get("repair_admission_result")
+    if record is None:
+        return []
+    problems = []
+
+    def bad(message):
+        problems.append(f"repair_admission_result: {message}")
+
+    if record.get("version") != ADMISSION_RESULT_VERSION:
+        bad(f"version must be {ADMISSION_RESULT_VERSION}: {record.get('version')!r}")
+    admitted = record.get("admitted")
+    if (
+        not isinstance(admitted, list)
+        or not admitted
+        or admitted != sorted(set(admitted))
+        or any(name not in check_linefeeds.WITHHOLDING_CLASSES for name in admitted)
+    ):
+        bad(f"admitted must be a sorted list of declared classes: {admitted!r}")
+    if not isinstance(record.get("round"), int) or record["round"] < 4:
+        bad(
+            f"round must be an integer holdout round of at least 4: {record.get('round')!r}"
+        )
+    if not (isinstance(record.get("freeze_id"), str) and record["freeze_id"]):
+        bad("freeze_id must name the pre-draw freeze")
+    for field in ("evaluation_digest", "predicate_digest"):
+        value = record.get(field)
+        if not (isinstance(value, str) and _HEX_DIGEST_RE.match(value)):
+            bad(f"{field} must be a 64-hex digest: {value!r}")
+    if not (isinstance(record.get("scoring"), str) and record["scoring"]):
+        bad("scoring must name the one algorithm both sides ran through")
+    strata = record.get("strata")
+    if not isinstance(strata, dict) or not strata:
+        bad("strata must map each activated exact set to its counts")
+        strata = {}
+    for key, body in strata.items():
+        scored = body.get("scored") if isinstance(body, dict) else None
+        acceptable = body.get("acceptable") if isinstance(body, dict) else None
+        lower = body.get("lower_bound") if isinstance(body, dict) else None
+        if not (isinstance(scored, int) and scored > 0):
+            bad(f"stratum {key}: scored must be a positive integer: {scored!r}")
+            continue
+        if not (isinstance(acceptable, int) and 0 <= acceptable <= scored):
+            bad(f"stratum {key}: acceptable must lie within 0..scored: {acceptable!r}")
+            continue
+        computed = wilson(acceptable, scored)[0]
+        if not (isinstance(lower, (int, float)) and abs(lower - computed) <= 1e-6):
+            bad(
+                f"stratum {key}: lower_bound {lower!r} is not the Wilson bound "
+                f"of {acceptable}/{scored} ({computed:.6f})"
+            )
+    zero = record.get("zero_tolerance")
+    expected = set(REPAIR_ADMISSION["zero_tolerance"])
+    if not isinstance(zero, dict) or set(zero) != expected:
+        bad(f"zero_tolerance must carry exactly {sorted(expected)}")
+        zero = {}
+    for name, count in zero.items():
+        if not (isinstance(count, int) and count >= 0):
+            bad(f"zero_tolerance {name}: counts are non-negative integers: {count!r}")
+    outcome = record.get("outcome")
+    if outcome not in ("admitted", "refused"):
+        bad(f"outcome must be admitted or refused: {outcome!r}")
+    if not re.fullmatch(r"0\d{3}", record.get("adr") or ""):
+        bad(f"adr must name the decision record, like 0028: {record.get('adr')!r}")
+    if outcome == "admitted":
+        floor = REPAIR_ADMISSION["floor"]
+        for key, body in strata.items():
+            lower = body.get("lower_bound") if isinstance(body, dict) else None
+            if not (isinstance(lower, (int, float)) and lower >= floor):
+                bad(f"stratum {key}: admitted below the floor of {floor}")
+        for name, count in zero.items():
+            if count:
+                bad(f"zero_tolerance {name}: {count} with an admitted outcome")
+    return problems
+
+
+def admission_guard_problems(document, admitted):
+    """The two-state precision guard's evidence check.
+
+    An empty shipped set needs no evidence.
+    A non-empty one demands a validated `repair_admission_result` naming exactly that set,
+    with an admitted outcome —
+    a floor entry or an ADR file on disk proves nothing here,
+    because presence is not a decision.
+    """
+    if not admitted:
+        return []
+    record = document.get("repair_admission_result")
+    if record is None:
+        return [
+            "ADMITTED is non-empty and the manifest holds no repair_admission_result"
+        ]
+    problems = repair_admission_result_problems(document)
+    if isinstance(record.get("admitted"), list) and record["admitted"] != sorted(
+        admitted
+    ):
+        problems.append(
+            f"the shipped set {sorted(admitted)} is not the admitted set "
+            f"{record['admitted']}"
+        )
+    if record.get("outcome") != "admitted":
+        problems.append("the recorded outcome does not admit the class")
+    return problems
+
+
 def repair_admission_problems(candidate):
     """Every reason a candidate class is refused admission, or nothing when it clears.
 

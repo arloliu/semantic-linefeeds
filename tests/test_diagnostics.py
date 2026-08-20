@@ -950,3 +950,51 @@ def test_classes_report_in_declaration_order():
     for classes in withheld("Go now?  Come `here`! Stay put.\n"):
         positions = [order.index(name) for name in classes]
         assert positions == sorted(positions)
+
+
+# --- the admitted-class parameter -----------------------------------------
+
+
+def test_the_candidate_admits_a_clean_period_boundary():
+    record = only("One sentence here. Another sentence follows.\n")
+    (match,) = check_linefeeds.FUSED_RE.finditer(record["prose"])
+    assert check_linefeeds._fused_suggestion(record, match) is None
+    assert check_linefeeds._fused_suggestion(
+        record, match, admitted=check_linefeeds.CANDIDATE_ADMITTED
+    ) == {"lines": ["One sentence here.", "Another sentence follows."], "replaces": 1}
+
+
+def test_the_candidate_absorbs_a_paired_period_window():
+    records = walked(
+        "One sentence stops here. Another goes to the\nplace we talked about.\n"
+    )
+    anchor, below = records
+    assert check_linefeeds._wrap_paired(anchor, below)
+    (match,) = check_linefeeds.FUSED_RE.finditer(anchor["prose"])
+    assert check_linefeeds._fused_suggestion(anchor, match, below) is None
+    assert check_linefeeds._fused_suggestion(
+        anchor, match, below, admitted=check_linefeeds.CANDIDATE_ADMITTED
+    ) == {
+        "lines": [
+            "One sentence stops here.",
+            "Another goes to the place we talked about.",
+        ],
+        "replaces": 2,
+    }
+
+
+def test_activation_needs_every_other_class_absent():
+    """The activation rule in code form: a second class refuses both constants."""
+    record = only("One `code` sentence ends here. Another follows.\n")
+    (match,) = check_linefeeds.FUSED_RE.finditer(record["prose"])
+    for admitted in (check_linefeeds.ADMITTED, check_linefeeds.CANDIDATE_ADMITTED):
+        assert (
+            check_linefeeds._fused_suggestion(record, match, admitted=admitted) is None
+        )
+
+
+def test_the_shipped_surface_passes_the_shipped_constant():
+    """`diagnose` hands `_fused_suggestion` exactly `ADMITTED`, nothing wider."""
+    (d,) = diags("One sentence here. Another sentence follows.\n")
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d
