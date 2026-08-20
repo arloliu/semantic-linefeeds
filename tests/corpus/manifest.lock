@@ -1,4 +1,4 @@
 {
-  "digest": "sha256:8c044b92f93e4ba371bffc60d80db689a20ee3357f4b81dc7e7afd241ac9f398",
-  "reason": "repair round-2: 307 judgeable units drawn against the detector once the four-space rule measured from a list item's content column; 226 units and 107 decisions carried from round-1 on identical candidate ids and cuts, 81 answered fresh"
+  "digest": "sha256:a09f72413a9857f23de9489e83d0253e9a593f96b3ff536f06131adb93af6318",
+  "reason": "record what calibration rounds 1-2 measured, as context and not as a bar: the shipped class fired on 34 units (32 in one source), landed 11 of 29 scored in the acceptable set (Wilson-95 0.227-0.560, refused as a rate by the frozen half-width cap), and hit no zero-tolerance condition; every stratum's counts are recorded with the weight they came from, four strata are inadmissible for want of a reportable rate (many_boundaries family and one 22-scored stratum), and no repair floor is set because a floor keys to a declared round and round 4's sources are deliberately not yet declared"
 }

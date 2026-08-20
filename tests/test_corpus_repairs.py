@@ -2054,8 +2054,11 @@ from corpus_harness import (  # noqa: E402
     REPAIR_FIELDS,
     manifest_problems,
     repair_floor_problems,
+    repair_measured_problems,
     repair_problems,
 )
+
+MANIFEST_PATH = REPO / "tests" / "corpus" / "manifest.json"
 
 
 def repair_record(**overrides):
@@ -2215,6 +2218,73 @@ def test_a_baseline_produced_by_another_predicate_is_rejected():
     problems = repair_problems(repair_record(), predicate="sha256:" + "2" * 64)
     assert any("predicate in the tree" in problem for problem in problems)
     assert repair_problems(repair_record(), predicate="sha256:" + "1" * 64) == []
+
+
+def measured_stub():
+    """A measured record and one floor, agreeing with each other."""
+    return {
+        "sources": [{"id": "styx", "side": "holdout", "round": 4}],
+        "reporting": {
+            "repair_floors": {"4": {"terminator_period": 0.8}},
+            "repair_measured": {
+                "strata": {
+                    "terminator_period": {"scored": 38, "admissible": True},
+                    "many_boundaries,terminator_period": {
+                        "scored": 6,
+                        "admissible": False,
+                    },
+                },
+                "inadmissible": ["many_boundaries,terminator_period"],
+            },
+        },
+    }
+
+
+def test_a_repair_floor_for_an_inadmissible_stratum_is_rejected():
+    """A floor is a promise a round can be held to.
+
+    A stratum the measured round could not rate cannot answer one,
+    so setting a floor there is setting a bar nothing can clear or fail.
+    """
+    document = measured_stub()
+    document["reporting"]["repair_floors"]["4"]["many_boundaries,terminator_period"] = (
+        0.8
+    )
+    problems = repair_floor_problems(document)
+    assert any("inadmissible" in problem for problem in problems)
+
+
+def test_a_repair_floor_for_a_stratum_nobody_measured_is_rejected():
+    document = measured_stub()
+    document["reporting"]["repair_floors"]["4"]["no_such_stratum"] = 0.8
+    problems = repair_floor_problems(document)
+    assert any("no_such_stratum" in problem for problem in problems)
+
+
+def test_a_floor_on_an_admissible_measured_stratum_is_clean():
+    assert repair_floor_problems(measured_stub()) == []
+
+
+def test_a_measured_record_that_disagrees_with_the_units_is_rejected():
+    """The measured section is a summary of the records, never a second source.
+
+    A count edited by hand while the units say otherwise is the manifest disagreeing with itself,
+    and the reader has no way to pick a side.
+    """
+    document = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    measured = document["reporting"]["repair_measured"]
+    assert repair_measured_problems(document) == []
+    one = next(iter(measured["strata"].values()))
+    one["scored"] += 1
+    problems = repair_measured_problems(document)
+    assert any("disagrees" in problem for problem in problems)
+
+
+def test_a_manifest_with_repairs_but_no_measured_record_is_rejected():
+    document = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    del document["reporting"]["repair_measured"]
+    problems = repair_measured_problems(document)
+    assert any("repair_measured" in problem for problem in problems)
 
 
 def test_a_repair_floor_for_a_round_nobody_declared_is_rejected():

@@ -1899,6 +1899,7 @@ def manifest_problems(document):
         if not defined.get(name)
     ]
     problems += repair_floor_problems(document)
+    problems += repair_measured_problems(document)
     for record in document.get("repairs", []):
         problems += repair_problems(record)
     for source in document.get("sources", []):
@@ -2056,21 +2057,163 @@ def repair_problems(record, predicate=None):
 
 
 def repair_floor_problems(document):
-    """Every repair floor keyed to a round the manifest does not declare.
+    """Every repair floor that promises something nothing can answer.
 
-    A floor for a round nobody drew is a prediction nothing will ever answer.
+    A floor for a round nobody drew is a prediction nothing will ever answer,
+    and a floor on a stratum the measured round could not rate is a bar nothing can clear or fail.
+    The measured record is what says which strata could be rated.
     """
     declared = {
         str(source.get("round"))
         for source in document.get("sources", [])
         if source.get("side") == "holdout"
     }
-    floors = document.get("reporting", {}).get("repair_floors", {})
-    return [
+    floors = document.get("reporting", {}).get("repair_floors") or {}
+    problems = [
         f"a repair floor names round {number}, and no source declares that round"
         for number in sorted(floors)
         if number.isdigit() and number not in declared
     ]
+    measured = document.get("reporting", {}).get("repair_measured") or {}
+    strata = measured.get("strata") or {}
+    for number in sorted(floors):
+        entries = floors[number]
+        if not isinstance(entries, dict):
+            continue
+        for stratum in sorted(entries):
+            row = strata.get(stratum)
+            if row is None:
+                problems.append(
+                    f"a round-{number} floor names stratum {stratum}, "
+                    "which the measured record does not hold"
+                )
+            elif not row.get("admissible"):
+                problems.append(
+                    f"a round-{number} floor names stratum {stratum}, "
+                    "which the measured round could not rate and records as inadmissible"
+                )
+    return problems
+
+
+def _measured_rows(document):
+    """The per-stratum summary the repair records add up to.
+
+    Computed from the records rather than trusted from the section,
+    so the section can only ever agree or be caught.
+    """
+    rules = REPAIR_ADMISSION["reportable"]
+    rows = {}
+    zero = {
+        "not_preserving": 0,
+        "carrier_changed": 0,
+        "fired_where_only_the_original_is_acceptable": 0,
+    }
+    for record in document.get("repairs", []):
+        stratum = record.get("stratum") or {}
+        # A record too broken to summarize is left to `repair_problems`,
+        # whose complaint about it is the one a reader should get.
+        if not isinstance(stratum, dict) or "set" not in stratum:
+            continue
+        name = stratum["set"]
+        row = rows.setdefault(
+            name,
+            {
+                "scored": 0,
+                "ambiguous": 0,
+                "suggested": 0,
+                "acceptable": 0,
+                "population": stratum.get("population"),
+                "drawn": stratum.get("drawn"),
+            },
+        )
+        baseline = record.get("baseline_suggestion") or {}
+        fired = bool(baseline.get("lines"))
+        if record.get("outcome") == "ambiguous":
+            row["ambiguous"] += 1
+        else:
+            row["scored"] += 1
+            if fired:
+                row["suggested"] += 1
+                row["acceptable"] += bool(baseline.get("acceptable"))
+        if fired:
+            zero["not_preserving"] += not baseline.get("preserving", True)
+            zero["carrier_changed"] += not baseline.get("carrier_valid", True)
+            original = next(
+                (
+                    candidate.get("id")
+                    for candidate in record.get("candidates", [])
+                    if candidate.get("cuts") == record.get("original_cut")
+                ),
+                None,
+            )
+            if (
+                original is not None
+                and record.get("outcome") == "settled"
+                and record.get("acceptable") == [original]
+            ):
+                zero["fired_where_only_the_original_is_acceptable"] += 1
+    for row in rows.values():
+        labeled = row["scored"] + row["ambiguous"]
+        row["admissible"] = row["scored"] >= rules["min_scored"] and (
+            row["ambiguous"] <= rules["max_ambiguous_fraction"] * labeled
+        )
+    return rows, zero
+
+
+def repair_measured_problems(document):
+    """Every way the measured summary disagrees with the records it summarizes.
+
+    The section exists so a reader can see the rates without recomputing them,
+    and it earns that only by being recomputable.
+    A manifest holding repairs but no summary is refused too:
+    a promoted round whose numbers appear nowhere was measured for nobody.
+    """
+    if not document.get("repairs"):
+        return []
+    measured = document.get("reporting", {}).get("repair_measured")
+    if not measured:
+        return [
+            "the manifest holds promoted repairs and no repair_measured record, "
+            "so the round's numbers appear nowhere a reader can check"
+        ]
+    problems = []
+    rows, zero = _measured_rows(document)
+    written = measured.get("strata") or {}
+    counted = (
+        "scored",
+        "ambiguous",
+        "suggested",
+        "acceptable",
+        "population",
+        "drawn",
+        "admissible",
+    )
+    for name in sorted(set(rows) | set(written)):
+        if name not in written:
+            problems.append(f"stratum {name or '(none)'}: measured but not recorded")
+            continue
+        if name not in rows:
+            problems.append(f"stratum {name or '(none)'}: recorded but not measured")
+            continue
+        for field in counted:
+            if written[name].get(field) != rows[name][field]:
+                problems.append(
+                    f"stratum {name or '(none)'}: {field} disagrees with the records "
+                    f"({written[name].get(field)!r} recorded, {rows[name][field]!r} measured)"
+                )
+    inadmissible = sorted(name for name, row in rows.items() if not row["admissible"])
+    if sorted(measured.get("inadmissible") or []) != inadmissible:
+        problems.append(
+            "the inadmissible list disagrees with the records "
+            f"({sorted(measured.get('inadmissible') or [])!r} recorded, "
+            f"{inadmissible!r} measured)"
+        )
+    for condition, count in zero.items():
+        if (measured.get("zero_tolerance") or {}).get(condition) != count:
+            problems.append(
+                f"zero-tolerance condition {condition} disagrees with the records"
+            )
+    return problems
 
 
 def _source_problems(source):
