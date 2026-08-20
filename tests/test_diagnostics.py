@@ -700,6 +700,105 @@ def test_the_boundary_is_read_from_the_end_of_a_match_and_not_its_start():
     assert not [name for name in classes if name.startswith("gap_")]
 
 
+# --- the below classes, present only under a wrap pairing ------------------
+
+# One anchor whose sentence runs onto the line below,
+# so the detector pairs the two and the lower line enters the repair.
+PAIRED_CLEAN = "Stop now! Go later to the\nplace we talked about.\n"
+
+
+def test_a_clean_paired_window_carries_no_class_at_all():
+    assert withheld(PAIRED_CLEAN) == [()]
+
+
+def test_an_unpaired_anchor_never_carries_a_below_class():
+    """The upper line closes its sentence, so no pairing puts the lower line in play."""
+    (classes,) = withheld("Stop now! Go later.\nThen more prose follows.\n")
+    assert not [name for name in classes if name.startswith("below_")]
+
+
+def test_a_suppressed_wrap_yields_no_below_class_where_the_same_pair_would():
+    """The user blessed the break, so the lower line leaves the repair."""
+    unsuppressed = "Stop now! Go later to the\nplace with `code` in it.\n"
+    assert withheld(unsuppressed) == [("below_protected_span",)]
+    suppressed = "<!-- semlf-ignore-next wrap -->\n" + unsuppressed
+    assert withheld(suppressed) == [()]
+
+
+def test_a_crlf_pair_reaches_below_terminator_through_the_record():
+    """The raw line never carries its terminator, so the record's own field decides."""
+    assert withheld("Stop now! Go later to the\r\nplace we talked about.\r\n") == [
+        ("below_terminator",)
+    ]
+
+
+def test_a_bare_cr_pair_reaches_below_terminator_through_the_record():
+    assert withheld("Stop now! Go later to the\rplace we talked about.\r") == [
+        ("below_terminator",)
+    ]
+
+
+def test_a_lower_line_with_its_own_boundary_still_reports_independently():
+    """`below_boundary` withholds the anchor's repair without eating the lower finding."""
+    text = "Stop now! Go later to the\nplace stands empty here! Then we left town.\n"
+    assert withheld(text) == [("below_boundary",), ()]
+    kinds = [(d["line"], d["kind"]) for d in diags(text)]
+    assert (1, "fused") in kinds and (2, "fused") in kinds
+
+
+def test_below_prose_not_unique_excludes_the_prefix_and_tail_classes():
+    """The same exclusivity the anchor's own classes keep."""
+    anchor = only("Stop now! Go later to the\n")
+    below = check_linefeeds._judged_record(
+        "", [0, 0], 1, "place here. X place here. X", "place here. X", "", None, 0
+    )
+    (match,) = check_linefeeds.FUSED_RE.finditer(anchor["prose"])
+    classes = check_linefeeds._fused_withholding(anchor, match, below)
+    assert "below_prose_not_unique" in classes
+    assert not [
+        name for name in classes if name.startswith(("below_prefix_", "below_tail_"))
+    ]
+
+
+def test_a_below_tail_is_judged_by_the_same_whitelist_as_the_anchor():
+    """Constructed, because no extractor today leaves a bad tail behind a good leader."""
+    anchor = only("Stop now! Go later to the\n")
+    below = check_linefeeds._judged_record(
+        "",
+        [0, 0],
+        1,
+        "place we talked about. */",
+        "place we talked about.",
+        "",
+        None,
+        0,
+    )
+    (match,) = check_linefeeds.FUSED_RE.finditer(anchor["prose"])
+    assert "below_tail_rejected" in check_linefeeds._fused_withholding(
+        anchor, match, below
+    )
+
+
+def test_the_wrap_finder_and_the_suggestion_share_one_pairing_predicate():
+    """One definition of "the sentence continues", consulted by both consumers.
+
+    The pairing cases the wrap finder decides are exactly the cases the below classes appear in,
+    so the two cannot drift.
+    """
+    paired = "Stop now! Go later to the\nplace with `code` in it.\n"
+    unpaired = "Stop now! Go later here.\nThen more prose follows.\n"
+    for text, expect in ((paired, True), (unpaired, False)):
+        wraps = [d for d in diags(text) if d["kind"] == "wrap"]
+        below_classes = [
+            name
+            for classes in withheld(text)
+            for name in classes
+            if name.startswith("below_")
+        ]
+        assert bool(wraps) is expect
+        assert bool(below_classes) is expect
+
+
 # One case per class.
 # Deleting a class from the list then leaves a named test red,
 # rather than quietly shrinking what the tuple can say.
@@ -726,6 +825,46 @@ CONSTRUCTED_CASES = {
     "prose_not_unique": ("Go now! X Go now! X", "Go now! X"),
 }
 
+# The below classes an extractor path reaches, as (text, path) through `diagnose`.
+BELOW_CLASS_CASES = {
+    "below_terminator": (
+        "Stop now! Go later to the\r\nplace we talked about.\r\n",
+        "doc.md",
+    ),
+    "below_boundary": (
+        "Stop now! Go later to the\nplace stands empty here! Then we left town.\n",
+        "doc.md",
+    ),
+    "below_open": (
+        "Stop now! Go later to the\nplace we talked about and\n",
+        "doc.md",
+    ),
+    "below_protected_span": (
+        "Stop now! Go later to the\nplace with `code` in it.\n",
+        "doc.md",
+    ),
+    "below_prefix_mismatch": (
+        "Stop now! Go later to the\n  place we talked about.\n",
+        "doc.md",
+    ),
+    "below_carrier_stripped": (
+        "Stop now! Go later to the\nplace we talked about. <!-- semlf-ignore long -->\n",
+        "doc.md",
+    ),
+}
+
+# The two below classes no extractor path reaches, tested by construction above.
+BELOW_CONSTRUCTED = {
+    "below_prose_not_unique",
+    "below_tail_rejected",
+}
+
+
+@pytest.mark.parametrize("name", sorted(BELOW_CLASS_CASES))
+def test_each_below_class_is_produced_by_a_case_that_names_it(name):
+    text, path = BELOW_CLASS_CASES[name]
+    assert any(name in classes for classes in withheld(text, path))
+
 
 @pytest.mark.parametrize("name", sorted(CLASS_CASES))
 def test_each_class_is_produced_by_a_case_that_names_it(name):
@@ -743,7 +882,12 @@ def test_each_constructed_class_is_produced_by_its_case(name):
 
 def test_every_declared_class_has_a_case():
     """A class nobody exercises is a stratum nobody can draw."""
-    covered = set(CLASS_CASES) | set(CONSTRUCTED_CASES)
+    covered = (
+        set(CLASS_CASES)
+        | set(CONSTRUCTED_CASES)
+        | set(BELOW_CLASS_CASES)
+        | BELOW_CONSTRUCTED
+    )
     assert covered == set(check_linefeeds.WITHHOLDING_CLASSES)
     assert len(set(check_linefeeds.WITHHOLDING_CLASSES)) == len(
         check_linefeeds.WITHHOLDING_CLASSES
