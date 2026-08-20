@@ -1560,6 +1560,103 @@ def _judged_record(text, offsets, lineno, raw, prose, original_raw, carrier, par
     }
 
 
+def _reflow_view(text, path):
+    """One snapshot as (paragraph prose texts, their break offsets, non-prose lines).
+
+    The paragraph is the unit a break may move inside.
+    A break's offset is measured into the paragraph's collapsed prose,
+    so two snapshots that break the same words in different places compare as the same paragraphs,
+    differing only in their offsets.
+    Everything the detector does not judge —
+    code, markup, blank lines, license text —
+    is kept aside verbatim, to be compared byte for byte.
+    """
+    walked = judged_lines(text, path)
+    records = walked[0] if walked else []
+    prose_lines = {record["line"] for record in records}
+    other = [
+        line
+        for number, line in enumerate(text.splitlines(), 1)
+        if number not in prose_lines
+    ]
+    paragraphs = []
+    breaks = []
+    for record in records:
+        collapsed_line = " ".join(record["prose"].split())
+        if paragraphs and record["paragraph"] == paragraphs[-1][0]:
+            breaks[-1].append(len(paragraphs[-1][1]))
+            paragraphs[-1][1] = f"{paragraphs[-1][1]} {collapsed_line}".strip()
+        else:
+            paragraphs.append([record["paragraph"], collapsed_line])
+            breaks.append([])
+    return [body for _, body in paragraphs], breaks, other
+
+
+def prose_reflow(old_text, new_text, path):
+    """Whether two snapshots differ only in where their prose breaks.
+
+    This verifies the claim a reflow-only change makes:
+    no word changed, no code or markup changed,
+    and no paragraph appeared, disappeared, or traded words with a neighbour —
+    only the breaks inside prose moved.
+    Whitespace inside a line is not a word,
+    so collapsing a doubled space verifies as a reflow too.
+
+    Returns `{"reflow": bool, "moved": int, "reason": str | None}`.
+    `moved` counts the break positions present in one snapshot and not the other.
+    A word difference is named in `reason` rather than merely counted,
+    because the caller is a reviewer deciding whether to read the whole diff.
+    """
+    old_paragraphs, old_breaks, old_other = _reflow_view(old_text, path)
+    new_paragraphs, new_breaks, new_other = _reflow_view(new_text, path)
+
+    if old_other != new_other:
+        for before, after in zip(old_other, new_other):
+            if before != after:
+                return {
+                    "reflow": False,
+                    "moved": 0,
+                    "reason": f"a line the detector does not judge changed: {before!r} -> {after!r}",
+                }
+        return {
+            "reflow": False,
+            "moved": 0,
+            "reason": (
+                f"{abs(len(new_other) - len(old_other))} unjudged line(s) "
+                f"{'appeared' if len(new_other) > len(old_other) else 'disappeared'}"
+            ),
+        }
+    if old_paragraphs != new_paragraphs:
+        if len(old_paragraphs) != len(new_paragraphs):
+            return {
+                "reflow": False,
+                "moved": 0,
+                "reason": (
+                    f"paragraph count changed: {len(old_paragraphs)} -> {len(new_paragraphs)}"
+                ),
+            }
+        for before, after in zip(old_paragraphs, new_paragraphs):
+            if before == after:
+                continue
+            for index, (was, now) in enumerate(zip(before.split(), after.split())):
+                if was != now:
+                    return {
+                        "reflow": False,
+                        "moved": 0,
+                        "reason": f"word {index + 1} changed: {was!r} -> {now!r}",
+                    }
+            shorter, longer = sorted((before.split(), after.split()), key=len)
+            return {
+                "reflow": False,
+                "moved": 0,
+                "reason": f"words added or removed near: {' '.join(longer[len(shorter) :][:6])!r}",
+            }
+    moved = sum(
+        len(set(before) ^ set(after)) for before, after in zip(old_breaks, new_breaks)
+    )
+    return {"reflow": True, "moved": moved, "reason": None}
+
+
 def diagnose(text, path, spans=None, withholding=False):
     """Return a list of diagnostic dicts, sorted by line.
 

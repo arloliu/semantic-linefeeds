@@ -201,6 +201,46 @@ def _worktree_sources(root, records):
     return sources
 
 
+def reflow_pairs(root, ref):
+    """Every file changed against `ref`, as (display, old text, new text).
+
+    Deletions are included, unlike the checking providers:
+    the claim `semlf reflow` verifies is "this change only moves prose breaks",
+    and a deleted file falsifies it as surely as a changed word.
+    A side that does not exist arrives as None.
+    Non-checkable paths are included too, for the same reason —
+    the verdict on them is the caller's, but the selection must not hide them.
+    """
+    try:
+        _git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
+    except SourceError:
+        raise SourceError(f"semlf: {ref} does not name a commit") from None
+    out = _git(root, "diff", "--name-status", "-z", "--no-renames", ref)
+    tokens = out.split(b"\0")
+    pairs = []
+    i = 0
+    while i < len(tokens) and tokens[i]:
+        status = os.fsdecode(tokens[i])[:1]
+        rel = os.fsdecode(tokens[i + 1])
+        i += 2
+        old_text = None
+        if status != "A":
+            old_text = _git(root, "show", f"{ref}:{rel}").decode("utf-8", "replace")
+        new_text = None
+        if status != "D":
+            full = os.path.join(root, rel)
+            if os.path.islink(full) or os.path.isdir(full):
+                new_text = None
+            else:
+                try:
+                    with open(full, encoding="utf-8", errors="replace") as fh:
+                        new_text = fh.read()
+                except OSError:
+                    new_text = None
+        pairs.append((rel, _display(root, rel), old_text, new_text))
+    return pairs
+
+
 def staged_sources(root):
     """Index versus HEAD; text is the staged blob, read by the record's own oid.
 

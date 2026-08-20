@@ -29,6 +29,8 @@ modes:
   --diff                 check unstaged changes against the index
   --changed              check all changes against HEAD
   --hook [claude|codex]  run as a PostToolUse hook reading JSON on stdin
+  reflow [REF]           verify the worktree differs from REF (default HEAD)
+                         only in where its prose breaks; exit 1 on any other change
   doctor                 replay a synthetic payload end to end and report evidence
   install [TARGET...]    detect agents, list every path the plan writes, ask y/N;
                          naming a target (codex, opencode, agentsmd PATH) applies it immediately
@@ -76,6 +78,47 @@ def _git_mode(argv):
         core.CLI_LONG_LIMIT = saved_limit
 
 
+def _reflow(argv):
+    """Verify a change is a pure prose reflow, file by file.
+
+    The verdict a reviewer needs is not "how big is the diff"
+    but "did any word, code line, or paragraph actually change".
+    The core answers that per file pair; this supplies the pairs and the exit code.
+    """
+    if len(argv) > 1 or argv[:1] and argv[0].startswith("-"):
+        print("usage: semlf reflow [REF]", file=sys.stderr)
+        return 64
+    ref = argv[0] if argv else "HEAD"
+    try:
+        pairs = providers.reflow_pairs(providers.repo_root(), ref)
+    except providers.SourceError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    if not pairs:
+        print(f"nothing differs from {ref}")
+        return 0
+    clean = True
+    moved = 0
+    for rel, display, old_text, new_text in pairs:
+        if old_text is None or new_text is None:
+            what = "added" if old_text is None else "deleted or unreadable"
+            print(f"CHANGED  {display}: {what}")
+            clean = False
+            continue
+        got = core.prose_reflow(old_text, new_text, rel)
+        if got["reflow"]:
+            print(f"reflow   {display}: {got['moved']} break(s) moved")
+            moved += got["moved"]
+        else:
+            print(f"CHANGED  {display}: {got['reason']}")
+            clean = False
+    if clean:
+        print(f"pure reflow against {ref}: {moved} break(s) moved, no words changed")
+        return 0
+    print(f"not a pure reflow against {ref}", file=sys.stderr)
+    return 1
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv == ["--version"]:
@@ -93,6 +136,8 @@ def main(argv=None):
         return 64
     if argv and argv[0] == "check":
         argv = ["--file"] + argv[1:]
+    if argv[:1] == ["reflow"]:
+        return _reflow(argv[1:])
     if argv[:1] == ["doctor"]:
         from semlf import doctor
 
