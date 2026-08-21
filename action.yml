@@ -9,8 +9,11 @@ branding:
 inputs:
   fail-on:
     description: >-
-      Kinds that fail the build: "fused" (default) or "fused,wrap".
-      "long" is refused as a value; it never fails a build (ADR-0001).
+      Kinds that fail the build: a comma-separated list of "fused" and
+      "wrap", in either order; segments are whitespace-trimmed, empty
+      segments are ignored, duplicates are tolerated, and at least one
+      kind must remain. The default is "fused". "long" is refused as a
+      value; it never fails a build (ADR-0001).
     default: fused
   mode:
     description: >-

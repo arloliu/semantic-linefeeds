@@ -43,7 +43,9 @@ def main(argv=None):
     bad = [kind for kind in fail_on if kind not in GATEABLE]
     if bad or not fail_on:
         print(
-            f"ci_gate: fail-on accepts fused or fused,wrap; "
+            f"ci_gate: fail-on takes a comma-separated list of fused and wrap "
+            f"in either order, at least one; whitespace is trimmed, and empty "
+            f"segments and duplicates are ignored; "
             f"long never fails a build (ADR-0001): got {args.fail_on!r}",
             file=sys.stderr,
         )

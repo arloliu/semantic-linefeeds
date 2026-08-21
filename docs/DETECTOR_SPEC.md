@@ -26,7 +26,7 @@ The portable core exposes these entry points:
 
 | Entry point | Contract |
 |---|---|
-| `diagnose(text, path, spans=None)` | Returns rich diagnostic dictionaries for one after-state text snapshot. |
+| `diagnose(text, path, spans=None, withholding=False)` | Returns rich diagnostic dictionaries for one after-state text snapshot. |
 | `check(text, path)` | Projects each rich diagnostic to `(line, kind, message, excerpt)`. |
 | `to_schema(path, diagnostics)` | Wraps one file's diagnostics in JSON schema version 2. |
 | `run_sources(sources, as_json=False)` | Checks supplied `(path, text)` pairs with file-mode rendering and status. |
@@ -429,13 +429,14 @@ Every rich diagnostic contains:
 |---|---|
 | `kind` | `fused`, `wrap`, or `long`. |
 | `line` | One-based anchor line. |
-| `message` | Frozen human-facing explanation. |
+| `message` | Human-facing explanation. Display text: its wording may change in any release, while field names, types, and structure may not. |
 | `excerpt` | Extracted prose from the anchor line. |
 | `anchor` | Half-open raw anchor-line range without its terminator. |
 | `evidence` | Half-open range containing all text examined for the finding. |
 | `ownership` | Half-open causal range, or `None` when exact location failed. |
 | `ownership_basis` | `token` or `degraded`. |
 | `suggestion` | Optional replacement for a narrow `fused` class: `lines` holds the two lines to write, and `replaces` counts the raw lines they replace, starting at `line`. Schema version 2 exists for this field: under version 1 a suggestion always replaced the anchor line alone. |
+| `withheld_by` | Optional, on `fused` findings only, present only when `diagnose` is called with `withholding` on: the classes that withheld an automatic suggestion. Off by default, so the documents `to_schema` wraps carry it only when the caller asked. |
 
 Offsets count Unicode code points in the supplied text.
 A normal span has `start` and `end` offsets.

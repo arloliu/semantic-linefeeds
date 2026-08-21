@@ -64,3 +64,24 @@ def test_an_unreadable_documents_file_is_never_a_green_build(tmp_path, capsys):
 def test_a_clean_run_passes_and_says_so(tmp_path, capsys):
     assert ci_gate.main([documents_file(tmp_path, [])]) == 0
     assert "build passes" in capsys.readouterr().out
+
+
+def test_wrap_alone_is_an_accepted_gate_value(tmp_path, capsys):
+    # The frozen grammar is any non-empty token list over fused and wrap,
+    # so a team may gate on wrap without gating on fused.
+    assert ci_gate.main(["--fail-on", "wrap", documents_file(tmp_path, ["wrap"])]) == 1
+    assert ci_gate.main(["--fail-on", "wrap", documents_file(tmp_path, ["fused"])]) == 0
+
+
+def test_the_gate_grammar_tolerates_order_duplicates_and_padding(tmp_path):
+    where = documents_file(tmp_path, ["wrap"])
+    assert ci_gate.main(["--fail-on", "wrap,fused", where]) == 1
+    assert ci_gate.main(["--fail-on", "fused,fused,wrap", where]) == 1
+    assert ci_gate.main(["--fail-on", " fused , wrap ", where]) == 1
+    assert ci_gate.main(["--fail-on", "fused,,wrap", where]) == 1
+
+
+def test_an_all_empty_gate_value_is_refused(tmp_path, capsys):
+    where = documents_file(tmp_path, [])
+    assert ci_gate.main(["--fail-on", ",,", where]) == 64
+    assert ci_gate.main(["--fail-on", "", where]) == 64

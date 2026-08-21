@@ -1,5 +1,6 @@
 """tests/test_packaging.py — the wheel ships the repo's own files, unforked."""
 
+import json
 import sys
 from pathlib import Path
 
@@ -198,3 +199,23 @@ def test_a_wheel_built_from_the_sdist_carries_the_members(tmp_path):
         assert {row.member for row in registry.ROWS} <= names
         for row in registry.ROWS:
             assert z.read(row.member) == (REPO / row.source).read_bytes()
+
+
+def test_the_distribution_identifiers_are_pinned():
+    """The v1.0 identity contract: the names a user types or pins.
+
+    Each of these names is a rename away from breaking an existing install command,
+    so a rename must fail here first.
+    """
+    pyproject = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'name = "semlf"' in pyproject
+    assert 'requires-python = ">=3.9"' in pyproject
+    assert "semlf = " in pyproject.split("[project.scripts]", 1)[1].split("[", 1)[0]
+
+    hooks = (REPO / ".pre-commit-hooks.yaml").read_text(encoding="utf-8")
+    assert "- id: semlf" in hooks
+
+    manifest = json.loads(
+        (REPO / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+    )
+    assert manifest["name"] == "semantic-linefeeds"

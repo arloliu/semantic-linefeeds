@@ -258,3 +258,75 @@ def test_render_rejects_unusable_input(tmp_path, capsys):
     assert run_render(["render", "sarif", str(tmp_path / "absent.json")]) == 1
     assert run_render(["render", "sarif", "-"], stdin_text="not json") == 1
     assert run_render(["render", "sarif", "-"], stdin_text='{"not": "a list"}') == 1
+
+
+def test_sarif_shape_is_pinned_exactly():
+    # The v1.0 contract pin: every key a SARIF consumer reads, byte for byte, over one representative diagnostic.
+    # Wording is display-only and never part of the pin:
+    # the finding message is supplied by this test,
+    # and the rule descriptions are read from render._RULES,
+    # so an intentional wording edit lands in exactly one place.
+    got = render.sarif([document(diagnostics=[diagnostic()])])
+    assert got == {
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "semlf",
+                        "version": core.__version__,
+                        "informationUri": "https://github.com/arloliu/semantic-linefeeds",
+                        "rules": [
+                            {
+                                "id": "fused",
+                                "shortDescription": {"text": render._RULES["fused"]},
+                            },
+                            {
+                                "id": "wrap",
+                                "shortDescription": {"text": render._RULES["wrap"]},
+                            },
+                            {
+                                "id": "long",
+                                "shortDescription": {"text": render._RULES["long"]},
+                            },
+                        ],
+                    }
+                },
+                "columnKind": "unicodeCodePoints",
+                "newlineSequences": render._NEWLINES,
+                "results": [
+                    {
+                        "ruleId": "fused",
+                        "level": "error",
+                        "message": {"text": "two sentences"},
+                        "locations": [
+                            {
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": "doc.md"},
+                                    "region": {
+                                        "startLine": 1,
+                                        "endLine": 1,
+                                        "startColumn": 1,
+                                        "endColumn": 28,
+                                    },
+                                }
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_annotation_command_shape_is_pinned_exactly():
+    got = list(
+        render.github_annotations(
+            [document(diagnostics=[diagnostic(message="a % and\na colon: here")])]
+        )
+    )
+    assert got == [
+        "::error file=doc.md,line=1,endLine=1,title=semlf%3A fused"
+        "::a %25 and%0Aa colon: here"
+    ]

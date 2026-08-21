@@ -1,7 +1,11 @@
-"""tests/test_frozen_contract.py — v0.4.3's exact tuples and rendered bytes.
+"""tests/test_frozen_contract.py — the check() tuple contract, plus wording characterization.
 
-Written against the unchanged v0.4.3 core and green from day one.
-Any later task that moves one byte of check() output or one byte of format_findings() text turns this file red.
+Two different guarantees live here, and they age differently.
+The tuple structure — field order, kinds, anchors, excerpts, same-line ordering —
+is frozen: changing it is a compatibility break.
+Message and report wording is display text and may change in any release;
+the exact-byte assertions below are deliberate characterization,
+kept so a wording change is a visible, intentional edit to these constants rather than an accident nobody saw.
 """
 
 import check_linefeeds
@@ -21,6 +25,8 @@ MIXED = (
     "on\n"
 )
 
+# The *_MSG constants and the rendered-report assertions are characterization:
+# update them together with an intentional wording change.
 FUSED_MSG = "two sentences on one line — one sentence per line"
 WRAP_MSG = (
     "ends mid-clause (column-wrapped?) — "
@@ -197,7 +203,7 @@ def test_no_report_gains_a_final_newline():
         assert not got.endswith("\n")
 
 
-def test_the_unhinted_long_message_is_frozen():
+def test_the_unhinted_long_message_names_the_leave_it_long_answer():
     """The other half of the advisory contract, added when silence stopped being an answer.
 
     An over-limit line with no recognized boundary used to report nothing,
