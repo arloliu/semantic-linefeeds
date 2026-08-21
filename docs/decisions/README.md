@@ -51,6 +51,7 @@ If a record and a rule disagree, the rule wins until a new record supersedes it.
 | [ADR-0027](0027-a-suggestion-replaces-a-window.md) | A suggestion may describe a two-raw-line replacement, triggered by the detector's own `wrap` pairing, withheld entirely when the lower line is unsafe; the schema says what a suggestion replaces, which is schema version 2 — this amends [ADR-0007](0007-fixability-classes.md)'s amendment |
 | [ADR-0028](0028-the-period-class-is-admitted.md) | The period class joins the automatic suggestion, admitted by a sealed holdout round at 34 of 35 against a preregistered 0.80 floor; the suggestion is still display text and no path writes a file — this amends [ADR-0007](0007-fixability-classes.md) |
 | [ADR-0029](0029-the-go-port-gate-closes-at-v1.md) | The Go-port gate is settled closed at v1.0 on an inventoried absence of missing-runtime reports; the contract stays implementation-agnostic and a differential-proven port may later replace the core but can no longer adjust the contract — this supersedes [ADR-0011](0011-go-port-gated-on-field-evidence.md)'s open review clause |
+| [ADR-0030](0030-v1-freezes-eight-contracts.md) | v1.0 freezes eight contracts under semantic versioning — CLI, config, diagnostic schema, adapter API, suppression, exit codes, CI integration, distribution identity — with additive rules per surface; detector judgment, message wording, experimental keys, and install layout stay unfrozen |
 
 ## Principles these records share
 

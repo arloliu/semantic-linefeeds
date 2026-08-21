@@ -366,6 +366,41 @@ and a finding that predates the branch is not that author's to answer;
 `semlf render sarif|github` turns a captured `--json` documents list into a SARIF report or GitHub workflow annotations,
 re-analyzing nothing.
 
+## Exit codes
+
+Every mode answers with the same small vocabulary,
+and from 1.0 the meaning of each code is a compatibility promise:
+
+| Mode | 0 | 1 | 2 | 64 |
+|---|---|---|---|---|
+| `check` / `--file`, `--staged`, `--diff`, `--changed`, `--base`, `--all` | clean, or advisory `long` only | a `fused`/`wrap` violation, or an unreadable file or git source | — | bad usage |
+| `--hook claude`, `--hook codex` | advisory-only output, a payload that is not the hook's to judge, or a malformed payload | — | a blocking finding, reported on stderr | bad usage |
+| `render` | rendered, however many findings the documents hold | unreadable or invalid input | — | bad usage |
+| `reflow` | pure reflow, or nothing differs | not a pure reflow, or a git source error | — | bad usage |
+| `doctor` | every probe passed | a probe failed | — | arguments given |
+| `install`, `status`, `uninstall` | applied or reported | refused or failed | — | bad usage |
+| `--version`, `--help` | printed | — | — | — |
+
+Two of these rows are choices worth naming.
+A hook exits `0` on a malformed payload — fail-open is deliberate,
+because a hook must not block editing on its own malfunction.
+And `render` exits `0` regardless of findings:
+what a finding means for a build is the gate's decision, not the renderer's.
+
+## Compatibility
+
+From 1.0, `semlf` follows semantic versioning over its public surfaces:
+the CLI modes and flags, the `.semlf.ini` schema, the `--json` document schema,
+the suppression directives, the exit codes above,
+the GitHub Action's inputs and outputs, and the names you install by —
+the `semlf` package and command, the pre-commit hook id, the Claude plugin name —
+all on Python 3.9 or newer.
+A change that would break any of them costs a major version;
+new capability arrives in minor versions.
+Two things are explicitly not promised:
+which lines draw findings (precision keeps improving between majors),
+and the wording of messages — the text is for people, the structure is for tools.
+
 ## The GitHub Action
 
 The Action installs the checker it shipped with —
@@ -376,7 +411,7 @@ and fails only on the kinds you ask for.
 
 | input | default | meaning |
 |---|---|---|
-| `fail-on` | `fused` | kinds that fail the build; `fused,wrap` for the stricter gate; `long` is refused, it never fails a build |
+| `fail-on` | `fused` | kinds that fail the build: a comma-separated list of `fused` and `wrap` in either order, at least one; whitespace is trimmed, empty segments and duplicates are ignored; `long` is refused, it never fails a build |
 | `mode` | `base` | `base` checks changed files against the PR base; `all` checks the whole tree |
 | `base` | the PR's base | the ref for `mode: base`; required on non-PR events |
 | `sarif-file` | none | write a SARIF report here and expose it as the `sarif-file` output; never uploaded |
