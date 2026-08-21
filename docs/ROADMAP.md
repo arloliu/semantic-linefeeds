@@ -98,10 +98,10 @@ but as **commit order inside a release** rather than as a separate tag.
 ### v1.0 — Stable contracts
 
 These enter compatibility guarantees:
-CLI surface, config schema, diagnostic schema, adapter API, suppression syntax, and exit codes.
-
-[ADR-0011](decisions/0011-go-port-gated-on-field-evidence.md)'s Go-port gate must be settled before this tag,
-in either direction, because the freeze removes the room a port would need to correct a contract it proves wrong.
+CLI surface, config schema, diagnostic schema, adapter API, suppression syntax, exit codes,
+CI integration (the Action, its gate semantics, and the SARIF and annotation shapes),
+and distribution identity (package name, console script, Python floor, hook and plugin ids).
+The plan is [`plans/active/v1.0-stable-contracts.md`](plans/active/v1.0-stable-contracts.md).
 
 ## Deferred, with reasons
 
@@ -140,11 +140,14 @@ in either direction, because the freeze removes the room a port would need to co
   (for example a global scratch-directory exclude);
   if added, it sits below the repo config in precedence.
 - **A prebuilt Go binary.**
-  Deferred behind [ADR-0011](decisions/0011-go-port-gated-on-field-evidence.md)'s field-evidence gate:
-  it opens only if a missing Python runtime proves to be a primary adoption blocker.
-  Reviewed on 2026-08-14 and left closed — no field evidence of a missing-runtime adoption blocker —
-  with the next review due before v1.0, which is also the deadline for settling it either way.
-  The CLI contract stays implementation-agnostic so the option stays cheap to exercise.
+  The gate is settled closed at v1.0 by
+  [ADR-0029](decisions/0029-the-go-port-gate-closes-at-v1.md)
+  on an inventoried absence of missing-runtime reports.
+  The entry condition survives unchanged:
+  field evidence that a missing Python runtime is a primary adoption blocker.
+  The contract stays implementation-agnostic,
+  so a differential-proven port can still replace the core later,
+  though after v1.0 it can no longer adjust the contract it stands behind.
 - **An `--all` flag for `uninstall`.**
   Removing the shared skills takes `semlf uninstall codex opencode`,
   which asks the user to name a target they may never have installed.

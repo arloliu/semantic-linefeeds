@@ -1,6 +1,6 @@
 # ADR-0011: A Go port is deferred behind a field-evidence gate
 
-**Status:** accepted
+**Status:** accepted — gate settled closed by [ADR-0029](0029-the-go-port-gate-closes-at-v1.md)
 **Date:** 2026-08-13
 **Reviewed:** 2026-08-14 —
 gate unchanged at the v0.6→v0.7 boundary:
