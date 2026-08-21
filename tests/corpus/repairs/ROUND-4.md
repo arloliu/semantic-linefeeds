@@ -1,5 +1,15 @@
 # Round 4: the widening's holdout, run by a session that did not tune
 
+> **Amendment, 2026-08-21: this procedure runs as round 5.**
+> Round 4's freeze bound a selection whose markdown source
+> (dotnet-designs, CC-BY-4.0) the licence allowlist refuses,
+> and the refusal surfaced only after that sample was drawn.
+> The sample was discarded unopened and never sealed or committed;
+> the ledger keeps one pre-draw freeze per round,
+> so the corrected selection runs as round 5 under the same predicate digest the round-4 freeze carries.
+> Read every `4` below as `5`.
+> The manifest's protocol note and ADR-0028 carry the full record.
+
 **If your session tuned, wrote, or scored this predicate, stop.
 You cannot run this round.**
 A session that tuned has read the material its labels would score,

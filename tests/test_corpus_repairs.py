@@ -2397,12 +2397,18 @@ def test_the_manifest_states_what_round_four_must_be_before_it_is_drawn():
         line for line in document["protocol_notes"] if line.startswith("the round that")
     ]
     declared = {source["id"] for source in document["sources"]}
-    assert len(declared) == 12
+    # Twelve before the widening round declared its three;
+    # the note keeps the original commitment,
+    # records the round-4 selection the licence allowlist refused,
+    # and names round 5 as the round that runs.
+    assert len(declared) == 15
     for phrase in (
         "round 4",
+        "round 5",
         "none of the twelve",
         "did not tune that predicate",
         "qualify.py",
+        "licence allowlist",
     ):
         assert phrase in note
     assert "no class is admissible" in note.lower()

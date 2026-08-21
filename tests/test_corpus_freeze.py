@@ -546,7 +546,11 @@ def round_four_manifest():
     document = json.loads(
         (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
     )
-    document["sources"] = document["sources"] + round_four_sources()
+    # The synthetic trio stands in for the round's selection,
+    # so the real one steps aside once the round has declared it.
+    document["sources"] = [
+        source for source in document["sources"] if source.get("round") not in (4, 5)
+    ] + round_four_sources()
     return document
 
 

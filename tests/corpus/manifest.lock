@@ -1,4 +1,4 @@
 {
-  "digest": "sha256:d79fe67b682f610e6389e92780d8f8df47b09f7996b8d45963fe8ce03f72c240",
-  "reason": "v0.9b review v1 fixes: anchor_open sees past opening delimiters, corpus readers keep newlines; v2 baselines recomputed under the corrected predicate"
+  "digest": "sha256:5fcc2d539ebbcd2cafe76885d94516eb41aab11254636c1193fea481631592bc",
+  "reason": "the widening's scoring round declared: round 4's selection was refused by the licence allowlist (dotnet-designs, CC-BY-4.0) before its sample was sealed, so the corrected selection (otx, pebble, tensorflow-community) is declared as round 5 with its recall floor stated before labeling"
 }

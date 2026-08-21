@@ -68,10 +68,13 @@ def resolved(sample, answers_dir, decisions=None):
             verdicts = [
                 repair_pass_verdicts(cast[name], unit["candidates"]) for name in names
             ]
+            # Resolution refuses a partial verdict the pass check cannot see:
+            # a candidate shown and never answered.
+            # That refusal is this unit's error, not the round's.
+            got = repair_resolution(verdicts, candidates)
         except ValueError as problem:
             out[uid] = {"outcome": "error", "reason": str(problem)}
             continue
-        got = repair_resolution(verdicts, candidates)
         decided = decisions.get(uid)
         if got["outcome"] == "defect" and decided:
             # The universe was incomplete,
