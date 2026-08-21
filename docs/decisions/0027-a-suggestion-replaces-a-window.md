@@ -3,7 +3,7 @@
 **Status:** accepted
 **Date:** 2026-08-20
 **Context:** v0.9b, the suggestion shape
-([plan](../plans/active/v0.9b-a-suggestion-that-reaches-the-line-below.md),
+([plan](../plans/done/v0.9b-a-suggestion-that-reaches-the-line-below.md),
 three external review rounds under `tmp/`, not committed)
 **Amends:** the 2026-08-13 amendment of
 [ADR-0007](0007-fixability-classes.md)

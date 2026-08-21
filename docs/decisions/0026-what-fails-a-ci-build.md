@@ -3,7 +3,7 @@
 **Status:** accepted
 **Date:** 2026-08-20
 **Context:** v0.9c, the CI surface
-([plan](../plans/active/v0.9c-ci-and-serializers.md),
+([plan](../plans/done/v0.9c-ci-and-serializers.md),
 three external review rounds under `tmp/`, not committed)
 
 ## Decision

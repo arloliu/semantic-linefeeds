@@ -88,31 +88,12 @@ How a round is read when one floor clears and another does not is [ADR-0009](dec
 
 ## Releases
 
-Two releases to 1.0.
+One release to 1.0.
 This is early-stage `v0.x`, so a release is a coherent theme rather than a minimal shippable unit,
 and each carries many commits.
 
 Every ordering constraint established above is preserved,
 but as **commit order inside a release** rather than as a separate tag.
-
-The theme below kept its content while two version numbers went elsewhere.
-v0.7 became the PyPI package and the install lifecycle,
-and v0.8 the one shared skill both agents read;
-neither was planned here, and both were worth doing first,
-because a guardrail nobody can install cleanly has no team to integrate with.
-
-### v0.9 — Fixes and team integration
-
-- Hook-side mutation of the suggested replacement, gated by a content-hash check immediately before writing (ADR-0007);
-  wider automatic-fix classes beyond `!`/`?`.
-  **The widening is done:** the period class was admitted by a sealed holdout round (ADR-0028).
-  Hook-side mutation stays open.
-  Entry condition: a suggestion must be able to reach the line below the one it replaces.
-  Its shape today is a two-line replacement for the anchor line alone,
-  and over the pinned evidence base a third of all `fused` lines carry a `wrap` as well,
-  so widening the class without widening the shape would write that many stranded openings into files unattended.
-- GitHub Action, SARIF, and annotations as serializers over the diagnostic schema. **Done.**
-- A real-agent regression corpus.
 
 ### v1.0 — Stable contracts
 
@@ -124,6 +105,21 @@ in either direction, because the freeze removes the room a port would need to co
 
 ## Deferred, with reasons
 
+- **Hook-side mutation of the suggested replacement.**
+  The suggestion can already describe the whole repair —
+  a two-raw-line window admitted on scored evidence (ADR-0027, ADR-0028) —
+  but every path that delivers it is display text, and no path writes a file.
+  ADR-0007 originally deferred writing "until adapters can force a file-view refresh",
+  and a 2026-08-18 spike showed that is the wrong condition:
+  no host exposes a forced refresh,
+  yet every host's editing primitive matches content rather than writing by line number,
+  so a stale write fails loudly instead of landing silently.
+  What a writing hook actually costs is friction — one failed edit and one re-read per repair —
+  and writing a user's file remains a larger intervention than the delivered suggestion,
+  which is ADR-0007's stated preferred path.
+  Entry condition: field evidence that delivered suggestions go unapplied,
+  and a record superseding ADR-0007 that states the tested condition,
+  before any plan proposes a writing path.
 - **A numeric `confidence` field on diagnostics.**
   Holdout rounds now report rates, so the original "no number until observed rates support one" gate is crossed.
   What still blocks it is that those are corpus-stratum rates,

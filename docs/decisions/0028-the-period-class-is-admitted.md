@@ -3,7 +3,7 @@
 **Status:** accepted
 **Date:** 2026-08-21
 **Context:** v0.9b Task 9, the widening's holdout
-([plan](../plans/active/v0.9b-a-suggestion-that-reaches-the-line-below.md),
+([plan](../plans/done/v0.9b-a-suggestion-that-reaches-the-line-below.md),
 runbook `tests/corpus/repairs/ROUND-4.md`)
 **Amends:** [ADR-0007](0007-fixability-classes.md)'s automatic class,
 which shipped `!`/`?` and withheld the period
