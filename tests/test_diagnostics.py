@@ -296,19 +296,22 @@ def test_a_malformed_span_raises_even_for_a_non_target_path():
 def test_fused_question_gets_a_two_line_suggestion_with_indentation():
     text = "   Is this right? Yes it is.\n"
     (d,) = diags(text)
-    assert d["suggestion"] == {"lines": ["   Is this right?", "   Yes it is."]}
+    assert d["suggestion"] == {
+        "lines": ["   Is this right?", "   Yes it is."],
+        "replaces": 1,
+    }
 
 
 def test_fused_bang_in_a_python_comment_keeps_the_marker_on_both_lines():
     text = "# Stop now! Go later.\n"
     (d,) = diags(text, path="x.py")
-    assert d["suggestion"] == {"lines": ["# Stop now!", "# Go later."]}
+    assert d["suggestion"] == {"lines": ["# Stop now!", "# Go later."], "replaces": 1}
 
 
 def test_fused_bang_in_a_blockquote_keeps_the_quote_marker():
     text = "> Stop now! Go later.\n"
     (d,) = diags(text)
-    assert d["suggestion"] == {"lines": ["> Stop now!", "> Go later."]}
+    assert d["suggestion"] == {"lines": ["> Stop now!", "> Go later."], "replaces": 1}
 
 
 def test_a_period_fused_line_gets_no_suggestion():
@@ -579,7 +582,7 @@ def test_a_suggestion_is_produced_exactly_when_nothing_withholds_it():
     (classes,) = withheld("Stop now! Go later.\n")
     assert classes == ()
     (d,) = diags("Stop now! Go later.\n")
-    assert d["suggestion"] == {"lines": ["Stop now!", "Go later."]}
+    assert d["suggestion"] == {"lines": ["Stop now!", "Go later."], "replaces": 1}
 
 
 def test_a_period_boundary_is_its_own_class():
@@ -700,6 +703,153 @@ def test_the_boundary_is_read_from_the_end_of_a_match_and_not_its_start():
     assert not [name for name in classes if name.startswith("gap_")]
 
 
+# --- the below classes, present only under a wrap pairing ------------------
+
+# One anchor whose sentence runs onto the line below,
+# so the detector pairs the two and the lower line enters the repair.
+PAIRED_CLEAN = "Stop now! Go later to the\nplace we talked about.\n"
+
+
+def test_a_clean_paired_window_carries_no_class_at_all():
+    assert withheld(PAIRED_CLEAN) == [()]
+
+
+def test_a_clean_paired_window_absorbs_the_line_below():
+    """Rejoin, then one split at the fused boundary; two lines replace two lines."""
+    (d,) = [x for x in diags(PAIRED_CLEAN) if x["kind"] == "fused"]
+    assert d["suggestion"] == {
+        "lines": ["Stop now!", "Go later to the place we talked about."],
+        "replaces": 2,
+    }
+
+
+def test_an_unpaired_suggestion_says_it_replaces_one_line():
+    (d,) = diags("Stop now! Go later.\n")
+    assert d["suggestion"] == {"lines": ["Stop now!", "Go later."], "replaces": 1}
+
+
+def test_a_paired_window_with_an_unsafe_below_line_withholds_entirely():
+    """A one-line split on a two-line window repairs half the sentence.
+
+    That is a wrong repair rather than a smaller right one,
+    so the unsafe pairing takes the suggestion with it.
+    """
+    fused = [
+        d
+        for d in diags("Stop now! Go later to the\nplace with `code` in it.\n")
+        if d["kind"] == "fused"
+    ]
+    assert fused
+    assert all("suggestion" not in d for d in fused)
+
+
+def test_an_absorbed_suggestion_keeps_the_shared_leader_on_both_lines():
+    text = "# Stop now! Go later to the\n# place we talked about.\n"
+    (d,) = [x for x in diags(text, "x.py") if x["kind"] == "fused"]
+    assert d["suggestion"] == {
+        "lines": ["# Stop now!", "# Go later to the place we talked about."],
+        "replaces": 2,
+    }
+
+
+def test_a_suppressed_wrap_falls_back_to_the_one_line_shape():
+    """The user blessed the break, so the suggestion repairs the anchor alone."""
+    text = "<!-- semlf-ignore-next wrap -->\nStop now! Go later to the\nplace we talked about.\n"
+    (d,) = [x for x in diags(text) if x["kind"] == "fused"]
+    assert d["suggestion"] == {
+        "lines": ["Stop now!", "Go later to the"],
+        "replaces": 1,
+    }
+
+
+def test_an_unpaired_anchor_never_carries_a_below_class():
+    """The upper line closes its sentence, so no pairing puts the lower line in play."""
+    (classes,) = withheld("Stop now! Go later.\nThen more prose follows.\n")
+    assert not [name for name in classes if name.startswith("below_")]
+
+
+def test_a_suppressed_wrap_yields_no_below_class_where_the_same_pair_would():
+    """The user blessed the break, so the lower line leaves the repair."""
+    unsuppressed = "Stop now! Go later to the\nplace with `code` in it.\n"
+    assert withheld(unsuppressed) == [("below_protected_span",)]
+    suppressed = "<!-- semlf-ignore-next wrap -->\n" + unsuppressed
+    assert withheld(suppressed) == [()]
+
+
+def test_a_crlf_pair_reaches_below_terminator_through_the_record():
+    """The raw line never carries its terminator, so the record's own field decides."""
+    assert withheld("Stop now! Go later to the\r\nplace we talked about.\r\n") == [
+        ("below_terminator",)
+    ]
+
+
+def test_a_bare_cr_pair_reaches_below_terminator_through_the_record():
+    assert withheld("Stop now! Go later to the\rplace we talked about.\r") == [
+        ("below_terminator",)
+    ]
+
+
+def test_a_lower_line_with_its_own_boundary_still_reports_independently():
+    """`below_boundary` withholds the anchor's repair without eating the lower finding."""
+    text = "Stop now! Go later to the\nplace stands empty here! Then we left town.\n"
+    assert withheld(text) == [("below_boundary",), ("anchor_open",)]
+    kinds = [(d["line"], d["kind"]) for d in diags(text)]
+    assert (1, "fused") in kinds and (2, "fused") in kinds
+
+
+def test_below_prose_not_unique_excludes_the_prefix_and_tail_classes():
+    """The same exclusivity the anchor's own classes keep."""
+    anchor = only("Stop now! Go later to the\n")
+    below = check_linefeeds._judged_record(
+        "", [0, 0], 1, "place here. X place here. X", "place here. X", "", None, 0
+    )
+    (match,) = check_linefeeds.FUSED_RE.finditer(anchor["prose"])
+    classes = check_linefeeds._fused_withholding(anchor, match, below)
+    assert "below_prose_not_unique" in classes
+    assert not [
+        name for name in classes if name.startswith(("below_prefix_", "below_tail_"))
+    ]
+
+
+def test_a_below_tail_is_judged_by_the_same_whitelist_as_the_anchor():
+    """Constructed, because no extractor today leaves a bad tail behind a good leader."""
+    anchor = only("Stop now! Go later to the\n")
+    below = check_linefeeds._judged_record(
+        "",
+        [0, 0],
+        1,
+        "place we talked about. */",
+        "place we talked about.",
+        "",
+        None,
+        0,
+    )
+    (match,) = check_linefeeds.FUSED_RE.finditer(anchor["prose"])
+    assert "below_tail_rejected" in check_linefeeds._fused_withholding(
+        anchor, match, below
+    )
+
+
+def test_the_wrap_finder_and_the_suggestion_share_one_pairing_predicate():
+    """One definition of "the sentence continues", consulted by both consumers.
+
+    The pairing cases the wrap finder decides are exactly the cases the below classes appear in,
+    so the two cannot drift.
+    """
+    paired = "Stop now! Go later to the\nplace with `code` in it.\n"
+    unpaired = "Stop now! Go later here.\nThen more prose follows.\n"
+    for text, expect in ((paired, True), (unpaired, False)):
+        wraps = [d for d in diags(text) if d["kind"] == "wrap"]
+        below_classes = [
+            name
+            for classes in withheld(text)
+            for name in classes
+            if name.startswith("below_")
+        ]
+        assert bool(wraps) is expect
+        assert bool(below_classes) is expect
+
+
 # One case per class.
 # Deleting a class from the list then leaves a named test red,
 # rather than quietly shrinking what the tuple can say.
@@ -726,6 +876,102 @@ CONSTRUCTED_CASES = {
     "prose_not_unique": ("Go now! X Go now! X", "Go now! X"),
 }
 
+# The below classes an extractor path reaches, as (text, path) through `diagnose`.
+BELOW_CLASS_CASES = {
+    "below_terminator": (
+        "Stop now! Go later to the\r\nplace we talked about.\r\n",
+        "doc.md",
+    ),
+    "below_boundary": (
+        "Stop now! Go later to the\nplace stands empty here! Then we left town.\n",
+        "doc.md",
+    ),
+    "below_open": (
+        "Stop now! Go later to the\nplace we talked about and\n",
+        "doc.md",
+    ),
+    "below_protected_span": (
+        "Stop now! Go later to the\nplace with `code` in it.\n",
+        "doc.md",
+    ),
+    "below_prefix_mismatch": (
+        "Stop now! Go later to the\n  place we talked about.\n",
+        "doc.md",
+    ),
+    "below_carrier_stripped": (
+        "Stop now! Go later to the\nplace we talked about. <!-- semlf-ignore long -->\n",
+        "doc.md",
+    ),
+}
+
+# The anchor-side condition the calibration dry-run earned:
+# a lowercase opening word says the split's first line continues something above,
+# and the rule is rejoin before you split.
+ANCHOR_OPEN_CASE = ("then acks! A call follows here.\n", "doc.md")
+
+# The two below classes no extractor path reaches, tested by construction above.
+BELOW_CONSTRUCTED = {
+    "below_prose_not_unique",
+    "below_tail_rejected",
+}
+
+
+def test_a_mid_sentence_anchor_is_its_own_class():
+    (classes,) = withheld(ANCHOR_OPEN_CASE[0])
+    assert classes == ("anchor_open",)
+    (d,) = diags(ANCHOR_OPEN_CASE[0])
+    assert "suggestion" not in d
+
+
+def test_a_sentence_initial_anchor_carries_no_anchor_open():
+    (classes,) = withheld("Stop now! Go later.\n")
+    assert "anchor_open" not in classes
+
+
+def test_a_quoted_mid_sentence_anchor_still_carries_anchor_open():
+    """A first-character test would wave the quoted form through.
+
+    The opening quote hides the lowercase word from a naive match,
+    and the stranded fragment is the same either way.
+    """
+    (classes,) = withheld('"then stop now! A call follows."\n')
+    assert "anchor_open" in classes
+    (d,) = diags('"then stop now! A call follows."\n')
+    assert "suggestion" not in d
+
+
+def test_an_unpaired_anchor_whose_ending_no_line_may_end_on_withholds():
+    """The detector cannot pair a continuation opening with a capital,
+    and splitting would strand the open fragment ahead of it.
+    """
+    text = "Stop now! Go later to the\nI mean the other place entirely.\n"
+    (classes,) = [c for c in withheld(text) if c is not None][:1]
+    assert classes == ("anchor_unclosed",)
+    fused = [d for d in diags(text) if d["kind"] == "fused"]
+    assert all("suggestion" not in d for d in fused)
+
+
+def test_a_comma_ending_is_a_place_a_line_may_end():
+    """Sembr's own break points stay suggestible: line2 may end at a comma."""
+    (classes,) = withheld("Stop now! Go later to the store,\nand buy the rest there.\n")
+    assert "anchor_unclosed" not in classes
+
+
+def test_a_suppressed_wrap_blesses_the_open_ending():
+    """The directive targets exactly this ending, so the one-line fallback stands."""
+    text = (
+        "<!-- semlf-ignore-next wrap -->\n"
+        "Stop now! Go later to the\nplace we talked about.\n"
+    )
+    (d,) = [x for x in diags(text) if x["kind"] == "fused"]
+    assert d["suggestion"]["replaces"] == 1
+
+
+@pytest.mark.parametrize("name", sorted(BELOW_CLASS_CASES))
+def test_each_below_class_is_produced_by_a_case_that_names_it(name):
+    text, path = BELOW_CLASS_CASES[name]
+    assert any(name in classes for classes in withheld(text, path))
+
 
 @pytest.mark.parametrize("name", sorted(CLASS_CASES))
 def test_each_class_is_produced_by_a_case_that_names_it(name):
@@ -743,7 +989,13 @@ def test_each_constructed_class_is_produced_by_its_case(name):
 
 def test_every_declared_class_has_a_case():
     """A class nobody exercises is a stratum nobody can draw."""
-    covered = set(CLASS_CASES) | set(CONSTRUCTED_CASES)
+    covered = (
+        set(CLASS_CASES)
+        | set(CONSTRUCTED_CASES)
+        | set(BELOW_CLASS_CASES)
+        | BELOW_CONSTRUCTED
+        | {"anchor_open", "anchor_unclosed"}
+    )
     assert covered == set(check_linefeeds.WITHHOLDING_CLASSES)
     assert len(set(check_linefeeds.WITHHOLDING_CLASSES)) == len(
         check_linefeeds.WITHHOLDING_CLASSES
@@ -755,3 +1007,51 @@ def test_classes_report_in_declaration_order():
     for classes in withheld("Go now?  Come `here`! Stay put.\n"):
         positions = [order.index(name) for name in classes]
         assert positions == sorted(positions)
+
+
+# --- the admitted-class parameter -----------------------------------------
+
+
+def test_the_candidate_admits_a_clean_period_boundary():
+    record = only("One sentence here. Another sentence follows.\n")
+    (match,) = check_linefeeds.FUSED_RE.finditer(record["prose"])
+    assert check_linefeeds._fused_suggestion(record, match) is None
+    assert check_linefeeds._fused_suggestion(
+        record, match, admitted=check_linefeeds.CANDIDATE_ADMITTED
+    ) == {"lines": ["One sentence here.", "Another sentence follows."], "replaces": 1}
+
+
+def test_the_candidate_absorbs_a_paired_period_window():
+    records = walked(
+        "One sentence stops here. Another goes to the\nplace we talked about.\n"
+    )
+    anchor, below = records
+    assert check_linefeeds._wrap_paired(anchor, below)
+    (match,) = check_linefeeds.FUSED_RE.finditer(anchor["prose"])
+    assert check_linefeeds._fused_suggestion(anchor, match, below) is None
+    assert check_linefeeds._fused_suggestion(
+        anchor, match, below, admitted=check_linefeeds.CANDIDATE_ADMITTED
+    ) == {
+        "lines": [
+            "One sentence stops here.",
+            "Another goes to the place we talked about.",
+        ],
+        "replaces": 2,
+    }
+
+
+def test_activation_needs_every_other_class_absent():
+    """The activation rule in code form: a second class refuses both constants."""
+    record = only("One `code` sentence ends here. Another follows.\n")
+    (match,) = check_linefeeds.FUSED_RE.finditer(record["prose"])
+    for admitted in (check_linefeeds.ADMITTED, check_linefeeds.CANDIDATE_ADMITTED):
+        assert (
+            check_linefeeds._fused_suggestion(record, match, admitted=admitted) is None
+        )
+
+
+def test_the_shipped_surface_passes_the_shipped_constant():
+    """`diagnose` hands `_fused_suggestion` exactly `ADMITTED`, nothing wider."""
+    (d,) = diags("One sentence here. Another sentence follows.\n")
+    assert d["kind"] == "fused"
+    assert "suggestion" not in d

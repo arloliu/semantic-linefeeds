@@ -24,7 +24,7 @@ from semlf import render  # noqa: E402
 
 def document(path="doc.md", diagnostics=()):
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "path": path,
         "diagnostics": list(diagnostics),
     }
@@ -48,6 +48,30 @@ TRIO = [
     diagnostic("wrap", line=3, start=40, end=61, message="ends mid-clause"),
     diagnostic("long", line=5, start=80, end=210, message="advisory: long"),
 ]
+
+
+def test_renderers_and_gate_ignore_the_suggestion_member():
+    """A suggestion is hook-delivery payload; SARIF, annotations, and the gate never read it.
+
+    Byte-identical output with and without one is what proves the schema-2
+    `replaces` change cannot reach a CI reader.
+    """
+    import ci_gate
+
+    bare = diagnostic("fused")
+    carrying = dict(
+        bare,
+        suggestion={"lines": ["One sentence.", "Another here."], "replaces": 2},
+    )
+    without = [document(diagnostics=[bare])]
+    with_suggestion = [document(diagnostics=[carrying])]
+    assert json.dumps(render.sarif(without), sort_keys=True) == json.dumps(
+        render.sarif(with_suggestion), sort_keys=True
+    )
+    assert list(render.github_annotations(without)) == list(
+        render.github_annotations(with_suggestion)
+    )
+    assert ci_gate.gate(without, ["fused"]) == ci_gate.gate(with_suggestion, ["fused"])
 
 
 # --- SARIF ------------------------------------------------------------------

@@ -186,7 +186,8 @@ REPAIR_ADMISSION = {
     },
     "baseline": (
         "the shipped class is measured and reported beside every candidate as context; "
-        "it is 34 boundaries with 32 of them in one source, and it is never the bar"
+        "under the window predicate it is 11 boundaries, all in one source, "
+        "and it is never the bar; the anchor-only predicate measured 34"
     ),
     "admissible_from": (
         "no class is admissible on the calibration side; "
@@ -504,6 +505,19 @@ def draw(population, key, bands, per_level, seed):
 CONTEXT = 2
 
 
+def corpus_text(path):
+    """One source file, byte-faithful in its newlines.
+
+    `Path.read_text` opens with universal newlines,
+    which quietly turns CRLF and bare CR into LF before `judged_lines` runs,
+    blinding `record["terminator"]` and every class that reads it.
+    The delivery paths translate on purpose;
+    the corpus must not, because its windows are spliced back into the file.
+    """
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
+
+
 def files_of(source, root):
     """Exactly the files the manifest's own selection command names, and no others.
 
@@ -775,6 +789,329 @@ def repair_admission_digest():
     and only a freeze binding this digest does.
     """
     return contract_digest(REPAIR_ADMISSION)
+
+
+# The one record that may put a class into the shipped `ADMITTED` set.
+ADMISSION_RESULT_VERSION = 1
+
+_HEX_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def repair_admission_result_problems(document):
+    """Field-level validation of the manifest's `repair_admission_result` record.
+
+    An absent record is the pre-decision state and valid.
+    A present one must be internally consistent down to its arithmetic:
+    the recorded lower bound must be the Wilson bound of its own counts,
+    and an admitted outcome must clear the preregistered floor with every count at zero.
+    Whether the record matches the append-only ledger and the sealed evaluation is another half,
+    layered on top of this one where the ledger lives.
+    """
+    import check_linefeeds
+
+    record = document.get("repair_admission_result")
+    if record is None:
+        return []
+    problems = []
+
+    def bad(message):
+        problems.append(f"repair_admission_result: {message}")
+
+    if record.get("version") != ADMISSION_RESULT_VERSION:
+        bad(f"version must be {ADMISSION_RESULT_VERSION}: {record.get('version')!r}")
+    admitted = record.get("admitted")
+    if (
+        not isinstance(admitted, list)
+        or not admitted
+        or admitted != sorted(set(admitted))
+        or any(name not in check_linefeeds.WITHHOLDING_CLASSES for name in admitted)
+    ):
+        bad(f"admitted must be a sorted list of declared classes: {admitted!r}")
+    if not isinstance(record.get("round"), int) or record["round"] < 4:
+        bad(
+            f"round must be an integer holdout round of at least 4: {record.get('round')!r}"
+        )
+    if not (isinstance(record.get("freeze_id"), str) and record["freeze_id"]):
+        bad("freeze_id must name the pre-draw freeze")
+    for field in ("evaluation_digest", "predicate_digest"):
+        value = record.get(field)
+        if not (isinstance(value, str) and _HEX_DIGEST_RE.match(value)):
+            bad(f"{field} must be a 64-hex digest: {value!r}")
+    scoring = record.get("scoring")
+    if not (isinstance(scoring, str) and re.fullmatch(r"sha256:[0-9a-f]{64}", scoring)):
+        bad(
+            "scoring must be the sha256:<64-hex> digest of the scoring code "
+            f"the freeze bound, not prose or a malformed digest: {scoring!r}"
+        )
+    strata = record.get("strata")
+    if not isinstance(strata, dict) or not strata:
+        bad("strata must map each activated exact set to its counts")
+        strata = {}
+    for key, body in strata.items():
+        scored = body.get("scored") if isinstance(body, dict) else None
+        acceptable = body.get("acceptable") if isinstance(body, dict) else None
+        lower = body.get("lower_bound") if isinstance(body, dict) else None
+        if not (isinstance(scored, int) and scored > 0):
+            bad(f"stratum {key}: scored must be a positive integer: {scored!r}")
+            continue
+        if not (isinstance(acceptable, int) and 0 <= acceptable <= scored):
+            bad(f"stratum {key}: acceptable must lie within 0..scored: {acceptable!r}")
+            continue
+        computed = wilson(acceptable, scored)[0]
+        if not (isinstance(lower, (int, float)) and abs(lower - computed) <= 1e-6):
+            bad(
+                f"stratum {key}: lower_bound {lower!r} is not the Wilson bound "
+                f"of {acceptable}/{scored} ({computed:.6f})"
+            )
+    zero = record.get("zero_tolerance")
+    expected = set(REPAIR_ADMISSION["zero_tolerance"])
+    if not isinstance(zero, dict) or set(zero) != expected:
+        bad(f"zero_tolerance must carry exactly {sorted(expected)}")
+        zero = {}
+    for name, count in zero.items():
+        if not (isinstance(count, int) and count >= 0):
+            bad(f"zero_tolerance {name}: counts are non-negative integers: {count!r}")
+    outcome = record.get("outcome")
+    if outcome not in ("admitted", "refused"):
+        bad(f"outcome must be admitted or refused: {outcome!r}")
+    if not re.fullmatch(r"0\d{3}", record.get("adr") or ""):
+        bad(f"adr must name the decision record, like 0028: {record.get('adr')!r}")
+    if outcome == "admitted":
+        floor = REPAIR_ADMISSION["floor"]
+        for key, body in strata.items():
+            lower = body.get("lower_bound") if isinstance(body, dict) else None
+            if not (isinstance(lower, (int, float)) and lower >= floor):
+                bad(f"stratum {key}: admitted below the floor of {floor}")
+        for name, count in zero.items():
+            if count:
+                bad(f"zero_tolerance {name}: {count} with an admitted outcome")
+    return problems
+
+
+def admission_guard_problems(document, admitted, ledger=None):
+    """The two-state precision guard's evidence check.
+
+    An empty shipped set needs no evidence.
+    A non-empty one demands a validated `repair_admission_result` naming exactly that set,
+    with an admitted outcome —
+    a floor entry or an ADR file on disk proves nothing here,
+    because presence is not a decision.
+    `ledger` is the parsed append-only ledger.
+    A non-empty shipped set refuses to be judged without one:
+    a record alone can be internally consistent and still name evidence
+    that never happened, and only the ledger can say it did.
+    """
+    if not admitted:
+        return []
+    record = document.get("repair_admission_result")
+    if record is None:
+        return [
+            "ADMITTED is non-empty and the manifest holds no repair_admission_result"
+        ]
+    problems = repair_admission_result_problems(document)
+    if ledger is None:
+        problems.append(
+            "ADMITTED is non-empty and no ledger was supplied; "
+            "an admission is checked against the append-only ledger, "
+            "never on the record alone"
+        )
+    else:
+        problems += repair_admission_result_ledger_problems(document, ledger)
+    if isinstance(record.get("admitted"), list) and record["admitted"] != sorted(
+        admitted
+    ):
+        problems.append(
+            f"the shipped set {sorted(admitted)} is not the admitted set "
+            f"{record['admitted']}"
+        )
+    if record.get("outcome") != "admitted":
+        problems.append("the recorded outcome does not admit the class")
+    return problems
+
+
+def repair_admission_result_ledger_problems(document, records):
+    """The ledger half of admission-record validation.
+
+    The field validator proves the record is internally consistent;
+    this proves the evidence it names actually happened, in the append-only ledger:
+    the pre-draw freeze it cites exists, for its round, over its predicate digest;
+    one spend opened the ciphertext it names;
+    and that spend was completed with a result agreeing on the outcome.
+    A spend with no completion is an evaluation that never finished,
+    and it can validate no admission.
+    """
+    record = document.get("repair_admission_result")
+    if record is None:
+        return []
+    problems = []
+
+    def bad(message):
+        problems.append(f"repair_admission_result: {message}")
+
+    def bare(digest):
+        """The ledger prefixes its digests with the algorithm; the record stores hex."""
+        return str(digest or "").split(":")[-1]
+
+    frozen = None
+    freezes = [
+        entry
+        for entry in records
+        if entry.get("record") == "predicate_freeze"
+        and entry.get("id") == record.get("freeze_id")
+    ]
+    round_freezes = [
+        entry
+        for entry in records
+        if entry.get("record") == "predicate_freeze"
+        and entry.get("round") == record.get("round")
+    ]
+    if not freezes:
+        bad(f"the ledger holds no predicate_freeze named {record.get('freeze_id')!r}")
+    else:
+        (frozen,) = freezes[:1]
+        # Authenticity, not presence: the id is content-derived,
+        # so a hand-written freeze record cannot make one up.
+        if _freeze_id(frozen) != frozen.get("id"):
+            bad("the cited freeze's id is not the digest of its own content")
+        if frozen.get("round") != record.get("round"):
+            bad(
+                f"the cited freeze is for round {frozen.get('round')!r}, "
+                f"not {record.get('round')!r}"
+            )
+        if bare(frozen.get("predicate_digest")) != record.get("predicate_digest"):
+            bad("the cited freeze froze a different predicate digest")
+    if len(round_freezes) > 1:
+        bad(
+            f"the ledger holds {len(round_freezes)} freezes for round "
+            f"{record.get('round')!r}; one round is frozen once"
+        )
+    spends = [
+        entry
+        for entry in records
+        if entry.get("record") == "evaluation"
+        and bare(entry.get("ciphertext_digest")) == record.get("evaluation_digest")
+    ]
+    if not spends:
+        bad(
+            f"no evaluation in the ledger spends ciphertext "
+            f"{record.get('evaluation_digest')!r}"
+        )
+    else:
+        # The chain: the spend itself must say it belongs to the cited freeze and round,
+        # or a spend from another round with agreeable numbers would satisfy the guard.
+        (spend,) = spends[:1]
+        if spend.get("round") != record.get("round"):
+            bad(
+                f"the spend belongs to round {spend.get('round')!r}, "
+                f"not {record.get('round')!r}"
+            )
+        if spend.get("drawn_under") != record.get("freeze_id"):
+            bad(
+                "the spend was not drawn under the cited freeze; "
+                "the evaluation and the freeze are two records of one chain"
+            )
+    results = [
+        entry
+        for entry in records
+        if entry.get("record") == "evaluation_result"
+        and bare(entry.get("ciphertext_digest")) == record.get("evaluation_digest")
+    ]
+    if spends and not results:
+        bad(
+            "the evaluation was opened but never completed; an unfinished round admits nothing"
+        )
+    for entry in results[:1]:
+        got = entry.get("result") or {}
+        if got.get("outcome") != record.get("outcome"):
+            bad(
+                f"the sealed evaluation's outcome {got.get('outcome')!r} "
+                f"is not the record's {record.get('outcome')!r}"
+            )
+        if got.get("admitted") != record.get("admitted"):
+            bad("the sealed evaluation admitted a different class set")
+        if bare(got.get("predicate_digest")) != record.get("predicate_digest"):
+            bad("the sealed evaluation ran a different predicate digest")
+        sealed_strata = {
+            key: {
+                "scored": body.get("scored"),
+                "acceptable": body.get("acceptable"),
+                "lower_bound": body.get("lower_bound"),
+            }
+            for key, body in (got.get("strata") or {}).items()
+        }
+        recorded_strata = {
+            key: {
+                "scored": body.get("scored"),
+                "acceptable": body.get("acceptable"),
+                "lower_bound": body.get("lower_bound"),
+            }
+            for key, body in (record.get("strata") or {}).items()
+        }
+        if sealed_strata != recorded_strata:
+            bad("the recorded strata are not the sealed evaluation's strata")
+        if got.get("zero_tolerance") != record.get("zero_tolerance"):
+            bad("the recorded zero-tolerance counts are not the sealed evaluation's")
+        if got.get("scoring") != record.get("scoring"):
+            bad(
+                "the recorded scoring identity is not the sealed evaluation's; "
+                "the digest is computed inside the one open, never copied by hand"
+            )
+        if frozen is not None and (frozen.get("binds") or {}).get(
+            "scoring"
+        ) != record.get("scoring"):
+            bad("the scoring identity is not the one the cited freeze bound")
+    return problems
+
+
+def repair_baselines_v2_problems(document):
+    """The window-predicate baseline sidecar, validated against the records it shadows.
+
+    Accepted repair records are never edited,
+    so the shape predicate's baselines live beside them in one versioned section,
+    keyed by unit id.
+    The keys must be exactly the promoted unit ids —
+    a missing one is an unmeasured unit, an unknown one is an invented one —
+    and the derived summary must be the entries' own arithmetic.
+    """
+    sidecar = document.get("repair_baselines_v2")
+    if sidecar is None:
+        return []
+    problems = []
+
+    def bad(message):
+        problems.append(f"repair_baselines_v2: {message}")
+
+    predicate = sidecar.get("predicate")
+    if not (isinstance(predicate, str) and predicate.startswith("sha256:")):
+        bad(f"predicate must be a sha256-prefixed digest: {predicate!r}")
+    units = sidecar.get("units")
+    if not isinstance(units, dict):
+        bad("units must map unit id to a baseline entry")
+        return problems
+    promoted = {record["id"]: record for record in document.get("repairs", [])}
+    missing = sorted(set(promoted) - set(units))
+    unknown = sorted(set(units) - set(promoted))
+    if missing:
+        bad(
+            f"{len(missing)} promoted unit(s) carry no v2 baseline, first {missing[:3]}"
+        )
+    if unknown:
+        bad(f"{len(unknown)} v2 baseline(s) name no promoted unit, first {unknown[:3]}")
+    measured = collections.defaultdict(lambda: {"suggested": 0, "acceptable": 0})
+    for uid, entry in units.items():
+        if uid not in promoted:
+            continue
+        if not isinstance(entry.get("acceptable"), bool):
+            bad(f"{uid}: acceptable must be a bool")
+        stratum = promoted[uid].get("stratum", {}).get("set", "")
+        if entry.get("lines") is not None:
+            measured[stratum]["suggested"] += 1
+            if entry.get("acceptable"):
+                measured[stratum]["acceptable"] += 1
+    recorded = sidecar.get("measured")
+    if recorded != {key: dict(body) for key, body in measured.items()}:
+        bad("the measured summary is not the entries' own arithmetic")
+    return problems
 
 
 def repair_admission_problems(candidate):
@@ -1122,16 +1459,32 @@ def _carrier_text(record):
     return record["carrier"]["text"] if record["carrier"] else None
 
 
-def compose(window, lines):
-    """An anchor-only algorithm's output, as a replacement for the whole window.
+def composed(window, suggestion):
+    """A suggestion object's output, as a replacement for the whole window.
 
-    `_fused_suggestion` returns two lines replacing the anchor
-    and says nothing about the line below, so scoring it here keeps that line as it is.
-    From `original_raw` rather than `raw`:
+    The one mapping from `replaces` to a full window replacement,
+    shared by promotion and scoring so `same_algorithm` is a checked fact.
+    `replaces == 2` uses the suggested lines alone;
+    `replaces == 1` on a two-line window keeps the lower line as it is,
+    from `original_raw` rather than `raw`:
     the judged view has had any suppression carrier taken off it,
     and splicing that view back would delete the carrier from the file.
+    Anything else refuses rather than scores —
+    a malformed extent silently composed is a repair scored that nothing delivered.
     """
-    if window.form == "one-line":
+    lines = suggestion.get("lines") if isinstance(suggestion, dict) else None
+    replaces = suggestion.get("replaces") if isinstance(suggestion, dict) else None
+    if (
+        not isinstance(lines, list)
+        or len(lines) != 2
+        or any(not isinstance(line, str) for line in lines)
+    ):
+        raise ScoringRefused(f"a suggestion's lines must be two strings: {lines!r}")
+    if replaces not in (1, 2):
+        raise ScoringRefused(f"a suggestion replaces 1 or 2 lines, not {replaces!r}")
+    if replaces == 2 and window.form == "one-line":
+        raise ScoringRefused("a one-line window has no second line to replace")
+    if window.form == "one-line" or replaces == 2:
         return list(lines)
     return list(lines) + [window.records[1]["original_raw"]]
 
@@ -1551,17 +1904,82 @@ def source_selection_digest(document):
     return contract_digest(declared)
 
 
-def repair_round_bindings(document):
+def repair_round_sources(document, round):
+    """The canonical selection object a repair round's sources binding hashes, validated.
+
+    Binding an invalid selection would make it immutable rather than valid,
+    and a freeze is one per round,
+    so every violation refuses here, before anything is written:
+    a repair round draws exactly one source per composition,
+    every selected source carries its qualification record,
+    and no identity is reused —
+    neither an id nor a repository url already declared for another purpose.
+    The returned object is what the digest covers,
+    so freeze, draw, and seal hash the same round-specific selection or refuse together.
+    """
+    declared = document.get("sources", [])
+    selected = [source for source in declared if source.get("round") == round]
+    others = [source for source in declared if source.get("round") != round]
+
+    compositions = collections.Counter(source.get("composition") for source in selected)
+    if dict(compositions) != dict.fromkeys(COMPOSITIONS, 1):
+        raise ScoringRefused(
+            f"round {round} needs exactly one source per composition "
+            f"{list(COMPOSITIONS)}, and the manifest declares {dict(compositions)}"
+        )
+    unqualified = [
+        source["id"]
+        for source in selected
+        if not str(source.get("qualification") or "").strip()
+    ]
+    if unqualified:
+        raise ScoringRefused(
+            f"round {round} sources without a qualification record: {unqualified}"
+        )
+    reused = [
+        source["id"]
+        for source in selected
+        if any(
+            source.get("id") == other.get("id") or source.get("url") == other.get("url")
+            for other in others
+        )
+    ]
+    if reused:
+        raise ScoringRefused(
+            f"round {round} reuses a declared source identity: {reused}; "
+            "the preregistered round draws sources none of the declared twelve"
+        )
+    fields = SOURCE_FIELDS + ("round", "wrapping_column", "qualification")
+    canonical = [{name: source.get(name) for name in fields} for source in selected]
+    canonical.sort(key=lambda source: str(source["id"]))
+    return canonical
+
+
+def scoring_digest():
+    """The digest of the scoring code, as one value the freeze and the result both carry.
+
+    Computed live at the freeze (inside the round bindings) and inside the one scoring open,
+    so the record's scoring identity is sealed evidence rather than prose an operator copied.
+    """
+    here = pathlib.Path(__file__).resolve()
+    score = here.parent / "corpus" / "repairs" / "score.py"
+    return contract_digest({"score": file_digest(score), "harness": file_digest(here)})
+
+
+def repair_round_bindings(document, round):
     """Everything a repair round means beyond its predicate and its manifest.
 
     ADR-0022 bound the predicate and the sample.
     It said in as many words what it did not claim:
     a round is also decided by its admission contract, its class taxonomy,
-    its draw configuration, and which sources it draws from,
-    and any of those could move between the freeze and the seal without being noticed.
-    The admission contract is the sharpest of the four.
+    its draw configuration, which sources it draws from,
+    and the scoring code that turns the frozen candidate into a normalized repair —
+    any of which could move between the freeze and the seal without being noticed.
+    The admission contract is the sharpest.
     Comparing the manifest against an in-code constant catches one copy moving,
     and catches nothing once both move together while a round is underway.
+    The candidate itself needs no entry here:
+    it is a constant in the predicate file, which the predicate digest already hashes.
     """
     import check_linefeeds
 
@@ -1569,7 +1987,8 @@ def repair_round_bindings(document):
         "admission": repair_admission_digest(),
         "taxonomy": contract_digest(list(check_linefeeds.WITHHOLDING_CLASSES)),
         "draw": contract_digest(REPAIR_DRAW),
-        "sources": source_selection_digest(document),
+        "sources": contract_digest(repair_round_sources(document, round)),
+        "scoring": scoring_digest(),
     }
 
 
@@ -1655,9 +2074,7 @@ def attach_candidates(units, root):
     for unit in units:
         key = (unit["source"], unit["path"])
         if key not in texts:
-            texts[key] = (root / unit["source"] / unit["path"]).read_text(
-                encoding="utf-8"
-            )
+            texts[key] = corpus_text(root / unit["source"] / unit["path"])
         text = texts[key]
         records, _suppressions = check_linefeeds.judged_lines(text, unit["path"])
         window = repair_window(records, unit["index"])
@@ -1708,7 +2125,7 @@ def repair_population(source, root):
     out = []
     for name in files_of(source, root):
         try:
-            text = (root / name).read_text(encoding="utf-8")
+            text = corpus_text(root / name)
         except (OSError, UnicodeDecodeError):
             continue
         try:
@@ -2543,23 +2960,104 @@ class Holdout:
             encoding="utf-8",
         )
 
-    def freeze(self, reporting_rules):
-        """Commit to a predicate, a calibration manifest, and a bundle, before seeing any of it."""
-        self._append(
-            {
-                "record": "freeze",
-                "predicate_digest": self._predicate_digest(),
-                "manifest_digest": self._manifest_digest(),
-                "ciphertext_digest": self._ciphertext_digest(),
-                "reporting_rules": reporting_rules,
-            }
-        )
+    def freeze(self, reporting_rules, drawn_under=None):
+        """Commit to a predicate, a calibration manifest, and a bundle, before seeing any of it.
+
+        `drawn_under` names the pre-draw freeze the sealed prose was drawn under.
+        A repair round passes it so the ledger holds one chain
+        (pre-draw freeze, bundle, spend, result)
+        rather than four lookalike records a validator would correlate by trust.
+        """
+        record = {
+            "record": "freeze",
+            "predicate_digest": self._predicate_digest(),
+            "manifest_digest": self._manifest_digest(),
+            "ciphertext_digest": self._ciphertext_digest(),
+            "reporting_rules": reporting_rules,
+        }
+        if self.round is not None:
+            record["round"] = self.round
+        if drawn_under is not None:
+            record["drawn_under"] = drawn_under
+        self._append(record)
 
     def open(self, passphrase):
         """Return the sealed text, or refuse and say which rule refused."""
         self._require_freeze()
         self._require_unspent()
         return self._decrypt(passphrase)
+
+    def open_spending(self, passphrase):
+        """Decrypt the bundle and record the spend before the plaintext is returned.
+
+        `open` returns plaintext and leaves spending to a later `record_evaluation`,
+        which is two calls with a gap a crash can fall into,
+        leaving opened prose looking unspent.
+        This is the one-call form for a repair round:
+        the spend record lands in the ledger first,
+        so no decrypted byte escapes an operation the ledger has not yet marked,
+        and a second open refuses however the first one ended.
+        The result arrives later through `complete_evaluation`,
+        or never, which `repair_admission_result` validation treats as a refusal.
+        """
+        frozen = self._require_freeze()
+        self._require_unspent()
+        # Authenticate first (a wrong passphrase must not spend the bundle),
+        # then spend, then unmask:
+        # no plaintext byte exists before the ledger holds the spend,
+        # so a crash after authentication leaves the bundle spent rather than reusable.
+        ciphertext, mask_key = self._verify(passphrase)
+        spend = {
+            "record": "evaluation",
+            "predicate_digest": frozen["predicate_digest"],
+            "manifest_digest": frozen["manifest_digest"],
+            "ciphertext_digest": frozen["ciphertext_digest"],
+            "reporting_rules": frozen["reporting_rules"],
+            "result": {"state": "opened"},
+        }
+        # The chain, copied from the bundle's own freeze record rather than trusted:
+        # which round this spend belongs to, and which pre-draw freeze its prose answers.
+        if frozen.get("round") is not None:
+            spend["round"] = frozen["round"]
+        if frozen.get("drawn_under") is not None:
+            spend["drawn_under"] = frozen["drawn_under"]
+        self._append(spend)
+        return _mask(ciphertext, mask_key).decode("utf-8")
+
+    def complete_evaluation(self, result):
+        """Attach the one result to a bundle `open_spending` already spent."""
+        ciphertext = self._ciphertext_digest()
+        opened = [
+            record
+            for record in self._records()
+            if record.get("record") == "evaluation"
+            and record.get("ciphertext_digest") == ciphertext
+            and (record.get("result") or {}).get("state") == "opened"
+        ]
+        if not opened:
+            raise ScoringRefused(
+                "no spend record opened this bundle; complete_evaluation answers open_spending"
+            )
+        done = [
+            record
+            for record in self._records()
+            if record.get("record") == "evaluation_result"
+            and record.get("ciphertext_digest") == ciphertext
+        ]
+        if done:
+            raise ScoringRefused(
+                "this bundle's evaluation already carries a result; one open, one answer"
+            )
+        (spend,) = opened[:1]
+        record = {
+            "record": "evaluation_result",
+            "ciphertext_digest": ciphertext,
+            "result": result,
+        }
+        for name in ("round", "drawn_under"):
+            if spend.get(name) is not None:
+                record[name] = spend[name]
+        self._append(record)
 
     def record_evaluation(self, result):
         """Spend this bundle, against the freeze record it answers."""
@@ -2615,7 +3113,13 @@ class Holdout:
                     "this bundle has already been evaluated; scoring again needs a new holdout"
                 )
 
-    def _decrypt(self, passphrase):
+    def _verify(self, passphrase):
+        """Authenticate the passphrase against the tag, producing no plaintext.
+
+        Split from the unmasking so a spend can land between the two:
+        a wrong passphrase refuses before anything is spent,
+        and no plaintext exists before the ledger says the bundle was opened.
+        """
         bundle = json.loads(self.bundle.read_text(encoding="utf-8"))
         ciphertext = base64.b64decode(bundle["ciphertext"])
         mask_key, tag_key = _keys(
@@ -2624,6 +3128,10 @@ class Holdout:
         tag = hmac.new(tag_key, ciphertext, hashlib.sha256).digest()
         if not hmac.compare_digest(tag, base64.b64decode(bundle["tag"])):
             raise ScoringRefused("the passphrase does not open this bundle")
+        return ciphertext, mask_key
+
+    def _decrypt(self, passphrase):
+        ciphertext, mask_key = self._verify(passphrase)
         return _mask(ciphertext, mask_key).decode("utf-8")
 
     def _records(self):

@@ -602,6 +602,44 @@ def test_a_two_file_patch_names_the_file_in_each_suggestion_label(hook_dir):
     assert f"Suggested replacement for line 1 of {doc_b}:" in result.stderr
 
 
+def test_a_paired_mapped_edit_labels_the_two_lines_it_replaces(hook_dir):
+    # The window's sentence continues on line 7, so the replacement covers 6-7.
+    doc = hook_dir / "doc.md"
+    doc.write_text(
+        "filler\n" * 5 + "Stop now? Go later to the\nplace we talked about.\n"
+    )
+    result = run_cli(
+        ["--hook", "claude"], claude_edit(doc, "Stop now? Go later to the")
+    )
+    assert result.returncode == 2
+    assert "Suggested replacement for lines 6-7:" in result.stderr
+    assert "    Stop now?" in result.stderr
+    assert "    Go later to the place we talked about." in result.stderr
+
+
+def test_a_paired_degraded_edit_keeps_the_two_line_label_in_snippet_mode(hook_dir):
+    doc = hook_dir / "doc.md"
+    pair = "Stop now? Go later to the\nplace we talked about."
+    doc.write_text(pair + "\n\nmiddle prose\n\n" + pair + "\n")
+    result = run_cli(["--hook", "claude"], claude_edit(doc, pair))
+    assert result.returncode == 2
+    assert "Suggested replacement for lines 1-2 of your edit:" in result.stderr
+
+
+def test_a_two_file_patch_names_the_file_in_a_two_line_label(hook_dir):
+    doc_a = hook_dir / "a.md"
+    doc_b = hook_dir / "b.md"
+    pair = "Stop now? Go later to the\nplace we talked about."
+    doc_a.write_text(pair + "\n")
+    doc_b.write_text(pair + "\n")
+    result = run_cli(
+        ["--hook", "codex"], codex_patch((str(doc_a), pair), (str(doc_b), pair))
+    )
+    assert result.returncode == 2
+    assert f"Suggested replacement for lines 1-2 of {doc_a}:" in result.stderr
+    assert f"Suggested replacement for lines 1-2 of {doc_b}:" in result.stderr
+
+
 def _write_skill_frontmatter(path, name="semantic-linefeeds"):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(

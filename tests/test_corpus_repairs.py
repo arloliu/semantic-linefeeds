@@ -86,10 +86,13 @@ def test_the_wild_repair_population_is_too_thin_to_score_a_widening():
 sys.path.insert(0, str(REPO / "tests"))
 
 from corpus_harness import (  # noqa: E402
+    ScoringRefused,
     carrier_valid,
     collapsed,
-    compose,
+    composed,
+    cut_positions,
     normalize_repair,
+    repair_baselines_v2_problems,
     repair_window,
     splice,
 )
@@ -491,10 +494,10 @@ def test_composing_an_anchor_only_repair_keeps_the_lower_line_byte_for_byte():
         for d in clf.diagnose(text, "doc.md")
         if d["kind"] == "fused" and d["line"] == 1
     ]
-    composed = compose(window, finding["suggestion"]["lines"])
-    assert composed[-1] == window.records[1]["original_raw"]
-    assert "<!-- semlf-ignore wrap -->" in composed[-1]
-    got = normalize_repair(window, composed, text, "doc.md")
+    replacement = composed(window, finding["suggestion"])
+    assert replacement[-1] == window.records[1]["original_raw"]
+    assert "<!-- semlf-ignore wrap -->" in replacement[-1]
+    got = normalize_repair(window, replacement, text, "doc.md")
     assert got == {
         "preserving": True,
         "breaks": (9, 19),
@@ -505,7 +508,60 @@ def test_composing_an_anchor_only_repair_keeps_the_lower_line_byte_for_byte():
 
 def test_composing_into_a_one_line_window_adds_nothing():
     window = window_at("Stop now! Go later.\n", "doc.md")
-    assert compose(window, ["Stop now!", "Go later."]) == ["Stop now!", "Go later."]
+    suggestion = {"lines": ["Stop now!", "Go later."], "replaces": 1}
+    assert composed(window, suggestion) == ["Stop now!", "Go later."]
+
+
+def test_an_absorbed_suggestion_replaces_the_whole_window():
+    """No trace of the old lower line may survive beside the absorbed replacement,
+    and the repair must normalize to the one fused-boundary cut the universe offers.
+    """
+    text = "Stop now! Go later to the\nplace we talked about.\n"
+    window = window_at(text, "doc.md")
+    assert window.form == "two-line"
+    suggestion = {
+        "lines": ["Stop now!", "Go later to the place we talked about."],
+        "replaces": 2,
+    }
+    lines = composed(window, suggestion)
+    assert lines == ["Stop now!", "Go later to the place we talked about."]
+    got = normalize_repair(window, lines, text, "doc.md")
+    assert got["preserving"] and got["carrier_valid"] and got["intact"]
+    assert got["breaks"] == (9,)
+    assert 9 in cut_positions(window)
+
+
+def test_an_anchor_only_suggestion_keeps_the_lower_line_of_a_two_line_window():
+    text = "Stop now! Go later to the\nplace we talked about.\n"
+    window = window_at(text, "doc.md")
+    suggestion = {"lines": ["Stop now!", "Go later to the"], "replaces": 1}
+    assert composed(window, suggestion) == [
+        "Stop now!",
+        "Go later to the",
+        "place we talked about.",
+    ]
+
+
+@pytest.mark.parametrize(
+    "suggestion",
+    [
+        {"lines": ["a", "b"], "replaces": 0},
+        {"lines": ["a", "b"], "replaces": 3},
+        {"lines": ["a", "b"]},
+        {"lines": "not a list", "replaces": 1},
+        {"lines": ["a", 2], "replaces": 1},
+        {"lines": ["a", "b", "c"], "replaces": 1},
+        {"lines": ["a", "b"], "replaces": 2},
+    ],
+)
+def test_a_malformed_suggestion_refuses_rather_than_scores(suggestion):
+    """Every malformed extent or content refuses.
+
+    The last row is a two-line replacement asked of a one-line window.
+    """
+    window = window_at("Stop now! Go later.\n", "doc.md")
+    with pytest.raises(ScoringRefused):
+        composed(window, suggestion)
 
 
 def test_the_collapse_is_what_makes_two_rewrites_comparable():
@@ -618,10 +674,8 @@ def test_a_line_in_the_middle_of_a_split_carries_no_tail_of_its_own():
 
 from corpus_harness import (  # noqa: E402
     MAX_POSITIONS,
-    ScoringRefused,
     candidate_is_valid,
     continuation_leader,
-    cut_positions,
     original_cuts,
     repair_candidates,
     repair_pass_verdicts,
@@ -1022,7 +1076,12 @@ def test_the_drawing_path_never_reaches_the_shipped_repair(monkeypatch):
     """
     secret = "sxJQ7pLeakCanary"
     monkeypatch.setattr(
-        clf, "_fused_suggestion", lambda record, match: {"lines": [secret, secret]}
+        clf,
+        "_fused_suggestion",
+        lambda record, match, below=None, admitted=frozenset(): {
+            "lines": [secret, secret],
+            "replaces": 1,
+        },
     )
     root = REPO / "tests" / "diagnostics" / "fixtures"
     population = repair_population(
@@ -2511,3 +2570,176 @@ def test_every_other_leader_still_repeats_byte_for_byte():
             continue
         window = repair_window(records, 0)
         assert continuation_leader(window, 0) == window.records[0]["leader"], text
+
+
+# --- score.py: the calibration dry-run, which decides nothing ---------------
+
+SCORE = REPO / "tests" / "corpus" / "repairs" / "score.py"
+
+
+def accept_everything(unit):
+    return [candidate["id"] for candidate in unit["candidates"]]
+
+
+def scored_report(tmp_path, repairs, answers, predicate, root=None):
+    out = tmp_path / f"score-{predicate}.json"
+    done = run(
+        SCORE,
+        root or FIXTURES.parent,
+        "--sample",
+        repairs / "sample.json",
+        "--answers",
+        answers,
+        "--predicate",
+        predicate,
+        "--json",
+        out,
+    )
+    assert done.returncode == 0, done.stderr
+    return done, json.loads(out.read_text(encoding="utf-8"))
+
+
+def test_score_counts_a_shipped_repair_that_lands_in_the_acceptable_set(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(answers, units, original_id, accept=accept_everything)
+    done, report = scored_report(tmp_path, repairs, answers, "shipped")
+    assert "calibration admits nothing" in done.stdout
+    assert "calibration admits nothing" in report["header"]
+    fired = sum(body["fired"] for body in report["strata"].values())
+    landed = sum(body["acceptable"] for body in report["strata"].values())
+    assert fired > 0
+    assert landed >= fired  # accept-everything answers admit every valid repair
+    zero = {
+        name: count
+        for body in report["strata"].values()
+        for name, count in body["zero_tolerance"].items()
+        if count
+    }
+    assert zero == {}
+
+
+def test_score_candidate_fires_where_shipped_withholds(tmp_path):
+    """The two sides differ by the admitted set alone."""
+    repairs, answers, units = round_dir(tmp_path, pattern="period_boundary.md")
+    answer_all(answers, units, original_id, accept=accept_everything)
+    _, shipped = scored_report(tmp_path, repairs, answers, "shipped")
+    _, candidate = scored_report(tmp_path, repairs, answers, "candidate")
+    assert sum(body["fired"] for body in shipped["strata"].values()) == 0
+    assert sum(body["fired"] for body in candidate["strata"].values()) > 0
+    # The withheld side still scores: leaving the window alone is an answer,
+    # and accept-everything answers accept it.
+    assert sum(body["acceptable"] for body in shipped["strata"].values()) > 0
+
+
+def test_score_reports_an_inexpressible_repair_by_name(tmp_path):
+    """A repair outside the universe is a failure with a unit id, never silence."""
+    repairs, answers, units = round_dir(tmp_path)
+    sample_path = repairs / "sample.json"
+    sample = json.loads(sample_path.read_text(encoding="utf-8"))
+    tampered = None
+    for unit in sample["units"]:
+        if not unit["withheld_by"] and len(unit["candidates"]) > 1:
+            unit["candidates"] = [
+                candidate
+                for candidate in unit["candidates"]
+                if candidate["cuts"] == unit["original_cut"]
+            ]
+            tampered = unit["id"]
+            break
+    assert tampered is not None
+    sample_path.write_text(
+        json.dumps(sample, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    answer_all(answers, sample["units"], original_id, accept=accept_everything)
+    _, report = scored_report(tmp_path, repairs, answers, "shipped")
+    named = [uid for body in report["strata"].values() for uid in body["inexpressible"]]
+    assert tampered in named
+
+
+def test_score_accepts_exactly_the_two_predicate_names(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(answers, units, original_id, accept=accept_everything)
+    done = run(
+        SCORE,
+        FIXTURES.parent,
+        "--sample",
+        repairs / "sample.json",
+        "--answers",
+        answers,
+        "--predicate",
+        "periods",
+    )
+    assert done.returncode != 0
+    assert "shipped" in done.stderr and "candidate" in done.stderr
+
+
+def test_a_referred_unit_leaves_the_denominator(tmp_path):
+    repairs, answers, units = round_dir(tmp_path)
+    answer_all(
+        answers,
+        units,
+        original_id,
+        accept=accept_everything,
+        names=("claude", "codex"),
+    )
+    answer_all(answers, units, original_id, names=("agy",))
+    _, report = scored_report(tmp_path, repairs, answers, "shipped")
+    assert sum(body["ambiguous"] for body in report["strata"].values()) > 0
+
+
+# --- the repair_baselines_v2 sidecar ----------------------------------------
+
+
+def test_the_manifest_sidecar_is_the_entries_own_arithmetic():
+    document = json.loads(
+        (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert repair_baselines_v2_problems(document) == []
+    assert set(document["repair_baselines_v2"]["units"]) == {
+        record["id"] for record in document["repairs"]
+    }
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d["repair_baselines_v2"]["units"].pop(
+            sorted(d["repair_baselines_v2"]["units"])[0]
+        ),
+        lambda d: d["repair_baselines_v2"]["units"].__setitem__(
+            "invented:unit#repair", {"lines": None, "acceptable": False}
+        ),
+        lambda d: d["repair_baselines_v2"].__setitem__("predicate", "not-a-digest"),
+        lambda d: next(iter(d["repair_baselines_v2"]["measured"].values())).__setitem__(
+            "acceptable", 999
+        ),
+    ],
+    ids=["missing-unit", "unknown-unit", "predicate", "measured-count"],
+)
+def test_a_mutated_sidecar_refuses(mutate):
+    document = json.loads(
+        (REPO / "tests" / "corpus" / "manifest.json").read_text(encoding="utf-8")
+    )
+    mutate(document)
+    assert repair_baselines_v2_problems(document)
+
+
+def test_the_corpus_reader_keeps_crlf_where_delivery_translates_it(tmp_path):
+    """`Path.read_text` opens with universal newlines; the corpus must not.
+
+    A CRLF window read through the population path keeps its terminator,
+    so `below_terminator` can refuse it - through the real reader,
+    not a literal string handed to the detector.
+    """
+    tree = tmp_path / "crlf-source"
+    tree.mkdir()
+    (tree / "note.md").write_bytes(
+        b"Stop now! Go later to the\r\nplace we talked about.\r\n"
+    )
+    subprocess.run(["git", "init", "-q", str(tree)], check=True)
+    subprocess.run(["git", "-C", str(tree), "add", "-A"], check=True)
+    population = repair_population(
+        {"id": "crlf-source", "selection_command": "git ls-files '*.md'"}, tree
+    )
+    (unit,) = population
+    assert "below_terminator" in unit["withheld_by"]

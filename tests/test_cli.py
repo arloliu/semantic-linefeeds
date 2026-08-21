@@ -76,7 +76,7 @@ def test_file_json_output(tmp_path):
     r = run_cli(["--file", str(f), "--json"])
     assert r.returncode == 1
     data = json.loads(r.stdout)
-    assert data[0]["schema_version"] == 1
+    assert data[0]["schema_version"] == 2
     got = [(x["line"], x["kind"]) for x in data[0]["diagnostics"]]
     assert sorted(got) == sorted(expected)
 
@@ -96,7 +96,7 @@ def test_file_json_long_only_still_exits_zero(tmp_path):
     r = run_cli(["--file", str(f), "--json"])
     assert r.returncode == 0
     data = json.loads(r.stdout)
-    assert data[0]["schema_version"] == 1
+    assert data[0]["schema_version"] == 2
     assert data[0]["diagnostics"][0]["kind"] == "long"
 
 
@@ -112,7 +112,7 @@ def test_json_may_stand_between_the_flag_and_its_paths(tmp_path):
     r = run_cli(["--file", "--json", str(f)])
     assert r.returncode == 1, r.stderr
     data = json.loads(r.stdout)
-    assert data[0]["schema_version"] == 1
+    assert data[0]["schema_version"] == 2
     got = [(x["line"], x["kind"]) for x in data[0]["diagnostics"]]
     assert sorted(got) == sorted(expected)
 

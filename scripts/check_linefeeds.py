@@ -1339,7 +1339,66 @@ WITHHOLDING_CLASSES = (
     "prefix_other",
     "tail_rejected",
     "carrier_stripped",
+    # The `below_` prefix marks classes that exist only under a wrap pairing,
+    # where the lower line sits inside the repair;
+    # an unpaired anchor can carry none of them.
+    # Deleting or renaming any class here breaks a stratum a round was drawn on.
+    "below_terminator",
+    "below_boundary",
+    "below_open",
+    "below_protected_span",
+    "below_prose_not_unique",
+    "below_prefix_mismatch",
+    "below_tail_rejected",
+    "below_carrier_stripped",
+    # The anchor does not begin the sentence it would split:
+    # a lowercase first word says the text before the boundary continues something above,
+    # and splitting would strand that fragment on its own line.
+    # The skill's rule is rejoin before you split, and this class is that rule as a refusal.
+    "anchor_open",
+    # No pairing absorbed the anchor's ending, and that ending is not a place a line may end:
+    # the split's second line would strand an open fragment ahead of whatever continues it.
+    # A pairing the user suppressed is exempt, because the suppression blessed exactly that ending.
+    "anchor_unclosed",
 )
+
+
+# The two admitted-class sets a caller may hand `_fused_suggestion`, and the only two.
+# Only an admission decision recorded as an ADR, citing its sealed holdout round,
+# may change either constant, and no caller may pass anything but these two names.
+# `ADMITTED` is what ships; it stays empty until a round admits a class.
+ADMITTED = frozenset()
+
+# The one candidate under test.
+# Committed here rather than passed at a call site,
+# so the predicate digest a pre-draw freeze records binds the algorithm and the candidate,
+# and nothing chosen after the holdout prose is read can redefine what a round scores.
+CANDIDATE_ADMITTED = frozenset({"terminator_period"})
+
+
+# The sentence-final shapes an absorbed lower line may end with:
+# terminal punctuation, then the same closing delimiters `_BOUNDARY_RE` admits.
+# A lower line ending any other way leaves the joined sentence open,
+# and absorbing it would move the problem rather than repair it.
+_BELOW_CLOSED_RE = re.compile(r"[.!?][\"')\]*_~]*\Z")
+
+
+def _wrap_paired(upper, lower):
+    """Whether the detector pairs these two judged records as a wrap.
+
+    The one definition of "the sentence continues on the line below":
+    the wrap finder consults it to raise the finding,
+    and the suggestion consults it to decide whether the lower line is inside the repair,
+    so the two cannot drift.
+    """
+    if upper is None or lower is None or upper["paragraph"] != lower["paragraph"]:
+        return False
+    first_word = re.match(r"[a-z]+", lower["prose"])
+    return (
+        not line_ending(upper["prose"]).endswith(OK_LINE_ENDERS)
+        and first_word is not None
+        and first_word.group(0) not in CONNECTORS
+    )
 
 
 def _match_boundary(match):
@@ -1357,7 +1416,7 @@ def _match_boundary(match):
     return found
 
 
-def _fused_withholding(record, match):
+def _fused_withholding(record, match, below=None):
     """Every class that withholds a repair for this boundary, in declaration order.
 
     One tuple in place of eight early returns.
@@ -1371,9 +1430,56 @@ def _fused_withholding(record, match):
     Every class is computed for every match,
     including matches the helper never reached past its first refusal,
     so nothing here may assume an earlier class is absent.
+
+    `below` is the wrap-paired successor record, or None.
+    A pairing puts the lower line inside the repair,
+    so its safety is judged with the same whitelists the anchor answers to,
+    each failure under its own `below_` name.
     """
     prose, raw = record["prose"], record["raw"]
     found = set()
+
+    # Past any opening quote, bracket, or emphasis marker:
+    # `"then stop now!` opens as mid-sentence as `then stop now!` does,
+    # and a first-character test would wave the quoted form through.
+    # Deliberately wider than `_wrap_paired`'s lowercase test —
+    # a withholding may be more conservative than the pairing it guards.
+    if re.match(r"[\"'([{*_~“‘]*[a-z]", prose):
+        found.add("anchor_open")
+    if (
+        below is None
+        and not line_ending(prose).endswith(OK_LINE_ENDERS)
+        and "wrap" not in record.get("suppressed_kinds", ())
+    ):
+        found.add("anchor_unclosed")
+
+    if below is not None:
+        below_prose = below["prose"]
+        # The join consumes the anchor's terminator.
+        # Consuming a CRLF, a bare CR, or a Unicode separator would erase newline style,
+        # and the delivered text cannot restate what the join removed;
+        # and the terminator lives on the record rather than in `raw`,
+        # which never carries one.
+        if record["terminator"] != "\n" or "\r" in below["raw"]:
+            found.add("below_terminator")
+        if FUSED_RE.search(below_prose):
+            found.add("below_boundary")
+        if not _BELOW_CLOSED_RE.search(below_prose):
+            found.add("below_open")
+        if "`" in below_prose or "<" in below_prose or ">" in below_prose:
+            found.add("below_protected_span")
+        # The prefix and tail classes mirror the anchor's exclusivity:
+        # where the lower prose does not sit in its raw line exactly once,
+        # judging an arbitrary occurrence would invent a class it never had.
+        if below["leader"] is None:
+            found.add("below_prose_not_unique")
+        else:
+            if record["leader"] is None or below["leader"] != record["leader"]:
+                found.add("below_prefix_mismatch")
+            if not _SUGGESTION_TAIL_RE.match(below["tail"]):
+                found.add("below_tail_rejected")
+        if below["carrier"] is not None:
+            found.add("below_carrier_stripped")
 
     if "\r" in raw:
         found.add("carriage_return")
@@ -1423,7 +1529,7 @@ def _fused_withholding(record, match):
     return tuple(name for name in WITHHOLDING_CLASSES if name in found)
 
 
-def _fused_suggestion(record, match):
+def _fused_suggestion(record, match, below=None, admitted=frozenset()):
     """A two-line suggested replacement for an automatic-class fused finding, or None.
 
     Maximally conservative rather than a real protected-span engine.
@@ -1435,14 +1541,37 @@ def _fused_suggestion(record, match):
     The judged raw line contains `prose` exactly once,
     and the leader and tail around it both pass the structural whitelist above.
     No carrier came off the line, and no `\r` survived into it.
+
+    `below` is the wrap-paired successor record, or None.
+    A pairing makes the window two lines,
+    and the repair is then rejoin-then-one-split:
+    the second replacement line absorbs the lower prose,
+    and one joining space stands where the anchor's trailing whitespace
+    and its terminator were.
+    A paired window any below class withholds gets no suggestion at all,
+    because a one-line split there repairs half the sentence,
+    which is a wrong repair rather than a smaller right one.
+    `replaces` counts the raw lines the replacement covers, starting at the anchor.
+
+    `admitted` is a set of class names the caller vouches for,
+    and exactly two values may ever reach it:
+    the shipped `ADMITTED` and the frozen `CANDIDATE_ADMITTED`.
+    A suggestion exists when the withholding set minus `admitted` is empty,
+    which scores a class only where every other class is absent —
+    the activation rule the admission contract preregisters.
     """
-    if _fused_withholding(record, match):
+    if set(_fused_withholding(record, match, below)) - admitted:
         return None
     prose, leader, tail = record["prose"], record["leader"], record["tail"]
     cut = match.start() + _match_boundary(match).start(3)
     p1 = prose[:cut]
     p2 = prose[cut:].lstrip(" ")
-    return {"lines": [leader + p1, leader + p2 + tail]}
+    if below is None:
+        return {"lines": [leader + p1, leader + p2 + tail], "replaces": 1}
+    return {
+        "lines": [leader + p1, leader + p2 + " " + below["prose"] + below["tail"]],
+        "replaces": 2,
+    }
 
 
 def judged_lines(text, path):
@@ -1681,8 +1810,19 @@ def diagnose(text, path, spans=None, withholding=False):
     findings = []
     limit = active_long_limit(path)
     prev = None  # the previous judged record, when it is in the same paragraph
-    for record in records:
+    for index, record in enumerate(records):
         lineno, prose = record["line"], record["prose"]
+
+        # The wrap-paired successor, when the pairing puts it inside a repair.
+        # A suppressed `wrap` means the user blessed the break,
+        # so the suggestion falls back to the one-line shape rather than overriding a directive.
+        successor = records[index + 1] if index + 1 < len(records) else None
+        below = (
+            successor
+            if _wrap_paired(record, successor)
+            and "wrap" not in suppressions.get(lineno, frozenset())
+            else None
+        )
 
         # Every boundary on the line, not just the first.
         # The skill ends its repair loop on a finding that survives one attempt,
@@ -1722,51 +1862,47 @@ def diagnose(text, path, spans=None, withholding=False):
                 "ownership_basis": basis,
             }
             if withholding:
-                finding["withheld_by"] = _fused_withholding(record, match)
-            suggestion = _fused_suggestion(record, match)
+                finding["withheld_by"] = _fused_withholding(record, match, below)
+            suggestion = _fused_suggestion(record, match, below, admitted=ADMITTED)
             if suggestion is not None:
                 finding["suggestion"] = suggestion
             findings.append(finding)
 
-        if prev is not None and prev["paragraph"] == record["paragraph"]:
+        if _wrap_paired(prev, record):
             prev_no, prev_prose = prev["line"], prev["prose"]
+            # Guaranteed to match: `_wrap_paired` required it.
             first_word = re.match(r"[a-z]+", prose)
-            if (
-                not line_ending(prev_prose).endswith(OK_LINE_ENDERS)
-                and first_word
-                and first_word.group(0) not in CONNECTORS
-            ):
-                upper_words = line_ending(prev_prose).rsplit(maxsplit=1)
-                upper = (
-                    locate_in_line(text, offsets, prev_no, upper_words[-1])
-                    if upper_words
-                    else None
+            upper_words = line_ending(prev_prose).rsplit(maxsplit=1)
+            upper = (
+                locate_in_line(text, offsets, prev_no, upper_words[-1])
+                if upper_words
+                else None
+            )
+            lower = locate_in_line(text, offsets, lineno, first_word.group(0))
+            anchor = dict(prev["raw_span"])
+            evidence = {
+                "start": anchor["start"],
+                "end": record["raw_span"]["end"],
+            }
+            if upper and lower and upper["end"] <= lower["start"]:
+                ownership, basis = (
+                    {"start": upper["start"], "end": lower["end"]},
+                    "token",
                 )
-                lower = locate_in_line(text, offsets, lineno, first_word.group(0))
-                anchor = dict(prev["raw_span"])
-                evidence = {
-                    "start": anchor["start"],
-                    "end": record["raw_span"]["end"],
+            else:
+                ownership, basis = None, "degraded"
+            findings.append(
+                {
+                    "kind": "wrap",
+                    "line": prev_no,
+                    "message": "ends mid-clause (column-wrapped?) — break at sentence or clause boundaries, not at a column",
+                    "excerpt": prev_prose,
+                    "anchor": anchor,
+                    "evidence": evidence,
+                    "ownership": ownership,
+                    "ownership_basis": basis,
                 }
-                if upper and lower and upper["end"] <= lower["start"]:
-                    ownership, basis = (
-                        {"start": upper["start"], "end": lower["end"]},
-                        "token",
-                    )
-                else:
-                    ownership, basis = None, "degraded"
-                findings.append(
-                    {
-                        "kind": "wrap",
-                        "line": prev_no,
-                        "message": "ends mid-clause (column-wrapped?) — break at sentence or clause boundaries, not at a column",
-                        "excerpt": prev_prose,
-                        "anchor": anchor,
-                        "evidence": evidence,
-                        "ownership": ownership,
-                        "ownership_basis": basis,
-                    }
-                )
+            )
 
         # Measured on the prose, not on `raw`.
         # `raw` carries indentation, the comment marker, and any Markdown carrier,
@@ -1828,7 +1964,8 @@ def check(text, path):
     ]
 
 
-DIAGNOSTIC_SCHEMA_VERSION = 1
+# Version 2: a suggestion's `lines` replace `replaces` raw lines starting at `line`, not always one.
+DIAGNOSTIC_SCHEMA_VERSION = 2
 
 
 def to_schema(path, diagnostics):
@@ -2256,15 +2393,19 @@ def deliver(reports, transport, note=None):
         for finding in findings:
             if not isinstance(finding, dict) or "suggestion" not in finding:
                 continue
-            label = (
-                f"line {finding['line']} of your edit"
-                if snippet
-                else f"line {finding['line']}"
+            replaces = finding["suggestion"]["replaces"]
+            where = (
+                f"line {finding['line']}"
+                if replaces == 1
+                else f"lines {finding['line']}-{finding['line'] + replaces - 1}"
             )
+            label = f"{where} of your edit" if snippet else where
             if multi:
                 label = f"{label} of {path}"
-            line1, line2 = finding["suggestion"]["lines"]
-            body += f"\nSuggested replacement for {label}:\n    {line1}\n    {line2}"
+            rendered = "".join(
+                f"\n    {line}" for line in finding["suggestion"]["lines"]
+            )
+            body += f"\nSuggested replacement for {label}:{rendered}"
     if note and any(s for _, _, s in reports):
         body += "\n" + note
     body += "\n" + AGENT_JUDGMENT_NOTE
