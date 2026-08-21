@@ -838,10 +838,10 @@ def repair_admission_result_problems(document):
         if not (isinstance(value, str) and _HEX_DIGEST_RE.match(value)):
             bad(f"{field} must be a 64-hex digest: {value!r}")
     scoring = record.get("scoring")
-    if not (isinstance(scoring, str) and scoring.startswith("sha256:")):
+    if not (isinstance(scoring, str) and re.fullmatch(r"sha256:[0-9a-f]{64}", scoring)):
         bad(
-            "scoring must be the sha256: digest of the scoring code the freeze bound, "
-            f"not prose: {scoring!r}"
+            "scoring must be the sha256:<64-hex> digest of the scoring code "
+            f"the freeze bound, not prose or a malformed digest: {scoring!r}"
         )
     strata = record.get("strata")
     if not isinstance(strata, dict) or not strata:

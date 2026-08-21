@@ -1444,6 +1444,41 @@ LEDGER_MUTATIONS = {
 }
 
 
+def test_a_malformed_prefixed_digest_fails_the_field_validator_alone():
+    """`sha256:` followed by anything is not a digest; the field check must say so."""
+    record = copy.deepcopy(valid_admission_result())
+    record["scoring"] = "sha256:not-a-digest"
+    problems = corpus_harness.repair_admission_result_problems(
+        {"repair_admission_result": record}
+    )
+    assert any("malformed" in problem for problem in problems)
+
+
+def test_a_scoring_digest_the_freeze_never_bound_turns_the_guard_red():
+    """The freeze-binding comparison, isolated.
+
+    The record and the sealed result agree on one well-formed alternate digest,
+    so the field check and the result comparison are both satisfied,
+    and only the cited freeze's own binding can refuse it.
+    """
+    record, ledger = valid_admission_evidence()
+    alternate = "sha256:" + "f" * 64
+    record = copy.deepcopy(record)
+    record["scoring"] = alternate
+    entries = [
+        dict(entry, result=dict(entry["result"], scoring=alternate))
+        if entry["record"] == "evaluation_result"
+        else entry
+        for entry in ledger
+    ]
+    problems = corpus_harness.admission_guard_problems(
+        {"repair_admission_result": record},
+        check_linefeeds.CANDIDATE_ADMITTED,
+        ledger=entries,
+    )
+    assert any("freeze bound" in problem for problem in problems)
+
+
 @pytest.mark.parametrize("name", sorted(LEDGER_MUTATIONS))
 def test_a_ledger_that_disagrees_with_the_record_turns_the_guard_red(name):
     """The record is judged against one authentic chain, not four lookalike lookups."""
@@ -1478,6 +1513,9 @@ MUTATIONS = {
     "scoring_empty": lambda r: r.__setitem__("scoring", ""),
     "scoring_prose": lambda r: r.__setitem__(
         "scoring", "score.py --bundle through composed"
+    ),
+    "scoring_malformed_digest": lambda r: r.__setitem__(
+        "scoring", "sha256:not-a-digest"
     ),
     "scoring_swapped": lambda r: r.__setitem__("scoring", "sha256:" + "f" * 64),
     "strata_empty": lambda r: r.__setitem__("strata", {}),
