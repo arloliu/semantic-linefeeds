@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-21
+
+The first stable release.
+Nothing new to learn — this release is a promise about what will not change.
+
+### Added
+
+- **A compatibility guarantee.**
+  The surfaces you build against are now stable under semantic versioning:
+  the command-line modes and flags, the `.semlf.ini` settings,
+  the `--json` document format, the suppression directives, the exit codes,
+  the GitHub Action's inputs and outputs,
+  and the names you install by — the `semlf` package and command,
+  the pre-commit hook id, the Claude plugin name — all on Python 3.9 or newer.
+  A change that would break any of them now costs a major version;
+  new capability arrives in minor versions.
+  Two things deliberately stay flexible:
+  which lines draw findings (precision keeps improving between majors)
+  and the wording of messages — the text is for people, the structure is for tools.
+
+- **Every exit code, documented in one place.**
+  The README now carries a mode-by-mode table of what `0`, `1`, `2`, and `64` mean,
+  including the two deliberate choices in it:
+  a hook exits `0` on a payload it cannot read,
+  because a hook must not block your editing on its own malfunction,
+  and `render` exits `0` however many findings it renders,
+  because what a finding means for a build is the gate's decision.
+
+### Changed
+
+- **The Action's `fail-on` input says exactly what it accepts.**
+  It always took a comma-separated list of `fused` and `wrap` in either order,
+  with duplicates and stray whitespace tolerated;
+  now its description and error message say so, and tests hold them to it.
+
+### Fixed
+
+- **The detector reference caught up with the checker.**
+  The specification now documents the option that names why a suggestion was withheld,
+  and the field it adds when asked.
+
 ## [0.9.0] - 2026-08-21
 
 The suggested repair grows up:

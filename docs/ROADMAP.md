@@ -88,20 +88,10 @@ How a round is read when one floor clears and another does not is [ADR-0009](dec
 
 ## Releases
 
-One release to 1.0.
-This is early-stage `v0.x`, so a release is a coherent theme rather than a minimal shippable unit,
-and each carries many commits.
-
-Every ordering constraint established above is preserved,
-but as **commit order inside a release** rather than as a separate tag.
-
-### v1.0 — Stable contracts
-
-These enter compatibility guarantees:
-CLI surface, config schema, diagnostic schema, adapter API, suppression syntax, exit codes,
-CI integration (the Action, its gate semantics, and the SARIF and annotation shapes),
-and distribution identity (package name, console script, Python floor, hook and plugin ids).
-The plan is [`plans/active/v1.0-stable-contracts.md`](plans/active/v1.0-stable-contracts.md).
+No release is planned.
+v1.0.0 froze the public contracts under semantic versioning
+([the compatibility section](../README.md#compatibility) says what a user may rely on),
+and what ships next is decided by the deferred list's entry conditions rather than by a schedule.
 
 ## Deferred, with reasons
 

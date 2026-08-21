@@ -3,7 +3,7 @@
 **Status:** accepted
 **Date:** 2026-08-21
 **Context:** the v1.0.0 release
-([plan](../plans/active/v1.0-stable-contracts.md))
+([plan](../plans/done/v1.0-stable-contracts.md))
 
 ## Decision
 
