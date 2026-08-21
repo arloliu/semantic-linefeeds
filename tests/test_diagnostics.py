@@ -314,10 +314,14 @@ def test_fused_bang_in_a_blockquote_keeps_the_quote_marker():
     assert d["suggestion"] == {"lines": ["> Stop now!", "> Go later."], "replaces": 1}
 
 
-def test_a_period_fused_line_gets_no_suggestion():
+def test_a_period_fused_line_gets_the_admitted_suggestion():
+    # Periods were admitted by sealed holdout round 5 (ADR-0028).
     text = "One sentence here. Another sentence follows.\n"
     (d,) = diags(text)
-    assert "suggestion" not in d
+    assert d["suggestion"] == {
+        "lines": ["One sentence here.", "Another sentence follows."],
+        "replaces": 1,
+    }
 
 
 def test_a_two_boundary_line_gets_no_suggestion():
@@ -1051,7 +1055,11 @@ def test_activation_needs_every_other_class_absent():
 
 
 def test_the_shipped_surface_passes_the_shipped_constant():
-    """`diagnose` hands `_fused_suggestion` exactly `ADMITTED`, nothing wider."""
+    """`diagnose` hands `_fused_suggestion` exactly `ADMITTED`, nothing wider.
+
+    With the period class admitted (ADR-0028),
+    the shipped surface carries the suggestion the constant now licenses.
+    """
     (d,) = diags("One sentence here. Another sentence follows.\n")
     assert d["kind"] == "fused"
-    assert "suggestion" not in d
+    assert d["suggestion"]["replaces"] == 1

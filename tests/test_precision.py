@@ -1286,7 +1286,8 @@ def valid_admission_evidence():
 
 
 def test_the_two_constants_are_the_only_admitted_sets():
-    assert check_linefeeds.ADMITTED == frozenset()
+    # Round 5 admitted the candidate (ADR-0028), so the two constants now agree.
+    assert check_linefeeds.ADMITTED == frozenset({"terminator_period"})
     assert check_linefeeds.CANDIDATE_ADMITTED == frozenset({"terminator_period"})
 
 

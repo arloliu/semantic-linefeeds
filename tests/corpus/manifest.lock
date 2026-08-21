@@ -1,4 +1,4 @@
 {
-  "digest": "sha256:5fcc2d539ebbcd2cafe76885d94516eb41aab11254636c1193fea481631592bc",
-  "reason": "the widening's scoring round declared: round 4's selection was refused by the licence allowlist (dotnet-designs, CC-BY-4.0) before its sample was sealed, so the corrected selection (otx, pebble, tensorflow-community) is declared as round 5 with its recall floor stated before labeling"
+  "digest": "sha256:7d25f6b0feb6e503865491af8a267977f3cf4b98fa958a9f9b5ba8ec3a8bc4f0",
+  "reason": "round 5 spent and recorded: repair_admission_result copied from the sealed evaluation (terminator_period admitted, 34/35, Wilson lower bound 0.8547, zero-tolerance all zero, ADR-0028), and repair_floors keyed to round 5"
 }

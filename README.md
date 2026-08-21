@@ -248,8 +248,8 @@ it leaves the text as written and raises the disagreement with you instead.
 
 ## Suggested replacements
 
-A blocking `fused` report on `!` or `?` carries an exact two-line replacement
-when the split is unambiguous (ADR-0007):
+A blocking `fused` report on `!`, `?`, or `.` carries an exact two-line replacement
+when the split is unambiguous (ADR-0007; periods since ADR-0028):
 
 ```
 Suggested replacement for line 12:
@@ -257,7 +257,9 @@ Suggested replacement for line 12:
     Go on.
 ```
 
-The suggestion exists only for the `!`/`?` automatic class, never for a period boundary.
+Period boundaries earned the suggestion in v0.9:
+a sealed holdout round scored the class at 34 of 35 acceptable against a preregistered 0.80 floor,
+and only then was it admitted (ADR-0028).
 It is never applied for you —
 apply it as your next edit, after judging the finding like any other.
 

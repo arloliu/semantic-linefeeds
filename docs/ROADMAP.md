@@ -105,6 +105,8 @@ because a guardrail nobody can install cleanly has no team to integrate with.
 
 - Hook-side mutation of the suggested replacement, gated by a content-hash check immediately before writing (ADR-0007);
   wider automatic-fix classes beyond `!`/`?`.
+  **The widening is done:** the period class was admitted by a sealed holdout round (ADR-0028).
+  Hook-side mutation stays open.
   Entry condition: a suggestion must be able to reach the line below the one it replaces.
   Its shape today is a two-line replacement for the anchor line alone,
   and over the pinned evidence base a third of all `fused` lines carry a `wrap` as well,

@@ -1367,7 +1367,10 @@ WITHHOLDING_CLASSES = (
 # Only an admission decision recorded as an ADR, citing its sealed holdout round,
 # may change either constant, and no caller may pass anything but these two names.
 # `ADMITTED` is what ships; it stays empty until a round admits a class.
-ADMITTED = frozenset()
+# Round 5 admitted `terminator_period` (ADR-0028):
+# 34 of 35 acceptable, Wilson-95 lower bound 0.8547 against the 0.80 floor,
+# every zero-tolerance count at zero.
+ADMITTED = frozenset({"terminator_period"})
 
 # The one candidate under test.
 # Committed here rather than passed at a call site,

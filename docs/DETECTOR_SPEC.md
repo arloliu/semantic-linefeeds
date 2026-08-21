@@ -485,7 +485,11 @@ A `wrap` suppression must therefore target its upper line.
 
 ## Automatic suggestions
 
-Only a `fused` boundary ending in `!` or `?` may carry an automatic two-line suggestion.
+A `fused` boundary ending in `!`, `?`, or `.` may carry an automatic two-line suggestion.
+The `!`/`?` class shipped first (ADR-0007);
+the period class was admitted by sealed holdout round 5 (ADR-0028),
+which scored it at 34 of 35 acceptable against the preregistered 0.80 floor,
+with every zero-tolerance count at zero.
 The detector withholds the suggestion unless all of these conditions hold:
 
 - The prose contains exactly one `FUSED_RE` match.

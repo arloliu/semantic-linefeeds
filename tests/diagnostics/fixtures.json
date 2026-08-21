@@ -348,7 +348,14 @@
         "end": 26,
         "start": 13
       },
-      "ownership_basis": "token"
+      "ownership_basis": "token",
+      "suggestion": {
+        "lines": [
+          "One sentence here.",
+          "Another sentence follows."
+        ],
+        "replaces": 1
+      }
     }
   ],
   "tests/diagnostics/fixtures/prefix_list_marker.md": [

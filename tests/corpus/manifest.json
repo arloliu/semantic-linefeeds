@@ -269,7 +269,11 @@
       "inadmissible_because": "fewer scored units than the preregistered minimum of 26, or more than a quarter of the labels ambiguous; an activated stratum the round cannot rate refuses the candidate that activates it, and is never dropped so the remaining strata can carry the claim",
       "floors_pending": "no repair floor is set: a floor keys to a declared round, round 4's sources are deliberately not yet declared (repair_admission.round_4), and when they are, a floor may name only a stratum this record holds as admissible"
     },
-    "repair_floors": null
+    "repair_floors": {
+      "5": {
+        "terminator_period": 0.8
+      }
+    }
   },
   "repair_admission": {
     "interval": "wilson-95",
@@ -121745,5 +121749,30 @@
         "acceptable": 8
       }
     }
+  },
+  "repair_admission_result": {
+    "version": 1,
+    "admitted": [
+      "terminator_period"
+    ],
+    "round": 5,
+    "freeze_id": "sha256:d4e94736235dc71671f444512a5779ab7556c1c73605a552a76cfac63d0c0d07",
+    "evaluation_digest": "df7c5ea439ccd8aba3536e4e21b295db727b6fd04f3723e47c5db340b04920b1",
+    "predicate_digest": "431f51719d361650073362a68f821c7516d6bf7ab640cae7d96f1425cb018555",
+    "scoring": "sha256:088c4ef66a1166032aa8a0cf0bdc1e0204611a46f85dbd8df6b5580f6730c4f1",
+    "strata": {
+      "terminator_period": {
+        "scored": 35,
+        "acceptable": 34,
+        "lower_bound": 0.8546691276638632
+      }
+    },
+    "zero_tolerance": {
+      "prose_not_preserved": 0,
+      "carrier_changed": 0,
+      "fired_where_only_the_original_is_acceptable": 0
+    },
+    "outcome": "admitted",
+    "adr": "0028"
   }
 }

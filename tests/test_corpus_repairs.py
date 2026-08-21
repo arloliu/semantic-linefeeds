@@ -2625,15 +2625,21 @@ def test_score_counts_a_shipped_repair_that_lands_in_the_acceptable_set(tmp_path
 
 
 def test_score_candidate_fires_where_shipped_withholds(tmp_path):
-    """The two sides differ by the admitted set alone."""
+    """The two sides differ by the admitted set alone.
+
+    Since round 5 admitted the period class (ADR-0028) the two constants agree,
+    so the two sides now fire together on a period boundary;
+    what the test still pins is that both go through one algorithm
+    and that scoring never diverges between them.
+    """
     repairs, answers, units = round_dir(tmp_path, pattern="period_boundary.md")
     answer_all(answers, units, original_id, accept=accept_everything)
     _, shipped = scored_report(tmp_path, repairs, answers, "shipped")
     _, candidate = scored_report(tmp_path, repairs, answers, "candidate")
-    assert sum(body["fired"] for body in shipped["strata"].values()) == 0
     assert sum(body["fired"] for body in candidate["strata"].values()) > 0
-    # The withheld side still scores: leaving the window alone is an answer,
-    # and accept-everything answers accept it.
+    assert {k: {"fired": v["fired"]} for k, v in shipped["strata"].items()} == {
+        k: {"fired": v["fired"]} for k, v in candidate["strata"].items()
+    }
     assert sum(body["acceptable"] for body in shipped["strata"].values()) > 0
 
 
