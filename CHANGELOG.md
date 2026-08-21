@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-21
+
+The suggested repair grows up:
+it mends whole sentences, covers period boundaries on scored evidence,
+and the checker now reports where the team reads.
+
 ### Added
 
 - **Run-on sentences ending in a period now get a suggested replacement.**
@@ -16,20 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the suggestion was admitted only after matching an accepted repair in 34 of 35 cases where it fired,
   never altering the words, a comment marker, or a line better left alone.
   As always, the suggestion is shown, never applied for you.
-
-### Changed
-
-- **A suggested repair now mends the whole sentence, not just the line it starts on.**
-  When a run-on sentence continues onto the next line,
-  the suggested replacement now rejoins that continuation and splits at the right place,
-  and it says which lines it replaces.
-  A few repairs the checker used to suggest are withheld instead,
-  because they would have repaired only half the sentence —
-  when the checker cannot fix the whole thing, it now says so rather than guessing.
-  Tools reading the checker's JSON output should note the document version is now 2:
-  a suggestion's lines replace the counted range, not always one line.
-
-### Added
 
 - **The checker runs in CI and reports where the team reads.**
   A GitHub Action checks the files a pull request changed,
@@ -61,6 +53,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Nothing about the checker's own behaviour changes here.
 
 ### Changed
+
+- **A suggested repair now mends the whole sentence, not just the line it starts on.**
+  When a run-on sentence continues onto the next line,
+  the suggested replacement now rejoins that continuation and splits at the right place,
+  and it says which lines it replaces.
+  A few repairs the checker used to suggest are withheld instead,
+  because they would have repaired only half the sentence —
+  when the checker cannot fix the whole thing, it now says so rather than guessing.
+  Tools reading the checker's JSON output should note the document version is now 2:
+  a suggestion's lines replace the counted range, not always one line.
 
 - **A measurement round now commits to more than the rule it is testing.**
   A round is also decided by how its sample is drawn,

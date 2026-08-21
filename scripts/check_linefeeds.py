@@ -36,7 +36,7 @@ import sys
 import tempfile
 import tokenize
 
-__version__ = "0.8.1"
+__version__ = "0.9.0"
 
 DEFAULT_LONG_LINE = 120
 CLI_LONG_LIMIT = None  # set by --long-limit in main()
