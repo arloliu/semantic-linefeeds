@@ -29,6 +29,7 @@ sys.modules.pop("collect", None)
 from corpus_harness import (  # noqa: E402
     Holdout,
     ScoringRefused,
+    admission_guard_problems,
     repair_admission_result_ledger_problems,
     repair_round_bindings,
 )
@@ -290,7 +291,7 @@ def admission_record_from(result, frozen, corpus):
         "freeze_id": frozen["id"],
         "evaluation_digest": spend["ciphertext_digest"].split(":")[-1],
         "predicate_digest": frozen["predicate_digest"].split(":")[-1],
-        "scoring": "score.py --bundle through composed and normalize_repair",
+        "scoring": result["scoring"],
         "strata": {
             key: {
                 "scored": body["scored"],
@@ -315,10 +316,18 @@ def test_the_ledger_cross_check_accepts_the_real_evaluation_and_nothing_else(
     round_dir = sealed(corpus, manifest)
     result = score_module.score_bundle(round_dir, root, manifest, passphrase=PASSPHRASE)
     record, records = admission_record_from(result, frozen, corpus)
-    # The digests the ledger stores are sha256:-prefixed; the record stores bare hex.
+    # The full two-state guard over the real chain, not just the ledger helper:
+    # the record cites the actual freeze, the actual spend, the sealed result,
+    # and the scoring digest computed inside the one open.
+    import check_linefeeds
+
     document = {"repair_admission_result": record}
-    problems = repair_admission_result_ledger_problems(document, records)
-    assert problems == []
+    assert (
+        admission_guard_problems(
+            document, check_linefeeds.CANDIDATE_ADMITTED, ledger=records
+        )
+        == []
+    )
     tampered = dict(record, freeze_id="freeze-0000")
     assert repair_admission_result_ledger_problems(
         {"repair_admission_result": tampered}, records
@@ -326,6 +335,10 @@ def test_the_ledger_cross_check_accepts_the_real_evaluation_and_nothing_else(
     unopened = dict(record, evaluation_digest="f" * 64)
     assert repair_admission_result_ledger_problems(
         {"repair_admission_result": unopened}, records
+    )
+    misdescribed = dict(record, scoring="sha256:" + "f" * 64)
+    assert repair_admission_result_ledger_problems(
+        {"repair_admission_result": misdescribed}, records
     )
 
 

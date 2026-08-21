@@ -62,6 +62,7 @@ from corpus_harness import (  # noqa: E402
     normalize_repair,
     original_cuts,
     repair_window,
+    scoring_digest,
     wilson,
 )
 
@@ -286,6 +287,9 @@ def score_bundle(round_dir, root, manifest_path=None, passphrase=None):
             candidate=sides["candidate"],
             shipped=sides["shipped"],
             predicate_digest=file_digest(REPO / "scripts" / "check_linefeeds.py"),
+            # Computed inside the one open,
+            # so the record's scoring identity is sealed evidence rather than prose.
+            scoring=scoring_digest(),
         )
     except BaseException as failure:
         holdout.complete_evaluation(

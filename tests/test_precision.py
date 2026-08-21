@@ -1223,32 +1223,66 @@ def ledger_records():
     ]
 
 
-def matching_ledger(record):
-    """The ledger entries a legitimate round 4 would have left for this record."""
-    return [
-        {
-            "record": "predicate_freeze",
-            "id": record["freeze_id"],
-            "round": record["round"],
-            "predicate_digest": "sha256:" + record["predicate_digest"],
+def valid_admission_evidence():
+    """One coherent chain: a content-derived freeze, its spend, its result, its record."""
+    scored, acceptable = 40, 39
+    lower = corpus_harness.wilson(acceptable, scored)[0]
+    scoring = "sha256:" + "e" * 64
+    freeze = {
+        "record": "predicate_freeze",
+        "round": 4,
+        "predicate_digest": "sha256:" + "b" * 64,
+        "manifest_digest": "sha256:" + "d" * 64,
+        "intent": "the frozen candidate, before round 4 existed",
+        "binds": {"scoring": scoring},
+    }
+    freeze["id"] = corpus_harness._freeze_id(freeze)
+    record = {
+        "version": corpus_harness.ADMISSION_RESULT_VERSION,
+        "admitted": ["terminator_period"],
+        "round": 4,
+        "freeze_id": freeze["id"],
+        "evaluation_digest": "a" * 64,
+        "predicate_digest": "b" * 64,
+        "scoring": scoring,
+        "strata": {
+            "terminator_period": {
+                "scored": scored,
+                "acceptable": acceptable,
+                "lower_bound": lower,
+            }
         },
+        "zero_tolerance": dict.fromkeys(
+            corpus_harness.REPAIR_ADMISSION["zero_tolerance"], 0
+        ),
+        "outcome": "admitted",
+        "adr": "0028",
+    }
+    ledger = [
+        freeze,
         {
             "record": "evaluation",
             "ciphertext_digest": "sha256:" + record["evaluation_digest"],
+            "round": 4,
+            "drawn_under": freeze["id"],
             "result": {"state": "opened"},
         },
         {
             "record": "evaluation_result",
             "ciphertext_digest": "sha256:" + record["evaluation_digest"],
+            "round": 4,
+            "drawn_under": freeze["id"],
             "result": {
                 "outcome": record["outcome"],
                 "admitted": record["admitted"],
                 "predicate_digest": "sha256:" + record["predicate_digest"],
                 "strata": record["strata"],
                 "zero_tolerance": record["zero_tolerance"],
+                "scoring": scoring,
             },
         },
     ]
+    return record, ledger
 
 
 def test_the_two_constants_are_the_only_admitted_sets():
@@ -1286,40 +1320,17 @@ def test_the_shipped_surface_carries_no_suggestion_it_lacks_evidence_for(tmp_pat
 
 
 def valid_admission_result():
-    scored, acceptable = 40, 39
-    lower = corpus_harness.wilson(acceptable, scored)[0]
-    return {
-        "version": corpus_harness.ADMISSION_RESULT_VERSION,
-        "admitted": ["terminator_period"],
-        "round": 4,
-        "freeze_id": "freeze-0007",
-        "evaluation_digest": "a" * 64,
-        "predicate_digest": "b" * 64,
-        "scoring": "score.py --bundle through composed and normalize_repair",
-        "strata": {
-            "terminator_period": {
-                "scored": scored,
-                "acceptable": acceptable,
-                "lower_bound": lower,
-            }
-        },
-        "zero_tolerance": dict.fromkeys(
-            corpus_harness.REPAIR_ADMISSION["zero_tolerance"], 0
-        ),
-        "outcome": "admitted",
-        "adr": "0028",
-    }
+    record, _ledger = valid_admission_evidence()
+    return record
 
 
 def test_a_valid_admission_record_satisfies_the_guard():
-    record = valid_admission_result()
+    record, ledger = valid_admission_evidence()
     document = {"repair_admission_result": record}
     assert corpus_harness.repair_admission_result_problems(document) == []
     assert (
         corpus_harness.admission_guard_problems(
-            document,
-            check_linefeeds.CANDIDATE_ADMITTED,
-            ledger=matching_ledger(record),
+            document, check_linefeeds.CANDIDATE_ADMITTED, ledger=ledger
         )
         == []
     )
@@ -1335,6 +1346,51 @@ def test_the_guard_refuses_a_record_with_no_ledger_at_all():
 
 
 LEDGER_MUTATIONS = {
+    "tampered_freeze_content": lambda entries: [
+        dict(entry, intent="rewritten after the fact")
+        if entry["record"] == "predicate_freeze"
+        else entry
+        for entry in entries
+    ],
+    "duplicate_round_freeze": lambda entries: (
+        entries
+        + [
+            dict(
+                entry,
+                intent="a second freeze for the same round",
+                id=corpus_harness._freeze_id(
+                    {
+                        key: value
+                        for key, value in dict(
+                            entry, intent="a second freeze for the same round"
+                        ).items()
+                        if key != "id"
+                    }
+                ),
+            )
+            for entry in entries
+            if entry["record"] == "predicate_freeze"
+        ]
+    ),
+    "spend_from_another_round": lambda entries: [
+        dict(entry, round=3) if entry["record"] == "evaluation" else entry
+        for entry in entries
+    ],
+    "spend_under_another_freeze": lambda entries: [
+        dict(entry, drawn_under="sha256:" + "9" * 64)
+        if entry["record"] == "evaluation"
+        else entry
+        for entry in entries
+    ],
+    "different_scoring_in_result": lambda entries: [
+        dict(
+            entry,
+            result=dict(entry["result"], scoring="sha256:" + "f" * 64),
+        )
+        if entry["record"] == "evaluation_result"
+        else entry
+        for entry in entries
+    ],
     "no_freeze": lambda entries: [
         entry for entry in entries if entry["record"] != "predicate_freeze"
     ],
@@ -1390,10 +1446,10 @@ LEDGER_MUTATIONS = {
 
 @pytest.mark.parametrize("name", sorted(LEDGER_MUTATIONS))
 def test_a_ledger_that_disagrees_with_the_record_turns_the_guard_red(name):
-    """The record is judged against what the ledger says happened, field by field."""
-    record = valid_admission_result()
+    """The record is judged against one authentic chain, not four lookalike lookups."""
+    record, ledger = valid_admission_evidence()
     document = {"repair_admission_result": record}
-    entries = LEDGER_MUTATIONS[name](matching_ledger(record))
+    entries = LEDGER_MUTATIONS[name](ledger)
     assert corpus_harness.admission_guard_problems(
         document, check_linefeeds.CANDIDATE_ADMITTED, ledger=entries
     )
@@ -1419,7 +1475,11 @@ MUTATIONS = {
     "freeze_id": lambda r: r.__setitem__("freeze_id", ""),
     "evaluation_digest": lambda r: r.__setitem__("evaluation_digest", "xyz"),
     "predicate_digest": lambda r: r.__setitem__("predicate_digest", "B" * 64),
-    "scoring": lambda r: r.__setitem__("scoring", ""),
+    "scoring_empty": lambda r: r.__setitem__("scoring", ""),
+    "scoring_prose": lambda r: r.__setitem__(
+        "scoring", "score.py --bundle through composed"
+    ),
+    "scoring_swapped": lambda r: r.__setitem__("scoring", "sha256:" + "f" * 64),
     "strata_empty": lambda r: r.__setitem__("strata", {}),
     "stratum_scored": lambda r: r["strata"]["terminator_period"].__setitem__(
         "scored", 0
@@ -1451,8 +1511,8 @@ MUTATIONS = {
 @pytest.mark.parametrize("name", sorted(MUTATIONS))
 def test_each_mutation_turns_the_guard_red(name):
     """Every field of the record is load-bearing while ADMITTED is non-empty."""
-    record = copy.deepcopy(valid_admission_result())
-    ledger = matching_ledger(valid_admission_result())
+    record, ledger = valid_admission_evidence()
+    record = copy.deepcopy(record)
     MUTATIONS[name](record)
     document = {"repair_admission_result": record}
     assert corpus_harness.admission_guard_problems(

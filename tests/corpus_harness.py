@@ -837,8 +837,12 @@ def repair_admission_result_problems(document):
         value = record.get(field)
         if not (isinstance(value, str) and _HEX_DIGEST_RE.match(value)):
             bad(f"{field} must be a 64-hex digest: {value!r}")
-    if not (isinstance(record.get("scoring"), str) and record["scoring"]):
-        bad("scoring must name the one algorithm both sides ran through")
+    scoring = record.get("scoring")
+    if not (isinstance(scoring, str) and scoring.startswith("sha256:")):
+        bad(
+            "scoring must be the sha256: digest of the scoring code the freeze bound, "
+            f"not prose: {scoring!r}"
+        )
     strata = record.get("strata")
     if not isinstance(strata, dict) or not strata:
         bad("strata must map each activated exact set to its counts")
@@ -948,16 +952,27 @@ def repair_admission_result_ledger_problems(document, records):
         """The ledger prefixes its digests with the algorithm; the record stores hex."""
         return str(digest or "").split(":")[-1]
 
+    frozen = None
     freezes = [
         entry
         for entry in records
         if entry.get("record") == "predicate_freeze"
         and entry.get("id") == record.get("freeze_id")
     ]
+    round_freezes = [
+        entry
+        for entry in records
+        if entry.get("record") == "predicate_freeze"
+        and entry.get("round") == record.get("round")
+    ]
     if not freezes:
         bad(f"the ledger holds no predicate_freeze named {record.get('freeze_id')!r}")
     else:
         (frozen,) = freezes[:1]
+        # Authenticity, not presence: the id is content-derived,
+        # so a hand-written freeze record cannot make one up.
+        if _freeze_id(frozen) != frozen.get("id"):
+            bad("the cited freeze's id is not the digest of its own content")
         if frozen.get("round") != record.get("round"):
             bad(
                 f"the cited freeze is for round {frozen.get('round')!r}, "
@@ -965,6 +980,11 @@ def repair_admission_result_ledger_problems(document, records):
             )
         if bare(frozen.get("predicate_digest")) != record.get("predicate_digest"):
             bad("the cited freeze froze a different predicate digest")
+    if len(round_freezes) > 1:
+        bad(
+            f"the ledger holds {len(round_freezes)} freezes for round "
+            f"{record.get('round')!r}; one round is frozen once"
+        )
     spends = [
         entry
         for entry in records
@@ -976,6 +996,20 @@ def repair_admission_result_ledger_problems(document, records):
             f"no evaluation in the ledger spends ciphertext "
             f"{record.get('evaluation_digest')!r}"
         )
+    else:
+        # The chain: the spend itself must say it belongs to the cited freeze and round,
+        # or a spend from another round with agreeable numbers would satisfy the guard.
+        (spend,) = spends[:1]
+        if spend.get("round") != record.get("round"):
+            bad(
+                f"the spend belongs to round {spend.get('round')!r}, "
+                f"not {record.get('round')!r}"
+            )
+        if spend.get("drawn_under") != record.get("freeze_id"):
+            bad(
+                "the spend was not drawn under the cited freeze; "
+                "the evaluation and the freeze are two records of one chain"
+            )
     results = [
         entry
         for entry in records
@@ -1017,6 +1051,15 @@ def repair_admission_result_ledger_problems(document, records):
             bad("the recorded strata are not the sealed evaluation's strata")
         if got.get("zero_tolerance") != record.get("zero_tolerance"):
             bad("the recorded zero-tolerance counts are not the sealed evaluation's")
+        if got.get("scoring") != record.get("scoring"):
+            bad(
+                "the recorded scoring identity is not the sealed evaluation's; "
+                "the digest is computed inside the one open, never copied by hand"
+            )
+        if frozen is not None and (frozen.get("binds") or {}).get(
+            "scoring"
+        ) != record.get("scoring"):
+            bad("the scoring identity is not the one the cited freeze bound")
     return problems
 
 
@@ -1912,6 +1955,17 @@ def repair_round_sources(document, round):
     return canonical
 
 
+def scoring_digest():
+    """The digest of the scoring code, as one value the freeze and the result both carry.
+
+    Computed live at the freeze (inside the round bindings) and inside the one scoring open,
+    so the record's scoring identity is sealed evidence rather than prose an operator copied.
+    """
+    here = pathlib.Path(__file__).resolve()
+    score = here.parent / "corpus" / "repairs" / "score.py"
+    return contract_digest({"score": file_digest(score), "harness": file_digest(here)})
+
+
 def repair_round_bindings(document, round):
     """Everything a repair round means beyond its predicate and its manifest.
 
@@ -1929,16 +1983,12 @@ def repair_round_bindings(document, round):
     """
     import check_linefeeds
 
-    here = pathlib.Path(__file__).resolve()
-    score = here.parent / "corpus" / "repairs" / "score.py"
     return {
         "admission": repair_admission_digest(),
         "taxonomy": contract_digest(list(check_linefeeds.WITHHOLDING_CLASSES)),
         "draw": contract_digest(REPAIR_DRAW),
         "sources": contract_digest(repair_round_sources(document, round)),
-        "scoring": contract_digest(
-            {"score": file_digest(score), "harness": file_digest(here)}
-        ),
+        "scoring": scoring_digest(),
     }
 
 
@@ -2910,17 +2960,26 @@ class Holdout:
             encoding="utf-8",
         )
 
-    def freeze(self, reporting_rules):
-        """Commit to a predicate, a calibration manifest, and a bundle, before seeing any of it."""
-        self._append(
-            {
-                "record": "freeze",
-                "predicate_digest": self._predicate_digest(),
-                "manifest_digest": self._manifest_digest(),
-                "ciphertext_digest": self._ciphertext_digest(),
-                "reporting_rules": reporting_rules,
-            }
-        )
+    def freeze(self, reporting_rules, drawn_under=None):
+        """Commit to a predicate, a calibration manifest, and a bundle, before seeing any of it.
+
+        `drawn_under` names the pre-draw freeze the sealed prose was drawn under.
+        A repair round passes it so the ledger holds one chain
+        (pre-draw freeze, bundle, spend, result)
+        rather than four lookalike records a validator would correlate by trust.
+        """
+        record = {
+            "record": "freeze",
+            "predicate_digest": self._predicate_digest(),
+            "manifest_digest": self._manifest_digest(),
+            "ciphertext_digest": self._ciphertext_digest(),
+            "reporting_rules": reporting_rules,
+        }
+        if self.round is not None:
+            record["round"] = self.round
+        if drawn_under is not None:
+            record["drawn_under"] = drawn_under
+        self._append(record)
 
     def open(self, passphrase):
         """Return the sealed text, or refuse and say which rule refused."""
@@ -2948,16 +3007,21 @@ class Holdout:
         # no plaintext byte exists before the ledger holds the spend,
         # so a crash after authentication leaves the bundle spent rather than reusable.
         ciphertext, mask_key = self._verify(passphrase)
-        self._append(
-            {
-                "record": "evaluation",
-                "predicate_digest": frozen["predicate_digest"],
-                "manifest_digest": frozen["manifest_digest"],
-                "ciphertext_digest": frozen["ciphertext_digest"],
-                "reporting_rules": frozen["reporting_rules"],
-                "result": {"state": "opened"},
-            }
-        )
+        spend = {
+            "record": "evaluation",
+            "predicate_digest": frozen["predicate_digest"],
+            "manifest_digest": frozen["manifest_digest"],
+            "ciphertext_digest": frozen["ciphertext_digest"],
+            "reporting_rules": frozen["reporting_rules"],
+            "result": {"state": "opened"},
+        }
+        # The chain, copied from the bundle's own freeze record rather than trusted:
+        # which round this spend belongs to, and which pre-draw freeze its prose answers.
+        if frozen.get("round") is not None:
+            spend["round"] = frozen["round"]
+        if frozen.get("drawn_under") is not None:
+            spend["drawn_under"] = frozen["drawn_under"]
+        self._append(spend)
         return _mask(ciphertext, mask_key).decode("utf-8")
 
     def complete_evaluation(self, result):
@@ -2984,13 +3048,16 @@ class Holdout:
             raise ScoringRefused(
                 "this bundle's evaluation already carries a result; one open, one answer"
             )
-        self._append(
-            {
-                "record": "evaluation_result",
-                "ciphertext_digest": ciphertext,
-                "result": result,
-            }
-        )
+        (spend,) = opened[:1]
+        record = {
+            "record": "evaluation_result",
+            "ciphertext_digest": ciphertext,
+            "result": result,
+        }
+        for name in ("round", "drawn_under"):
+            if spend.get(name) is not None:
+                record[name] = spend[name]
+        self._append(record)
 
     def record_evaluation(self, result):
         """Spend this bundle, against the freeze record it answers."""

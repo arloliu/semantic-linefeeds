@@ -138,7 +138,7 @@ def seal_round(holdout, body, drawn_under, binds, round_dir, passphrase=None):
         sys.exit("an empty passphrase seals nothing; nothing was written")
     text = json.dumps(body, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
     holdout.seal(text, passphrase, drawn_under=drawn_under, binds=binds)
-    holdout.freeze({"admission": repair_admission_digest()})
+    holdout.freeze({"admission": repair_admission_digest()}, drawn_under=drawn_under)
 
     for path in plaintext(round_dir):
         if path.is_dir():

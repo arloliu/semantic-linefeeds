@@ -104,7 +104,11 @@ Write `repair_admission_result` into `tests/corpus/manifest.json`,
 copied from the sealed evaluation:
 version 1, the admitted set, round 4, the freeze id,
 the evaluation (ciphertext) digest, the predicate digest as frozen,
-the scoring algorithm, every activated stratum's counts and Wilson lower bound,
+the scoring digest exactly as the sealed result carries it
+(it was computed inside the one open,
+and the guard compares it against the result and the freeze's own binding —
+never retype it),
+every activated stratum's counts and Wilson lower bound,
 the three zero-tolerance counts, the outcome, and the decision ADR.
 `repair_admission_result_problems` and the ledger cross-check must both come back empty.
 
