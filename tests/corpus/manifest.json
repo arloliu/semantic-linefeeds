@@ -86022,6 +86022,42 @@
       "selection_command": "git ls-files '*.md'",
       "wrapping_column": 80,
       "qualification": "mode of raw Markdown paragraph line lengths is column 80, over 32357 lines, with 31% within two columns of the mode and 3% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
+    },
+    {
+      "id": "otx",
+      "side": "holdout",
+      "round": 4,
+      "composition": "self-authored",
+      "url": "https://github.com/arloliu/otx",
+      "commit": "a6efbac04fd75896ba27dbf467e5cf67a95218fd",
+      "license": "Apache-2.0",
+      "selection_command": "git ls-files '*.go' ':!:*_test.go' ':!:vendor/*'",
+      "wrapping_column": 78,
+      "qualification": "mode of raw Go `//` comment line lengths is column 78, over 1031 lines, with 29% within two columns of the mode and 2% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
+    },
+    {
+      "id": "pebble",
+      "side": "holdout",
+      "round": 4,
+      "composition": "third-party-code",
+      "url": "https://github.com/cockroachdb/pebble",
+      "commit": "abab24a50ec83672322ca925a212eb33634615e6",
+      "license": "BSD-3-Clause",
+      "selection_command": "git ls-files '*.go' ':!:*_test.go' ':!:vendor/*'",
+      "wrapping_column": 77,
+      "qualification": "mode of raw Go `//` comment line lengths is column 77, over 35078 lines, with 31% within two columns of the mode and 1% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
+    },
+    {
+      "id": "dotnet-designs",
+      "side": "holdout",
+      "round": 4,
+      "composition": "third-party-markdown",
+      "url": "https://github.com/dotnet/designs",
+      "commit": "8f17cc55212fe45f563741aa7137d432d82482d5",
+      "license": "CC-BY-4.0",
+      "selection_command": "git ls-files '*.md'",
+      "wrapping_column": 79,
+      "qualification": "mode of raw Markdown paragraph line lengths is column 79, over 4041 lines, with 34% within two columns of the mode and 9% beyond six past it; measured by tests/corpus/qualify.py from line lengths, licence, and prior exposure only"
     }
   ],
   "units": [
