@@ -68,7 +68,7 @@ extending it later would break a stratum a round was drawn on.
 ## Consequences
 
 - Over the pinned calibration measurement,
-  the exact set a period widening activates is 299 boundaries,
+  the exact set a period widening activates is 293 boundaries,
   and the shipped class is 11 of its former 34 —
   the other 23 were suggestions that would have repaired half a sentence,
   and this record is where they are withdrawn.

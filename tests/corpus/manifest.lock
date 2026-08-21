@@ -1,4 +1,4 @@
 {
-  "digest": "sha256:bb6e98195d478de3ea81bc5de73b53a0db1eaa32f71a486562c125466a75279d",
-  "reason": "v0.9b: the window predicate's baselines, in the repair_baselines_v2 sidecar; accepted records untouched"
+  "digest": "sha256:d79fe67b682f610e6389e92780d8f8df47b09f7996b8d45963fe8ce03f72c240",
+  "reason": "v0.9b review v1 fixes: anchor_open sees past opening delimiters, corpus readers keep newlines; v2 baselines recomputed under the corrected predicate"
 }

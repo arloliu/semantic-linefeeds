@@ -928,6 +928,18 @@ def test_a_sentence_initial_anchor_carries_no_anchor_open():
     assert "anchor_open" not in classes
 
 
+def test_a_quoted_mid_sentence_anchor_still_carries_anchor_open():
+    """A first-character test would wave the quoted form through.
+
+    The opening quote hides the lowercase word from a naive match,
+    and the stranded fragment is the same either way.
+    """
+    (classes,) = withheld('"then stop now! A call follows."\n')
+    assert "anchor_open" in classes
+    (d,) = diags('"then stop now! A call follows."\n')
+    assert "suggestion" not in d
+
+
 def test_an_unpaired_anchor_whose_ending_no_line_may_end_on_withholds():
     """The detector cannot pair a continuation opening with a capital,
     and splitting would strand the open fragment ahead of it.

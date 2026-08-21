@@ -353,3 +353,89 @@ def test_an_incomplete_evaluation_validates_no_admission(tmp_path, monkeypatch):
     }
     problems = repair_admission_result_ledger_problems(record, records)
     assert any("never completed" in problem for problem in problems)
+
+
+def test_a_wrong_passphrase_refuses_without_spending(tmp_path):
+    """Authentication comes before the spend, so a typo cannot burn the round."""
+    corpus, manifest, root = fixture_corpus(tmp_path)
+    freeze_round_four(corpus, manifest)
+    sample, _path = drawn(tmp_path, corpus, manifest, root)
+    answer_everything(corpus, sample)
+    sealed(corpus, manifest)
+    holdout = repair_holdout(corpus, manifest)
+    with pytest.raises(ScoringRefused, match="passphrase"):
+        holdout.open_spending("not the passphrase")
+    records = (corpus / "freeze.jsonl").read_text(encoding="utf-8")
+    assert '"evaluation"' not in records
+    assert holdout.open_spending(PASSPHRASE)
+
+
+def test_a_crash_while_unmasking_still_leaves_the_bundle_spent(tmp_path, monkeypatch):
+    """The spend lands between authentication and the plaintext, so no gap remains."""
+    import corpus_harness
+
+    corpus, manifest, root = fixture_corpus(tmp_path)
+    freeze_round_four(corpus, manifest)
+    sample, _path = drawn(tmp_path, corpus, manifest, root)
+    answer_everything(corpus, sample)
+    sealed(corpus, manifest)
+    holdout = repair_holdout(corpus, manifest)
+
+    def explode(data, key):
+        raise RuntimeError("died between the spend and the plaintext")
+
+    monkeypatch.setattr(corpus_harness, "_mask", explode)
+    with pytest.raises(RuntimeError):
+        holdout.open_spending(PASSPHRASE)
+    monkeypatch.undo()
+    with pytest.raises(ScoringRefused, match="already been evaluated"):
+        repair_holdout(corpus, manifest).open_spending(PASSPHRASE)
+
+
+def test_a_sample_that_misstates_its_round_stops_the_seal(tmp_path):
+    """A round's identity is not the directory it sits in."""
+    corpus, manifest, root = fixture_corpus(tmp_path)
+    freeze_round_four(corpus, manifest)
+    sample, sample_path = drawn(tmp_path, corpus, manifest, root)
+    answer_everything(corpus, sample)
+    sample["round"] = 5
+    sample_path.write_text(json.dumps(sample), encoding="utf-8")
+    with pytest.raises(SystemExit, match="identity is not the directory"):
+        seal.prepare(4, manifest)
+
+
+def test_a_sealed_sample_that_misstates_its_round_fails_the_scoring_open(tmp_path):
+    """Sealed around the check on purpose: the one open still refuses, and spends."""
+    corpus, manifest, root = fixture_corpus(tmp_path)
+    frozen = freeze_round_four(corpus, manifest)
+    sample, sample_path = drawn(tmp_path, corpus, manifest, root)
+    answers = answer_everything(corpus, sample)
+    tampered = dict(sample, round=5)
+    body = {
+        "sample": tampered,
+        "answers": {
+            path.name: path.read_text(encoding="utf-8")
+            for path in sorted(answers.glob("*.out"))
+        },
+        "adjudications": None,
+    }
+    holdout = repair_holdout(corpus, manifest)
+    holdout.seal(
+        json.dumps(body, sort_keys=True),
+        PASSPHRASE,
+        drawn_under=frozen["id"],
+        binds=frozen["binds"],
+    )
+    holdout.freeze({"admission": "tampered-fixture"})
+    with pytest.raises(ScoringRefused, match="identity is not its directory"):
+        score_module.score_bundle(
+            corpus / "repairs" / "round-4", root, manifest, passphrase=PASSPHRASE
+        )
+    records = [
+        json.loads(line)
+        for line in (corpus / "freeze.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    (failed,) = [
+        record for record in records if record["record"] == "evaluation_result"
+    ]
+    assert failed["result"]["state"] == "failed-evaluation"

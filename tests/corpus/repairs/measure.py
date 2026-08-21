@@ -50,7 +50,7 @@ sys.path.insert(0, str(TESTS))
 sys.path.insert(0, str(REPO / "scripts"))
 
 import check_linefeeds as clf  # noqa: E402
-from corpus_harness import exact_set_key, files_of  # noqa: E402
+from corpus_harness import corpus_text, exact_set_key, files_of  # noqa: E402
 
 MANIFEST = TESTS / "corpus" / "manifest.json"
 
@@ -69,7 +69,7 @@ def measure(root, source):
 
     for name in files_of(source, root):
         try:
-            text = (root / name).read_text(encoding="utf-8")
+            text = corpus_text(root / name)
         except (OSError, UnicodeDecodeError) as problem:
             skipped.append(f"{name}: {problem}")
             continue

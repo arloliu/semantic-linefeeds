@@ -1439,7 +1439,12 @@ def _fused_withholding(record, match, below=None):
     prose, raw = record["prose"], record["raw"]
     found = set()
 
-    if re.match(r"[a-z]", prose):
+    # Past any opening quote, bracket, or emphasis marker:
+    # `"then stop now!` opens as mid-sentence as `then stop now!` does,
+    # and a first-character test would wave the quoted form through.
+    # Deliberately wider than `_wrap_paired`'s lowercase test —
+    # a withholding may be more conservative than the pairing it guards.
+    if re.match(r"[\"'([{*_~“‘]*[a-z]", prose):
         found.add("anchor_open")
     if (
         below is None

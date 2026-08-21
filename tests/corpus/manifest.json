@@ -118567,7 +118567,7 @@
     }
   ],
   "repair_baselines_v2": {
-    "predicate": "sha256:efb1c9c8ce80332e08f534d2843a3fd54ba3256589908056977b8f50688e4ed8",
+    "predicate": "sha256:431f51719d361650073362a68f821c7516d6bf7ab640cae7d96f1425cb018555",
     "units": {
       "go-proposal:design/11970-decentralized-gc.md:143:0#repair": {
         "lines": null,

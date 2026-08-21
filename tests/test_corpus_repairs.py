@@ -2722,3 +2722,24 @@ def test_a_mutated_sidecar_refuses(mutate):
     )
     mutate(document)
     assert repair_baselines_v2_problems(document)
+
+
+def test_the_corpus_reader_keeps_crlf_where_delivery_translates_it(tmp_path):
+    """`Path.read_text` opens with universal newlines; the corpus must not.
+
+    A CRLF window read through the population path keeps its terminator,
+    so `below_terminator` can refuse it - through the real reader,
+    not a literal string handed to the detector.
+    """
+    tree = tmp_path / "crlf-source"
+    tree.mkdir()
+    (tree / "note.md").write_bytes(
+        b"Stop now! Go later to the\r\nplace we talked about.\r\n"
+    )
+    subprocess.run(["git", "init", "-q", str(tree)], check=True)
+    subprocess.run(["git", "-C", str(tree), "add", "-A"], check=True)
+    population = repair_population(
+        {"id": "crlf-source", "selection_command": "git ls-files '*.md'"}, tree
+    )
+    (unit,) = population
+    assert "below_terminator" in unit["withheld_by"]

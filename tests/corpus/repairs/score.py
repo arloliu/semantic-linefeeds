@@ -54,8 +54,10 @@ from collect import resolved  # noqa: E402
 from corpus_harness import (  # noqa: E402
     REPAIR_ADMISSION,
     Holdout,
+    ScoringRefused,
     candidate_for_breaks,
     composed,
+    corpus_text,
     file_digest,
     normalize_repair,
     original_cuts,
@@ -166,9 +168,7 @@ def scored_strata(sample, answers_dir, root, admitted, adjudications=None):
             continue
         key = (unit["source"], unit["path"])
         if key not in texts:
-            texts[key] = (root / unit["source"] / unit["path"]).read_text(
-                encoding="utf-8"
-            )
+            texts[key] = corpus_text(root / unit["source"] / unit["path"])
         text = texts[key]
 
         acceptable = {tuple(cuts) for cuts in got["acceptable"]}
@@ -265,6 +265,11 @@ def score_bundle(round_dir, root, manifest_path=None, passphrase=None):
     try:
         body = json.loads(text)
         sample = body["sample"]
+        if sample.get("round") != number:
+            raise ScoringRefused(
+                f"the sealed sample says round {sample.get('round')!r} and this "
+                f"bundle sits in round {number}; a round's identity is not its directory"
+            )
         with tempfile.TemporaryDirectory() as answers_dir:
             answers = pathlib.Path(answers_dir)
             for name, content in body["answers"].items():

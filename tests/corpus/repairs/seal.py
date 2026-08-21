@@ -69,6 +69,12 @@ def prepare(number, manifest_path=None):
     body = payload(round_dir)
     sample = body["sample"]
 
+    if sample.get("round") != number:
+        sys.exit(
+            f"the sample says round {sample.get('round')!r} and this seal was asked "
+            f"for round {number}; a round's identity is not the directory it sits in.\n"
+            "Nothing was written."
+        )
     drawn_under = sample.get("drawn_under")
     if not drawn_under:
         sys.exit(

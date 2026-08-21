@@ -31,6 +31,7 @@ from corpus_harness import (  # noqa: E402
     REPAIR_ADMISSION,
     candidate_for_breaks,
     composed,
+    corpus_text,
     file_digest,
     normalize_repair,
     repair_baselines_v2_problems,
@@ -113,9 +114,7 @@ def rebaseline(root, manifest_path, reason):
             sys.exit(f"duplicate unit id {record['id']}; nothing was written")
         key = (record["source"], record["path"])
         if key not in texts:
-            texts[key] = (root / record["source"] / record["path"]).read_text(
-                encoding="utf-8"
-            )
+            texts[key] = corpus_text(root / record["source"] / record["path"])
         text = texts[key]
         import check_linefeeds
 
@@ -289,9 +288,7 @@ def main(argv=None):
         unit = units[uid]
         key = (unit["source"], unit["path"])
         if key not in texts:
-            texts[key] = (root / unit["source"] / unit["path"]).read_text(
-                encoding="utf-8"
-            )
+            texts[key] = corpus_text(root / unit["source"] / unit["path"])
         text = texts[key]
 
         record = dict(unit)

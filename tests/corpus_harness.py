@@ -505,6 +505,19 @@ def draw(population, key, bands, per_level, seed):
 CONTEXT = 2
 
 
+def corpus_text(path):
+    """One source file, byte-faithful in its newlines.
+
+    `Path.read_text` opens with universal newlines,
+    which quietly turns CRLF and bare CR into LF before `judged_lines` runs,
+    blinding `record["terminator"]` and every class that reads it.
+    The delivery paths translate on purpose;
+    the corpus must not, because its windows are spliced back into the file.
+    """
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
+
+
 def files_of(source, root):
     """Exactly the files the manifest's own selection command names, and no others.
 
@@ -879,8 +892,10 @@ def admission_guard_problems(document, admitted, ledger=None):
     with an admitted outcome —
     a floor entry or an ADR file on disk proves nothing here,
     because presence is not a decision.
-    `ledger` is the parsed append-only ledger when the caller holds one;
-    passing it adds the cross-check that the named evidence actually happened.
+    `ledger` is the parsed append-only ledger.
+    A non-empty shipped set refuses to be judged without one:
+    a record alone can be internally consistent and still name evidence
+    that never happened, and only the ledger can say it did.
     """
     if not admitted:
         return []
@@ -890,7 +905,13 @@ def admission_guard_problems(document, admitted, ledger=None):
             "ADMITTED is non-empty and the manifest holds no repair_admission_result"
         ]
     problems = repair_admission_result_problems(document)
-    if ledger is not None:
+    if ledger is None:
+        problems.append(
+            "ADMITTED is non-empty and no ledger was supplied; "
+            "an admission is checked against the append-only ledger, "
+            "never on the record alone"
+        )
+    else:
         problems += repair_admission_result_ledger_problems(document, ledger)
     if isinstance(record.get("admitted"), list) and record["admitted"] != sorted(
         admitted
@@ -972,6 +993,30 @@ def repair_admission_result_ledger_problems(document, records):
                 f"the sealed evaluation's outcome {got.get('outcome')!r} "
                 f"is not the record's {record.get('outcome')!r}"
             )
+        if got.get("admitted") != record.get("admitted"):
+            bad("the sealed evaluation admitted a different class set")
+        if bare(got.get("predicate_digest")) != record.get("predicate_digest"):
+            bad("the sealed evaluation ran a different predicate digest")
+        sealed_strata = {
+            key: {
+                "scored": body.get("scored"),
+                "acceptable": body.get("acceptable"),
+                "lower_bound": body.get("lower_bound"),
+            }
+            for key, body in (got.get("strata") or {}).items()
+        }
+        recorded_strata = {
+            key: {
+                "scored": body.get("scored"),
+                "acceptable": body.get("acceptable"),
+                "lower_bound": body.get("lower_bound"),
+            }
+            for key, body in (record.get("strata") or {}).items()
+        }
+        if sealed_strata != recorded_strata:
+            bad("the recorded strata are not the sealed evaluation's strata")
+        if got.get("zero_tolerance") != record.get("zero_tolerance"):
+            bad("the recorded zero-tolerance counts are not the sealed evaluation's")
     return problems
 
 
@@ -1979,9 +2024,7 @@ def attach_candidates(units, root):
     for unit in units:
         key = (unit["source"], unit["path"])
         if key not in texts:
-            texts[key] = (root / unit["source"] / unit["path"]).read_text(
-                encoding="utf-8"
-            )
+            texts[key] = corpus_text(root / unit["source"] / unit["path"])
         text = texts[key]
         records, _suppressions = check_linefeeds.judged_lines(text, unit["path"])
         window = repair_window(records, unit["index"])
@@ -2032,7 +2075,7 @@ def repair_population(source, root):
     out = []
     for name in files_of(source, root):
         try:
-            text = (root / name).read_text(encoding="utf-8")
+            text = corpus_text(root / name)
         except (OSError, UnicodeDecodeError):
             continue
         try:
@@ -2900,7 +2943,11 @@ class Holdout:
         """
         frozen = self._require_freeze()
         self._require_unspent()
-        text = self._decrypt(passphrase)
+        # Authenticate first (a wrong passphrase must not spend the bundle),
+        # then spend, then unmask:
+        # no plaintext byte exists before the ledger holds the spend,
+        # so a crash after authentication leaves the bundle spent rather than reusable.
+        ciphertext, mask_key = self._verify(passphrase)
         self._append(
             {
                 "record": "evaluation",
@@ -2911,7 +2958,7 @@ class Holdout:
                 "result": {"state": "opened"},
             }
         )
-        return text
+        return _mask(ciphertext, mask_key).decode("utf-8")
 
     def complete_evaluation(self, result):
         """Attach the one result to a bundle `open_spending` already spent."""
@@ -2999,7 +3046,13 @@ class Holdout:
                     "this bundle has already been evaluated; scoring again needs a new holdout"
                 )
 
-    def _decrypt(self, passphrase):
+    def _verify(self, passphrase):
+        """Authenticate the passphrase against the tag, producing no plaintext.
+
+        Split from the unmasking so a spend can land between the two:
+        a wrong passphrase refuses before anything is spent,
+        and no plaintext exists before the ledger says the bundle was opened.
+        """
         bundle = json.loads(self.bundle.read_text(encoding="utf-8"))
         ciphertext = base64.b64decode(bundle["ciphertext"])
         mask_key, tag_key = _keys(
@@ -3008,6 +3061,10 @@ class Holdout:
         tag = hmac.new(tag_key, ciphertext, hashlib.sha256).digest()
         if not hmac.compare_digest(tag, base64.b64decode(bundle["tag"])):
             raise ScoringRefused("the passphrase does not open this bundle")
+        return ciphertext, mask_key
+
+    def _decrypt(self, passphrase):
+        ciphertext, mask_key = self._verify(passphrase)
         return _mask(ciphertext, mask_key).decode("utf-8")
 
     def _records(self):
